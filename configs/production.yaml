@@ -1,0 +1,5 @@
+inherit: base.yaml
+runtime:
+  mode: research
+  allow_live: false
+# Live requires BOTH mode: live AND allow_live: true. This file stays research-safe.

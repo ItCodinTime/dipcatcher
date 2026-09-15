@@ -1,0 +1,18 @@
+inherit: base.yaml
+runtime:
+  mode: research
+data:
+  source: synthetic
+  synthetic_n_assets: 36
+  synthetic_n_days: 504
+  synthetic_seed: 7
+  synthetic_oracle_beta: 0.015
+  synthetic_oracle_phi: 0.70
+train:
+  ranking_target: future_idio_return_1
+  ridge_alpha: 0.3
+validation:
+  scheme: expanding
+  train_bars: 180
+  val_bars: 40
+  test_bars: 40

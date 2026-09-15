@@ -1,0 +1,65 @@
+runtime:
+  mode: research
+  allow_live: false
+universe:
+  min_price: 5.0
+  min_adv: 100000.0
+  min_history_bars: 60
+  top_n_adv: 50
+calendar:
+  name: XNYS
+horizons:
+  bars: [1, 5, 20]
+  names: ["1d", "5d", "20d"]
+quantiles:
+  levels: [0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95]
+costs:
+  commission_bps: 1.0
+  half_spread_bps: 5.0
+  impact_y: 0.1
+  borrow_bps_per_year: 50.0
+  frictionless: false
+  participation_limit: 0.1
+execution:
+  fill: next_open
+  allow_close_auction: false
+  horizon_bars: 5
+  n_slices: 5
+constraints:
+  gross_leverage: 2.0
+  net_exposure: 0.05
+  name_max: 0.05
+  name_min: -0.05
+  turnover_limit: 0.4
+  sector_abs_max: 0.25
+optimizer:
+  lambda_risk: 8.0
+  lambda_tc: 1.0
+  lambda_tail: 0.0
+  solver: CLARABEL
+  mode: mean_variance
+validation:
+  scheme: expanding
+  train_bars: 180
+  val_bars: 40
+  test_bars: 40
+  n_optuna_trials: 8
+  seed: 42
+features:
+  winsor_p: 0.01
+  ewma_lambda: 0.94
+data:
+  root: data
+  source: synthetic
+  synthetic_n_assets: 12
+  synthetic_n_days: 320
+  synthetic_seed: 7
+  benchmark_id: SEC_MKT
+train:
+  ranking_target: future_excess_return_5
+  random_seed: 42
+fusion:
+  min_executable_alpha: 0.0
+kill_switch:
+  state: ENABLED
+  allow_auto_flatten: false

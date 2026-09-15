@@ -1,0 +1,4 @@
+inherit: base.yaml
+runtime:
+  mode: paper
+  allow_live: false
