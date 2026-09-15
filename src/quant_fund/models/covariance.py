@@ -72,8 +72,7 @@ def ewma_cov(returns: Array, lam: float = 0.94) -> Array:
 
 
 def ledoit_wolf_cov(returns: Array) -> Array:
-    x = np.asarray(returns, dtype=float)
-    x = x[np.isfinite(x).all(axis=1)]
+    x = _clean_returns(returns)
     return np.asarray(LedoitWolf().fit(x).covariance_, dtype=float)
 
 
@@ -94,17 +93,21 @@ def dcc_gaussian(
     """
     from scipy.optimize import minimize
 
-    x = np.asarray(returns, dtype=float)
-    x = x[np.isfinite(x).all(axis=1)]
+    x = _clean_returns(returns, min_rows=3)
     t, n = x.shape
+    if a0 is not None and (not np.isfinite(a0) or a0 < 0):
+        raise ValueError("a0 must be finite and non-negative")
+    if b0 is not None and (not np.isfinite(b0) or b0 < 0):
+        raise ValueError("b0 must be finite and non-negative")
     vol = np.zeros_like(x)
     for j in range(n):
         v = ewma_variance_1d(x[:, j])
         vol[:, j] = np.sqrt(np.clip(v, 1e-16, None))
     z = x / np.clip(vol, 1e-12, None)
     qbar = np.corrcoef(z, rowvar=False)
-    qbar = np.nan_to_num(qbar, nan=0.0)
+    qbar = np.nan_to_num(qbar, nan=0.0, posinf=0.0, neginf=0.0)
     np.fill_diagonal(qbar, 1.0)
+    qbar, _ = repair_psd(qbar, tol=1e-12)
 
     def nll(params: Array) -> float:
         a, b = float(params[0]), float(params[1])
@@ -121,7 +124,11 @@ def dcc_gaussian(
             sign, logdet = np.linalg.slogdet(r)
             if sign <= 0:
                 return 1e12
-            ll += logdet + z[i] @ np.linalg.pinv(r) @ z[i]
+            try:
+                quadratic = float(z[i] @ np.linalg.solve(r, z[i]))
+            except np.linalg.LinAlgError:
+                return 1e12
+            ll += logdet + quadratic
         return ll / t
 
     x0 = np.array([0.05 if a0 is None else a0, 0.9 if b0 is None else b0])
@@ -139,6 +146,10 @@ def dcc_gaussian(
 
 
 def ewma_variance_1d(r: Array, lam: float = 0.94) -> Array:
+    _validate_lambda(lam)
+    r = np.asarray(r, dtype=float)
+    if r.ndim != 1 or r.size == 0 or not np.isfinite(r).all():
+        raise ValueError("r must be a non-empty finite 1D array")
     v = np.empty_like(r, dtype=float)
     v[0] = r[0] ** 2
     for t in range(1, r.size):
