@@ -38,10 +38,17 @@ class SyntheticMarketProvider:
         oracle_beta: float = 0.015,
         oracle_phi: float = 0.70,
     ) -> None:
-        set_global_seed(seed)
-        self.n_assets = n_assets
-        self.n_days = n_days
-        self.seed = seed
+        if int(n_assets) < 2:
+            raise ValueError("n_assets must be >= 2 (market + at least one name)")
+        if int(n_days) < 16:
+            raise ValueError("n_days must be >= 16 (delist window needs 15 trailing sessions)")
+        seed_i = int(seed)
+        if seed_i < 0 or seed_i > 2**32 - 1:
+            raise ValueError("seed must be between 0 and 2**32 - 1")
+        set_global_seed(seed_i)
+        self.n_assets = int(n_assets)
+        self.n_days = int(n_days)
+        self.seed = seed_i
         self.oracle_beta = float(oracle_beta)
         self.oracle_phi = float(oracle_phi)
         start_d = (start or datetime(2018, 1, 2, tzinfo=TZ)).date()

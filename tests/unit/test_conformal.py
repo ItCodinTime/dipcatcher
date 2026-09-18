@@ -81,6 +81,13 @@ def test_expand_interval_symmetric() -> None:
     assert np.isclose(cqr_scores(np.array([1.2]), np.array([0.0]), np.array([1.0]))[0], 0.2)
 
 
+def test_expand_interval_normalizes_inverted_base_bounds() -> None:
+    """Conformal prediction sets remain ordered under malformed base bounds."""
+    lo, hi = expand_interval(np.array([2.0]), np.array([1.0]), 0.1)
+    assert lo[0] <= hi[0]
+    assert (lo[0], hi[0]) == (1.1, 1.9)
+
+
 def test_onesided_bound_expands() -> None:
     y = np.array([1.0, 2.0, 3.0, 4.0])
     bound = np.full_like(y, 2.5)
@@ -94,6 +101,29 @@ def test_set_metrics_empty() -> None:
     m = set_metrics(np.array([np.nan]), np.array([np.nan]), np.array([np.nan]))
     assert m.n == 0
     assert np.isnan(m.coverage)
+
+
+def test_set_metrics_excludes_inverted_intervals() -> None:
+    """Invalid base sets cannot improve reported width diagnostics."""
+    m = set_metrics(
+        np.array([0.0, 0.0]),
+        np.array([-1.0, 2.0]),
+        np.array([1.0, 1.0]),
+    )
+    assert m.n == 1
+    assert m.mean_width == 2.0
+
+
+def test_set_metrics_rejects_shape_mismatch() -> None:
+    with pytest.raises(ValueError, match="identical shapes"):
+        set_metrics(np.array([0.0]), np.array([-1.0, 0.0]), np.array([1.0, 1.0]))
+
+
+def test_covered_rejects_shape_mismatch() -> None:
+    with pytest.raises(ValueError, match="identical shapes"):
+        from quant_fund.metrics.conformal import covered
+
+        covered(np.array([0.0]), np.array([-1.0, 0.0]), np.array([1.0, 1.0]))
 
 
 def test_conformal_quantile_rejects_bad_alpha() -> None:
@@ -137,3 +167,89 @@ def test_mondrian_aci_tracks_groups() -> None:
     assert float(np.nanmean(path.covered)) >= 0.80
     assert "high_vol" in aci.groups
     assert "low_vol" in aci.groups
+
+
+# --- Wave 26: core conformal extremes (empty cal / bad alpha / nested) ---
+
+
+def test_split_cqr_rejects_bad_alpha() -> None:
+    with pytest.raises(ValueError, match="alpha"):
+        SplitCQR(0.0)
+    with pytest.raises(ValueError, match="alpha"):
+        SplitCQR(1.0)
+    with pytest.raises(ValueError, match="alpha"):
+        SplitCQR(-0.1)
+    with pytest.raises(ValueError, match="alpha"):
+        SplitOneSided(0.0)
+
+
+def test_split_cqr_empty_cal_qhat_zero() -> None:
+    empty = np.array([], dtype=float)
+    cqr = SplitCQR(0.10).calibrate(empty, empty, empty)
+    assert cqr.qhat == 0.0
+    lo, hi = cqr.predict_sets(np.array([-1.0]), np.array([1.0]))
+    assert lo[0] == -1.0 and hi[0] == 1.0
+
+
+def test_split_cqr_all_nan_cal_qhat_zero() -> None:
+    y = np.array([np.nan, np.nan])
+    lo = np.array([np.nan, np.nan])
+    hi = np.array([np.nan, np.nan])
+    cqr = SplitCQR(0.10).calibrate(y, lo, hi)
+    assert cqr.qhat == 0.0
+
+
+def test_conformal_quantile_empty_scores() -> None:
+    assert conformal_quantile(np.array([]), 0.1) == 0.0
+    assert conformal_quantile(np.array([np.nan, np.nan]), 0.1) == 0.0
+
+
+def test_conformal_quantile_rejects_alpha_one() -> None:
+    with pytest.raises(ValueError):
+        conformal_quantile(np.array([1.0, 2.0]), 1.0)
+
+
+def test_nested_sets_three_alphas() -> None:
+    """Wider alpha nesting: alpha_small ⊂ alpha_mid ⊂ alpha_large (set nesting)."""
+    rng = np.random.default_rng(7)
+    y = rng.normal(size=120)
+    lo = np.full_like(y, -0.3)
+    hi = np.full_like(y, 0.3)
+    a05 = SplitCQR(0.05).calibrate(y, lo, hi)
+    a10 = SplitCQR(0.10).calibrate(y, lo, hi)
+    a25 = SplitCQR(0.25).calibrate(y, lo, hi)
+    lo05, hi05 = a05.predict_sets(lo, hi)
+    lo10, hi10 = a10.predict_sets(lo, hi)
+    lo25, hi25 = a25.predict_sets(lo, hi)
+    assert np.all(lo05 <= lo10 + 1e-12) and np.all(hi05 >= hi10 - 1e-12)
+    assert np.all(lo10 <= lo25 + 1e-12) and np.all(hi10 >= hi25 - 1e-12)
+    assert a05.qhat >= a10.qhat >= a25.qhat
+
+
+def test_aci_rejects_bad_gamma() -> None:
+    with pytest.raises(ValueError, match="gamma"):
+        AdaptiveConformal(alpha=0.10, gamma=0.0)
+    with pytest.raises(ValueError, match="gamma"):
+        AdaptiveConformal(alpha=0.10, gamma=-1.0)
+
+
+def test_onesided_empty_cal_qhat_zero() -> None:
+    one = SplitOneSided(0.10).calibrate(np.array([]), np.array([]))
+    assert one.qhat == 0.0
+    out = one.predict_bound(np.array([1.5]))
+    assert out[0] == 1.5
+
+
+def test_aci_rejects_bad_alpha_and_empty_run() -> None:
+    """ACI constructor alpha bounds + empty date walk (Wave 27 edge)."""
+    with pytest.raises(ValueError, match="alpha"):
+        AdaptiveConformal(alpha=0.0, gamma=0.05)
+    with pytest.raises(ValueError, match="alpha"):
+        AdaptiveConformal(alpha=1.0, gamma=0.05)
+    aci = AdaptiveConformal(alpha=0.10, gamma=0.05)
+    path = aci.run(np.array([]), np.array([]), np.array([]), [])
+    assert path.lower.size == 0
+    assert path.upper.size == 0
+    assert path.covered.size == 0
+    assert path.alpha_t.size == 0
+    assert path.dates == []

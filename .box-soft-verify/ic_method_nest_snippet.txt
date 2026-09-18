@@ -1,0 +1,70 @@
+_KYLE_OFI_IC_METHOD_ALLOWED = frozenset({"date_level_spearman_hac"})
+
+
+def kyle_ofi_ic_method_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` ``ic_method`` stamp honesty.
+
+    Contract: bench/residual paths stamp ``ic_method=date_level_spearman_hac``.
+    - If ``ic_method`` present: must be in the allowed set (fail-closed otherwise).
+    - If any IC diagnostic marker is finite (residual spearman, λ means, ofi_depth
+      corr, dispersion window/p50) and ``ic_method`` absent → missing error.
+    Absent markers and absent method → skip. Research diagnostic only.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> bool:
+        if key not in kyle:
+            return False
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return False
+        return x == x
+
+    ic_markers = False
+    for key in _KYLE_RESIDUAL_SPEARMAN_KEYS:
+        if _finite(key):
+            ic_markers = True
+            break
+    if not ic_markers:
+        for key in (
+            "kyle_lambda_depth_mean",
+            "kyle_lambda_ofi_mean",
+            "kyle_lambda_depth_p50",
+            "kyle_lambda_ofi_p50",
+            "kyle_lambda_ofi_depth_spearman",
+            "kyle_lambda_ofi_depth_pearson",
+        ):
+            if _finite(key):
+                ic_markers = True
+                break
+    if not ic_markers and "kyle_lambda_dispersion_window" in kyle:
+        ic_markers = True
+
+    method = kyle.get("ic_method")
+    errors: list[str] = []
+    if method is None or (isinstance(method, str) and not method.strip()):
+        if ic_markers:
+            errors.append("kyle_ofi_ic_method_missing")
+        return errors
+    method_s = str(method).strip()
+    if method_s not in _KYLE_OFI_IC_METHOD_ALLOWED:
+        errors.append("kyle_ofi_ic_method_invalid")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. ic_method)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    return errors

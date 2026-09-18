@@ -1,4 +1,9 @@
-"""VaR and Expected Shortfall. Loss L = -R. See docs/MATH_SPEC.md."""
+"""VaR and Expected Shortfall. Loss L = -R. See docs/MATH_SPEC.md.
+
+Empty / all-non-finite inputs → honest NaN. Alpha outside (0, 1) or
+non-finite → fail-closed ValueError. Research / risk diagnostics only —
+not a live P&L claim.
+"""
 
 from __future__ import annotations
 
@@ -8,13 +13,19 @@ from numpy.typing import NDArray
 Array = NDArray[np.float64]
 
 
+def _require_alpha(alpha: float) -> None:
+    if not np.isfinite(alpha) or not 0.0 < float(alpha) < 1.0:
+        raise ValueError("alpha must be in (0, 1)")
+
+
 def losses_from_returns(returns: Array) -> Array:
+    """Map returns to losses ``L = -R``. Empty input → empty array."""
     return -np.asarray(returns, dtype=float)
 
 
 def historical_var(losses: Array, alpha: float = 0.95) -> float:
-    if not 0 < alpha < 1:
-        raise ValueError("alpha must be in (0, 1)")
+    """Empirical VaR at level ``alpha`` on losses. Empty/all-NaN → NaN."""
+    _require_alpha(alpha)
     x = np.asarray(losses, dtype=float)
     x = x[np.isfinite(x)]
     if x.size == 0:
@@ -30,9 +41,10 @@ def historical_es(losses: Array, alpha: float = 0.95) -> float:
     boundary observation is weighted only by the remaining tail probability.
     This is the discrete Acerbi--Tasche definition and handles ties without
     silently changing the requested tail probability.
+
+    Empty / all-non-finite losses → honest NaN. Bad alpha → ValueError.
     """
-    if not 0 < alpha < 1:
-        raise ValueError("alpha must be in (0, 1)")
+    _require_alpha(alpha)
     x = np.asarray(losses, dtype=float)
     x = np.sort(x[np.isfinite(x)])[::-1]
     if x.size == 0:
@@ -50,18 +62,28 @@ def historical_es(losses: Array, alpha: float = 0.95) -> float:
 
 
 def gaussian_var(losses: Array, alpha: float = 0.95) -> float:
+    """Parametric Gaussian VaR. Needs ≥2 finite losses; else honest NaN."""
     from scipy.stats import norm
 
+    _require_alpha(alpha)
     x = np.asarray(losses, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size < 2:
+        return float("nan")
     mu = float(np.mean(x))
     sig = float(np.std(x, ddof=1))
     return float(mu + sig * norm.ppf(alpha))
 
 
 def gaussian_es(losses: Array, alpha: float = 0.95) -> float:
+    """Parametric Gaussian ES. Needs ≥2 finite losses; else honest NaN."""
     from scipy.stats import norm
 
+    _require_alpha(alpha)
     x = np.asarray(losses, dtype=float)
+    x = x[np.isfinite(x)]
+    if x.size < 2:
+        return float("nan")
     mu = float(np.mean(x))
     sig = float(np.std(x, ddof=1))
     z = float(norm.ppf(alpha))
@@ -77,9 +99,11 @@ def var_es_from_return_quantiles(
     ``-q_(1-alpha)`` and loss ES is the negative average of the return
     quantile function over ``[0, 1-alpha]``.  Integrating the piecewise-linear
     quantile curve respects unevenly spaced quantiles and fractional endpoints.
+
+    Empty / all-non-finite / non-monotone tau → honest (NaN, NaN).
+    Bad alpha → ValueError.
     """
-    if not 0 < alpha < 1:
-        raise ValueError("alpha must be in (0, 1)")
+    _require_alpha(alpha)
     if not quantile_map:
         return float("nan"), float("nan")
     taus = np.asarray(sorted(quantile_map), dtype=float)

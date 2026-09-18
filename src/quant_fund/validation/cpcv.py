@@ -16,12 +16,35 @@ def combinatorial_purged_cv(
     horizon_bars: int,
     embargo_bars: int,
 ) -> list[Fold]:
-    uniq = sorted(set(times))
-    n = len(uniq)
+    """Split the timeline into ``n_groups`` sequential groups; every combination
+    of ``n_test_groups`` is the test set, train is the purged/embargoed complement.
+
+    Purge and embargo are applied **per contiguous test group**. Using the
+    min/max span of a non-contiguous test combination would incorrectly wipe
+    intervening train groups.
+
+    Raises
+    ------
+    ValueError
+        Invalid group counts, negative horizon/embargo, or fewer unique dates
+        than ``n_groups`` (empty groups would break fold-count integrity).
+    """
     if n_groups < 2 or n_test_groups < 1 or n_test_groups >= n_groups:
         raise ValueError("invalid CPCV group counts")
+    if horizon_bars < 0:
+        raise ValueError("horizon_bars must be non-negative")
+    if embargo_bars < 0:
+        raise ValueError("embargo_bars must be non-negative")
+    uniq = sorted(set(times))
+    n = len(uniq)
+    if n == 0:
+        return []
+    if n < n_groups:
+        raise ValueError(f"need at least n_groups={n_groups} unique dates for CPCV, got {n}")
     bounds = [int(i * n / n_groups) for i in range(n_groups + 1)]
     groups = [uniq[bounds[i] : bounds[i + 1]] for i in range(n_groups)]
+    if any(len(g) == 0 for g in groups):
+        raise ValueError("CPCV group bounds produced an empty group")
     idx = session_index(uniq)
     folds: list[Fold] = []
     for test_ids in combinations(range(n_groups), n_test_groups):
@@ -34,23 +57,20 @@ def combinatorial_purged_cv(
                 train_times.extend(groups[g])
         if not test_times or not train_times:
             continue
-        keep = purge_mask(
-            train_times, test_times[0], test_times[-1], horizon_bars, session_index=idx
-        )
-        # also purge each contiguous test block separately
-        purged = [t for t, k in zip(train_times, keep, strict=True) if k]
-        # embargo around each test group
+        purged = list(train_times)
         for g in test_ids:
-            if not groups[g]:
+            block = groups[g]
+            if not block:
                 continue
-            g_idx = [idx[t] for t in groups[g]]
-            lo, hi = min(g_idx), max(g_idx)
+            keep = purge_mask(purged, block[0], block[-1], horizon_bars, session_index=idx)
+            purged = [t for t, k in zip(purged, keep, strict=True) if k]
+            lo, hi = idx[block[0]], idx[block[-1]]
             purged = [
                 t
                 for t in purged
-                if not (lo - embargo_bars <= idx[t] <= hi + embargo_bars and lo <= idx[t] <= hi)
-                and not (hi < idx[t] <= hi + embargo_bars)
-                and not (lo - embargo_bars <= idx[t] < lo)
+                if not (hi < idx[t] <= hi + embargo_bars) and not (lo - embargo_bars <= idx[t] < lo)
             ]
+        if not purged:
+            continue
         folds.append(Fold(train_times=purged, val_times=[], test_times=test_times))
     return folds

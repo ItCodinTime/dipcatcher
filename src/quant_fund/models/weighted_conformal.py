@@ -73,32 +73,16 @@ def likelihood_ratio_weights(x_cal: Array, x_test_or_query: Array, bins: int = 8
     return np.clip(out, WEIGHT_CLIP[0], WEIGHT_CLIP[1])
 
 
-def _weighted_quantile_higher(values: Array, weights: Array, level: float) -> float:
-    """Weighted analog of ``np.quantile(..., method='higher')``."""
-    order = np.argsort(values, kind="mergesort")
-    v = values[order]
-    w = weights[order]
-    n = int(v.size)
-    if n == 1:
-        return float(v[0])
-    q = float(np.clip(level, 0.0, 1.0))
-    total = float(np.sum(w))
-    starts = np.zeros(n, dtype=float)
-    starts[1:] = (n * np.cumsum(w)[:-1]) / total
-    idx = int(np.searchsorted(starts, q * (n - 1), side="left"))
-    return float(v[min(idx, n - 1)])
-
-
 def weighted_conformal_quantile(scores: Array, weights: Array, alpha: float) -> float:
     """Finite-sample weighted conformal quantile of residual scores.
 
-    Sort (s_i, w_i) and take the analog of ``conformal_quantile``: rescale w
-    to mean 1 (so sum w = n), set
-
-        level = min(1, ceil((1-alpha) * (1 + sum w)) / sum w)
-
-    then the ``higher`` weighted quantile of s at that level. Uniform weights
-    match ``conformal_quantile(s, alpha)``.
+    Tibshirani et al. (2019): sort by score and take the first ``s_i`` whose
+    normalized cumulative weight ``sum_{j<=i} w_j / (sum_j w_j + 1)`` reaches
+    ``1 - alpha`` (the leftover ``1 / (sum_j w_j + 1)`` is point mass at
+    ``+inf``). Uniform weights reproduce the finite-sample split-conformal
+    order statistic of ``conformal_quantile``. When the level is not
+    attainable from the calibration sample we clip to the sample max so
+    downstream intervals stay finite (this cannot cover at ``1 - alpha``).
     """
     s = _as_1d(scores)
     w = _as_1d(weights)
@@ -112,9 +96,13 @@ def weighted_conformal_quantile(scores: Array, weights: Array, alpha: float) -> 
         return 0.0
     n = int(s.size)
     w = w * (n / float(np.sum(w)))
-    total = float(np.sum(w))
-    level = min(1.0, float(np.ceil((1.0 - alpha) * (1.0 + total)) / total))
-    return _weighted_quantile_higher(s, w, level)
+    order = np.argsort(s, kind="mergesort")
+    s_sorted, w_sorted = s[order], w[order]
+    cumulative = np.cumsum(w_sorted) / (float(np.sum(w_sorted)) + 1.0)
+    idx = int(np.searchsorted(cumulative, 1.0 - alpha, side="left"))
+    if idx >= n:
+        return float(s_sorted[-1])
+    return float(s_sorted[idx])
 
 
 def _synthetic_vol_shift(

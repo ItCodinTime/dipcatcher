@@ -1,0 +1,80 @@
+def kyle_ofi_book_panel_path_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` ``book_panel_path`` stamp.
+
+    Absent key or explicit ``None`` → skip (synthetic benches omit a path).
+    When present and not ``None``: must be a nonempty string. Empty / whitespace
+    fail-closed. Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    if "book_panel_path" not in kyle:
+        return []
+    v = kyle.get("book_panel_path")
+    if v is None:
+        return []
+    if not isinstance(v, str) or not str(v).strip():
+        return ["kyle_ofi_book_panel_path_empty"]
+    return []
+
+
+def kyle_ofi_min_join_coverage_pair_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``min_join_coverage`` / ``book_join_coverage_floor`` vs join_coverage.
+
+    When a floor stamp is present: finite and ∈ [0, 1]. When ``join_coverage`` is
+    also finite: require ``join_coverage >= floor`` (and ≤ 1). Absent floor → skip
+    (``kyle_ofi_join_coverage_honesty_errors`` still covers open-unit join alone).
+    Research diagnostic only.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    raw_floor = kyle.get("min_join_coverage")
+    if raw_floor is None:
+        raw_floor = kyle.get("book_join_coverage_floor")
+    if raw_floor is None:
+        return []
+    try:
+        floor = float(raw_floor)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ["kyle_ofi_min_join_coverage_non_numeric"]
+    errors: list[str] = []
+    if floor != floor or abs(floor) == float("inf"):
+        errors.append("kyle_ofi_min_join_coverage_non_finite")
+        return errors
+    if not (0.0 <= floor <= 1.0):
+        errors.append("kyle_ofi_min_join_coverage_outside_unit_interval")
+    if "join_coverage" not in kyle or kyle.get("join_coverage") is None:
+        return errors
+    try:
+        cov = float(kyle["join_coverage"])  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return errors
+    if cov != cov or abs(cov) == float("inf"):
+        return errors
+    if cov + 1e-12 < floor:
+        errors.append("kyle_ofi_join_coverage_below_min_join_coverage")
+    if cov > 1.0 + 1e-12:
+        errors.append("kyle_ofi_join_coverage_above_one_with_floor")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. book_panel_path + join floor)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    return errors

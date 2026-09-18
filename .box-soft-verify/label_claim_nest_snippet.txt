@@ -1,0 +1,125 @@
+def kyle_ofi_label_synthetic_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nest ``label`` SYN* vs ``data_source`` / dgp stamping.
+
+    When ``label`` uppercases to a SYN* prefix (bench default path):
+    - ``book_dgp``/``dgp`` ``synthetic_lob`` ⇒ ``data_source`` must be ``SYNTHETIC``
+    - non-synthetic dgp ⇒ ``data_source`` must equal ``book_source`` (when set)
+    Absent / non-SYN label → skip. Thin fail-closed; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    label = kyle.get("label")
+    if label is None or not str(label).strip():
+        return []
+    if not str(label).upper().startswith("SYN"):
+        return []
+
+    def _str(key: str) -> str | None:
+        v = kyle.get(key)
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s if s else None
+
+    book_dgp = _str("book_dgp")
+    dgp = _str("dgp")
+    data_source = _str("data_source")
+    book_source = _str("book_source")
+    if data_source is None:
+        return []
+
+    synth_dgp = None
+    if book_dgp is not None:
+        synth_dgp = book_dgp == "synthetic_lob"
+    elif dgp is not None:
+        synth_dgp = dgp == "synthetic_lob"
+
+    errors: list[str] = []
+    if synth_dgp is True and data_source != "SYNTHETIC":
+        errors.append("kyle_ofi_SYN_label_data_source_not_SYNTHETIC")
+    if synth_dgp is False:
+        if data_source == "SYNTHETIC":
+            errors.append("kyle_ofi_SYN_label_nonsynthetic_dgp_data_source_SYNTHETIC")
+        elif book_source is not None and data_source != book_source:
+            errors.append("kyle_ofi_SYN_label_data_source_ne_book_source")
+    if synth_dgp is None and data_source != "SYNTHETIC":
+        # SYN* label with no dgp stamped still expects SYNTHETIC data_source
+        errors.append("kyle_ofi_SYN_label_data_source_not_SYNTHETIC")
+    return errors
+
+
+def _kyle_ofi_has_nest_diagnostic_marker(kyle: dict) -> bool:
+    """True when any kyle nest diagnostic stamp is present/finite."""
+    for key in _KYLE_RESIDUAL_SPEARMAN_KEYS:
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:
+            return True
+    for key in (
+        "kyle_lambda_depth_p50",
+        "kyle_lambda_ofi_p50",
+        "kyle_lambda_ofi_depth_spearman",
+        "kyle_lambda_ofi_depth_pearson",
+        "kyle_lambda_date_series_n_depth",
+        "kyle_lambda_date_series_n_ofi",
+        "join_coverage",
+        "kyle_lambda_depth_mean",
+        "kyle_lambda_ofi_mean",
+    ):
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:
+            return True
+    if "kyle_lambda_dispersion_window" in kyle:
+        return True
+    for key in ("book_dgp", "dgp", "data_source", "label", "book_source"):
+        v = kyle.get(key)
+        if isinstance(v, str) and v.strip():
+            return True
+    return False
+
+
+def kyle_ofi_nest_claim_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify: any nest diagnostic marker ⇒ research_only + claim.
+
+    Umbrella fail-closed across residual/dispersion/ofi_depth/join/date_series/
+    source stamps so a partial nest cannot omit honesty labels. Skip when no
+    markers. Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    if not _kyle_ofi_has_nest_diagnostic_marker(kyle):
+        return []
+    errors: list[str] = []
+    if kyle.get("research_only") is not True:
+        errors.append("kyle_ofi_nest_research_only_missing")
+    if kyle.get("claim") != "research_diagnostic_only":
+        errors.append("kyle_ofi_nest_claim_invalid")
+    leaked = [k for k in kyle if any(tok in str(k).lower() for tok in _KYLE_FORBIDDEN_TOKENS)]
+    if leaked:
+        errors.append("kyle_ofi_nest_forbidden_metric_keys")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. SYN label + nest claim)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    return errors

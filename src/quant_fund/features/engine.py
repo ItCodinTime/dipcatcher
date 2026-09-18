@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 
 import polars as pl
 
@@ -25,7 +26,25 @@ def _simple_ret(horizon: int) -> pl.Expr:
     return (pl.col(PX) / prev - 1.0).alias(f"ret_{horizon}")
 
 
+_BASE_FEATURE_REQUIRED = (
+    "security_id",
+    "event_time",
+    "close_total_return",
+    "close",
+    "volume",
+    "open_split_adjusted",
+    "close_split_adjusted",
+    "high_split_adjusted",
+    "low_split_adjusted",
+)
+
+
 def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
+    if bars.height == 0:
+        raise ValueError("bars must be non-empty for compute_base_features")
+    missing = [c for c in _BASE_FEATURE_REQUIRED if c not in bars.columns]
+    if missing:
+        raise ValueError(f"bars missing required OHLCV columns: {missing}")
     lam = config.features.ewma_lambda
     df = bars.sort(["security_id", "event_time"])
     df = df.with_columns(
@@ -47,11 +66,12 @@ def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame
     # momentum
     for h in (5, 20, 60, 126, 252):
         df = df.with_columns(_simple_ret(h).alias(f"mom_{h}"))
-    # 12-1: 252d minus last 21d
+    # 12-1: return from t-252 to t-21 (skip the most recent month).
+    # Subtracting two simple returns would introduce a cross-term bias.
     df = df.with_columns(
         (
-            (pl.col(PX) / pl.col(PX).shift(252).over("security_id") - 1.0)
-            - (pl.col(PX) / pl.col(PX).shift(21).over("security_id") - 1.0)
+            pl.col(PX).shift(21).over("security_id") / pl.col(PX).shift(252).over("security_id")
+            - 1.0
         ).alias("mom_12_1"),
         (-pl.col("ret_1")).alias("reversal_1"),
         (
@@ -106,29 +126,57 @@ def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame
 
 
 def add_market_features(df: pl.DataFrame, benchmark_id: str) -> pl.DataFrame:
-    mkt = df.filter(pl.col("security_id") == benchmark_id).select(
+    has_availability = "available_time" in df.columns
+    eligible = (
+        pl.col("available_time") <= pl.col("event_time") if has_availability else pl.lit(True)
+    )
+    mkt_columns = [
         "event_time",
         pl.col("ret_1").alias("mkt_ret_1"),
         pl.col("vol_20").alias("mkt_vol_20"),
-    )
+    ]
+    if has_availability:
+        mkt_columns.append(pl.col("available_time").alias("mkt_available_time"))
+    mkt = df.filter(pl.col("security_id") == benchmark_id).select(mkt_columns)
     out = df.join(mkt, on="event_time", how="left")
-    # cross-sectional dispersion / breadth at t (uses only today's cross-section)
-    cs = out.group_by("event_time").agg(
+    if has_availability:
+        market_ok = pl.col("mkt_available_time") <= pl.col("event_time")
+        market_ok = market_ok & eligible
+        out = out.with_columns(
+            pl.when(market_ok).then(pl.col("mkt_ret_1")).otherwise(None).alias("mkt_ret_1"),
+            pl.when(market_ok).then(pl.col("mkt_vol_20")).otherwise(None).alias("mkt_vol_20"),
+        ).drop("mkt_available_time")
+
+    # Cross-sectional aggregates are formed only from rows available at the
+    # decision timestamp; output rows that are themselves late remain null.
+    available = out.filter(eligible)
+    cs = available.group_by("event_time").agg(
         pl.col("ret_1").std().alias("cs_dispersion"),
         (pl.col("ret_1") > 0).mean().alias("breadth"),
         pl.col("ret_1").mean().alias("cs_mean_ret"),
     )
     out = out.join(cs, on="event_time", how="left")
+    aggregate_columns = ["cs_dispersion", "breadth", "cs_mean_ret"]
+    if has_availability:
+        out = out.with_columns(
+            [
+                pl.when(eligible).then(pl.col(name)).otherwise(None).alias(name)
+                for name in aggregate_columns
+            ]
+        )
     if "sector" in out.columns:
-        sec = out.group_by(["event_time", "sector"]).agg(
-            pl.col("ret_1").mean().alias("sector_ret_1")
+        sec = available.group_by(["event_time", "sector"]).agg(
+            pl.col("ret_1").mean().alias("sector_ret_1"),
+            pl.col("mom_20").mean().alias("sector_mom_20"),
         )
         out = out.join(sec, on=["event_time", "sector"], how="left")
         out = out.with_columns(
-            (pl.col("mom_20") - pl.col("mom_20").mean().over(["event_time", "sector"])).alias(
-                "sector_relative_mom_20"
-            )
-        )
+            pl.when(eligible).then(pl.col("sector_ret_1")).otherwise(None).alias("sector_ret_1"),
+            pl.when(eligible)
+            .then(pl.col("mom_20") - pl.col("sector_mom_20"))
+            .otherwise(None)
+            .alias("sector_relative_mom_20"),
+        ).drop("sector_mom_20")
     return out
 
 
@@ -201,6 +249,9 @@ def build_features(
         pl.col("event_time").alias("decision_time"),
         pl.lit(FEATURE_SET_VERSION).alias("feature_set_version"),
     )
-    if decision_time is not None:
-        validate_feature_frame(df.filter(pl.col("event_time") == decision_time), decision_time)
+    # Validate the complete feature panel before it can become training data.
+    # The validator compares each row's source availability with its own
+    # decision timestamp, so mixed as-of panels cannot silently leak later data.
+    as_of = decision_time or cast(datetime, df["event_time"].min())
+    validate_feature_frame(df, as_of)
     return df

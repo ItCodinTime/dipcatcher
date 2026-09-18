@@ -65,3 +65,25 @@ def test_alpha_must_be_open_unit_interval() -> None:
         JackknifePlus(0.0)
     with pytest.raises(ValueError):
         JackknifePlus(1.0)
+
+
+def test_length_mismatch_and_coverage_identity() -> None:
+    from quant_fund.models.jackknife_plus import jackknife_plus_coverage_level
+
+    y = np.linspace(-1.0, 1.0, 30)
+    with pytest.raises(ValueError, match="same length"):
+        JackknifePlus(0.10).fit(y, np.zeros(29))
+    with pytest.raises(ValueError, match="same length"):
+        JackknifePlus(0.10).fit_residuals(y, np.full(10, -0.1), np.full(30, 0.1))
+    fitted = JackknifePlus(0.10).fit(y, np.zeros_like(y))
+    with pytest.raises(ValueError, match="same length"):
+        fitted.predict_sets(np.zeros(2), np.ones(3))
+    with pytest.raises(ValueError, match="same length"):
+        fitted.predict_interval(np.zeros(2), np.ones(4))
+    assert jackknife_plus_coverage_level(0.10) == pytest.approx(0.80)
+    meta = fitted.metadata()
+    assert meta.extra["coverage_identity"] == "1-2*alpha"
+    assert meta.extra["coverage_guarantee_scope"] == "marginal_exchangeable"
+    assert "not training-conditional" in str(meta.extra["coverage_guarantee_claim"])
+    assert meta.extra["research_only"] is True
+    assert "sharpe" not in meta.extra

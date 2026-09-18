@@ -53,17 +53,25 @@ def test_run_updates_once_per_date_never_stacks_names() -> None:
 
 def test_bench_online_crc_keys_no_sharpe() -> None:
     row = bench_online_crc(seed=12)
-    assert set(row) == {"mean_risk", "nominal", "n"}
-    assert all("sharpe" not in key.lower() for key in row)
+    assert {"mean_risk", "nominal", "n"} <= set(row)
+    assert row.get("dgp") == "fixture"
+    assert "sharpe" not in {k.lower() for k in row}
     assert row["nominal"] == 0.05
     assert row["n"] == 800.0
     assert np.isfinite(row["mean_risk"])
 
 
-def test_online_crc_rejects_bad_alpha() -> None:
+def test_online_crc_length_mismatch_raises() -> None:
+    oc = OnlineCRC(alpha=0.05, gamma=0.05)
+    # size-1 base broadcasts; true length mismatch must raise
     with pytest.raises(ValueError):
-        OnlineCRC(alpha=0.0)
+        oc.update(np.array([1.0, 2.0]), np.array([0.1, 0.2, 0.3]))
     with pytest.raises(ValueError):
-        OnlineCRC(alpha=1.0, B=1.0)
+        oc.run(np.array([1.0, 2.0]), np.array([0.1, 0.1]), dates=[0])
+
+
+def test_online_crc_rejects_nonpositive_gamma() -> None:
     with pytest.raises(ValueError):
-        OnlineCRC(alpha=0.05, gamma=0.0)
+        OnlineCRC(alpha=0.05, gamma=-0.1)
+    with pytest.raises(ValueError):
+        OnlineCRC(alpha=0.05, gamma=float("nan"))

@@ -41,6 +41,7 @@ nn = ["torch>=2.4"]
 
 [project.scripts]
 quant = "quant_fund.cli.main:app"
+dipcatcher = "quant_fund.cli.main:app"
 
 [dependency-groups]
 dev = [
@@ -76,12 +77,37 @@ ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 [tool.mypy]
 python_version = "3.12"
 strict = false
+# Ratcheted 2026-09-16: checks untyped bodies (verified 0 errors at 133 files).
+# Repo-wide knobs (warn_return_any, warn_unused_ignores, no_implicit_optional,
+# strict_equality) remain off until the remaining diagnostics are resolved.
+# 2026-09-17: warn_return_any + warn_unused_ignores are enforced per-module via
+# the overrides below (11 numeric modules verified clean); extend module by
+# module as diagnostics are fixed. Do not loosen the ratcheted modules.
+check_untyped_defs = true
 warn_return_any = false
 disallow_untyped_defs = false
-check_untyped_defs = false
 packages = ["quant_fund"]
 ignore_missing_imports = true
 warn_unused_ignores = false
+
+# Numeric-return ratchet: these modules must not leak untyped library results.
+# Other modules retain the existing policy until their diagnostics are resolved.
+[[tool.mypy.overrides]]
+module = [
+    "quant_fund.utils.numeric",
+    "quant_fund.metrics.conformal",
+    "quant_fund.metrics.evalues",
+    "quant_fund.metrics.probability",
+    "quant_fund.execution.almgren_chriss",
+    "quant_fund.portfolio.interval_risk",
+    "quant_fund.models.covariance",
+    "quant_fund.models.regime",
+    "quant_fund.models.calibration",
+    "quant_fund.models.distribution",
+    "quant_fund.models.tail",
+]
+warn_return_any = true
+warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -98,3 +124,24 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["quant_fund"]
 branch = true
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+# Single source of truth for the coverage gate (CI/Makefile pass no inline
+# --cov-fail-under so the threshold cannot drift between the two).
+fail_under = 70
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "\\.\\.\\.",
+]
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"

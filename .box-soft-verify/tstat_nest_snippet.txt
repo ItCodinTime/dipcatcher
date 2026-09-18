@@ -1,0 +1,82 @@
+def kyle_ofi_tstat_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` t-stat stamps are finite when present.
+
+    - Any key ending in ``_t`` that is present/non-null must parse finite (not NaN/±inf).
+    - Finite ``*_mean_spearman`` ⇒ companion ``*_t`` present and finite (IC companion
+      to p / n_dates soft-verify).
+    Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> float | None:
+        if key not in kyle or kyle.get(key) is None:
+            return None
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        if x != x or abs(x) == float("inf"):
+            return None
+        return x
+
+    errors: list[str] = []
+    for key, raw in kyle.items():
+        if not isinstance(key, str) or not key.endswith("_t"):
+            continue
+        if raw is None:
+            continue
+        try:
+            x = float(raw)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append(f"kyle_ofi_tstat_non_numeric:{key}")
+            continue
+        if x != x or abs(x) == float("inf"):
+            errors.append(f"kyle_ofi_tstat_non_finite:{key}")
+
+    for key in list(kyle.keys()):
+        if not isinstance(key, str) or not key.endswith("_mean_spearman"):
+            continue
+        if _finite(key) is None:
+            continue
+        stem = key[: -len("_mean_spearman")]
+        tkey = f"{stem}_t"
+        if tkey not in kyle or kyle.get(tkey) is None:
+            errors.append(f"kyle_ofi_tstat_missing:{stem}")
+            continue
+        if _finite(tkey) is None:
+            # non-finite already flagged above if key present; ensure companion miss covered
+            if f"kyle_ofi_tstat_non_finite:{tkey}" not in errors and f"kyle_ofi_tstat_non_numeric:{tkey}" not in errors:
+                errors.append(f"kyle_ofi_tstat_non_finite:{tkey}")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. t-stat finite-when-present)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    errors.extend(kyle_ofi_std_iqr_honesty_errors(blob))
+    errors.extend(kyle_ofi_rolling_mean_hac_band_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_dates_companion_honesty_errors(blob))
+    errors.extend(kyle_ofi_pvalue_honesty_errors(blob))
+    errors.extend(kyle_ofi_spearman_honesty_errors(blob))
+    errors.extend(kyle_ofi_tstat_honesty_errors(blob))
+    return errors

@@ -4,8 +4,9 @@ Barber, Candès, Ramdas, Tibshirani (2021). K-fold residual scores replace
 leave-one-out. Classic CV+ (eq. 11) has finite-sample coverage ≥ 1-2α − ε_n
 (Theorem 4). The minmax interval on the same fold predictors (eq. 10 / Theorem 3)
 has coverage ≥ 1-α. Default aggregation is minmax so ``CVPlus`` documents 1-α.
-Does not reimplement QR. Wraps a residual / quantile predictor, or a K-fold
-mean±z Gaussian band.
+Those floors are **marginal under exchangeability**, not training-conditional
+(Bian & Barber 2023 caveat). Does not reimplement QR. Wraps a residual /
+quantile predictor, or a K-fold mean±z Gaussian band.
 
 Optional JAW (weighted CV+ ensemble; Tibshirani, Barber, Candès, Ramdas 2019
 weights) is 1-2α under covariate shift, not 1-α.
@@ -240,7 +241,8 @@ class CVPlus(JoblibMixin):
         weights: Array | None,
     ) -> tuple[Array, Array]:
         loc_scores = self.scores_
-        assert loc_scores is not None
+        if loc_scores is None:
+            raise RuntimeError("CV+ model has no fitted scores")
         how = "jaw" if weights is not None else self.aggregation
         if how == "minmax":
             return _minmax_interval(qlo, qhi, loc_scores, self.alpha)
@@ -265,7 +267,8 @@ class CVPlus(JoblibMixin):
         if not self._ready():
             return np.full(lo.size, np.nan), np.full(hi.size, np.nan)
         loc = self.fold_loc_
-        assert loc is not None
+        if loc is None:
+            raise RuntimeError("CV+ model has no fitted fold locations")
         qlo = lo[:, None] + loc[None, :]
         qhi = hi[:, None] + loc[None, :]
         return self._aggregate(qlo, qhi, weights)
@@ -292,7 +295,8 @@ class CVPlus(JoblibMixin):
         sc = np.maximum(sc, 1e-12)
         loc = self.fold_loc_
         band = self.fold_scale_
-        assert loc is not None and band is not None
+        if loc is None or band is None:
+            raise RuntimeError("CV+ model has no fitted fold scale")
         half = self.z * band[None, :] * sc[:, None]
         qlo = mid[:, None] + loc[None, :] - half
         qhi = mid[:, None] + loc[None, :] + half
@@ -311,12 +315,23 @@ class CVPlus(JoblibMixin):
                 "z": self.z,
                 "aggregation": self.aggregation,
                 "coverage_identity": identity,
+                # Barber–Candès–Ramdas–Tibshirani 2021: marginal under exchangeability
+                # (minmax 1-α / plus|JAW 1-2α). Not training-conditional (Bian–Barber 2023).
+                "coverage_guarantee_scope": "marginal_exchangeable",
+                "coverage_guarantee_claim": (
+                    "coverage floor is marginal under exchangeability; not training-conditional"
+                ),
+                "research_only": True,
             },
         )
 
 
 def cv_plus_coverage_level(alpha: float, aggregation: str = "minmax") -> float:
-    """Finite-sample lower bound. minmax is 1-α; plus and JAW are 1-2α."""
+    """Finite-sample lower bound. minmax is 1-α; plus and JAW are 1-2α.
+
+    Marginal under exchangeability (Barber–Candès–Ramdas–Tibshirani 2021;
+    aggregation-specific); not a training-conditional guarantee (Bian–Barber 2023).
+    """
     if str(aggregation) == "minmax":
         return 1.0 - float(alpha)
     return 1.0 - 2.0 * float(alpha)

@@ -2,3 +2,58 @@ inherit: base.yaml
 runtime:
   mode: paper
   allow_live: false
+  output_dir: data/metadata
+data:
+  source: synthetic
+  synthetic_n_assets: 12
+  synthetic_n_days: 320
+  synthetic_seed: 7
+paper:
+  initial_nav: 1000000.0
+  max_steps: null
+  use_wall_clock: false
+  enable_shadow: true
+  shadow_scale: 0.7
+  # Extra scaled shadow panels → challenger_weights (no capital).
+  # Primary shadow above remains for ledger / promo compatibility.
+  challenger_scales: [1.0, 0.5]
+  ledger_subdir: paper
+# Sized so simulated paper loop actually trades (infrastructure test).
+# Not a live edge claim — SYNTHETIC bars only.
+optimizer:
+  lambda_risk: 0.5
+  lambda_tc: 0.05
+  lambda_tail: 0.0
+  solver: CLARABEL
+  mode: mean_variance
+constraints:
+  gross_leverage: 1.5
+  net_exposure: 0.1
+  name_max: 0.08
+  name_min: -0.08
+  long_max: 0.75
+  short_max: 0.75
+  turnover_limit: 0.8
+  max_adv_participation: null
+fusion:
+  alpha_scale: 0.05
+  use_fused_for_optimize: true
+  apply_interval_caps: false
+costs:
+  frictionless: false
+  commission_bps: 1.0
+  half_spread_bps: 5.0
+  impact_y: 0.1
+  participation_limit: 0.1
+execution:
+  fill: next_open
+  allow_close_auction: false
+kill_switch:
+  state: ENABLED
+  allow_auto_flatten: false
+risk_gate:
+  max_order_notional: 5000000.0
+  max_gross: 2.0
+  max_net: 0.5
+  max_name: 0.1
+  max_participation: 0.25

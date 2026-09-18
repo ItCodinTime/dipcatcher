@@ -14,3 +14,17 @@ def test_lambdarank_date_groups() -> None:
     )
     pred = m.predict(x)
     assert pred.shape == (80,)
+
+
+def test_lambdarank_missing_group_raises() -> None:
+    import pytest
+
+    rng = np.random.default_rng(3)
+    x = rng.normal(size=(20, 2))
+    y = rng.normal(size=20)
+    with pytest.raises(ValueError, match="group"):
+        LGBMLambdaRanker(n_estimators=5, seed=3).fit(x, y)
+
+
+def test_group_sizes_empty() -> None:
+    assert group_sizes(np.array([])).size == 0

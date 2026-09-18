@@ -38,7 +38,9 @@ class VolThresholdRegime(JoblibMixin):
 
 class GaussianHMMRegime(JoblibMixin):
     def __init__(self, n_states: int = 3, seed: int = 42) -> None:
-        self.n_states = n_states
+        if not isinstance(n_states, (int, np.integer)) or int(n_states) < 1:
+            raise ValueError("n_states must be an integer >= 1")
+        self.n_states = int(n_states)
         self.seed = seed
         self.scaler = StandardScaler()
         self.model: Any = None
@@ -107,7 +109,7 @@ class GaussianHMMRegime(JoblibMixin):
             raise RuntimeError("GaussianHMMRegime must be fitted before prediction")
         xx = self.scaler.transform(np.where(np.isfinite(x), x, 0.0))
         p = self.model.predict_proba(xx)
-        return p / np.clip(p.sum(axis=1, keepdims=True), 1e-12, None)
+        return np.asarray(p / np.clip(p.sum(axis=1, keepdims=True), 1e-12, None), dtype=np.float64)
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.predict_proba(x)
@@ -121,7 +123,12 @@ class GaussianHMMRegime(JoblibMixin):
         ll = float(self.model.score(xx))
         aic = 2 * n_params - 2 * ll
         bic = float(np.log(n) * n_params - 2 * ll)
-        return {"aic": float(aic), "bic": bic, "avg_ll": ll / max(n, 1), "n_params": float(n_params)}
+        return {
+            "aic": float(aic),
+            "bic": bic,
+            "avg_ll": ll / max(n, 1),
+            "n_params": float(n_params),
+        }
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(

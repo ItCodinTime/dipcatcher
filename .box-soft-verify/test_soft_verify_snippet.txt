@@ -1,0 +1,55 @@
+def test_kyle_residual_flow_catalog_soft_verify() -> None:
+    """Catalog soft-verify: residual keys imply research_only / claim / companions."""
+    from quant_fund.research.catalog import (
+        kyle_lambda_dispersion_honesty_errors,
+        kyle_ofi_nest_honesty_errors,
+        kyle_residual_flow_honesty_errors,
+    )
+
+    bare = {"family": "kyle_ofi", "research_only": True, "claim": "research_diagnostic_only"}
+    assert kyle_residual_flow_honesty_errors(bare) == []
+
+    good = {
+        "family": "kyle_ofi",
+        "research_only": True,
+        "claim": "research_diagnostic_only",
+        "residual_ofi_ex_depth_fwd_delta_mid_mean_spearman": 0.1,
+        "residual_ofi_ex_depth_fwd_delta_mid_t": 1.2,
+        "residual_ofi_ex_depth_fwd_delta_mid_n_dates": 10.0,
+    }
+    assert kyle_residual_flow_honesty_errors(good) == []
+    assert kyle_ofi_nest_honesty_errors({"kyle_ofi": good}) == []
+
+    bad_claim = dict(good, claim="live")
+    assert "kyle_ofi_residual_claim_invalid" in kyle_residual_flow_honesty_errors(bad_claim)
+
+    bad_missing_t = {
+        "family": "kyle_ofi",
+        "research_only": True,
+        "claim": "research_diagnostic_only",
+        "residual_ofi_ex_depth_fwd_delta_mid_mean_spearman": 0.2,
+        "residual_ofi_ex_depth_fwd_delta_mid_n_dates": 5.0,
+    }
+    errs = kyle_residual_flow_honesty_errors(bad_missing_t)
+    assert any("missing_t" in e for e in errs)
+
+    leak = dict(good, sharpe_ratio=1.5)
+    assert "kyle_ofi_residual_forbidden_metric_keys" in kyle_residual_flow_honesty_errors(leak)
+
+    # Dispersion soft-verify when p50 present
+    disp = {
+        "family": "kyle_ofi",
+        "research_only": True,
+        "claim": "research_diagnostic_only",
+        "kyle_lambda_depth_p50": 0.01,
+    }
+    assert kyle_lambda_dispersion_honesty_errors(disp) == []
+    assert "kyle_ofi_dispersion_claim_invalid" in kyle_lambda_dispersion_honesty_errors(
+        dict(disp, claim="alpha")
+    )
+
+    # Live nested bench path (if residual keys present)
+    bars, book = _synthetic_bars_and_book(n_assets=6, n_days=28, seed=11)
+    receipt = bench_kyle_ofi_fused(bars, book, min_names=3)
+    nest_errs = kyle_ofi_nest_honesty_errors({"kyle_ofi": receipt})
+    assert nest_errs == [], nest_errs

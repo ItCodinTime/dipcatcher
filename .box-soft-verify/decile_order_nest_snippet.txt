@@ -1,0 +1,74 @@
+def kyle_ofi_lambda_decile_order_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify Kyle λ dispersion decile order on nested ``kyle_ofi``.
+
+    For depth and ofi sides independently: when p10/p50/p90 are all finite,
+    require ``p10 ≤ p50 ≤ p90``. Partial / absent / NaN triples → skip that side.
+    Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> float | None:
+        if key not in kyle:
+            return None
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        if x != x or abs(x) == float("inf"):
+            return None
+        return x
+
+    errors: list[str] = []
+    for side, keys, err in (
+        (
+            "depth",
+            (
+                "kyle_lambda_depth_p10",
+                "kyle_lambda_depth_p50",
+                "kyle_lambda_depth_p90",
+            ),
+            "kyle_ofi_depth_decile_order_invalid",
+        ),
+        (
+            "ofi",
+            (
+                "kyle_lambda_ofi_p10",
+                "kyle_lambda_ofi_p50",
+                "kyle_lambda_ofi_p90",
+            ),
+            "kyle_ofi_ofi_decile_order_invalid",
+        ),
+    ):
+        vals = [_finite(k) for k in keys]
+        if any(v is None for v in vals):
+            continue
+        p10, p50, p90 = vals  # type: ignore[misc]
+        if not (p10 <= p50 <= p90):
+            errors.append(err)
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. λ decile order)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    return errors

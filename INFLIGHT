@@ -1,0 +1,26 @@
+owner: opencode (resumed session)
+slice: DATA-SNOOPING SUITE — max-level enhancement of the multiple-testing layer
+status: COMPLETE + VERIFIED 2026-09-17 ~18:45 IST
+detail: |
+  - metrics/inference.py: `stationary_bootstrap_indices` (Politis–Romano 1994;
+    vectorized Bernoulli-block construction), `optimal_block_length`
+    (Politis–White 2004 flat-top kernel, documented clamps).
+  - metrics/snooping.py (new): `reality_check` (White 2000), `spa_test`
+    (Hansen 2005 lower/consistent/upper), `stepm` (Romano–Wolf 2005 step-down
+    adjusted p-values), `model_confidence_set` (Hansen–Lunde–Nason 2011).
+  - validation/multiple_testing.py: TrialLedger.record_series + .snooping battery.
+  - research/agent.py: families["ranking"]["data_snooping"] + notebook section +
+    H99_ranking_data_snooping (discovery). catalog.py + verify.py: honesty
+    (p-ranges/structure/counts) + H99 consistency gate.
+  - docs/MATH_SPEC.md, RESEARCH_REFERENCES.md, ADR-022.
+  - tests: 42 new; full non-network suite green (0 failures); ruff clean;
+    mypy clean (135 files).
+  - Validated properties: StepM FWER = 0.100 at alpha=0.10 under global null;
+    RC size ~5%; SPA scale-invariant (studentized); MCS includes all under null
+    and eliminates bad models; all fail-closed edges covered.
+  - Perf: bootstrap means via count-matmul + vectorized index generation →
+    research-run battery 4.2s → 0.08s (6 rankers x 240 dates, B=1000).
+  - H-id note: H46–H51 claimed by the concurrent northset lane mid-build; the
+    ranking data-snooping hypothesis is **H99** (documented headroom).
+  Lane B (other session, observed): northset cluster-robust inference + H46–H51.
+note: no commits made.

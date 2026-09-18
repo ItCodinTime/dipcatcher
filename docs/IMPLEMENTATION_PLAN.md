@@ -4,7 +4,7 @@ Phased build of `quant_fund`. After each phase: tests, ruff, mypy, docs, limitat
 
 ## Phase 1 — Project / config / testing
 
-uv, Python 3.12, typed config, schemas, logging, seeds, CLI `quant doctor`, CI.
+uv, Python 3.12, typed config, schemas, logging, seeds, CLI `dipcatcher doctor`, CI.
 
 ## Phase 2 — Point-in-time data
 
@@ -32,7 +32,13 @@ Empirical, Gaussian, linear QR, tree quantiles, pinball/CRPS/crossing.
 
 ## Phase 8 — Volatility
 
-Rolling, EWMA, GARCH, HAR-RV, tree models, QLIKE.
+Rolling/EWMA baselines plus a causal GARCH-family subsystem (GARCH, EGARCH,
+GJR; Gaussian, Student-t, skew-t), explicit return/variance units, convergence and
+stationarity gates, horizon-indexed probabilistic forecasts, PIT diagnostics, and
+variance-contract QLIKE. Walk-forward evaluation must use historical `ret_1` as the
+fit input and forward realized variance only as the evaluation label. APARCH,
+FIGARCH, realized-GARCH, and intraday realized measures remain explicit future work;
+this phase makes no SOTA or live-performance claim.
 
 ## Phase 9 — Covariance
 
@@ -56,7 +62,8 @@ Square-root impact, Almgren–Chriss, TWAP/VWAP baselines, misspecification test
 
 ## Phase 14 — Fusion
 
-Configurable transparent score, ablations, optional OOF stacking later.
+Configurable transparent score, ablations, and an opt-in cross-fitted ridge
+stacker for research diagnostics. Production remains on transparent fusion.
 
 ## Phase 15 — Registry
 
@@ -70,17 +77,53 @@ FastAPI, HTML/Markdown reports, drift, kill switch.
 
 Live clock with simulated fills; shadow challengers; live gated.
 
+**Status (overnight Waves 1–32, 2026-09-15→16):** **DONE for sim paper/shadow** —
+`SimulatedBroker`, `dipcatcher paper` CLI, ReplayClock/WallClock, ledger under
+`data/metadata/paper/` (schema v2 + `validate_ledger_schema`), kill+risk on every
+order, shadow / multi-challenger no-capital, resume/persist, promotion dry-run
+(`would_promote_live` always false; `live_pnl_claim=false`), analytics_export.json
++ `validate_analytics_export`, 100+/200-step resume stress tests.
+API honesty stamp (Wave 31): responses force `research_only=true` /
+`live_pnl_claim=false` (overwrite poisoned upstream). Research scorecard rejects
+Sharpe/Sortino/Calmar/pnl/nav family keys (Wave 32).
+**Still missing:** vendor market-data adapter, live broker / real fills
+(intentionally SKIP tonight — not faked).
+
 ## Phase 18 — Profiling
 
 Only after correctness. Polars/DuckDB first.
 
+**Status (overnight Waves 1–32, 2026-09-15→16):** Panel + ranker + conformal +
+wrappee caches landed; event-time day-index + order-preserving `history_prefix_upto`
+path for causal calibration (Wave 12 recovered causal 25d ≈ **3.19s** vs Wave 11
+≈4.33s; Wave 5 best ≈2.84s — not fully restored). Wave 28 re-bench in
+`docs/PERF.md` + `data/metadata/perf_bench.json` (wave:28). Dominant remaining
+cost is still conformal Student-t MLE per asof. **Parallel causal dates blocked**
+by sequential `w_prev` (SKIP — correctness > wall). Batched polars asof filters
+deferred.
+
 ## Outstanding limitations (living)
 
-- No vendor market-data adapter (CSV/Parquet + synthetic only).
-- No live broker adapter.
+- No vendor market-data adapter (CSV/Parquet + synthetic only) — SKIP overnight.
+- No live broker adapter / real fills — SKIP overnight.
+- Parallel causal dates (`w_prev` sequential) — SKIP (unsafe to parallelize).
+- Causal 25d wall still ~0.29–0.35s above Wave 5 best on this machine after prefix path.
 - Fundamentals / options / macro features require PIT release timestamps; not faked.
 - Neural nets behind extra `[nn]`, unimplemented until baselines exist.
 - Nonlinear covariance shrinkage deferred.
 - Torch GPU determinism is not claimed.
-- Learned fusion stacking is not enabled; transparent fusion only.
+- Cross-fitted ridge stacking is research-only: chronological folds, explicit
+  warm-up rows, finite-data checks, and leakage rejection are required. It is
+  not enabled in production fusion and cannot authorize promotion.
 - First-run demo uses SYNTHETIC data. Negative or noisy IC is reported honestly.
+- Paper/backtest/API metrics are `research_only` / `live_pnl_claim=false` — never claim live P&L.
+- Research family blobs must not carry Sharpe/Sortino/Calmar/pnl/nav keys (scorecard + verify fail closed).
+
+## Overnight honesty stamps (Waves 25–32)
+
+- **CPCV per-group purge** (Wave 25): purge+embargo applied per test group (union-span bug fixed); integrity smoke Wave 26.
+- **TrialLedger empty DSR** (Wave 27): empty ledger → honest NaN DSR (no invented score).
+- **PERF Wave 28**: re-bench + `docs/PERF.md` / `perf_bench.json` updated; parallel causal still SKIP.
+- **API honesty stamp** (Wave 31): FastAPI backtest/portfolio/risk/forecast/ranking paths force `research_only=true` / `live_pnl_claim=false`.
+- **Forbidden-metrics regression** (Wave 32): catalog helper + scorecard/verify reject Sharpe/Sortino/Calmar/pnl/nav keys in family blobs.
+- **Test count**: ~832+ non-network (`pytest -m 'not network'`); no Cursor; no commits; no fake live Sharpe.

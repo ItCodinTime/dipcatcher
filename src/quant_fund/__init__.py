@@ -1,4 +1,4 @@
-"""Artificial Hedge scientific hedge research lab (Dipcatcher)."""
+"""Dipcatcher — Artificial Hedge's proprietary research lab."""
 
 from __future__ import annotations
 

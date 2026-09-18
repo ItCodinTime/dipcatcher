@@ -1,7 +1,13 @@
 import numpy as np
 
 from quant_fund.metrics.overfitting import deflated_sharpe, probabilistic_sharpe
-from quant_fund.metrics.returns import max_drawdown, sharpe_ratio, wealth_index
+from quant_fund.metrics.returns import (
+    downside_deviation,
+    max_drawdown,
+    sharpe_ratio,
+    sortino_ratio,
+    wealth_index,
+)
 from quant_fund.metrics.risk import historical_es, historical_var, losses_from_returns
 from quant_fund.metrics.scoring import (
     crps_from_quantiles,
@@ -12,6 +18,23 @@ from quant_fund.metrics.scoring import (
     rank_ic,
     rearrange_quantiles,
 )
+
+
+def test_downside_and_sortino_use_per_period_mar() -> None:
+    returns = np.array([0.02, -0.01, 0.03, -0.02])
+    downside = np.sqrt((0.01**2 + 0.02**2) / 4.0)
+    assert np.isclose(downside_deviation(returns, mar=0.0, periods_per_year=1.0), downside)
+    assert np.isclose(
+        sortino_ratio(returns, mar=0.0, periods_per_year=4.0),
+        np.mean(returns) / downside * 2.0,
+    )
+
+
+def test_return_metrics_reject_invalid_annualization() -> None:
+    with np.testing.assert_raises(ValueError):
+        downside_deviation(np.array([0.01, -0.01]), periods_per_year=0.0)
+    with np.testing.assert_raises(ValueError):
+        sortino_ratio(np.array([0.01, -0.01]), mar=float("nan"))
 
 
 def test_pinball_zero_error() -> None:

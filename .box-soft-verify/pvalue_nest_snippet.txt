@@ -1,0 +1,55 @@
+def kyle_ofi_pvalue_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` p-value stamps ∈ [0, 1] when finite.
+
+    Any key ending in ``_p`` (IC / HAC p-values) that parses as finite must lie
+    in the closed unit interval. Absent / NaN → skip that key. Research
+    diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    errors: list[str] = []
+    for key, raw in kyle.items():
+        if not isinstance(key, str) or not key.endswith("_p"):
+            continue
+        # deciles are *_p10/*_p50/*_p90 — they do not end with lone "_p"
+        try:
+            x = float(raw)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append(f"kyle_ofi_pvalue_non_numeric:{key}")
+            continue
+        if x != x:
+            continue
+        if abs(x) == float("inf"):
+            errors.append(f"kyle_ofi_pvalue_non_finite:{key}")
+        elif not (0.0 <= x <= 1.0):
+            errors.append(f"kyle_ofi_pvalue_outside_unit_interval:{key}")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. p-value unit interval)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    errors.extend(kyle_ofi_std_iqr_honesty_errors(blob))
+    errors.extend(kyle_ofi_rolling_mean_hac_band_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_dates_companion_honesty_errors(blob))
+    errors.extend(kyle_ofi_pvalue_honesty_errors(blob))
+    return errors

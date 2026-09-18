@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 
 import polars as pl
 
@@ -36,9 +37,48 @@ def filter_available(frame: pl.DataFrame, decision_time: datetime) -> pl.DataFra
 
 
 def validate_feature_frame(frame: pl.DataFrame, decision_time: datetime) -> None:
-    if "max_source_available_time" in frame.columns:
-        mx = frame["max_source_available_time"].max()
-        assert_pit_safe(mx, decision_time)  # type: ignore[arg-type]
+    """Reject unavailable feature rows, including mixed as-of snapshots.
+
+    A frame with a ``decision_time`` column is validated row by row because it
+    may intentionally contain multiple as-of dates.  Otherwise the supplied
+    decision time applies to the whole frame.  Null availability is unsafe:
+    the validator cannot establish that the source was observable.
+    """
+    if frame.is_empty():
         return
-    if "available_time" in frame.columns:
-        assert_pit_safe(max_available_time(frame), decision_time)
+
+    availability_col = (
+        "max_source_available_time"
+        if "max_source_available_time" in frame.columns
+        else "available_time"
+        if "available_time" in frame.columns
+        else None
+    )
+    if availability_col is None:
+        return
+
+    if "decision_time" in frame.columns:
+        invalid = frame.filter(
+            pl.col(availability_col).is_null()
+            | pl.col("decision_time").is_null()
+            | (pl.col(availability_col) > pl.col("decision_time"))
+        )
+        if invalid.height:
+            raise PointInTimeError(
+                f"{availability_col} contains null or future values relative to row decision_time"
+            )
+        return
+
+    invalid = frame.filter(
+        pl.col(availability_col).is_null() | (pl.col(availability_col) > pl.lit(decision_time))
+    )
+    if invalid.height:
+        raise PointInTimeError(
+            f"{availability_col} contains null or future values relative to {decision_time}"
+        )
+    max_available = (
+        max_available_time(frame)
+        if availability_col == "available_time"
+        else frame[availability_col].max()
+    )
+    assert_pit_safe(cast(datetime, max_available), decision_time)

@@ -120,6 +120,16 @@ def test_nan_weight_fail_closed() -> None:
     assert capped[0] == 0.0
 
 
+def test_bench_interval_caps_excludes_inverted_widths() -> None:
+    row = bench_interval_caps(
+        np.array([0.1, -0.02]),
+        np.array([0.01, 0.02]),
+        np.array([0.01, 0.01]),
+        **REFS,
+    )
+    assert row["mean_width"] == 0.04
+
+
 def test_bench_geometry_only_no_sharpe() -> None:
     lo = np.array([-0.02, -0.10])
     hi = np.array([0.02, 0.10])

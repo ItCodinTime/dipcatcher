@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from math import comb
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -23,10 +25,14 @@ from quant_fund.metrics.conformal import (
     worst_slice_coverage,
 )
 from quant_fund.metrics.cross_section import _date_keys, date_ic_series, decile_portfolios
-from quant_fund.metrics.evalues import bench_e_coverage, e_process
-from quant_fund.metrics.inference import diebold_mariano
+from quant_fund.metrics.evalues import bench_e_coverage, e_process, e_process_dm
+from quant_fund.metrics.inference import diebold_mariano, pairwise_diebold_mariano
 from quant_fund.metrics.probability import (
+    acerbi_szekely_z1,
+    acerbi_szekely_z2,
     brier_score,
+    christoffersen_cc,
+    christoffersen_independence,
     expected_calibration_error,
     kupiec_pof,
     log_loss,
@@ -35,8 +41,12 @@ from quant_fund.metrics.probability import (
 from quant_fund.metrics.scoring import (
     coverage,
     crps_from_quantiles,
+    mean_crps_gaussian,
+    mean_crps_student_t,
+    mean_fissler_ziegel,
     mean_pinball,
     pearson_ic,
+    pinball_loss,
     pit_values,
     qlike,
     quantile_crossing_rate,
@@ -50,10 +60,12 @@ from quant_fund.models.conformal import (
     SplitOneSided,
 )
 from quant_fund.models.crc import ConformalRiskControl, bench_crc_var, loss_hit
+from quant_fund.models.cv_plus import CVPlus, cv_plus_coverage_level
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
     LinearQuantileDistribution,
+    ScaledEmpiricalDistribution,
     ScaledGaussianDistribution,
     ScaledStudentTDistribution,
     fit_operational_wrappee,
@@ -79,6 +91,7 @@ from quant_fund.portfolio.interval_risk import (
     equal_weight_per_date,
     interval_refs,
 )
+from quant_fund.validation.cpcv import combinatorial_purged_cv
 from quant_fund.validation.walk_forward import walk_forward
 
 
@@ -376,9 +389,7 @@ def oos_rank_scores(
     return pred
 
 
-def bench_ranking(
-    frame: pl.DataFrame, config: AppConfig, label: str
-) -> list[dict[str, Any]]:
+def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     specs: list[tuple[str, str, list[str] | None, str | None]] = [
         ("oracle_raw", "oracle", None, "cs_z_planted_signal"),
@@ -418,11 +429,46 @@ def bench_ranking(
                 "p_ic": ic.p_pearson,
                 "icir": ic.icir_pearson,
                 "n_dates": ic.n_dates,
+                "n_folds": ic.n_dates,  # date-level OOS folds for promotion stability
                 "decile_monotonicity": dec.monotonicity,
                 "ls_mean": dec.mean_ls,
                 "ls_t": dec.t_ls,
                 "ls_p": dec.p_ls,
                 "decile_means": dec.mean_returns,
+                # Negative IC as DM loss (higher IC ⇒ lower loss). Keep the
+                # date keys so pairwise contrasts use only truly common dates.
+                "ic_series": [float(x) for x in ic.pearson.tolist()],
+                "ic_dates": [str(date) for date in ic.dates],
+            }
+        )
+    # Pairwise Diebold–Mariano on -IC series across rankers. Align by the
+    # intersection of date keys, never by positional truncation: different
+    # feature sets can have different missing-date patterns.
+    ic_payloads = {
+        str(r["name"]): dict(zip(r["ic_dates"], r["ic_series"], strict=True))
+        for r in rows
+        if r.get("ic_series") and r.get("ic_dates")
+    }
+    common_dates = (
+        set.intersection(*(set(payload) for payload in ic_payloads.values()))
+        if ic_payloads
+        else set()
+    )
+    loss_map = {
+        name: -np.asarray([payload[date] for date in sorted(common_dates)], dtype=float)
+        for name, payload in ic_payloads.items()
+    }
+    if len(loss_map) >= 2 and common_dates:
+        dm_rows = pairwise_diebold_mariano(loss_map)
+        for r in rows:
+            r["pairwise_dm"] = [d for d in dm_rows if d["a"] == r["name"] or d["b"] == r["name"]]
+        rows.append(
+            {
+                "name": "_pairwise_dm_summary",
+                "feature_set": "contrast",
+                "pairwise_dm_all": dm_rows,
+                "mean_ic": float("nan"),
+                "n_dates": 0,
             }
         )
     return rows
@@ -473,7 +519,9 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     y = sub[label].to_numpy().astype(float)
     roll = np.clip(sub["vol_20"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None)
     if "vol_ewma" in sub.columns:
-        ewma = np.clip(sub["vol_ewma"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None)
+        ewma = np.clip(
+            sub["vol_ewma"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None
+        )
     else:
         ewma = roll
     _, te = _holdout(y.size)
@@ -483,13 +531,42 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     loss_e = (np.sqrt(yy) - np.sqrt(ewma[te])) ** 2
     loss_r = (np.sqrt(yy) - np.sqrt(roll[te])) ** 2
     dm = diebold_mariano(loss_e, loss_r, name_a="ewma", name_b="rolling")
+    # Research-only Choe–Ramdas e-process on the same loss differential (Wave4 helper).
+    # Never a live capital / promotion claim — diagnostic keys only.
+    ep = e_process_dm(loss_e, loss_r)
     return {
         "qlike_ewma": q_ewma,
         "qlike_rolling": q_roll,
         "dm_preferred": dm.preferred,
         "dm_p": dm.p_value,
         "dm_stat": dm.statistic,
+        "e_dm_final": float(ep["e_final"]),  # type: ignore[arg-type]
+        "e_dm_reject": bool(ep["reject"]),
+        "e_dm_n": int(cast(Any, ep["n"])),
+        "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
     }
+
+
+def _crps_from_quantiles_obs(
+    y: NDArray[np.float64], quantiles: NDArray[np.float64], taus: list[float] | NDArray[np.float64]
+) -> NDArray[np.float64]:
+    """Per-observation Riemann CRPS (same construction as ``crps_from_quantiles`` mean).
+
+    Research-only series for Diebold–Mariano — not a live capital claim.
+    """
+    yy = np.asarray(y, dtype=float).reshape(-1)
+    q = np.asarray(quantiles, dtype=float)
+    t = np.asarray(taus, dtype=float)
+    if q.ndim != 2 or q.shape[0] != yy.shape[0] or q.shape[1] != t.size:
+        raise ValueError("quantiles must be (n, k) matching y and taus")
+    if yy.size == 0:
+        return np.asarray([], dtype=float)
+    dt = np.diff(np.concatenate([[0.0], t]))
+    total = np.zeros(yy.shape[0], dtype=float)
+    for k, tau in enumerate(t):
+        # Match crps_from_quantiles: CRPS = 2 * integral pinball dtau.
+        total += 2.0 * pinball_loss(yy, q[:, k], float(tau)) * float(dt[k])
+    return total
 
 
 def _distribution_horizon_scores(
@@ -510,18 +587,46 @@ def _distribution_horizon_scores(
     hi_i = len(taus) - 1
     pits = pit_values(yy, qg, np.array(taus))
     ks, ks_p = pit_ks(pits)
+    n_te = int(yy.shape[0])
+    mu_g = np.full(n_te, float(g.mu), dtype=float)
+    sig_g = np.full(n_te, float(g.sig), dtype=float)
+    # Quantile-approx keys kept; closed-form reported beside them (honest dual view).
     out: dict[str, Any] = {
         "target": label,
         "pinball_gaussian": mean_pinball(yy, qg[:, mid], taus[mid]),
         "pinball_empirical": mean_pinball(yy, qe[:, mid], taus[mid]),
         "crps_gaussian": crps_from_quantiles(yy, qg, np.array(taus)),
         "crps_empirical": crps_from_quantiles(yy, qe, np.array(taus)),
+        "crps_gaussian_closed": mean_crps_gaussian(yy, mu_g, sig_g),
         "coverage_gaussian": coverage(yy, qg[:, lo_i], qg[:, hi_i]),
         "nominal_coverage": taus[hi_i] - taus[lo_i],
         "crossing_gaussian": quantile_crossing_rate(qg, np.array(taus)),
         "pit_ks": ks,
         "pit_ks_p": ks_p,
     }
+    # DM on per-obs quantile-CRPS losses: gaussian vs empirical (research-only).
+    if n_te >= 3:
+        loss_g = _crps_from_quantiles_obs(yy, qg, taus)
+        loss_e = _crps_from_quantiles_obs(yy, qe, taus)
+        dm = diebold_mariano(loss_g, loss_e, name_a="gaussian", name_b="empirical")
+        out["dm_crps_preferred"] = dm.preferred
+        out["dm_crps_p"] = dm.p_value
+        out["dm_crps_stat"] = dm.statistic
+        # DayWave18: Choe–Ramdas e-process on the same CRPS loss differential.
+        # Prefixed e_dm_crps_* to avoid clashing with vol-bench e_dm_* if blobs merge.
+        # Prefer omit keys on failure (fail-closed); never mint live_pnl_claim.
+        try:
+            ep = e_process_dm(loss_g, loss_e)
+            out["e_dm_crps_final"] = float(ep["e_final"])  # type: ignore[arg-type]
+            out["e_dm_crps_reject"] = bool(ep["reject"])
+            out["e_dm_crps_n"] = int(cast(Any, ep["n"]))
+        except (TypeError, ValueError, FloatingPointError, KeyError):
+            # Day Wave 20: emit presence sentinels (NaN/False/0) so soft verify
+            # can require key presence beside dm_crps_*; never mint live_pnl_claim.
+            out["e_dm_crps_final"] = float("nan")
+            out["e_dm_crps_reject"] = False
+            out["e_dm_crps_n"] = 0
+        out["research_only"] = True  # no live_pnl_claim key (pnl token forbidden)
     vol = _aligned_col(frame, dates, ids, "vol_20")
     if vol is not None and np.isfinite(vol[tr]).any() and np.isfinite(vol[te]).any():
         sc = _scaled_fill(vol)
@@ -532,6 +637,10 @@ def _distribution_horizon_scores(
         out["coverage_scaled_gaussian"] = coverage(yy, qs[:, lo_i], qs[:, hi_i])
         out["pinball_scaled_gaussian"] = mean_pinball(yy, qs[:, mid], taus[mid])
         out["crps_scaled_gaussian"] = crps_from_quantiles(yy, qs, np.array(taus))
+        # Closed-form: μ + z_sig * scale[te] as σ_t (homoskedastic z-scale).
+        sig_t = float(sg.z_sig) * np.maximum(np.asarray(sc[te], dtype=float), 1e-8)
+        mu_s = np.full(n_te, float(sg.mu), dtype=float)
+        out["crps_scaled_gaussian_closed"] = mean_crps_gaussian(yy, mu_s, sig_t)
         out["pit_ks_scaled"] = ks_s
         out["pit_ks_p_scaled"] = ks_sp
         st = ScaledStudentTDistribution(taus).fit(y[tr], sc[tr])
@@ -541,9 +650,51 @@ def _distribution_horizon_scores(
         out["coverage_scaled_student_t"] = coverage(yy, qt[:, lo_i], qt[:, hi_i])
         out["pinball_scaled_student_t"] = mean_pinball(yy, qt[:, mid], taus[mid])
         out["crps_scaled_student_t"] = crps_from_quantiles(yy, qt, np.array(taus))
+        # Closed-form Student-t CRPS beside quantile Riemann (Day Wave 43).
+        sig_st = float(st.z_sig) * np.maximum(np.asarray(sc[te], dtype=float), 1e-8)
+        mu_st = np.full(n_te, float(st.mu), dtype=float)
+        out["crps_scaled_student_t_closed"] = mean_crps_student_t(yy, mu_st, sig_st, float(st.nu))
         out["pit_ks_scaled_t"] = ks_t
         out["pit_ks_p_scaled_t"] = ks_tp
         out["nu_scaled_student_t"] = float(st.nu)
+        se = ScaledEmpiricalDistribution(taus).fit(y[tr], sc[tr])
+        qe = se.predict(sc[te])
+        pits_e = pit_values(yy, qe, np.array(taus))
+        ks_e, ks_ep = pit_ks(pits_e)
+        out["coverage_scaled_empirical"] = coverage(yy, qe[:, lo_i], qe[:, hi_i])
+        out["pinball_scaled_empirical"] = mean_pinball(yy, qe[:, mid], taus[mid])
+        out["crps_scaled_empirical"] = crps_from_quantiles(yy, qe, np.array(taus))
+        out["pit_ks_scaled_empirical"] = ks_e
+        out["pit_ks_p_scaled_empirical"] = ks_ep
+        # DayWave19: multi-model DM + e-process on scaled gauss vs scaled t CRPS
+        # (diagnostics only; do not change wrappee selection below).
+        if n_te >= 3:
+            loss_sg = _crps_from_quantiles_obs(yy, qs, taus)
+            loss_st = _crps_from_quantiles_obs(yy, qt, taus)
+            loss_se = _crps_from_quantiles_obs(yy, qe, taus)
+            dm_s = diebold_mariano(
+                loss_sg, loss_st, name_a="scaled_gaussian", name_b="scaled_student_t"
+            )
+            out["dm_crps_scaled_preferred"] = dm_s.preferred
+            out["dm_crps_scaled_p"] = dm_s.p_value
+            out["dm_crps_scaled_stat"] = dm_s.statistic
+            dm_se = diebold_mariano(
+                loss_se, loss_st, name_a="scaled_empirical", name_b="scaled_student_t"
+            )
+            out["dm_crps_empirical_vs_student_preferred"] = dm_se.preferred
+            out["dm_crps_empirical_vs_student_p"] = dm_se.p_value
+            out["dm_crps_empirical_vs_student_stat"] = dm_se.statistic
+            try:
+                ep_s = e_process_dm(loss_sg, loss_st)
+                out["e_dm_crps_scaled_final"] = float(ep_s["e_final"])  # type: ignore[arg-type]
+                out["e_dm_crps_scaled_reject"] = bool(ep_s["reject"])
+                out["e_dm_crps_scaled_n"] = int(cast(Any, ep_s["n"]))
+            except (TypeError, ValueError, FloatingPointError, KeyError):
+                # Day Wave 20: presence sentinels beside dm_crps_scaled_* (soft verify).
+                out["e_dm_crps_scaled_final"] = float("nan")
+                out["e_dm_crps_scaled_reject"] = False
+                out["e_dm_crps_scaled_n"] = 0
+            out["research_only"] = True  # no live_pnl_claim key (pnl token forbidden)
         wname, _ = fit_operational_wrappee(
             taus, y[tr], sc[tr], nominal_coverage=float(out["nominal_coverage"])
         )
@@ -584,7 +735,9 @@ def bench_distribution(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]
 
 
 def bench_regime(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
-    cols = [c for c in ["mkt_ret_1", "mkt_vol_20", "cs_dispersion", "breadth"] if c in frame.columns]
+    cols = [
+        c for c in ["mkt_ret_1", "mkt_vol_20", "cs_dispersion", "breadth"] if c in frame.columns
+    ]
     if len(cols) < 2:
         return {}
     sub = frame.select(["event_time", *cols]).unique("event_time").drop_nulls().sort("event_time")
@@ -607,6 +760,17 @@ def bench_regime(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
 
 
 def bench_tail(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
+    """Historical / scaled-historical VaR–ES holdout diagnostics (research-only).
+
+    Kupiec POF + Christoffersen independence / conditional coverage on VaR hits,
+    plus Acerbi–Székely Z1/Z2 and mean Fissler–Ziegel FZ0 on the same holdout
+    losses. Alpha convention matches ``var_backtest_hooks``: coverage
+    ``alpha_cov=0.95`` (VaR level); miss level ``p_miss=1-alpha_cov`` for Kupiec /
+    Christoffersen / Acerbi Z1; FZ uses coverage ``alpha_cov``. Primary keys prefer
+    the scaled path when ``vol_20`` is available (same pattern as Kupiec), with
+    ``*_unscaled`` / ``*_scaled`` mirrors. Empty / short / no hits / non-positive ES
+    → honest NaN from helpers. Never a live capital / promotion claim.
+    """
     label = next((c for c in frame.columns if c.startswith("future_return_1")), None)
     if label is None:
         return {}
@@ -614,33 +778,66 @@ def bench_tail(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if x.size == 0:
         return {}
     tr, te = _holdout(x.shape[0])
-    hist = HistoricalTail(0.95).fit(x[tr], y[tr])
+    alpha_cov = 0.95
+    p_miss = 1.0 - alpha_cov
+    hist = HistoricalTail(alpha_cov).fit(x[tr], y[tr])
     var, es = hist.predict_var_es()
     losses = -y[te]
+    n_te = int(losses.size)
     hits = (losses >= var).astype(float)
-    rate, lr, p = kupiec_pof(hits, 0.05)
+    rate, lr, p = kupiec_pof(hits, p_miss)
+    ind_lr_u, ind_p_u, _ = christoffersen_independence(hits)
+    cc_lr_u, cc_p_u, _ = christoffersen_cc(hits, p_miss)
     tail = losses[losses >= var] if np.isfinite(var) else np.array([])
     realized_es = float(np.mean(tail)) if tail.size else float("nan")
+    # Scalar VaR/ES broadcast to holdout length for ES diagnostics.
+    va_u = np.full(n_te, float(var), dtype=float)
+    es_u = np.full(n_te, float(es), dtype=float)
+    z1_u, n_hits_u = acerbi_szekely_z1(losses, va_u, es_u, p_miss)
+    z2_u, _ = acerbi_szekely_z2(losses, va_u, es_u)
+    fz_u = mean_fissler_ziegel(losses, va_u, es_u, alpha_cov)
     out: dict[str, Any] = {
         "var_95": var,
         "es_95": es,
         "hit_rate_unscaled": rate,
         "hit_rate": rate,
-        "nominal_hit_rate": 0.05,
+        "nominal_hit_rate": p_miss,
         "kupiec_lr_unscaled": lr,
         "kupiec_p_unscaled": p,
         "kupiec_lr": lr,
         "kupiec_p": p,
+        "christoffersen_ind_lr": float(ind_lr_u),
+        "christoffersen_ind_p": float(ind_p_u),
+        "christoffersen_cc_lr": float(cc_lr_u),
+        "christoffersen_cc_p": float(cc_p_u),
+        "christoffersen_ind_lr_unscaled": float(ind_lr_u),
+        "christoffersen_ind_p_unscaled": float(ind_p_u),
+        "christoffersen_cc_lr_unscaled": float(cc_lr_u),
+        "christoffersen_cc_p_unscaled": float(cc_p_u),
         "realized_es": realized_es,
+        "acerbi_szekely_z1": float(z1_u),
+        "acerbi_szekely_z2": float(z2_u),
+        "fissler_ziegel_mean": float(fz_u),
+        "es_hit_count": float(n_hits_u),
+        "acerbi_szekely_z1_unscaled": float(z1_u),
+        "acerbi_szekely_z2_unscaled": float(z2_u),
+        "fissler_ziegel_mean_unscaled": float(fz_u),
+        "es_hit_count_unscaled": float(n_hits_u),
+        "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
     }
     vol = _aligned_col(frame, dates, ids, "vol_20")
     if vol is not None and np.isfinite(vol[tr]).any() and np.isfinite(vol[te]).any():
         med = float(np.nanmedian(vol[np.isfinite(vol)]))
         sc = np.where(np.isfinite(vol), vol, med)
-        scaled = ScaledHistoricalTail(0.95).fit(y[tr], sc[tr])
+        scaled = ScaledHistoricalTail(alpha_cov).fit(y[tr], sc[tr])
         var_s, es_s = scaled.predict_var_es(sc[te])
         hits_s = (losses >= var_s).astype(float)
-        rate_s, lr_s, p_s = kupiec_pof(hits_s, 0.05)
+        rate_s, lr_s, p_s = kupiec_pof(hits_s, p_miss)
+        ind_lr_s, ind_p_s, _ = christoffersen_independence(hits_s)
+        cc_lr_s, cc_p_s, _ = christoffersen_cc(hits_s, p_miss)
+        z1_s, n_hits_s = acerbi_szekely_z1(losses, var_s, es_s, p_miss)
+        z2_s, _ = acerbi_szekely_z2(losses, var_s, es_s)
+        fz_s = mean_fissler_ziegel(losses, var_s, es_s, alpha_cov)
         out["var_95_scaled"] = float(np.mean(var_s))
         out["es_95_scaled"] = float(np.mean(es_s))
         out["hit_rate"] = rate_s
@@ -649,6 +846,23 @@ def bench_tail(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         out["hit_rate_scaled"] = rate_s
         out["kupiec_p_scaled"] = p_s
         out["kupiec_lr_scaled"] = lr_s
+        # Primary keys prefer scaled when available (Kupiec pattern).
+        out["christoffersen_ind_lr"] = float(ind_lr_s)
+        out["christoffersen_ind_p"] = float(ind_p_s)
+        out["christoffersen_cc_lr"] = float(cc_lr_s)
+        out["christoffersen_cc_p"] = float(cc_p_s)
+        out["christoffersen_ind_lr_scaled"] = float(ind_lr_s)
+        out["christoffersen_ind_p_scaled"] = float(ind_p_s)
+        out["christoffersen_cc_lr_scaled"] = float(cc_lr_s)
+        out["christoffersen_cc_p_scaled"] = float(cc_p_s)
+        out["acerbi_szekely_z1"] = float(z1_s)
+        out["acerbi_szekely_z2"] = float(z2_s)
+        out["fissler_ziegel_mean"] = float(fz_s)
+        out["es_hit_count"] = float(n_hits_s)
+        out["acerbi_szekely_z1_scaled"] = float(z1_s)
+        out["acerbi_szekely_z2_scaled"] = float(z2_s)
+        out["fissler_ziegel_mean_scaled"] = float(fz_s)
+        out["es_hit_count_scaled"] = float(n_hits_s)
     return out
 
 
@@ -704,9 +918,7 @@ def bench_liquidity(frame: pl.DataFrame) -> dict[str, Any]:
         a = sub["amihud"].to_numpy().astype(float)
         r = np.abs(sub["ret_1"].to_numpy().astype(float))
         out["corr_amihud_abs_ret"] = pearson_ic(a, r)
-    ac = almgren_chriss_trajectory(
-        1.0, 5, sigma=0.02, eta=1e-4, gamma=1e-5, risk_aversion=1e-3
-    )
+    ac = almgren_chriss_trajectory(1.0, 5, sigma=0.02, eta=1e-4, gamma=1e-5, risk_aversion=1e-3)
     tw = twap_trajectory(1.0, 5)
     ac_c = expected_shortfall_ac(
         ac, slice_trades(ac), arrival=100.0, eta=1e-4, gamma=1e-5, sigma=0.02
@@ -838,11 +1050,16 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
             high_kupiec = kupiec_pof(hh, alpha)
             high_hits = float(m_x.get(high_key, float("nan")))
     hmm_cond: dict[str, float] = {}
-    rcols = [c for c in ["mkt_ret_1", "mkt_vol_20", "cs_dispersion", "breadth"] if c in frame.columns]
+    rcols = [
+        c for c in ["mkt_ret_1", "mkt_vol_20", "cs_dispersion", "breadth"] if c in frame.columns
+    ]
     if len(rcols) >= 2:
         try:
             rsub = (
-                frame.select(["event_time", *rcols]).unique("event_time").drop_nulls().sort("event_time")
+                frame.select(["event_time", *rcols])
+                .unique("event_time")
+                .drop_nulls()
+                .sort("event_time")
             )
             rx = rsub.select(rcols).to_numpy().astype(float)
             rdates = rsub["event_time"].to_numpy()
@@ -1086,18 +1303,26 @@ def _vol_or_width(
     frame: pl.DataFrame,
     dates: NDArray[Any],
     ids: NDArray[Any],
+    q_tr: NDArray[np.float64],
     q_cal: NDArray[np.float64],
     q_te: NDArray[np.float64],
+    tr: slice,
     cal: slice,
     te: slice,
     n: int,
 ) -> tuple[NDArray[np.float64], str]:
+    """PIT-safe scale covariate: aligned ``vol_20`` when present.
+
+    Fallback: raw-Gaussian band width on every split (train included — the
+    wrappee is fitted on the train slice, so a placeholder scale there would
+    make its standardized residual scale explode).
+    """
     vol = _aligned_col(frame, dates, ids, "vol_20")
     if vol is not None and np.isfinite(vol).any():
         return _scaled_fill(vol), "vol_20"
     scale = np.full(n, 1e-8)
-    scale[cal] = np.maximum(q_cal[:, 1] - q_cal[:, 0], 1e-8)
-    scale[te] = np.maximum(q_te[:, 1] - q_te[:, 0], 1e-8)
+    for sl, q in ((tr, q_tr), (cal, q_cal), (te, q_te)):
+        scale[sl] = np.maximum(q[:, 1] - q[:, 0], 1e-8)
     return scale, "pred_width"
 
 
@@ -1115,9 +1340,12 @@ def _gaussian_interval_split(
     taus = [alpha / 2.0, 1.0 - alpha / 2.0]
     tr, cal, te = _triple_split(x.shape[0])
     gauss = GaussianDistribution(taus).fit(x[tr], y[tr])
+    q_raw_tr = gauss.predict(x[tr])
     q_raw_cal = gauss.predict(x[cal])
     q_raw_te = gauss.predict(x[te])
-    covariate, cov_name = _vol_or_width(frame, dates, ids, q_raw_cal, q_raw_te, cal, te, y.size)
+    covariate, cov_name = _vol_or_width(
+        frame, dates, ids, q_raw_tr, q_raw_cal, q_raw_te, tr, cal, te, y.size
+    )
     wrappee_name, wrappee = select_scaled_wrappee(
         taus,
         y[tr],
@@ -1126,6 +1354,7 @@ def _gaussian_interval_split(
         covariate[cal],
         nominal_coverage=1.0 - alpha,
     )
+    q_tr = wrappee.predict(covariate[tr])
     q_cal = wrappee.predict(covariate[cal])
     q_te = wrappee.predict(covariate[te])
     sg = ScaledGaussianDistribution(taus).fit(y[tr], covariate[tr])
@@ -1141,6 +1370,7 @@ def _gaussian_interval_split(
         "tr": tr,
         "cal": cal,
         "te": te,
+        "q_tr": q_tr,
         "q_cal": q_cal,
         "q_te": q_te,
         "q_raw_cal": q_raw_cal,
@@ -1195,7 +1425,12 @@ def bench_evalues(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
 
 
 def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
-    """Jackknife+ on vol-scaled residuals. Coverage floor is 1-2α, not 1-α."""
+    """Jackknife+ on vol-scaled residuals. Coverage floor is 1-2α, not 1-α.
+
+    Floor is **marginal under exchangeability** (Barber–Candès 2021), not
+    training-conditional (Bian–Barber 2023). Nonempty returns surface
+    ``coverage_guarantee_scope="marginal_exchangeable"`` (research-only).
+    """
     split = _gaussian_interval_split(frame, config)
     if split is None:
         return {}
@@ -1209,8 +1444,9 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
     if y_cal.size < 2 or y_te.size < 8:
         return {}
     jp = JackknifePlus(alpha).fit(y_cal / sc_cal)
-    lo_z, hi_z = jp.predict_interval(np.zeros_like(y_te), np.ones_like(y_te))
-    lo, hi = lo_z * sc_te, hi_z * sc_te
+    # predict_interval scales only the score half-width; the LOO location term
+    # must stay unscaled (manual lo_z * sc_te would scale it too).
+    lo, hi = jp.predict_interval(np.zeros_like(y_te), sc_te)
     metrics = set_metrics(y_te, lo, hi)
     hits = 1.0 - covered(y_te, lo, hi)
     hits = hits[np.isfinite(hits)]
@@ -1226,11 +1462,179 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
         "mean_width": metrics.mean_width,
         "median_width": metrics.median_width,
         "coverage_floor": floor,
+        "coverage_identity": "1-2*alpha",
+        "coverage_guarantee_scope": "marginal_exchangeable",
+        "coverage_guarantee_claim": (
+            "coverage floor is marginal under exchangeability; not training-conditional"
+        ),
+        "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
         "n": metrics.n,
         "miss_rate": rate,
         "kupiec_lr": lr,
         "kupiec_p": kp,
         "wrappee": split.get("wrappee"),
+    }
+
+
+def _bench_cv_plus_panel(
+    frame: pl.DataFrame,
+    config: AppConfig,
+    *,
+    alpha: float = 0.10,
+    n_folds: int = 5,
+    aggregation: str = "minmax",
+) -> dict[str, float | str]:
+    """Date-folded CV+ on the lab panel wrappee residuals (not a toy Gaussian).
+
+    Coverage floor is marginal under exchangeability, not training-conditional.
+    """
+    split = _gaussian_interval_split(frame, config, alpha=alpha)
+    if split is None:
+        return {}
+    y = np.asarray(split["y"], dtype=float)
+    dates = np.asarray(split["dates"])
+    cal = split["cal"]
+    te = split["te"]
+    q_cal = np.asarray(split["q_cal"], dtype=float)
+    q_te = np.asarray(split["q_te"], dtype=float)
+    # Point predictor = wrappee interval midpoint (same units as y). Fill the
+    # train slice too: CV+ derives fold means/scales from every fit-row
+    # residual, so leaving it uninitialized (np.empty_like) silently fed
+    # allocator garbage into the calibration.
+    q_tr = np.asarray(split["q_tr"], dtype=float)
+    pred = np.full(y.shape, np.nan, dtype=float)
+    pred[split["tr"]] = 0.5 * (q_tr[:, 0] + q_tr[:, 1])
+    pred[cal] = 0.5 * (q_cal[:, 0] + q_cal[:, 1])
+    pred[te] = 0.5 * (q_te[:, 0] + q_te[:, 1])
+    # Fit on chronological prefix through end of calibration (never test).
+    fit_slice = slice(0, cal.stop)
+    d_fit = dates[fit_slice]
+    # CV+ needs unique dates >= n_folds
+    if len(np.unique(d_fit)) < n_folds or int(te.stop - te.start) < 8:
+        return {}
+    model = CVPlus(alpha=alpha, n_folds=n_folds, aggregation=aggregation).fit(
+        y[fit_slice], pred[fit_slice], dates=d_fit
+    )
+    lo, hi = model.predict_interval(pred[te])
+    metrics = set_metrics(y[te], lo, hi)
+    hits = 1.0 - covered(y[te], lo, hi)
+    hits = hits[np.isfinite(hits)]
+    # plus/jaw intervals cover at 1-2*alpha (paper bound), so their nominal
+    # miss probability is 2*alpha; only minmax targets 1-alpha.
+    nominal_miss = alpha if aggregation == "minmax" else 2.0 * alpha
+    if hits.size >= 10:
+        rate, lr, kp = kupiec_pof(hits, nominal_miss)
+    else:
+        rate, lr, kp = float("nan"), float("nan"), float("nan")
+    return {
+        "coverage": metrics.coverage,
+        "mean_width": metrics.mean_width,
+        "n_dates": float(len(np.unique(dates[te]))),
+        "alpha": float(alpha),
+        "n_folds": float(n_folds),
+        "aggregation": aggregation,
+        "coverage_floor": cv_plus_coverage_level(alpha, aggregation),
+        "coverage_identity": "1-alpha" if aggregation == "minmax" else "1-2*alpha",
+        "miss_rate": rate,
+        "kupiec_lr": lr,
+        "kupiec_p": kp,
+        "target": split["label"],
+        "wrappee": split.get("wrappee"),
+        "dgp": "panel",
+        "claim": "research_metric_only",
+        "coverage_guarantee_scope": "marginal_exchangeable",
+        "coverage_guarantee_claim": (
+            "coverage floor is marginal under exchangeability; not training-conditional"
+        ),
+        "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
+    }
+
+
+def bench_cv_plus(
+    frame: pl.DataFrame | None = None,
+    config: AppConfig | None = None,
+    alpha: float = 0.10,
+    n_folds: int = 5,
+    aggregation: str = "minmax",
+    seed: int = 23,
+) -> dict[str, float | str]:
+    """CV+ bench. Prefer lab panel; fixture path is labeled ``dgp=fixture`` only.
+
+    Coverage floor is **marginal under exchangeability** (Barber–Candès 2021;
+    agg-specific), not training-conditional (Bian–Barber 2023). Nonempty returns
+    surface ``coverage_guarantee_scope="marginal_exchangeable"`` (research-only).
+    Fixture rows must not share the research H-table with panel Kupiec tests.
+    """
+    if frame is not None and config is not None:
+        panel_row = _bench_cv_plus_panel(
+            frame, config, alpha=alpha, n_folds=n_folds, aggregation=aggregation
+        )
+        if panel_row:
+            return panel_row
+        return {}
+    rng = np.random.default_rng(seed)
+    n_dates, n_names = 120, 8
+    dates = np.repeat(np.arange(n_dates), n_names)
+    pred = rng.normal(0.0, 0.01, size=dates.size)
+    y = pred + rng.normal(0.0, 0.02, size=dates.size)
+    cut = int(0.7 * n_dates)
+    train = dates < cut
+    test = ~train
+    model = CVPlus(alpha=alpha, n_folds=n_folds, aggregation=aggregation).fit(
+        y[train], pred[train], dates=dates[train].astype(float)
+    )
+    lo, hi = model.predict_interval(pred[test])
+    metrics = set_metrics(y[test], lo, hi)
+    return {
+        "coverage": metrics.coverage,
+        "mean_width": metrics.mean_width,
+        "n_dates": float(len(np.unique(dates[test]))),
+        "alpha": float(alpha),
+        "n_folds": float(n_folds),
+        "aggregation": aggregation,
+        "coverage_floor": cv_plus_coverage_level(alpha, aggregation),
+        "coverage_identity": "1-alpha" if aggregation == "minmax" else "1-2*alpha",
+        "seed": float(seed),
+        "dgp": "fixture",
+        "claim": "research_metric_only",
+        "coverage_guarantee_scope": "marginal_exchangeable",
+        "coverage_guarantee_claim": (
+            "coverage floor is marginal under exchangeability; not training-conditional"
+        ),
+        "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
+    }
+
+
+def bench_cpcv_audit(
+    n_dates: int = 120,
+    n_groups: int = 6,
+    n_test_groups: int = 2,
+    horizon_bars: int = 2,
+    embargo_bars: int = 2,
+) -> dict[str, float | bool | str]:
+    """Audit CPCV date separation and purge/embargo integrity only."""
+    dates = [datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=i) for i in range(n_dates)]
+    folds = combinatorial_purged_cv(dates, n_groups, n_test_groups, horizon_bars, embargo_bars)
+    valid = True
+    min_train = n_dates
+    min_test = n_dates
+    for fold in folds:
+        train = set(fold.train_times)
+        test = set(fold.test_times)
+        valid = valid and train.isdisjoint(test)
+        min_train = min(min_train, len(train))
+        min_test = min(min_test, len(test))
+    expected = int(comb(n_groups, n_test_groups))
+    return {
+        "n_folds": float(len(folds)),
+        "expected_folds": float(expected),
+        "min_train_dates": float(min_train),
+        "min_test_dates": float(min_test),
+        "horizon_bars": float(horizon_bars),
+        "embargo_bars": float(embargo_bars),
+        "date_level": True,
+        "purge_embargo_valid": bool(valid and len(folds) == expected),
+        "claim": "validation_integrity_only",
     }
 
 
@@ -1341,7 +1745,7 @@ def bench_weighted_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str
         "n": weighted.n,
         "kupiec_lr": lr,
         "kupiec_p": kp,
-        "covariate": "vol_20",
+        "covariate": str(split.get("cov_name", "vol_20")),
     }
 
 
@@ -1366,9 +1770,7 @@ def bench_interval_risk(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any
     # Same 1/n on the date, inside the name box; interval caps clip further.
     weights = np.minimum(w_eq, max_w)
     caps = cap_from_interval(lo, hi, max_weight=max_w, width_ref=wr, downside_ref=dr)
-    out = bench_interval_caps(
-        lo, hi, weights, max_weight=max_w, width_ref=wr, downside_ref=dr
-    )
+    out = bench_interval_caps(lo, hi, weights, max_weight=max_w, width_ref=wr, downside_ref=dr)
     width = hi - lo
     finite_w = np.isfinite(width)
     med_w = float(np.nanmedian(width[finite_w])) if int(finite_w.sum()) else 0.0
@@ -1437,3 +1839,166 @@ def bench_quantile_bandit(frame: pl.DataFrame, label: str) -> dict[str, Any]:
         leak=design["leak"],
         extra={"n_quantiles": 5},
     )
+
+
+def bench_localized_from_panel(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
+    """RBF localized CQR on lab panel vol covariate + wrappee bands."""
+    from quant_fund.models.localized_conformal import bench_localized_cqr
+
+    split = _gaussian_interval_split(frame, config)
+    if split is None:
+        return {}
+    cal, te = split["cal"], split["te"]
+    y = split["y"]
+    q_cal, q_te = split["q_cal"], split["q_te"]
+    cov = np.asarray(split["covariate"], dtype=float)
+    if int(cal.stop - cal.start) < 40 or int(te.stop - te.start) < 20:
+        return {}
+    row = bench_localized_cqr(
+        alpha=float(split["alpha"]),
+        y_cal=y[cal],
+        lo_cal=q_cal[:, 0],
+        hi_cal=q_cal[:, 1],
+        x_cal=cov[cal],
+        y_test=y[te],
+        lo_test=q_te[:, 0],
+        hi_test=q_te[:, 1],
+        x_test=cov[te],
+        dates_test=np.asarray(split["dates"])[te],
+        dgp="panel",
+    )
+    row["target"] = split["label"]
+    row["wrappee"] = str(split.get("wrappee", "unknown"))
+    row["covariate"] = str(split.get("cov_name", "vol_20"))
+    return row
+
+
+def bench_online_crc_from_panel(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
+    """Sequential online CRC on panel wrappee VaR losses (not exponential toy)."""
+    from quant_fund.models.online_crc import bench_online_crc
+
+    split = _gaussian_interval_split(frame, config, alpha=0.05)
+    if split is None:
+        return {}
+    y = np.asarray(split["y"], dtype=float)
+    dates = split["dates"]
+    cal, te = split["cal"], split["te"]
+    # Use full chronological path: losses = -y, base = -lower quantile bound
+    q_all = np.empty((y.size, 2), dtype=float)
+    q_all[cal] = split["q_cal"]
+    q_all[te] = split["q_te"]
+    # Fill train region with wrappee predict on train covariate
+    tr = split["tr"]
+    cov = np.asarray(split["covariate"], dtype=float)
+    # For train rows, approximate bands from cal wrappee scale at covariate
+    if tr.stop > tr.start:
+        # reuse scaled wrappee from split via cal endpoints — use raw mid from q where available
+        # Fill missing train with nearest available: use scaled gaussian from covariate
+        from quant_fund.models.distribution import ScaledGaussianDistribution
+
+        taus = [0.025, 0.975]
+        sg = ScaledGaussianDistribution(taus).fit(y[tr], cov[tr])
+        q_all[tr] = sg.predict(cov[tr])
+    losses = -y
+    base = -q_all[:, 0]
+    # Map dates to int codes for OnlineCRC
+    uniq, inv = np.unique(dates, return_inverse=True)
+    date_codes = inv.astype(np.int64)
+    warm = int(cal.stop)  # warm through end of calibration
+    if warm < 20 or y.size - warm < 10:
+        return {}
+    row = bench_online_crc(
+        alpha=0.05,
+        losses=losses,
+        base=base,
+        dates=date_codes,
+        n_warm=warm,
+        dgp="panel",
+    )
+    row["target"] = split["label"]
+    row["wrappee"] = str(split.get("wrappee", "unknown"))
+    return row
+
+
+def bench_conformal_topk_from_panel(
+    frame: pl.DataFrame, config: AppConfig, *, k: int = 5, alpha: float = 0.20
+) -> dict[str, Any]:
+    """Conformal top-k on public-feature ridge scores vs lab ranking labels."""
+    from quant_fund.models.conformal_rank import bench_conformal_topk
+    from quant_fund.models.ranking import PUBLIC_FEATURES, RidgeRanker, available_features
+
+    label = _interval_label(frame)
+    if label is None:
+        return {}
+    feats = available_features(list(frame.columns), PUBLIC_FEATURES)
+    if not feats:
+        return {}
+    x, y, dates, _fn, _ids = design_matrix(frame, label, feature_names=feats)
+    if x.shape[0] < 80:
+        return {}
+    # Chronological train for scores; conformal_topk does its own cal/test split on dates
+    tr, _cal, _te = _triple_split(x.shape[0])
+    if int(tr.stop - tr.start) < 30:
+        return {}
+    model = RidgeRanker().fit(x[tr], y[tr])
+    scores = model.predict(x)
+    # Integer date codes for grouping
+    uniq, inv = np.unique(dates, return_inverse=True)
+    if int(uniq.size) < 20:
+        return {}
+    row = bench_conformal_topk(
+        k=k,
+        alpha=alpha,
+        scores=scores,
+        labels=y,
+        dates=inv.astype(np.int64),
+        dgp="panel",
+    )
+    row["target"] = label
+    row["score_model"] = "public_ridge"
+    return row
+
+
+def bench_portfolio_from_panel(
+    frame: pl.DataFrame, config: AppConfig, *, alpha: float = 0.10
+) -> dict[str, Any]:
+    """Equal-weight book conformal sets on lab panel returns (one set per date)."""
+    from quant_fund.portfolio.portfolio_conformal import bench_portfolio_cqr
+
+    label = _interval_label(frame)
+    if label is None and "future_return_1" in frame.columns:
+        label = "future_return_1"
+    if label is None:
+        return {}
+    need = ["event_time", "security_id", label]
+    if any(c not in frame.columns for c in need):
+        return {}
+    sub = frame.select(need).drop_nulls()
+    if sub.height < 80:
+        return {}
+    # Build date -> return vector (aligned name order per date)
+    dates = _date_keys(sub["event_time"].to_numpy())
+    ids = np.asarray(sub["security_id"].to_numpy()).astype(str)
+    rets = sub[label].to_numpy().astype(float)
+    by_date: dict[str, list[tuple[str, float]]] = {}
+    for d, i, r in zip(dates, ids, rets, strict=True):
+        by_date.setdefault(str(d), []).append((i, float(r)))
+    if len(by_date) < 40:
+        return {}
+    ordered = sorted(by_date.keys())
+    # Fixed universe = names present on first date with enough overlap; use intersection size
+    weights_map: dict[str, np.ndarray] = {}
+    returns_map: dict[str, np.ndarray] = {}
+    for d in ordered:
+        pairs = by_date[d]
+        n = len(pairs)
+        if n < 2:
+            continue
+        returns_map[d] = np.array([r for _i, r in pairs], dtype=float)
+        weights_map[d] = np.full(n, 1.0 / n, dtype=float)
+    if len(returns_map) < 40:
+        return {}
+    row = bench_portfolio_cqr(weights_map, returns_map, alpha=alpha, dgp="panel")
+    row["target"] = label
+    row["weight_rule"] = "equal_weight_per_date"
+    return row

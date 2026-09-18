@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any, cast
 
 import polars as pl
 
 from quant_fund.config.models import UniverseConfig
 from quant_fund.schemas.errors import LeakageError
+
+
+def _visible_bars(bars: pl.DataFrame, when: datetime) -> pl.DataFrame:
+    """Return bars observable by an as-of decision.
+
+    Event time alone is insufficient for late-arriving or revised bars. When
+    the optional availability timestamp is present, null or future availability
+    is excluded rather than treated as observable.
+    """
+    visible = bars.filter(pl.col("event_time") <= when)
+    if "available_time" in visible.columns:
+        visible = visible.filter(pl.col("available_time") <= when)
+    return visible
 
 
 def trailing_adv(bars: pl.DataFrame, lookback: int) -> pl.DataFrame:
@@ -26,8 +40,8 @@ def membership_asof(
     when: datetime,
     config: UniverseConfig,
 ) -> pl.DataFrame:
-    """Eligible names using only bars with event_time <= when."""
-    hist = bars.filter(pl.col("event_time") <= when)
+    """Eligible names using only bars observable at ``when``."""
+    hist = _visible_bars(bars, when)
     if hist.is_empty():
         return hist.clear()
     enriched = trailing_adv(hist, lookback=20)
@@ -82,12 +96,15 @@ def assert_universe_not_from_future(
         mem = membership.filter(pl.col("asof") == asof)
     else:
         mem = membership
-    future = bars.filter(pl.col("event_time") > asof)
-    if future.is_empty() or mem.is_empty():
+    if mem.is_empty():
         return
-    # If ADV in membership equals an ADV computed including future bars, that's leakage.
-    leaked = trailing_adv(bars, 20).filter(pl.col("event_time") == asof)
-    pit = trailing_adv(bars.filter(pl.col("event_time") <= asof), 20).filter(
+    # Compare event-time history with the actually observable history. The
+    # former intentionally retains late bars so this guard catches availability
+    # leakage even when no future event-time bar changes the rolling window.
+    leaked = trailing_adv(bars.filter(pl.col("event_time") <= asof), 20).filter(
+        pl.col("event_time") == asof
+    )
+    pit = trailing_adv(_visible_bars(bars, asof), 20).filter(
         pl.col("event_time") == asof
     )
     if leaked.is_empty() or pit.is_empty():
@@ -95,6 +112,20 @@ def assert_universe_not_from_future(
     joined = leaked.join(pit, on="security_id", suffix="_pit")
     if joined.is_empty():
         return
-    if (joined["adv"] - joined["adv_pit"]).abs().max() > 1e-6:  # type: ignore[operator]
+    max_diff = (joined["adv"] - joined["adv_pit"]).abs().max()
+    if max_diff is not None and float(cast(Any, max_diff)) > 1e-6:
         # Using the full panel ADV at asof differs from PIT ADV: future leaked into rolling window
         raise LeakageError("Universe ADV used bars after asof")
+    # Also verify the stamped membership ADV against the PIT recomputation:
+    # catches a membership panel whose ADV was built from a full (leaky) panel.
+    if {"security_id", "adv"} <= set(mem.columns):
+        stamped = mem.select(["security_id", pl.col("adv").alias("adv_stamped")])
+        check = stamped.join(
+            pit.select(["security_id", pl.col("adv").alias("adv_pit")]),
+            on="security_id",
+            how="inner",
+        )
+        if check.height:
+            stamped_diff = (check["adv_stamped"] - check["adv_pit"]).abs().max()
+            if stamped_diff is not None and float(cast(Any, stamped_diff)) > 1e-6:
+                raise LeakageError("Membership ADV does not match point-in-time ADV")

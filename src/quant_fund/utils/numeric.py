@@ -22,4 +22,4 @@ def clip_positive(x: Array | float, floor: float = 1e-12) -> Array | float:
         return v
     out = np.asarray(x, dtype=float)
     out = np.where(np.isfinite(out), out, floor)
-    return np.maximum(out, floor)
+    return np.asarray(np.maximum(out, floor), dtype=np.float64)

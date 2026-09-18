@@ -11,9 +11,13 @@ Array = NDArray[np.float64]
 
 
 def conformal_quantile(scores: Array, alpha: float) -> float:
-    """Finite-sample conformal quantile of residual scores.
+    """Finite-sample conformal quantile of residual scores (split conformal).
 
-    qhat = Quantile at level ceil((n+1)*(1-alpha))/n of s, clipped to 1.
+    With ``k = ceil((n + 1) * (1 - alpha))``, return the ``k``-th smallest
+    score (Vovk; Lei et al.). When ``k > n`` the level is not attainable from
+    the calibration sample; we clip to the sample max so downstream intervals
+    stay finite (this cannot cover at ``1 - alpha`` — the caller must keep
+    enough calibration scores for the requested alpha).
     """
     s = np.asarray(scores, dtype=float)
     s = s[np.isfinite(s)]
@@ -22,25 +26,24 @@ def conformal_quantile(scores: Array, alpha: float) -> float:
     if not 0.0 < alpha < 1.0:
         raise ValueError("alpha must be in (0, 1)")
     n = int(s.size)
-    level = min(1.0, float(np.ceil((n + 1) * (1.0 - alpha)) / n))
-    return float(np.quantile(s, level, method="higher"))
+    k = int(np.ceil((n + 1) * (1.0 - alpha)))
+    k = min(max(k, 1), n)
+    return float(np.partition(s, k - 1)[k - 1])
 
 
-def cqr_scores(
-    y: Array, lower: Array, upper: Array, scale: Array | None = None
-) -> Array:
+def cqr_scores(y: Array, lower: Array, upper: Array, scale: Array | None = None) -> Array:
     y = np.asarray(y, dtype=float)
     lo = np.asarray(lower, dtype=float)
     hi = np.asarray(upper, dtype=float)
-    raw = np.maximum(lo - y, y - hi)
+    raw = np.asarray(np.maximum(lo - y, y - hi), dtype=np.float64)
     if scale is None:
         return raw
-    return raw / np.maximum(np.asarray(scale, dtype=float), 1e-12)
+    return np.asarray(raw / np.maximum(np.asarray(scale, dtype=float), 1e-12), dtype=np.float64)
 
 
 def onesided_scores(y: Array, bound: Array) -> Array:
     """Residual for an upper prediction bound: how far y exceeds the bound."""
-    return np.asarray(y, dtype=float) - np.asarray(bound, dtype=float)
+    return np.asarray(np.asarray(y, dtype=float) - np.asarray(bound, dtype=float), dtype=np.float64)
 
 
 def expand_interval(
@@ -53,16 +56,22 @@ def expand_interval(
     hi = np.asarray(upper, dtype=float)
     q = np.asarray(qhat, dtype=float)
     if scale is None:
-        return lo - q, hi + q
-    sc = np.maximum(np.asarray(scale, dtype=float), 1e-12)
-    return lo - q * sc, hi + q * sc
+        expanded_lo, expanded_hi = lo - q, hi + q
+    else:
+        sc = np.maximum(np.asarray(scale, dtype=float), 1e-12)
+        expanded_lo, expanded_hi = lo - q * sc, hi + q * sc
+    # Defensive normalization: malformed base bounds must never produce an
+    # inverted prediction set or a negative-width research diagnostic.
+    return np.minimum(expanded_lo, expanded_hi), np.maximum(expanded_lo, expanded_hi)
 
 
 def covered(y: Array, lower: Array, upper: Array) -> Array:
     y = np.asarray(y, dtype=float)
-    return ((y >= np.asarray(lower, dtype=float)) & (y <= np.asarray(upper, dtype=float))).astype(
-        float
-    )
+    lo = np.asarray(lower, dtype=float)
+    hi = np.asarray(upper, dtype=float)
+    if y.shape != lo.shape or y.shape != hi.shape:
+        raise ValueError("y, lower, and upper must have identical shapes")
+    return ((y >= lo) & (y <= hi)).astype(float)
 
 
 @dataclass(frozen=True)
@@ -77,7 +86,9 @@ def set_metrics(y: Array, lower: Array, upper: Array) -> SetMetrics:
     y = np.asarray(y, dtype=float)
     lo = np.asarray(lower, dtype=float)
     hi = np.asarray(upper, dtype=float)
-    mask = np.isfinite(y) & np.isfinite(lo) & np.isfinite(hi)
+    if y.shape != lo.shape or y.shape != hi.shape:
+        raise ValueError("y, lower, and upper must have identical shapes")
+    mask = np.isfinite(y) & np.isfinite(lo) & np.isfinite(hi) & (hi >= lo)
     if int(mask.sum()) == 0:
         return SetMetrics(float("nan"), float("nan"), float("nan"), 0)
     y, lo, hi = y[mask], lo[mask], hi[mask]
@@ -90,9 +101,7 @@ def set_metrics(y: Array, lower: Array, upper: Array) -> SetMetrics:
     )
 
 
-def conditional_coverage(
-    y: Array, lower: Array, upper: Array, labels: Array
-) -> dict[str, float]:
+def conditional_coverage(y: Array, lower: Array, upper: Array, labels: Array) -> dict[str, float]:
     """Coverage within each label. Labels are never mixed across groups."""
     y = np.asarray(y, dtype=float)
     lo = np.asarray(lower, dtype=float)

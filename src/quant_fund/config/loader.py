@@ -29,16 +29,27 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return raw
 
 
-def load_config(path: str | Path, *, _seen: frozenset[Path] | None = None) -> AppConfig:
+def load_config(
+    path: str | Path,
+    *,
+    _seen: frozenset[Path] | None = None,
+    _root: Path | None = None,
+) -> AppConfig:
     """Load a YAML file, following `inherit:` relative to the file's directory."""
     path = Path(path).resolve()
+    root = path.parent if _root is None else _root
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Config inheritance escapes config root: {path}") from exc
     seen = _seen or frozenset()
     if path in seen:
         raise ValueError(f"Config inheritance cycle at {path}")
     data = _read_yaml(path)
     inherit = data.pop("inherit", None)
     if inherit:
-        parent = load_config(path.parent / inherit, _seen=seen | {path})
+        parent_path = (path.parent / inherit).resolve()
+        parent = load_config(parent_path, _seen=seen | {path}, _root=root)
         merged = deep_merge(parent.model_dump(mode="python"), data)
         return AppConfig.model_validate(merged)
     return AppConfig.model_validate(data)

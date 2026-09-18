@@ -210,18 +210,64 @@ def bench_online_crc(
     seed: int = 12,
     n_cal: int = 200,
     n_test: int = 800,
-) -> dict[str, float]:
-    """Seeded online CRC diagnostic. Keys are risk, not Sharpe."""
-    losses, base, dates = _synthetic_loss_path(n_cal, n_test, seed)
-    warm = int(n_cal)
+    *,
+    losses: Array | None = None,
+    base: Array | None = None,
+    dates: NDArray[np.int64] | Array | None = None,
+    n_warm: int | None = None,
+    dgp: str | None = None,
+) -> dict[str, float | str]:
+    """Online CRC diagnostic. Panel loss path preferred; toy path is ``dgp=fixture``."""
+    if losses is not None or base is not None or dates is not None:
+        if losses is None or base is None or dates is None:
+            raise ValueError("pass losses, base, and dates together for panel path")
+        losses_a = np.asarray(losses, dtype=float).reshape(-1)
+        base_a = np.asarray(base, dtype=float).reshape(-1)
+        dates_a = np.asarray(dates).reshape(-1)
+        if losses_a.size != base_a.size or losses_a.size != dates_a.size:
+            raise ValueError("losses/base/dates length mismatch")
+        warm = int(n_warm if n_warm is not None else max(losses_a.size // 5, 20))
+        warm = min(warm, max(losses_a.size - 10, 1))
+        dgp_label = dgp or "panel"
+    else:
+        losses_a, base_a, dates_a = _synthetic_loss_path(n_cal, n_test, seed)
+        warm = int(n_cal)
+        dgp_label = "fixture"
     oc = OnlineCRC(alpha=alpha, gamma=gamma, B=B)
-    oc.initialize(losses[:warm], base[:warm])
-    path = oc.run(losses[warm:], base[warm:], dates[warm:])
-    hits = path.hit[np.isfinite(path.hit)]
+    oc.initialize(losses_a[:warm], base_a[:warm])
+    eval_dates = dates_a[warm:]
+    path = oc.run(losses_a[warm:], base_a[warm:], eval_dates)
+    finite_hits = np.isfinite(path.hit)
+    hits = path.hit[finite_hits]
     n = int(hits.size)
     mean_risk = float(np.mean(hits)) if n else float("nan")
-    return {
+    from quant_fund.metrics.inference import grouped_mean_tstat
+    from quant_fund.metrics.probability import kupiec_pof
+
+    if n >= 10:
+        rate, lr, kp = kupiec_pof(hits, alpha)
+    else:
+        rate, lr, kp = float("nan"), float("nan"), float("nan")
+    out: dict[str, float | str] = {
         "mean_risk": mean_risk,
+        "coverage": float(1.0 - mean_risk) if np.isfinite(mean_risk) else float("nan"),
         "nominal": float(alpha),
+        "alpha": float(alpha),
         "n": float(n),
+        "miss_rate": rate,
+        "kupiec_lr": lr,
+        "kupiec_p": kp,
+        "dgp": dgp_label,
+        "claim": "research_metric_only",
     }
+    if dgp_label != "fixture" and n:
+        date_rate, date_t, date_p, n_dates = grouped_mean_tstat(
+            hits, np.asarray(eval_dates, dtype=str)[finite_hits], target=float(alpha)
+        )
+        out["date_clustered_miss_rate"] = date_rate
+        out["date_clustered_t"] = date_t
+        out["date_clustered_p"] = date_p
+        out["date_clustered_n_dates"] = float(n_dates)
+    if dgp_label == "fixture":
+        out["seed"] = float(seed)
+    return out

@@ -56,6 +56,8 @@ def gaussian_band(mu: float, sigma: float, alpha: float) -> tuple[float, float]:
     """Symmetric Gaussian interval from a location-scale pair."""
     if not 0.0 < alpha < 1.0:
         raise ValueError("alpha must be in (0, 1)")
+    if not np.isfinite(mu) or not np.isfinite(sigma) or sigma < 0.0:
+        raise ValueError("mu must be finite and sigma must be finite and non-negative")
     z = float(norm.ppf(1.0 - alpha / 2.0))
     sig = max(float(sigma), 1e-12)
     return float(mu) - z * sig, float(mu) + z * sig
@@ -290,22 +292,55 @@ def bench_portfolio_cqr(
     n_dates: int = 400,
     n_names: int = 8,
     seed: int = 7,
-) -> dict[str, float]:
-    """Coverage and mean width of book-level CQR. No Sharpe."""
+    dgp: str | None = None,
+) -> dict[str, float | str]:
+    """Coverage and mean width of book-level CQR. No Sharpe.
+
+    Synthetic book path is labeled ``dgp=fixture``. Lab panel books use ``dgp=panel``.
+    """
     if (weights_by_date is None) ^ (returns_by_date is None):
         raise ValueError("pass both weights_by_date and returns_by_date, or neither")
     if weights_by_date is None or returns_by_date is None:
         weights_by_date, returns_by_date = _synthetic_book(n_dates, n_names, seed)
+        dgp_label = "fixture"
+    else:
+        dgp_label = dgp or "panel"
     sets = sets_by_date(weights_by_date, returns_by_date, alpha=alpha, vol=vol)
     y = sets.r_p[sets.test_mask]
     lo = sets.lower[sets.test_mask]
     hi = sets.upper[sets.test_mask]
     metrics = set_metrics(y, lo, hi)
-    return {
+    from quant_fund.metrics.conformal import covered
+    from quant_fund.metrics.inference import grouped_mean_tstat
+    from quant_fund.metrics.probability import kupiec_pof
+
+    hits = 1.0 - covered(y, lo, hi)
+    hits = hits[np.isfinite(hits)]
+    if hits.size >= 10:
+        rate, lr, kp = kupiec_pof(hits, alpha)
+    else:
+        rate, lr, kp = float("nan"), float("nan"), float("nan")
+    out: dict[str, float | str] = {
         "coverage": metrics.coverage,
         "mean_width": metrics.mean_width,
         "n_dates": float(metrics.n),
         "alpha": float(alpha),
         "qhat": float(sets.qhat),
         "n_cal": float(sets.n_cal),
+        "miss_rate": rate,
+        "kupiec_lr": lr,
+        "kupiec_p": kp,
+        "dgp": dgp_label,
+        "claim": "research_metric_only",
     }
+    if dgp_label != "fixture" and hits.size:
+        date_rate, date_t, date_p, n_dates = grouped_mean_tstat(
+            hits, np.asarray(sets.dates)[sets.test_mask], target=float(alpha)
+        )
+        out["date_clustered_miss_rate"] = date_rate
+        out["date_clustered_t"] = date_t
+        out["date_clustered_p"] = date_p
+        out["date_clustered_n_dates"] = float(n_dates)
+    if dgp_label == "fixture":
+        out["seed"] = float(seed)
+    return out

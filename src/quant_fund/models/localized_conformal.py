@@ -82,31 +82,14 @@ def effective_sample_size(weights: Array) -> float:
     return (s1 * s1) / s2
 
 
-def _weighted_quantile_higher(values: Array, weights: Array, level: float) -> float:
-    """Weighted analog of ``np.quantile(..., method='higher')``."""
-    order = np.argsort(values, kind="mergesort")
-    v = values[order]
-    w = weights[order]
-    n = int(v.size)
-    if n == 1:
-        return float(v[0])
-    q = float(np.clip(level, 0.0, 1.0))
-    total = float(np.sum(w))
-    starts = np.zeros(n, dtype=float)
-    starts[1:] = (n * np.cumsum(w)[:-1]) / total
-    idx = int(np.searchsorted(starts, q * (n - 1), side="left"))
-    return float(v[min(idx, n - 1)])
-
-
 def localized_conformal_quantile(scores: Array, weights: Array, alpha: float) -> float:
     """Finite-sample weighted conformal quantile of residual scores.
 
-    Same (1 + sum w) level as Tibshirani weighted conformal: rescale w to
-    mean 1 and take the ``higher`` weighted quantile at
-
-        min(1, ceil((1-alpha) * (1 + sum w)) / sum w).
-
-    Uniform weights match ``conformal_quantile``.
+    Tibshirani et al. (2019) normalized-cumulative-weight quantile; uniform
+    weights reproduce the finite-sample split-conformal order statistic of
+    ``conformal_quantile``. When the level is not attainable from the
+    calibration sample we clip to the sample max so downstream intervals
+    stay finite (this cannot cover at ``1 - alpha``).
     """
     s = _as_1d(scores)
     w = _as_1d(weights)
@@ -120,9 +103,13 @@ def localized_conformal_quantile(scores: Array, weights: Array, alpha: float) ->
         return 0.0
     n = int(s.size)
     w = w * (n / float(np.sum(w)))
-    total = float(np.sum(w))
-    level = min(1.0, float(np.ceil((1.0 - alpha) * (1.0 + total)) / total))
-    return _weighted_quantile_higher(s, w, level)
+    order = np.argsort(s, kind="mergesort")
+    s_sorted, w_sorted = s[order], w[order]
+    cumulative = np.cumsum(w_sorted) / (float(np.sum(w_sorted)) + 1.0)
+    idx = int(np.searchsorted(cumulative, 1.0 - alpha, side="left"))
+    if idx >= n:
+        return float(s_sorted[-1])
+    return float(s_sorted[idx])
 
 
 def _synthetic_het_vol(
@@ -237,19 +224,63 @@ def bench_localized_cqr(
     n_test: int = 400,
     alpha: float = 0.10,
     seed: int = 21,
-) -> dict[str, float]:
-    """Coverage and high/low-vol widths on an exchangeable vol mixture. No Sharpe."""
-    y_c, lo_c, hi_c, x_c, y_t, lo_t, hi_t, x_t = _synthetic_het_vol(n_cal, n_test, seed)
+    *,
+    y_cal: Array | None = None,
+    lo_cal: Array | None = None,
+    hi_cal: Array | None = None,
+    x_cal: Array | None = None,
+    y_test: Array | None = None,
+    lo_test: Array | None = None,
+    hi_test: Array | None = None,
+    x_test: Array | None = None,
+    dates_test: Array | None = None,
+    dgp: str | None = None,
+) -> dict[str, float | str]:
+    """Localized CQR coverage/widths. Panel arrays preferred; toy path is ``dgp=fixture``."""
+    panel_args = (y_cal, lo_cal, hi_cal, x_cal, y_test, lo_test, hi_test, x_test)
+    if any(a is not None for a in panel_args):
+        if any(a is None for a in panel_args):
+            raise ValueError("pass all panel cal/test arrays or none")
+        y_c, lo_c, hi_c, x_c = y_cal, lo_cal, hi_cal, x_cal  # type: ignore[assignment]
+        y_t, lo_t, hi_t, x_t = y_test, lo_test, hi_test, x_test  # type: ignore[assignment]
+        dgp_label = dgp or "panel"
+    else:
+        y_c, lo_c, hi_c, x_c, y_t, lo_t, hi_t, x_t = _synthetic_het_vol(n_cal, n_test, seed)
+        dgp_label = "fixture"
+    y_c = np.asarray(y_c, dtype=float)
+    lo_c = np.asarray(lo_c, dtype=float)
+    hi_c = np.asarray(hi_c, dtype=float)
+    x_c = np.asarray(x_c, dtype=float)
+    y_t = np.asarray(y_t, dtype=float)
+    lo_t = np.asarray(lo_t, dtype=float)
+    hi_t = np.asarray(hi_t, dtype=float)
+    x_t = np.asarray(x_t, dtype=float)
     model = LocalizedCQR(alpha).calibrate(y_c, lo_c, hi_c, x_c)
     plo, phi = model.predict_sets(lo_t, hi_t, x_t)
     local = set_metrics(y_t, plo, phi)
     width = phi - plo
-    high = x_t > 1.0
-    low = ~high
+    if dgp_label == "fixture":
+        # Toy mixture is coded around the 1.0 vol threshold (see _synthetic_het_vol).
+        high = np.asarray(x_t, dtype=float) > 1.0
+        low = ~high
+    else:
+        med_x = float(np.nanmedian(x_t)) if np.isfinite(x_t).any() else 1.0
+        # Keep the upper atom when the median equals the high regime.
+        high = np.isfinite(x_t) & (x_t >= med_x)
+        low = np.isfinite(x_t) & (x_t < med_x)
     q_g = conformal_quantile(cqr_scores(y_c, lo_c, hi_c), alpha)
     glo, ghi = expand_interval(lo_t, hi_t, q_g)
     plain = set_metrics(y_t, glo, ghi)
-    return {
+    from quant_fund.metrics.conformal import covered
+    from quant_fund.metrics.probability import kupiec_pof
+
+    hits = 1.0 - covered(y_t, plo, phi)
+    hits = hits[np.isfinite(hits)]
+    if hits.size >= 10:
+        rate, lr, kp = kupiec_pof(hits, alpha)
+    else:
+        rate, lr, kp = float("nan"), float("nan"), float("nan")
+    out: dict[str, float | str] = {
         "coverage": local.coverage,
         "mean_width": local.mean_width,
         "median_width": local.median_width,
@@ -260,5 +291,25 @@ def bench_localized_cqr(
         "n": float(local.n),
         "alpha": float(alpha),
         "bandwidth": float(model.bandwidth_),
-        "seed": float(seed),
+        "miss_rate": rate,
+        "kupiec_lr": lr,
+        "kupiec_p": kp,
+        "dgp": dgp_label,
+        "claim": "research_metric_only",
     }
+    if dates_test is not None:
+        from quant_fund.metrics.inference import grouped_mean_tstat
+
+        date_arr = np.asarray(dates_test).reshape(-1)
+        if date_arr.size != y_t.size:
+            raise ValueError("dates_test must align with y_test")
+        mean_miss, t_miss, p_miss, n_dates = grouped_mean_tstat(
+            1.0 - covered(y_t, plo, phi), date_arr, target=float(alpha)
+        )
+        out["date_clustered_miss_rate"] = mean_miss
+        out["date_clustered_t"] = t_miss
+        out["date_clustered_p"] = p_miss
+        out["date_clustered_n_dates"] = float(n_dates)
+    if dgp_label == "fixture":
+        out["seed"] = float(seed)
+    return out

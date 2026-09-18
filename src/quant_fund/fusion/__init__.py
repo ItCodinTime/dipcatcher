@@ -1,3 +1,13 @@
-from quant_fund.fusion.engine import ablation_inputs, fuse_signals
+from quant_fund.fusion.engine import (
+    CrossFittedStackingResult,
+    ablation_inputs,
+    cross_fitted_ridge_stack,
+    fuse_signals,
+)
 
-__all__ = ["ablation_inputs", "fuse_signals"]
+__all__ = [
+    "CrossFittedStackingResult",
+    "ablation_inputs",
+    "cross_fitted_ridge_stack",
+    "fuse_signals",
+]

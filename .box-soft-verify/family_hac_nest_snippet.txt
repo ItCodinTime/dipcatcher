@@ -1,0 +1,100 @@
+def kyle_ofi_family_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` ``family`` stamp when diagnostics present.
+
+    When any nest diagnostic marker is present/finite: ``family`` must be exactly
+    ``kyle_ofi``. Also fail-closed when a kyle-shaped receipt (λ/residual/ofi_depth
+    keys) carries a wrong ``family`` — ``_kyle_ofi_blob`` would otherwise skip.
+    Bare empty / northset-only scalars → skip. Research diagnostic only.
+    """
+    if not isinstance(blob, dict):
+        return []
+    nest = blob.get("kyle_ofi")
+    if isinstance(nest, dict):
+        kyle = nest
+    elif blob.get("family") == "kyle_ofi":
+        kyle = blob
+    elif any(
+        k in blob
+        for k in (
+            "kyle_lambda_depth_mean",
+            "kyle_lambda_ofi_mean",
+            "kyle_lambda_ofi_depth_spearman",
+            "kyle_lambda_dispersion_window",
+            "residual_ofi_ex_depth_fwd_delta_mid_mean_spearman",
+        )
+    ):
+        kyle = blob
+    else:
+        return []
+    if not _kyle_ofi_has_nest_diagnostic_marker(kyle):
+        return []
+    if kyle.get("family") != "kyle_ofi":
+        return ["kyle_ofi_family_invalid"]
+    return []
+
+
+def kyle_ofi_hac_lags_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify optional ``hac_lags`` stamp on nested ``kyle_ofi``.
+
+    When ``hac_lags`` is present: must be finite and ≥ 0 (integer-valued).
+    Absent → skip (receipt may omit the key without editing ``kyle_ofi.py``).
+    Also: when both depth rolling HAC lo/hi finite, require lo ≤ hi (and ofi twin).
+    Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    errors: list[str] = []
+    if "hac_lags" in kyle and kyle.get("hac_lags") is not None:
+        try:
+            x = float(kyle["hac_lags"])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return ["kyle_ofi_hac_lags_non_numeric"]
+        if x != x or abs(x) == float("inf"):
+            errors.append("kyle_ofi_hac_lags_non_finite")
+        elif x < 0:
+            errors.append("kyle_ofi_hac_lags_negative")
+        elif abs(x - round(x)) > 1e-12:
+            errors.append("kyle_ofi_hac_lags_not_integer")
+
+    def _pair_lo_hi(lo_key: str, hi_key: str, err: str) -> None:
+        if lo_key not in kyle or hi_key not in kyle:
+            return
+        try:
+            lo = float(kyle[lo_key])  # type: ignore[arg-type]
+            hi = float(kyle[hi_key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return
+        if lo != lo or hi != hi:
+            return
+        if lo > hi:
+            errors.append(err)
+
+    _pair_lo_hi(
+        "kyle_lambda_depth_rolling_hac_lo",
+        "kyle_lambda_depth_rolling_hac_hi",
+        "kyle_ofi_depth_rolling_hac_lo_gt_hi",
+    )
+    _pair_lo_hi(
+        "kyle_lambda_ofi_rolling_hac_lo",
+        "kyle_lambda_ofi_rolling_hac_hi",
+        "kyle_ofi_ofi_rolling_hac_lo_gt_hi",
+    )
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. family + hac_lags)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    return errors

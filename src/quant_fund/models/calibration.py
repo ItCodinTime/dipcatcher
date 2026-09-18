@@ -11,7 +11,11 @@ from quant_fund.models.base import JoblibMixin, ModelMeta
 
 
 class ProbabilityCalibrator(JoblibMixin):
+    _METHODS = ("isotonic", "platt")
+
     def __init__(self, method: str = "isotonic") -> None:
+        if method not in self._METHODS:
+            raise ValueError(f"calibration method must be one of {self._METHODS}, got {method!r}")
         self.method = method
         self.iso = IsotonicRegression(out_of_bounds="clip")
         self.platt = LogisticRegression()
@@ -36,10 +40,14 @@ class ProbabilityCalibrator(JoblibMixin):
     def predict(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         s = np.asarray(scores, dtype=float)
         if not self.fitted:
-            return s
+            raise RuntimeError(
+                "ProbabilityCalibrator is not fitted: returning raw scores as "
+                "'probabilities' would masquerade an uncalibrated identity as a "
+                "calibrated forecast. Call fit() with >=10 finite rows first."
+            )
         if self.method == "platt":
-            return self.platt.predict_proba(s.reshape(-1, 1))[:, 1]
-        return self.iso.predict(s)
+            return np.asarray(self.platt.predict_proba(s.reshape(-1, 1))[:, 1], dtype=np.float64)
+        return np.asarray(self.iso.predict(s), dtype=np.float64)
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(family="calibration", name=self.method, version="v1")

@@ -1,12 +1,26 @@
 services:
   mlflow:
+    # NOTE: the Python client is pinned by uv.lock (mlflow 3.x) while this
+    # server image is 2.17.2 — align them before relying on newer registry
+    # features. Host binding stays loopback; the server is unauthenticated.
     image: ghcr.io/mlflow/mlflow:v2.17.2
     profiles: ["optional"]
+    restart: unless-stopped
     ports:
-      - "5000:5000"
-    command: mlflow server --host 0.0.0.0 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlruns
+      - "127.0.0.1:5000:5000"
+    command: mlflow server --host 0.0.0.0 --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlruns
     volumes:
+      # SQLite backend store lives on its own volume so removing the container
+      # cannot wipe experiment history.
+      - mlflow-db:/mlflow
       - mlflow-data:/mlruns
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
 volumes:
   mlflow-data:
+  mlflow-db:

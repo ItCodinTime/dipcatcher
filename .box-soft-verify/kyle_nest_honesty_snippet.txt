@@ -1,0 +1,110 @@
+# Soft-verify: nested northset["kyle_ofi"] residual_flow / dispersion honesty
+# (Sergeant / research diagnostic only — never live Sharpe / promotion.)
+# ---------------------------------------------------------------------------
+
+_KYLE_RESIDUAL_SPEARMAN_KEYS = (
+    "residual_ofi_ex_depth_fwd_delta_mid_mean_spearman",
+    "residual_depth_ex_ofi_fwd_delta_mid_mean_spearman",
+    "residual_depth_ex_ofi_fwd_ret_1_mean_spearman",
+    "residual_ofi_ex_depth_fwd_ret_1_mean_spearman",
+)
+
+_KYLE_FORBIDDEN_TOKENS = ("sharpe", "sortino", "calmar", "pnl", "nav", "live_pnl_claim")
+
+
+def _kyle_ofi_blob(blob: object) -> dict | None:
+    """Return nested kyle_ofi dict from a northset family blob, or the blob itself."""
+    if not isinstance(blob, dict):
+        return None
+    if blob.get("family") == "kyle_ofi":
+        return blob
+    nest = blob.get("kyle_ofi")
+    return nest if isinstance(nest, dict) else None
+
+
+def kyle_residual_flow_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify residual_flow receipt keys on nested ``kyle_ofi`` (or bare receipt).
+
+    When any residual_* spearman key is present and finite:
+    - ``research_only`` must be True
+    - ``claim`` must be ``research_diagnostic_only``
+    - companion ``*_t`` / ``*_n_dates`` keys must exist for that spearman
+    - no Sharpe/pnl-token keys
+    Missing nest / non-finite residual keys → skip (empty).
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    active = []
+    for key in _KYLE_RESIDUAL_SPEARMAN_KEYS:
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:  # finite
+            active.append(key)
+    if not active:
+        return []
+
+    errors: list[str] = []
+    if kyle.get("research_only") is not True:
+        errors.append("kyle_ofi_residual_research_only_missing")
+    if kyle.get("claim") != "research_diagnostic_only":
+        errors.append("kyle_ofi_residual_claim_invalid")
+    for key in active:
+        stem = key[: -len("_mean_spearman")]
+        if f"{stem}_t" not in kyle:
+            errors.append(f"kyle_ofi_residual_missing_t:{stem}")
+        if f"{stem}_n_dates" not in kyle:
+            errors.append(f"kyle_ofi_residual_missing_n_dates:{stem}")
+    leaked = [k for k in kyle if any(tok in str(k).lower() for tok in _KYLE_FORBIDDEN_TOKENS)]
+    if leaked:
+        errors.append("kyle_ofi_residual_forbidden_metric_keys")
+    return errors
+
+
+def kyle_lambda_dispersion_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify Kyle λ dispersion stamps when present on nested ``kyle_ofi``.
+
+    If ``kyle_lambda_depth_p50`` (or ofi twin) is finite: require research_only,
+    research_diagnostic_only claim, and no Sharpe/pnl keys. Skip if absent/NaN.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    markers = ("kyle_lambda_depth_p50", "kyle_lambda_ofi_p50", "kyle_lambda_dispersion_window")
+    present = False
+    for key in markers:
+        if key not in kyle:
+            continue
+        if key == "kyle_lambda_dispersion_window":
+            present = True
+            break
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:
+            present = True
+            break
+    if not present:
+        return []
+    errors: list[str] = []
+    if kyle.get("research_only") is not True:
+        errors.append("kyle_ofi_dispersion_research_only_missing")
+    if kyle.get("claim") != "research_diagnostic_only":
+        errors.append("kyle_ofi_dispersion_claim_invalid")
+    leaked = [k for k in kyle if any(tok in str(k).lower() for tok in _KYLE_FORBIDDEN_TOKENS)]
+    if leaked:
+        errors.append("kyle_ofi_dispersion_forbidden_metric_keys")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: residual_flow + dispersion soft-verify for northset/kyle nest."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    return errors

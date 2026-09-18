@@ -42,7 +42,13 @@ Forecasts already carry conformal sets (`interval_lo`, `interval_hi`). Those set
 
 Use **Option A** in `quant_fund.portfolio.interval_risk`. `apply_interval_caps` returns `(capped_weights, caps)` and does **not** renormalize. Missing, NaN, infinite, or inverted intervals fail closed to cap 0. `bench_interval_caps` reports mean cap, fraction binding, and mean width only — no Sharpe.
 
-`risk_gate.py` and `optimizer.py` stay unchanged. Callers pass these caps as an extra box or a post-optimizer clip.
+`risk_gate.py` remains unchanged. Callers may pass these caps as an extra optimizer
+box or apply them after optimization. A post-optimizer caller must preserve the
+optimizer's hard turnover contract: if the nearest point inside the interval
+boxes still exceeds `turnover_limit`, it must fail closed with
+`OptimizationInfeasible`; when feasible, it may project toward the capped target
+within the remaining L1 turnover budget. Silent emission of a turnover-violating
+book is forbidden.
 
 ## Consequences
 

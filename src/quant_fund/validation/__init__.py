@@ -1,11 +1,6 @@
-from quant_fund.validation.cpcv import combinatorial_purged_cv
-from quant_fund.validation.multiple_testing import TrialLedger
-from quant_fund.validation.walk_forward import Fold, assert_no_label_overlap, walk_forward
+"""Walk-forward, purging, embargo, CPCV, and fail-closed validation gates."""
 
-__all__ = [
-    "Fold",
-    "TrialLedger",
-    "assert_no_label_overlap",
-    "combinatorial_purged_cv",
-    "walk_forward",
-]
+from quant_fund.validation.gates import validate_candidate
+from quant_fund.validation.walk_forward import fold_ic_stability, walk_forward
+
+__all__ = ["fold_ic_stability", "validate_candidate", "walk_forward"]

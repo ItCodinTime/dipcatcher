@@ -6,19 +6,197 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
       - name: Sync
-        run: uv sync --all-groups
+        run: uv sync --frozen --all-groups
       - name: Ruff
         run: uv run ruff check src tests
+      - name: Ruff format check
+        run: uv run ruff format --check src tests
       - name: Mypy
         run: uv run mypy src/quant_fund
+      - name: Static security analysis
+        run: uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Lockfile consistency
+        run: uv lock --check
+      - name: Dependency vulnerability audit
+        run: |
+          set -o pipefail
+          uv export --format requirements.txt --no-hashes --no-emit-project \
+            --all-extras --all-groups \
+            | uvx --from pip-audit==2.10.1 pip-audit --strict --format json -r /dev/stdin \
+            | tee dependency-audit.json
+      - name: Upload dependency audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: dipcatcher-dependency-audit
+          path: dependency-audit.json
+          if-no-files-found: error
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
       - name: Pytest
-        run: uv run pytest -q -m "not network"
+        run: uv run pytest -q -m "not network" --cov --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage
+        if: matrix.python == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dipcatcher-coverage
+          path: coverage.xml
+          if-no-files-found: error
+
+  smoke:
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Collect paper and analytics tests
+        run: |
+          uv run pytest --collect-only -q \
+            tests/unit/test_ledger_schema.py \
+            tests/unit/test_wave6_analytics.py \
+            tests/property/test_nav_resume_identity.py \
+            tests/unit/test_paper_loop.py \
+            tests/unit/test_paper_resume_promotion.py \
+            tests/unit/test_analytics.py
+      - name: Synthetic research smoke
+        run: uv run dipcatcher research --config configs/research.yaml
+      - name: Data lineage health
+        run: |
+          uv run dipcatcher doctor --config configs/research.yaml | tee doctor.txt
+          grep -q '^data_manifest: ok$' doctor.txt
+          grep -q '^live_allowed: False$' doctor.txt
+      - name: Paper shadow smoke
+        run: |
+          uv run dipcatcher paper --config configs/paper.yaml --max-steps 2 > paper-smoke.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from quant_fund.paper.ledger import validate_ledger_schema
+
+          text = Path("paper-smoke.json").read_text()
+          lines = text.splitlines()
+          try:
+              start = next(i for i, line in enumerate(lines) if line.strip() == "{")
+          except StopIteration:
+              raise SystemExit("paper smoke did not emit a result")
+          result = json.loads("\n".join(lines[start:]))
+          if result.get("research_only") is not True:
+              raise SystemExit("paper smoke is not research-only")
+          if result.get("live_pnl_claim") is not False:
+              raise SystemExit("paper smoke made a live P&L claim")
+          for name in ("orders", "equity", "broker_state", "promotion_dry_run"):
+              if not Path(result["paths"][name]).is_file():
+                  raise SystemExit(f"paper artifact missing: {name}")
+          ledger = validate_ledger_schema(Path(result["paths"]["orders"]).parent)
+          if not ledger["ok"]:
+              raise SystemExit(f"paper ledger invalid: {ledger['errors']}")
+          print("validated paper shadow smoke")
+          PY
+      - name: Upload paper shadow evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dipcatcher-paper-shadow-smoke
+          path: data/metadata/paper/
+          if-no-files-found: error
+      - name: Validate research artifact
+        run: |
+          uv run dipcatcher verify-research
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from quant_fund.research.verify import REQUIRED_BENCHMARK_FAMILIES
+
+          path = Path("data/metadata/research/latest.json")
+          notebook = json.loads(path.read_text())
+          provenance = notebook["provenance"]
+          required = {
+              "run_id", "git_revision", "config_sha256", "dataset_sha256",
+              "git_worktree_sha256", "dataset_content_sha256", "row_count", "column_count",
+              "point_in_time", "execution_claim", "benchmark_catalog_version",
+          }
+          missing = required - provenance.keys()
+          if missing:
+              raise SystemExit(f"missing provenance fields: {sorted(missing)}")
+          if provenance["point_in_time"] is not True:
+              raise SystemExit("research artifact is not marked point-in-time")
+          if provenance["execution_claim"] != "research_only":
+              raise SystemExit("research artifact has an invalid execution claim")
+          if provenance["benchmark_catalog_version"] != 2:
+              raise SystemExit("research artifact has an invalid benchmark catalog version")
+          if notebook["data_source"] != "SYNTHETIC":
+              raise SystemExit("CI smoke must remain explicitly synthetic")
+          scorecard = notebook.get("scorecard", {})
+          missing_families = REQUIRED_BENCHMARK_FAMILIES - scorecard.keys()
+          if missing_families:
+              raise SystemExit(f"missing benchmark families: {sorted(missing_families)}")
+          if not scorecard or not all(
+              item.get("executed") and item.get("nonempty")
+              and item.get("finite_observation")
+              and item.get("forbidden_metrics_absent")
+              for item in scorecard.values()
+          ):
+              raise SystemExit("research scorecard is incomplete or contains forbidden metrics")
+          run_json = Path(notebook["artifacts"]["immutable_json"])
+          run_md = Path(notebook["artifacts"]["immutable_markdown"])
+          if not run_json.is_file() or not run_md.is_file():
+              raise SystemExit("immutable research run artifacts are missing")
+          print(f"validated research run {provenance['run_id']}")
+          PY
+      - name: Upload research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dipcatcher-research-notebook
+          path: |
+            data/metadata/research/latest.json
+            data/metadata/research/latest.md
+            data/metadata/research/runs/

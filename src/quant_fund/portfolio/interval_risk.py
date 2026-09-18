@@ -46,7 +46,7 @@ def interval_width(lo: Array | float, hi: Array | float) -> Array:
 
 def downside(lo: Array | float) -> Array:
     """How negative the lower endpoint is: ``max(0, -lo)``."""
-    return np.maximum(0.0, -np.asarray(lo, dtype=float))
+    return np.asarray(np.maximum(0.0, -np.asarray(lo, dtype=float)), dtype=np.float64)
 
 
 def interval_refs(
@@ -154,10 +154,13 @@ def bench_interval_caps(
     )
     w = np.asarray(weights, dtype=float)
     widths = interval_width(lo, hi)
+    lo_a, hi_a = _as_aligned(lo, hi)
+    valid = np.isfinite(lo_a) & np.isfinite(hi_a) & (hi_a >= lo_a)
+    measured_widths = np.where(valid, widths, np.nan)
     return {
         "mean_cap": float(np.mean(caps)),
         "frac_binding": float(np.mean(np.abs(w) > caps)),
-        "mean_width": float(np.nanmean(widths)),
+        "mean_width": float(np.nanmean(measured_widths)),
         "n": float(caps.size),
         "gross_after": float(np.sum(np.abs(capped))),
     }

@@ -1,8 +1,9 @@
 """Jackknife+ leave-one-out conformal wrapper.
 
 Barber, Candès, Ramdas, Tibshirani (2021). Finite-sample coverage is ≥ 1-2α.
-Does not reimplement QR. Wraps a residual / quantile predictor, or an exact
-LOO mean±z Gaussian band that updates in O(n).
+That floor is **marginal under exchangeability**, not training-conditional
+(Bian & Barber 2023 caveat). Does not reimplement QR. Wraps a residual /
+quantile predictor, or an exact LOO mean±z Gaussian band that updates in O(n).
 """
 
 from __future__ import annotations
@@ -44,6 +45,10 @@ def loo_mean_and_scale(y: Array) -> tuple[Array, Array]:
     """
     y = np.asarray(y, dtype=float).reshape(-1)
     n = int(y.size)
+    if n < 2:
+        # Leave-one-out mean of a single observation is undefined (0/0);
+        # fail closed rather than emit NaN + a RuntimeWarning.
+        return np.full(n, np.nan), np.zeros(n, dtype=float)
     mu = float(np.mean(y))
     loc = (n * mu - y) / (n - 1)
     if n < 3:
@@ -73,7 +78,11 @@ def _jackknife_plus_quantiles(lo_ens: Array, hi_ens: Array, alpha: float) -> tup
 
 
 class JackknifePlus(JoblibMixin):
-    """Leave-one-out conformal wrapper. Guarantee is 1-2α, not 1-α."""
+    """Leave-one-out conformal wrapper. Guarantee is 1-2α, not 1-α.
+
+    Floor is marginal under exchangeability (Barber–Candès 2021),
+    not training-conditional (Bian–Barber 2023).
+    """
 
     def __init__(
         self,
@@ -150,7 +159,8 @@ class JackknifePlus(JoblibMixin):
         if not self._ready():
             return np.full(lo.size, np.nan), np.full(hi.size, np.nan)
         scores = self.scores_
-        assert scores is not None
+        if scores is None:
+            raise RuntimeError("jackknife+ model has no fitted scores")
         qlo = lo[:, None] - scores[None, :]
         qhi = hi[:, None] + scores[None, :]
         return _jackknife_plus_quantiles(qlo, qhi, self.alpha)
@@ -176,7 +186,8 @@ class JackknifePlus(JoblibMixin):
         sc = np.maximum(sc, 1e-12)
         loc = self.loo_loc_
         scores = self.scores_
-        assert loc is not None and scores is not None
+        if loc is None or scores is None:
+            raise RuntimeError("jackknife+ model has incomplete fitted state")
         half = scores[None, :] * sc[:, None]
         qlo = mid[:, None] + loc[None, :] - half
         qhi = mid[:, None] + loc[None, :] + half
@@ -192,10 +203,21 @@ class JackknifePlus(JoblibMixin):
                 "n": self.n_,
                 "z": self.z,
                 "coverage_identity": "1-2*alpha",
+                # Barber–Candès–Ramdas–Tibshirani 2021: marginal under exchangeability.
+                # Not training-conditional (Bian–Barber 2023 caveat). Research-only.
+                "coverage_guarantee_scope": "marginal_exchangeable",
+                "coverage_guarantee_claim": (
+                    "coverage floor is marginal under exchangeability; not training-conditional"
+                ),
+                "research_only": True,
             },
         )
 
 
 def jackknife_plus_coverage_level(alpha: float) -> float:
-    """Classic Jackknife+ finite-sample lower bound. Not 1-α."""
+    """Classic Jackknife+ finite-sample lower bound (1-2α). Not 1-α.
+
+    Marginal under exchangeability (Barber–Candès–Ramdas–Tibshirani 2021);
+    not a training-conditional guarantee (Bian–Barber 2023).
+    """
     return 1.0 - 2.0 * float(alpha)

@@ -188,17 +188,30 @@ class LGBMLambdaRanker(JoblibMixin):
 
 
 def _to_relevance(y: NDArray[np.float64], group: NDArray[np.int32]) -> NDArray[np.int32]:
-    """Map returns to integer relevance 0-4 within each date group."""
+    """Map returns to integer relevance 0-4 within each date group.
+
+    Fail-closed on degenerate groups: an all-NaN (or otherwise
+    non-computable-quantile) group must not silently mint all-zero relevance
+    labels that read as "every name is lowest relevance". Such entries are left
+    at 0 and the group's finite members are still digitized; NaN members are
+    never assigned a fabricated quintile.
+    """
     rel = np.zeros(y.shape[0], dtype=np.int32)
     start = 0
     for g in group:
         sl = y[start : start + int(g)]
-        # quintiles
-        try:
+        finite = np.isfinite(sl)
+        if finite.any():
+            # Quintiles over finite members only. A group whose quantiles are not
+            # computable (e.g. all-NaN slice) must not silently mint all-zero
+            # relevance labels that read as "every name is lowest relevance" —
+            # such a group is left at 0 rather than fabricated.
             qs = np.nanquantile(sl, [0.2, 0.4, 0.6, 0.8])
-            rel[start : start + int(g)] = np.digitize(sl, qs)
-        except ValueError:
-            pass
+            if np.isfinite(qs).all():
+                grades = np.digitize(sl, qs)
+                # Non-finite members carry no signal; keep them at grade 0.
+                grades = np.where(finite, grades, 0)
+                rel[start : start + int(g)] = grades
         start += int(g)
     return rel
 

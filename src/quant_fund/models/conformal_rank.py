@@ -96,13 +96,14 @@ def conformal_selection_pvalues(test_scores: Array, null_scores: Array) -> Array
 
 
 def _unique_date_masks(dates: NDArray[Any] | list[object]) -> list[tuple[str, NDArray[np.bool_]]]:
+    """Unique-date masks in chronological key order (ISO keys sort by time).
+
+    The split in ``conformal_topk`` slices the leading groups for calibration,
+    so first-appearance order on an unsorted panel would leak late dates into
+    calibration and early dates into test.
+    """
     keys = _date_keys(dates)
-    order: list[str] = []
-    seen: set[str] = set()
-    for key in keys:
-        if key not in seen:
-            seen.add(key)
-            order.append(key)
+    order = sorted(set(keys))
     return [(key, np.array([k == key for k in keys], dtype=bool)) for key in order]
 
 
@@ -273,26 +274,46 @@ def bench_conformal_topk(
     seed: int = 18,
     guarantee: Guarantee = "fdr",
     cal_frac: float = 0.5,
+    *,
+    scores: Array | None = None,
+    labels: Array | None = None,
+    dates: NDArray[np.int64] | Array | None = None,
+    dgp: str | None = None,
 ) -> dict[str, float | str]:
-    """Planted scores = true + noise. Set size, FDR or oracle-topk coverage, n_dates."""
-    scores, labels, dates = planted_rank_panel(n_dates, n_names, noise, seed)
+    """Top-k conformal selection. Panel scores/labels preferred; planted path is ``dgp=fixture``."""
+    if scores is not None or labels is not None or dates is not None:
+        if scores is None or labels is None or dates is None:
+            raise ValueError("pass scores, labels, and dates together for panel path")
+        sc = np.asarray(scores, dtype=float).reshape(-1)
+        lab = np.asarray(labels, dtype=float).reshape(-1)
+        dt = np.asarray(dates)
+        if sc.size != lab.size or sc.size != dt.size:
+            raise ValueError("scores/labels/dates length mismatch")
+        dgp_label = dgp or "panel"
+    else:
+        sc, lab, dt = planted_rank_panel(n_dates, n_names, noise, seed)
+        dgp_label = "fixture"
     result = conformal_topk(
-        scores,
-        labels,
+        sc,
+        lab,
         int(k),
         float(alpha),
-        dates,
+        dt,
         guarantee=guarantee,
         cal_frac=float(cal_frac),
     )
-    return {
+    out: dict[str, float | str] = {
         "set_size": result.set_size,
         "fdr": result.fdr,
         "coverage": result.coverage,
         "n_dates": float(result.n_dates),
         "alpha": float(alpha),
         "k": float(k),
-        "seed": float(seed),
         "qhat": result.qhat,
         "guarantee": result.guarantee,
+        "dgp": dgp_label,
+        "claim": "research_metric_only",
     }
+    if dgp_label == "fixture":
+        out["seed"] = float(seed)
+    return out

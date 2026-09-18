@@ -16,3 +16,25 @@ validation:
   train_bars: 180
   val_bars: 40
   test_bars: 40
+# Transparent fusion on; learned fusion remains off (ADR). Interval caps on.
+fusion:
+  alpha_weight: 1.0
+  confidence_weight: 1.0
+  regime_weight: 1.0
+  risk_weight: 1.0
+  tail_penalty: 1.0
+  liquidity_penalty: 1.0
+  min_executable_alpha: 0.0
+  alpha_scale: 0.005
+  use_fused_for_optimize: true
+  apply_interval_caps: true
+constraints:
+  turnover_limit: 0.4
+  max_adv_participation: 0.10
+promotion:
+  min_mean_ic: 0.0
+  min_cost_adjusted_spread: 0.0
+  max_turnover: 5.0
+  require_leakage_pass: true
+  min_folds: 2
+  min_fold_ic_stability: 0.5

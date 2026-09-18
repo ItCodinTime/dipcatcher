@@ -13,26 +13,41 @@ def apply_cross_sectional(
 ) -> pl.DataFrame:
     out = df
     lo, hi = winsor_p, 1.0 - winsor_p
+    eligible = (
+        pl.col("available_time") <= pl.col("event_time")
+        if "available_time" in df.columns
+        else pl.lit(True)
+    )
     for col in columns:
         g = pl.col(col)
-        q_lo = g.quantile(lo).over("event_time")
-        q_hi = g.quantile(hi).over("event_time")
-        clipped = g.clip(q_lo, q_hi)
-        med = clipped.median().over("event_time")
-        mad = (clipped - med).abs().median().over("event_time")
-        robust_z = (clipped - med) / (1.4826 * mad + 1e-12)
-        rank = g.rank("average").over("event_time")
-        n = pl.len().over("event_time")
-        pct = (rank - 0.5) / n
+        # Late-arriving observations must not influence the cross-section at
+        # their event time.  Nulling them before every aggregate also keeps
+        # the denominator and rank universe PIT-correct.
+        source = pl.when(eligible).then(g).otherwise(None)
+        q_lo = source.quantile(lo).over("event_time")
+        q_hi = source.quantile(hi).over("event_time")
+        clipped_base = source.clip(q_lo, q_hi)
+        clipped = pl.when(eligible).then(clipped_base).otherwise(None)
+        med = clipped_base.median().over("event_time")
+        mad = (clipped_base - med).abs().median().over("event_time")
+        robust_z = (
+            pl.when(eligible).then((clipped_base - med) / (1.4826 * mad + 1e-12)).otherwise(None)
+        )
+        rank = source.rank("average").over("event_time")
+        n = source.count().over("event_time")
+        pct = pl.when(eligible).then((rank - 0.5) / n).otherwise(None)
         out = out.with_columns(
             clipped.alias(f"winsor_{col}"),
             robust_z.alias(f"cs_z_{col}"),
             pct.alias(f"cs_pct_{col}"),
         )
         if sector is not None and sector in out.columns:
-            med_s = clipped.median().over(["event_time", sector])
-            mad_s = (clipped - med_s).abs().median().over(["event_time", sector])
+            med_s = clipped_base.median().over(["event_time", sector])
+            mad_s = (clipped_base - med_s).abs().median().over(["event_time", sector])
             out = out.with_columns(
-                ((clipped - med_s) / (1.4826 * mad_s + 1e-12)).alias(f"cs_z_sector_{col}")
+                pl.when(eligible)
+                .then((clipped_base - med_s) / (1.4826 * mad_s + 1e-12))
+                .otherwise(None)
+                .alias(f"cs_z_sector_{col}")
             )
     return out

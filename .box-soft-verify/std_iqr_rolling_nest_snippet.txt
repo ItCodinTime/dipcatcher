@@ -1,0 +1,92 @@
+def kyle_ofi_std_iqr_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nested ``kyle_ofi`` λ ``std`` / ``iqr`` stamps are ≥ 0 when finite.
+
+    Covers depth/ofi ``kyle_lambda_*_std`` and ``kyle_lambda_*_iqr``. Absent / NaN
+    → skip that key. Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    errors: list[str] = []
+    for key in (
+        "kyle_lambda_depth_std",
+        "kyle_lambda_ofi_std",
+        "kyle_lambda_depth_iqr",
+        "kyle_lambda_ofi_iqr",
+    ):
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append(f"kyle_ofi_{key}_non_numeric")
+            continue
+        if x != x:
+            continue
+        if abs(x) == float("inf"):
+            errors.append(f"kyle_ofi_{key}_non_finite")
+        elif x < 0:
+            errors.append(f"kyle_ofi_{key}_negative")
+    return errors
+
+
+def kyle_ofi_rolling_mean_hac_band_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify rolling mean present/finite when HAC band lo/hi are finite.
+
+    For depth and ofi sides: if both ``*_rolling_hac_lo`` and ``*_rolling_hac_hi``
+    are finite, require ``*_rolling_mean`` present and finite. Also lo ≤ hi
+    (parity with hac_lags helper). Absent band → skip. Research diagnostic only.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> float | None:
+        if key not in kyle:
+            return None
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        if x != x or abs(x) == float("inf"):
+            return None
+        return x
+
+    errors: list[str] = []
+    for side in ("depth", "ofi"):
+        lo = _finite(f"kyle_lambda_{side}_rolling_hac_lo")
+        hi = _finite(f"kyle_lambda_{side}_rolling_hac_hi")
+        if lo is None or hi is None:
+            continue
+        if lo > hi:
+            errors.append(f"kyle_ofi_{side}_rolling_hac_lo_gt_hi")
+        mean = _finite(f"kyle_lambda_{side}_rolling_mean")
+        if mean is None:
+            errors.append(f"kyle_ofi_{side}_rolling_mean_missing_with_hac_band")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. std/iqr + rolling mean)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    errors.extend(kyle_ofi_std_iqr_honesty_errors(blob))
+    errors.extend(kyle_ofi_rolling_mean_hac_band_honesty_errors(blob))
+    return errors

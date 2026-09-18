@@ -1,0 +1,79 @@
+def kyle_ofi_dispersion_window_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``kyle_lambda_dispersion_window`` int stamp on nested ``kyle_ofi``.
+
+    When dispersion markers present (``kyle_lambda_depth_p50`` / ``kyle_lambda_ofi_p50``
+    finite, or window key expected): window must be present, finite, integer-valued,
+    and ≥ 1. Absent markers and absent window → skip. Research diagnostic only.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> bool:
+        if key not in kyle:
+            return False
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return False
+        return x == x
+
+    disp_markers = _finite("kyle_lambda_depth_p50") or _finite("kyle_lambda_ofi_p50")
+    if "kyle_lambda_dispersion_window" not in kyle or kyle.get("kyle_lambda_dispersion_window") is None:
+        return ["kyle_ofi_dispersion_window_missing"] if disp_markers else []
+    try:
+        x = float(kyle["kyle_lambda_dispersion_window"])  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ["kyle_ofi_dispersion_window_non_numeric"]
+    errors: list[str] = []
+    if x != x or abs(x) == float("inf"):
+        errors.append("kyle_ofi_dispersion_window_non_finite")
+    elif x < 1:
+        errors.append("kyle_ofi_dispersion_window_lt_one")
+    elif abs(x - round(x)) > 1e-12:
+        errors.append("kyle_ofi_dispersion_window_not_integer")
+    return errors
+
+
+def kyle_ofi_diagnostic_string_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify optional nest ``diagnostic`` string stamp.
+
+    Full ``bench_kyle_ofi_fused`` omits ``diagnostic`` (skip). Sub-receipts
+    (residual / λ / ofi_depth_corr) stamp it: when the key is present it must be
+    a nonempty string without Sharpe/pnl tokens. Research diagnostic only.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    if "diagnostic" not in kyle:
+        return []
+    v = kyle.get("diagnostic")
+    if v is None or not isinstance(v, str) or not str(v).strip():
+        return ["kyle_ofi_diagnostic_empty"]
+    s = str(v).strip()
+    if any(tok in s.lower() for tok in _KYLE_FORBIDDEN_TOKENS):
+        return ["kyle_ofi_diagnostic_forbidden_token"]
+    return []
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. dispersion_window + diagnostic)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    return errors

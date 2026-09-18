@@ -162,14 +162,16 @@ class QuantileThompson:
             raise ValueError(f"expected {self._d} features, got {d}")
 
     def _mean_theta(self) -> NDArray[np.float64]:
-        assert self._a is not None and self._b is not None
+        if self._a is None or self._b is None:
+            raise RuntimeError("quantile bandit has no initialized posterior")
         return np.linalg.solve(self._a, self._b)
 
     def _refit(self) -> None:
         if not self._dirty:
             return
         self._dirty = False
-        assert self._d is not None
+        if self._d is None:
+            raise RuntimeError("quantile bandit has no initialized feature dimension")
         if not self._xs:
             return
         x = np.stack(self._xs, axis=0)
@@ -191,7 +193,8 @@ class QuantileThompson:
         xx = np.where(np.isfinite(xx), xx, 0.0)
         self._ensure_dim(int(xx.shape[1]))
         self._refit()
-        assert self._beta is not None and self._prec is not None
+        if self._beta is None or self._prec is None:
+            raise RuntimeError("quantile bandit refit produced incomplete state")
         tau_idx = int(self.rng.integers(0, self.n_quantiles))
         beta = _draw_gaussian(self._beta[tau_idx], self._prec[tau_idx], self.rng)
         scores = xx @ beta
@@ -202,7 +205,8 @@ class QuantileThompson:
             return
         v = _finite_row(context)
         self._ensure_dim(int(v.size))
-        assert self._a is not None and self._b is not None
+        if self._a is None or self._b is None:
+            raise RuntimeError("quantile bandit has no initialized posterior")
         self._a = self._a + np.outer(v, v)
         self._b = self._b + float(reward) * v
         self._xs.append(v)

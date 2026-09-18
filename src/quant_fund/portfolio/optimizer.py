@@ -24,20 +24,32 @@ def optimize_mean_variance(
     beta_loadings: Array | None = None,
     tc_linear: Array | None = None,
     scenarios: Array | None = None,
+    adv_dollars: Array | None = None,
+    nav: float = 1.0,
 ) -> tuple[Array, OptimizationDiagnostics]:
     import cvxpy as cp
 
     a = np.asarray(alpha, dtype=float)
     n = a.size
+    if a.ndim != 1 or n == 0 or not np.isfinite(a).all():
+        raise ValueError("alpha must be a non-empty finite 1-D array")
     sig, diag = repair_psd(np.asarray(sigma, dtype=float), config.train.psd_eigen_tol)
+    if sig.shape != (n, n):
+        raise ValueError("sigma must have one row and column per alpha")
     w = cp.Variable(n)
     wp = np.asarray(w_prev, dtype=float)
     if wp.size != n:
-        wp = np.zeros(n)
+        raise ValueError("w_prev must have one value per alpha")
+    if wp.ndim != 1 or not np.isfinite(wp).all():
+        raise ValueError("w_prev must be a finite 1-D array")
     tc = np.ones(n) if tc_linear is None else np.asarray(tc_linear, dtype=float)
+    if tc.shape != (n,) or not np.isfinite(tc).all() or np.any(tc < 0):
+        raise ValueError("tc_linear must be a finite non-negative vector matching alpha")
     risk = cp.quad_form(w, sig)
     turnover = cp.norm1(w - wp)
     tcost = config.optimizer.lambda_tc * (tc @ cp.abs(w - wp))
+    # Explicit soft turnover penalty (distinct from linear TC and hard limit).
+    turn_pen = float(getattr(config.optimizer, "lambda_turnover", 0.0) or 0.0) * turnover
     cons = config.constraints
     constraints = [
         cp.norm1(w) <= cons.gross_leverage,
@@ -50,27 +62,48 @@ def optimize_mean_variance(
         w >= cons.name_min,
         turnover <= cons.turnover_limit,
     ]
+    # HARD capacity: |Δw_i| * nav / ADV_i <= max_adv_participation (when ADV provided)
+    if adv_dollars is not None and cons.max_adv_participation is not None:
+        adv = np.asarray(adv_dollars, dtype=float).reshape(-1)
+        if adv.size != n:
+            raise ValueError("adv_dollars must have one value per asset")
+        if not np.isfinite(adv).all() or np.any(adv <= 0):
+            raise ValueError("adv_dollars must be finite and positive")
+        if not np.isfinite(nav) or nav <= 0:
+            raise ValueError("nav must be finite and positive when ADV capacity is enabled")
+        adv_safe = adv
+        # |w - wp| * nav / adv <= cap  ⇒  |w - wp| <= cap * adv / nav
+        cap = float(cons.max_adv_participation) * adv_safe / float(nav)
+        constraints.append(cp.abs(w - wp) <= cap)
     if cons.predicted_vol_max is not None:
         if cons.predicted_vol_max < 0:
             raise ValueError("predicted_vol_max must be non-negative")
         constraints.append(risk <= cons.predicted_vol_max**2)
     if beta_loadings is not None:
         beta = np.asarray(beta_loadings, dtype=float).reshape(-1)
-        if beta.size != n:
-            raise ValueError("beta_loadings must have one value per asset")
+        if beta.size != n or not np.isfinite(beta).all():
+            raise ValueError("beta_loadings must be a finite vector with one value per asset")
         constraints.append(cp.abs(beta @ w) <= cons.beta_abs_max)
     if cons.max_positions is not None and not 0 <= cons.max_positions <= n:
         raise ValueError("max_positions must be between zero and the number of assets")
     if sector_loadings is not None:
         s = np.asarray(sector_loadings, dtype=float)
+        if s.ndim != 2 or s.shape[0] != n or not np.isfinite(s).all():
+            raise ValueError("sector_loadings must be a finite matrix with one row per asset")
         constraints.append(cp.abs(s.T @ w) <= cons.sector_abs_max)
     if factor_loadings is not None:
         f = np.asarray(factor_loadings, dtype=float)
+        if f.ndim != 2 or f.shape[0] != n or not np.isfinite(f).all():
+            raise ValueError("factor_loadings must be a finite matrix with one row per asset")
         constraints.append(cp.abs(f.T @ w) <= cons.factor_abs_max)
 
     obj: cp.Maximize | cp.Minimize
     if config.optimizer.mode == "cvar" and scenarios is not None:
         sc = np.asarray(scenarios, dtype=float)
+        if sc.ndim != 2 or sc.shape[1] != n or sc.shape[0] == 0 or not np.isfinite(sc).all():
+            raise ValueError(
+                "scenarios must be a non-empty finite matrix with one column per asset"
+            )
         s_n = sc.shape[0]
         zeta = cp.Variable()
         u = cp.Variable(s_n)
@@ -80,11 +113,11 @@ def optimize_mean_variance(
         cvar = zeta + 1.0 / ((1.0 - alpha_c) * s_n) * cp.sum(u)
         if cons.cvar_limit is not None:
             constraints.append(cvar <= cons.cvar_limit)
-            obj = cp.Maximize(a @ w - tcost)
+            obj = cp.Maximize(a @ w - tcost - turn_pen)
         else:
-            obj = cp.Minimize(cvar + tcost - a @ w)
+            obj = cp.Minimize(cvar + tcost + turn_pen - a @ w)
     else:
-        obj = cp.Maximize(a @ w - config.optimizer.lambda_risk * risk - tcost)
+        obj = cp.Maximize(a @ w - config.optimizer.lambda_risk * risk - tcost - turn_pen)
 
     prob = cp.Problem(obj, constraints)
     try:
@@ -109,6 +142,13 @@ def optimize_mean_variance(
             raise OptimizationInfeasible(diag_out.model_dump_json())
         return wp, diag_out
     wv = np.asarray(w.value, dtype=float).reshape(-1)
+    if wv.shape != (n,) or not np.isfinite(wv).all():
+        return wp, OptimizationDiagnostics(
+            status="invalid_solver_output",
+            feasible=False,
+            message="solver returned non-finite or incorrectly shaped weights",
+            conflicting_constraints=["solver_output"],
+        )
     if cons.max_positions is not None:
         # CVXPY's default conic solvers do not support mixed-integer quadratic
         # programs. Solve the convex relaxation, freeze the strongest names, and
@@ -140,7 +180,22 @@ def optimize_mean_variance(
                 raise OptimizationInfeasible(diag_out.model_dump_json())
             return wp, diag_out
         wv = np.asarray(w.value, dtype=float).reshape(-1)
-    pred_vol = float(np.sqrt(max(wv @ sig @ wv, 0.0)))
+        if wv.shape != (n,) or not np.isfinite(wv).all():
+            return wp, OptimizationDiagnostics(
+                status="invalid_solver_output",
+                feasible=False,
+                message="solver returned non-finite or incorrectly shaped weights",
+                conflicting_constraints=["max_positions", "solver_output"],
+            )
+    variance = float(wv @ sig @ wv)
+    if not np.isfinite(variance) or variance < -1e-10:
+        return wp, OptimizationDiagnostics(
+            status="invalid_solver_output",
+            feasible=False,
+            message="solver returned invalid portfolio variance",
+            conflicting_constraints=["solver_output"],
+        )
+    pred_vol = float(np.sqrt(max(variance, 0.0)))
     return wv, OptimizationDiagnostics(
         status=status,
         feasible=True,
@@ -164,7 +219,15 @@ def _constraint_names(constraints: list) -> list[str]:
 def component_risk(weights: Array, sigma: Array) -> tuple[Array, Array, float]:
     w = np.asarray(weights, dtype=float)
     s = np.asarray(sigma, dtype=float)
+    if w.ndim != 1:
+        raise ValueError("weights must be one-dimensional")
+    if s.ndim != 2 or s.shape != (w.size, w.size):
+        raise ValueError("sigma must be square with one row per weight")
+    if not np.all(np.isfinite(w)) or not np.all(np.isfinite(s)):
+        raise ValueError("weights and sigma must contain only finite values")
     v = float(w @ s @ w)
+    if not np.isfinite(v) or v < -1e-10:
+        raise ValueError("sigma produces an invalid portfolio variance")
     sig_p = float(np.sqrt(max(v, 0.0)))
     if sig_p == 0:
         z = np.zeros_like(w)

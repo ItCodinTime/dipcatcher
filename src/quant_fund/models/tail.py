@@ -29,7 +29,8 @@ class HistoricalTail(JoblibMixin):
         return self
 
     def predict_var_es(self) -> tuple[float, float]:
-        assert self.losses is not None
+        if self.losses is None:
+            raise RuntimeError("historical tail model has not been fitted")
         return historical_var(self.losses, self.alpha), historical_es(self.losses, self.alpha)
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -80,7 +81,8 @@ class ScaledHistoricalTail(JoblibMixin):
 
 class GaussianTail(HistoricalTail):
     def predict_var_es(self) -> tuple[float, float]:
-        assert self.losses is not None
+        if self.losses is None:
+            raise RuntimeError("Gaussian tail model has not been fitted")
         return gaussian_var(self.losses, self.alpha), gaussian_es(self.losses, self.alpha)
 
     def metadata(self) -> ModelMeta:
@@ -105,7 +107,7 @@ class DrawdownClassifier(JoblibMixin):
         x = np.where(np.isfinite(x), x, 0.0)
         if not hasattr(self.model, "coef_"):
             return np.full(x.shape[0], 0.05)
-        return self.model.predict_proba(x)[:, 1]
+        return np.asarray(self.model.predict_proba(x)[:, 1], dtype=np.float64)
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.predict_proba(x)

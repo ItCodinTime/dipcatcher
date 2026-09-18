@@ -22,6 +22,9 @@ def test_exchangeable_gaussian_coverage_meets_1_minus_alpha() -> None:
     assert metrics.coverage >= COVERAGE_FLOOR
     assert "sharpe" not in cv.metadata().extra
     assert cv.metadata().extra["coverage_identity"] == "1-alpha"
+    assert cv.metadata().extra["coverage_guarantee_scope"] == "marginal_exchangeable"
+    assert "not training-conditional" in str(cv.metadata().extra["coverage_guarantee_claim"])
+    assert cv.metadata().extra["research_only"] is True
     assert cv_plus_coverage_level(ALPHA) == 1.0 - ALPHA
 
 
@@ -90,3 +93,41 @@ def test_alpha_and_folds_must_be_valid() -> None:
         CVPlus(0.10, aggregation="naive")
     assert cv_plus_coverage_level(0.10, "plus") == 0.80
     assert cv_plus_coverage_level(0.10, "jaw") == 0.80
+
+
+def test_length_and_dates_mismatch_raise() -> None:
+    y = np.linspace(-1.0, 1.0, 20)
+    with pytest.raises(ValueError, match="same length"):
+        CVPlus(0.10, n_folds=5).fit(y, np.zeros(19))
+    with pytest.raises(ValueError, match="same length"):
+        CVPlus(0.10, n_folds=5).fit(y, np.zeros_like(y), dates=np.arange(15))
+    with pytest.raises(ValueError, match="same length"):
+        CVPlus(0.10, n_folds=5).fit(
+            y,
+            lower=np.full(10, -0.1),
+            upper=np.full(20, 0.1),
+        )
+    fitted = CVPlus(0.10, n_folds=5).fit(y, np.zeros_like(y))
+    with pytest.raises(ValueError, match="same length"):
+        fitted.predict_sets(np.zeros(3), np.ones(4))
+    with pytest.raises(ValueError, match="same length"):
+        fitted.predict_interval(np.zeros(3), np.ones(5))
+
+
+def test_assign_cv_folds_and_kfold_scale_edges() -> None:
+    from quant_fund.models.cv_plus import kfold_mean_and_scale
+
+    with pytest.raises(ValueError, match="n_folds"):
+        assign_cv_folds(10, 1)
+    with pytest.raises(ValueError, match="same length"):
+        assign_cv_folds(5, 2, dates=np.arange(3))
+    with pytest.raises(ValueError, match="same length"):
+        kfold_mean_and_scale(np.ones(4), np.array([0, 0, 1]))
+    # Two folds of equal size: complement std defined
+    r = np.array([1.0, 2.0, 3.0, 4.0])
+    fid = np.array([0, 0, 1, 1])
+    loc, scale = kfold_mean_and_scale(r, fid)
+    assert loc.shape == (4,)
+    assert scale.shape == (4,)
+    assert np.all(np.isfinite(loc))
+    assert np.all(scale >= 0.0)

@@ -151,8 +151,14 @@ def decile_portfolios(
     hac_lags: int | None = None,
 ) -> DecileResult:
     """Equal-weight bucket returns by within-date score rank. Long high, short low."""
+    if n_buckets < 2:
+        raise ValueError("n_buckets must be >= 2")
+    if min_names < 1:
+        raise ValueError("min_names must be >= 1")
     scores = np.asarray(scores, dtype=float)
     y = np.asarray(y, dtype=float)
+    if len(dates) != len(scores) or len(y) != len(scores):
+        raise ValueError("scores, y, dates must align")
     frame = pl.DataFrame({"score": scores, "y": y, "date": _date_keys(dates)}).drop_nulls()
     bucket_rets: list[list[float]] = [[] for _ in range(n_buckets)]
     ls: list[float] = []

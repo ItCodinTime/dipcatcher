@@ -71,3 +71,42 @@ def test_module_has_no_sharpe() -> None:
     text = Path(evalues.__file__).read_text().lower()
     assert "sharpe" not in text
     assert not any("sharpe" in name.lower() for name in dir(evalues))
+
+
+def test_bad_alpha_fail_closed() -> None:
+    import pytest
+
+    for alpha in (0.0, 1.0, -0.1, 1.5):
+        with pytest.raises(ValueError, match="alpha"):
+            e_value_bernoulli(0.0, alpha)
+        with pytest.raises(ValueError, match="alpha"):
+            e_process(np.array([0.0, 1.0]), alpha)
+        with pytest.raises(ValueError, match="alpha"):
+            bench_e_coverage(np.array([1.0, 0.0]), alpha=alpha)
+
+
+def test_bad_level_fail_closed() -> None:
+    import pytest
+
+    path = e_process(np.array([0.0, 1.0]), 0.10)
+    for level in (0.0, 1.0, -0.05, 2.0):
+        with pytest.raises(ValueError, match="level"):
+            e_process_threshold(path, level=level)
+
+
+def test_bench_empty_coverage_honest() -> None:
+    bench = bench_e_coverage(np.asarray([], dtype=float), alpha=0.10)
+    assert bench["n"] == 0
+    assert bench["e_final"] == 1.0
+    assert bench["ever_cross"] is False
+    assert bench["coverage"] != bench["coverage"]  # NaN
+
+
+def test_miss_out_of_range_clips_like_soft_coverage() -> None:
+    """Out-of-range miss matches clipped [0,1] — documented soft clip, no API change."""
+    alpha = 0.10
+    assert e_value_bernoulli(-0.5, alpha) == e_value_bernoulli(0.0, alpha)
+    assert e_value_bernoulli(1.5, alpha) == e_value_bernoulli(1.0, alpha)
+    # Fractional miss (soft coverage) stays interior — intentional, not fail-closed.
+    mid = e_value_bernoulli(0.25, alpha)
+    assert e_value_bernoulli(0.0, alpha) < mid < e_value_bernoulli(1.0, alpha)

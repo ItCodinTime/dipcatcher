@@ -50,6 +50,58 @@ def test_future_max_drawdown_is_path_drawdown_not_origin_to_minimum() -> None:
     assert np.isclose(labels["future_max_drawdown_3"][0], 99.0 / 110.0 - 1.0)
 
 
+def test_forward_realized_volatility_is_defined_for_one_bar() -> None:
+    from datetime import datetime
+
+    times = pl.datetime_range(
+        start=datetime(2024, 1, 1),
+        end=datetime(2024, 1, 3),
+        interval="1d",
+        eager=True,
+    )
+    bars = pl.DataFrame(
+        {
+            "security_id": ["A"] * 3 + ["SEC_MKT"] * 3,
+            "event_time": list(times) * 2,
+            "close_total_return": [100.0, 110.0, 121.0] * 2,
+        }
+    )
+    cfg = AppConfig(horizons=HorizonConfig(bars=[1], names=["1d"]))
+
+    labels = build_labels(bars, cfg).filter(pl.col("security_id") == "A").sort("event_time")
+
+    assert np.isclose(labels["future_realized_vol_1"][0], np.log(1.1))
+    assert np.isclose(labels["future_realized_var_1"][0], np.log(1.1) ** 2)
+
+
+def test_benchmark_forward_is_aligned_on_benchmark_calendar() -> None:
+    from datetime import datetime
+
+    times = pl.datetime_range(
+        start=datetime(2024, 1, 1),
+        end=datetime(2024, 1, 4),
+        interval="1d",
+        eager=True,
+    )
+    bars = pl.DataFrame(
+        {
+            "security_id": ["A"] * 3 + ["SEC_MKT"] * 4,
+            "event_time": [times[0], times[2], times[3], *times],
+            "close_total_return": [100.0, 99.0, 120.0, 100.0, 110.0, 121.0, 133.1],
+        }
+    )
+    cfg = AppConfig(horizons=HorizonConfig(bars=[1], names=["1d"]))
+
+    labels = build_labels(bars, cfg).filter(pl.col("security_id") == "A").sort("event_time")
+
+    # A has no row on day 2.  The benchmark forward from day 1 must still be
+    # 110/100 - 1, rather than shifting over A's sparse joined rows to day 3.
+    assert np.isclose(
+        labels["future_excess_return_1"][0],
+        (99.0 / 100.0 - 1.0) - (110.0 / 100.0 - 1.0),
+    )
+
+
 def test_labels_are_forward() -> None:
     p = SyntheticMarketProvider(n_assets=5, n_days=80, seed=5)
     bars = adjust_prices(p.get_bars(), p.get_corporate_actions())

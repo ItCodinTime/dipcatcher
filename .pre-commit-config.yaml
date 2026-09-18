@@ -1,7 +1,25 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    # Pinned to the uv.lock ruff version — pre-commit and `make lint` must not
+    # drift (they used to: rev v0.8.0 vs locked 0.16.x).
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  - repo: local
+    hooks:
+      # Local hooks run through `uv run`/`uvx` so tool versions come from
+      # uv.lock (mypy) or an explicit pin (bandit) — matching CI exactly.
+      - id: mypy
+        name: mypy (uv run)
+        entry: uv run mypy src/quant_fund
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: bandit
+        name: bandit (uvx pinned)
+        entry: uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+        language: system
+        pass_filenames: false
+        types: [python]

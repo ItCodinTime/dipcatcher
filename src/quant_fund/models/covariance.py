@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.covariance import LedoitWolf
-from statsmodels.stats.correlation_tools import cov_nearest
+from sklearn.covariance import OAS, LedoitWolf
 
 from quant_fund.utils.logging import get_logger
 
@@ -23,11 +22,20 @@ def min_eigenvalue(sigma: Array) -> float:
 
 def repair_psd(sigma: Array, tol: float = 1e-10) -> tuple[Array, dict[str, float]]:
     s = np.asarray(sigma, dtype=float)
+    if s.ndim != 2 or s.shape[0] != s.shape[1] or s.shape[0] == 0:
+        raise ValueError("sigma must be a non-empty square matrix")
+    if not np.isfinite(s).all():
+        raise ValueError("sigma must contain only finite values")
     s = 0.5 * (s + s.T)
     eig_min = float(np.min(np.linalg.eigvalsh(s)))
     if eig_min >= -tol and is_symmetric(sigma):
         return s, {"repaired": 0.0, "eig_min_before": eig_min, "eig_min_after": eig_min}
-    repaired = np.asarray(cov_nearest(s, method="clipped", threshold=max(tol, 0.0)), dtype=float)
+    # Work directly in the symmetric eigensystem.  ``cov_nearest`` can return
+    # NaNs for finite covariance-like inputs with negative diagonal entries;
+    # clipping eigenvalues is deterministic and guarantees a finite PSD result.
+    eigenvalues, eigenvectors = np.linalg.eigh(s)
+    clipped = np.maximum(eigenvalues, max(tol, 0.0))
+    repaired = (eigenvectors * clipped) @ eigenvectors.T
     repaired = 0.5 * (repaired + repaired.T)
     after = float(np.min(np.linalg.eigvalsh(repaired)))
     fro = float(np.linalg.norm(repaired - s, "fro"))
@@ -57,7 +65,7 @@ def _validate_lambda(lam: float) -> None:
 
 def sample_cov(returns: Array) -> Array:
     x = _clean_returns(returns)
-    return np.asarray(np.cov(x, rowvar=False), dtype=float)
+    return np.atleast_2d(np.asarray(np.cov(x, rowvar=False), dtype=float))
 
 
 def ewma_cov(returns: Array, lam: float = 0.94) -> Array:
@@ -76,11 +84,35 @@ def ledoit_wolf_cov(returns: Array) -> Array:
     return np.asarray(LedoitWolf().fit(x).covariance_, dtype=float)
 
 
+def oracle_approximating_shrinkage_cov(returns: Array) -> Array:
+    """Estimate covariance with finite-sample Oracle Approximating Shrinkage.
+
+    OAS is a linear shrinkage estimator, not nonlinear spectral shrinkage. It
+    is useful when the asset dimension is close to or exceeds the observation
+    count and follows the module's finite-input and PSD-repair contract.
+    """
+    x = _clean_returns(returns)
+    sigma = np.asarray(OAS().fit(x).covariance_, dtype=float)
+    if not np.isfinite(sigma).all():
+        raise ValueError("OAS covariance produced non-finite values")
+    repaired, _ = repair_psd(sigma)
+    return repaired
+
+
 def factor_cov(betas: Array, factor_cov: Array, idio_var: Array) -> Array:
     b = np.asarray(betas, dtype=float)
     f = np.asarray(factor_cov, dtype=float)
-    d = np.diag(np.asarray(idio_var, dtype=float))
-    return b @ f @ b.T + d
+    dvar = np.asarray(idio_var, dtype=float)
+    if b.ndim != 2 or f.shape != (b.shape[1], b.shape[1]) or dvar.shape != (b.shape[0],):
+        raise ValueError("factor covariance inputs have incompatible shapes")
+    if not np.isfinite(b).all() or not np.isfinite(f).all() or not np.isfinite(dvar).all():
+        raise ValueError("factor covariance inputs must be finite")
+    if not np.allclose(f, f.T) or np.any(dvar < 0):
+        raise ValueError("factor covariance must be symmetric and idio_var non-negative")
+    if float(np.min(np.linalg.eigvalsh(f))) < -1e-10:
+        raise ValueError("factor covariance must be positive semidefinite")
+    d = np.diag(dvar)
+    return np.asarray(b @ f @ b.T + d, dtype=np.float64)
 
 
 def dcc_gaussian(
@@ -104,8 +136,10 @@ def dcc_gaussian(
         v = ewma_variance_1d(x[:, j])
         vol[:, j] = np.sqrt(np.clip(v, 1e-16, None))
     z = x / np.clip(vol, 1e-12, None)
-    qbar = np.corrcoef(z, rowvar=False)
-    qbar = np.nan_to_num(qbar, nan=0.0, posinf=0.0, neginf=0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        qbar = np.asarray(np.corrcoef(z, rowvar=False), dtype=float)
+    if not np.isfinite(qbar).all():
+        raise ValueError("DCC correlation target is non-finite; input has unusable variance")
     np.fill_diagonal(qbar, 1.0)
     qbar, _ = repair_psd(qbar, tol=1e-12)
 
@@ -129,11 +163,21 @@ def dcc_gaussian(
             except np.linalg.LinAlgError:
                 return 1e12
             ll += logdet + quadratic
-        return ll / t
+        return float(ll / t)
 
     x0 = np.array([0.05 if a0 is None else a0, 0.9 if b0 is None else b0])
-    res = minimize(nll, x0, bounds=[(1e-6, 0.5), (1e-6, 0.99)])
-    a, b = float(res.x[0]), float(res.x[1])
+    x0 = np.clip(x0, 1e-6, 0.99)
+    if x0.sum() >= 0.99:
+        x0 *= 0.98 / x0.sum()
+    res = minimize(
+        nll,
+        x0,
+        bounds=[(1e-6, 0.5), (1e-6, 0.99)],
+        constraints={"type": "ineq", "fun": lambda p: 0.999 - p[0] - p[1]},
+        method="SLSQP",
+    )
+    candidate = np.asarray(res.x if res.success and np.isfinite(res.fun) else x0)
+    a, b = float(candidate[0]), float(candidate[1])
     q = qbar.copy()
     for i in range(1, t):
         q = (1 - a - b) * qbar + a * np.outer(z[i - 1], z[i - 1]) + b * q
@@ -158,8 +202,12 @@ def ewma_variance_1d(r: Array, lam: float = 0.94) -> Array:
 
 
 def condition_number(sigma: Array) -> float:
-    eig = np.linalg.eigvalsh(0.5 * (sigma + sigma.T))
-    eig = eig[eig > 1e-12]
-    if eig.size == 0:
+    s = np.asarray(sigma, dtype=float)
+    if s.ndim != 2 or s.shape[0] != s.shape[1] or s.shape[0] == 0:
+        raise ValueError("sigma must be a non-empty square matrix")
+    if not np.isfinite(s).all():
+        raise ValueError("sigma must contain only finite values")
+    eig = np.linalg.eigvalsh(0.5 * (s + s.T))
+    if float(eig[0]) <= 1e-12:
         return float("inf")
     return float(eig.max() / eig.min())

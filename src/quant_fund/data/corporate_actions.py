@@ -68,6 +68,7 @@ def adjust_prices(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
         (pl.col("high") / sf).alias("high_split_adjusted"),
         (pl.col("low") / sf).alias("low_split_adjusted"),
         (pl.col("close") / sf).alias("close_split_adjusted"),
+        (pl.col("volume") * sf).alias("volume_split_adjusted"),
     )
     # TR index: start at first split-adjusted close; multiply by (1 + div/close)
     out = out.sort(["security_id", "event_time"]).with_columns(

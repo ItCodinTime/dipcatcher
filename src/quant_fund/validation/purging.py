@@ -27,6 +27,7 @@ def purge_mask(
     horizon_bars: int,
     *,
     session_index: dict[datetime, int] | None = None,
+    label_end_times: list[datetime] | None = None,
 ) -> list[bool]:
     """Return True for observations that are SAFE to keep in train.
 
@@ -36,6 +37,8 @@ def purge_mask(
     """
     if horizon_bars < 0:
         raise ValueError("horizon_bars must be non-negative")
+    if label_end_times is not None and len(label_end_times) != len(decision_times):
+        raise ValueError("label_end_times must align with decision_times")
     if test_end < test_start:
         raise ValueError("test_end must be on or after test_start")
     if session_index is None:
@@ -53,7 +56,20 @@ def purge_mask(
         if i is None:
             i = bisect_left(keys, t)
         label_end = i + horizon_bars
-        # (i, label_end] intersects [test_lo, test_hi].
-        in_test = i < test_hi and label_end >= test_lo
-        keep.append(not in_test)
+        if label_end_times is not None:
+            end_time = label_end_times[len(keep)]
+            if end_time < t:
+                raise ValueError("label_end_times must not precede decision_times")
+            # Explicit timestamps are the source of truth for sparse/asynchronous
+            # labels; session-index arithmetic is only the compatibility fallback.
+            pre_test_overlap = t < test_start <= end_time
+        else:
+            pre_test_overlap = i < test_lo and label_end >= test_lo
+        # A row is unsafe for train when either
+        #   (a) it lies inside the inclusive holdout [test_lo, test_hi] —
+        #       including the final holdout session and a one-session holdout
+        #       (consistent with overlaps()), or
+        #   (b) its label window (i, label_end] reaches test_lo.
+        in_holdout = test_lo <= i <= test_hi
+        keep.append(not (in_holdout or pre_test_overlap))
     return keep

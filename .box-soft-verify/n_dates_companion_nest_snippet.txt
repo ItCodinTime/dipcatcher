@@ -1,0 +1,102 @@
+def kyle_ofi_n_dates_companion_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``*_n_dates`` ≥ 1 when companion IC / t stamps are finite.
+
+    Companions:
+    - finite ``*_mean_spearman`` ⇒ ``*_n_dates`` present, finite, integer-valued, ≥ 1
+    - finite IC-style ``*_t`` (excl. ``*hac*`` / ``*rolling*``) ⇒ matching ``*_n_dates``
+      for residual / flow IC stems, or side-level ``kyle_lambda_{depth,ofi}_n_dates``
+      for bare ``kyle_lambda_{depth,ofi}_t`` (not per-target fwd λ t-stats)
+    Absent companions → skip. Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+
+    def _finite(key: str) -> float | None:
+        if key not in kyle:
+            return None
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        if x != x or abs(x) == float("inf"):
+            return None
+        return x
+
+    def _n_dates_stem_for_t(stem: str) -> str | None:
+        if stem in {"kyle_lambda_depth", "kyle_lambda_ofi"}:
+            return stem
+        ic_prefixes = (
+            "residual_",
+            "ofi_delta_mid_",
+            "signed_depth_",
+            "depth_flow_",
+            "ofi_flow_",
+            "ofi_fwd_",
+            "signed_depth_fwd_",
+        )
+        if stem.startswith(ic_prefixes):
+            return stem
+        return None
+
+    required: set[str] = set()
+    for key in kyle:
+        if not isinstance(key, str):
+            continue
+        if key.endswith("_mean_spearman") and _finite(key) is not None:
+            required.add(key[: -len("_mean_spearman")])
+        elif (
+            key.endswith("_t")
+            and "hac" not in key
+            and "rolling" not in key
+            and _finite(key) is not None
+        ):
+            mapped = _n_dates_stem_for_t(key[: -len("_t")])
+            if mapped is not None:
+                required.add(mapped)
+
+    errors: list[str] = []
+    for stem in sorted(required):
+        nkey = f"{stem}_n_dates"
+        if nkey not in kyle or kyle.get(nkey) is None:
+            errors.append(f"kyle_ofi_n_dates_missing:{stem}")
+            continue
+        try:
+            n = float(kyle[nkey])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append(f"kyle_ofi_n_dates_non_numeric:{stem}")
+            continue
+        if n != n or abs(n) == float("inf"):
+            errors.append(f"kyle_ofi_n_dates_non_finite:{stem}")
+        elif n < 1:
+            errors.append(f"kyle_ofi_n_dates_lt_one:{stem}")
+        elif abs(n - round(n)) > 1e-12:
+            errors.append(f"kyle_ofi_n_dates_not_integer:{stem}")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. n_dates companions)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    errors.extend(kyle_ofi_std_iqr_honesty_errors(blob))
+    errors.extend(kyle_ofi_rolling_mean_hac_band_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_dates_companion_honesty_errors(blob))
+    return errors

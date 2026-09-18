@@ -28,11 +28,25 @@ def walk_forward(
     horizon_bars: int,
     embargo_bars: int,
     scheme: str | None = None,
+    label_end_times: list[datetime] | None = None,
 ) -> list[Fold]:
+    if label_end_times is not None and len(label_end_times) != len(times):
+        raise ValueError("label_end_times must align with times")
     uniq = sorted(set(times))
     n = len(uniq)
     scheme = scheme or config.scheme
     idx = session_index(uniq)
+    # A date-level fold is unsafe if any security observed on that decision date
+    # has a label reaching the holdout.  Use the latest endpoint conservatively.
+    end_by_time: dict[datetime, datetime] | None = None
+    if label_end_times is not None:
+        end_by_time = {}
+        for t, end in zip(times, label_end_times, strict=True):
+            if end < t:
+                raise ValueError("label_end_times must not precede times")
+            previous = end_by_time.get(t)
+            if previous is None or end > previous:
+                end_by_time[t] = end
     folds: list[Fold] = []
     cursor = config.train_bars
     while True:
@@ -53,6 +67,9 @@ def walk_forward(
             test_block[-1],
             horizon_bars,
             session_index=idx,
+            label_end_times=(
+                [end_by_time[t] for t in train_block] if end_by_time is not None else None
+            ),
         )
         va0 = idx[val_block[0]]
         train_kept = [
@@ -67,15 +84,60 @@ def walk_forward(
 
 
 def assert_no_label_overlap(fold: Fold, horizon_bars: int, idx: dict[datetime, int]) -> None:
+    """Fail if any train label window intersects a holdout session.
+
+    Holdout may be non-contiguous (CPCV). Checks each contiguous holdout block
+    separately so intervening train groups are not false-positives.
+    """
     holdout = [t for t in fold.val_times + fold.test_times if t in idx]
     if not holdout:
         return
-    ids = [idx[t] for t in holdout]
-    vmin, vmax = min(ids), max(ids)
+    ids = sorted({idx[t] for t in holdout})
+    # contiguous blocks as inclusive [lo, hi]
+    blocks: list[tuple[int, int]] = []
+    lo = hi = ids[0]
+    for j in ids[1:]:
+        if j == hi + 1:
+            hi = j
+        else:
+            blocks.append((lo, hi))
+            lo = hi = j
+    blocks.append((lo, hi))
     for t in fold.train_times:
         i = idx[t]
         label_end = i + horizon_bars
-        if label_end > vmin and i < vmax:
-            raise AssertionError(
-                f"label overlap at {t}: train window ({i}, {label_end}] vs holdout [{vmin}, {vmax}]"
-            )
+        if label_end <= i:
+            continue
+        for vmin, vmax in blocks:
+            # (i, label_end] intersects [vmin, vmax]
+            if i < vmax and label_end >= vmin:
+                raise AssertionError(
+                    f"label overlap at {t}: train window ({i}, {label_end}] "
+                    f"vs holdout block [{vmin}, {vmax}]"
+                )
+
+
+def fold_ic_stability(
+    fold_ics: list[float],
+    *,
+    min_ic: float = 0.0,
+) -> dict[str, float | int]:
+    """Fraction of folds with IC > ``min_ic`` plus mean/std of fold ICs.
+
+    Used by promotion gates as multi-fold stability evidence.
+    """
+    import math
+
+    vals = [float(x) for x in fold_ics if x is not None and math.isfinite(float(x))]
+    n = len(vals)
+    if n == 0:
+        return {"n_folds": 0, "stability": 0.0, "mean_ic": float("nan"), "std_ic": float("nan")}
+    mean = sum(vals) / n
+    var = sum((v - mean) ** 2 for v in vals) / max(n - 1, 1)
+    stab = sum(1 for v in vals if v > min_ic) / n
+    return {
+        "n_folds": n,
+        "stability": float(stab),
+        "mean_ic": float(mean),
+        "std_ic": float(var**0.5),
+    }

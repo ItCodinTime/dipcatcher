@@ -111,9 +111,7 @@ class AdaptiveConformal:
         self.alpha_t = float(alpha)
         self.scores: list[float] = []
 
-    def initialize(
-        self, y: Array, lower: Array, upper: Array, scale: Array | None = None
-    ) -> None:
+    def initialize(self, y: Array, lower: Array, upper: Array, scale: Array | None = None) -> None:
         s = cqr_scores(y, lower, upper, scale)
         self.scores = [float(v) for v in s[np.isfinite(s)]]
         self.alpha_t = self.alpha

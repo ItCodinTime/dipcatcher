@@ -1,0 +1,6 @@
+    typer.echo(
+        f"λ_depth_p10/p50/p90={receipt.get('kyle_lambda_depth_p10')}/"
+        f"{receipt.get('kyle_lambda_depth_p50')}/{receipt.get('kyle_lambda_depth_p90')} "
+        f"roll_hac=[{receipt.get('kyle_lambda_depth_rolling_hac_lo')},"
+        f"{receipt.get('kyle_lambda_depth_rolling_hac_hi')}]"
+    )

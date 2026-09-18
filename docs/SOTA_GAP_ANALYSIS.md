@@ -1,0 +1,1261 @@
+# SOTA gap analysis — Day Wave 21 (2026-09-16)
+
+## Day Wave 95 — canonical lineage-bound research inputs — 2026-09-17
+
+- Research provenance now fingerprints materialized frames using canonical sorted columns, schema dtypes, and a sorted multiset of canonicalized rows. The digest is invariant to dataframe row/column ordering, counts duplicate rows, and normalizes non-finite values to null.
+- The research receipt's `dataset_content_sha256` and Northset silver-frame content digest use this canonical representation instead of implementation-specific dataframe hash seeds.
+- The process-local gold panel cache is keyed by SHA-256 digests of the feature and label parquet bytes, not mtimes alone. In-place replacements therefore invalidate cached training inputs even when timestamps or file sizes are reused.
+- Added regression coverage for ordering invariance, duplicate preservation, byte-level cache invalidation, and hash-seed-independent execution. This is reproducibility and cache-integrity evidence only; it does not establish live alpha or live execution readiness.
+
+## Day Wave 96 — sparse-label endpoint purging — 2026-09-17
+
+- `build_labels` now persists exact observed-row `label_end_time_{h}` metadata for each forward horizon, preserving causal endpoints for securities with asynchronous or missing observations.
+- Purging accepts those endpoints explicitly; walk-forward date folds conservatively use the latest endpoint observed on each decision date, including the short-sample fallback, and ranking, distribution, volatility, and tail training pass aligned endpoint arrays into every fold.
+- Regression coverage verifies endpoint alignment and sparse-label purge behavior. This closes a leakage class in validation; it is not live-data or live-performance evidence.
+
+## Day Wave 97 — bounded paper valuation under sparse marks — 2026-09-17
+
+- Paper NAV, borrow, exposure, cash identity, and persisted snapshots now use valuation marks that carry forward missing marks only for the configured `risk_gate.stale_price_bars` bound.
+- Execution remains fresh-mark-only: stale prices cannot create new orders, while held positions remain valuable across short data gaps and fail closed after the bounded age expires.
+- Pre-trade valuation uses fresh execution marks plus bounded prior marks; close/total-return marks are applied only after fills, preventing same-bar close leakage under `NEXT_OPEN`.
+- Per-security mark ages are persisted in `broker_state.json` and restored with validation, so split/resumed paper runs cannot silently reset stale-age accounting; legacy `mark_ages: null` is treated as an empty age map for compatibility.
+- A restored mark without historical age is deliberately bootstrapped at age `-1`, becoming age `0` on the first resumed bar; this grants one explicit baseline observation opportunity even when `stale_price_bars=0`, and is covered by regression tests rather than presented as a live-data guarantee.
+- This is paper/simulation integrity only, not live execution evidence.
+
+## Day Wave 94 — point-in-time aggregate eligibility — 2026-09-16
+
+- Cross-sectional winsorization, robust z-scores, ranks, percentiles, and sector transforms now exclude rows whose `available_time` is later than their `event_time`; late rows are returned as null rather than contaminating the decision-time universe.
+- Market return, volatility, dispersion, breadth, mean-return, and sector aggregates now use the same availability filter; benchmark values are also masked when either the benchmark or output row is unavailable.
+- Added regression fixtures proving a late-arriving asset cannot move same-day aggregate values, ranks, denominators, or benchmark features. Frames without `available_time` retain the legacy behavior for compatibility.
+- This is a PIT-integrity improvement only; it does not create live-data evidence or live-performance claims.
+
+## Day Wave 93 — cumulative receipt-history resume and date-correct ranker DM
+
+- `SimulatedBroker` now persists JSON-safe order receipts, rejection metadata, fills, and slots; resume reconstructs validated `Order`/`Fill` models and preserves cumulative receipt counts.
+- Legacy broker state without history remains readable through explicit counter baselines; modern state fails closed on malformed history or count mismatches.
+- Ledger schema validation covers receipt-history shape and count consistency, with an uninterrupted-vs-two-leg regression.
+- Ranker benchmark Diebold–Mariano contrasts align IC losses by common date keys rather than positional truncation, avoiding invalid comparisons when feature sets have different missing-date patterns.
+- All evidence remains simulated/paper-only; no live broker connectivity or live-performance claim is introduced.
+
+## Day Wave 92 — deterministic and append-safe paper resume
+
+- Target panels now reject duplicate `(event_time, security_id)` keys, normalize security IDs, and construct event mappings in stable sorted order.
+- Backtest and simulated-broker exposure/target reductions no longer depend on set/hash iteration order.
+- Paper resume loads all existing orders, equity, shadow equity, positions, and cash-ledger rows before appending the next leg; `flush()` is the single durable table writer.
+- Shadow equity is persisted through the same ledger path, and returned order frames retain cumulative fill-receipt history across resumed legs.
+- Regression coverage verifies two-leg row preservation and ledger-schema validity. This is still simulated/paper-only evidence; it does not establish live execution readiness.
+
+Scope: Artificial Hedge / dipcatcher **research lab**. Vendor market-data and live broker fills are **out of scope**. Day Waves 1–18 (panel honesty, MinTRL + Acerbi–Székely, Fissler–Ziegel FZ0, e-process DM, MinTRL bench smoke, CPCV/PBO residual honesty, closed-form/empirical CRPS, closed-form CRPS bench wiring + DM, volatility-bench e-process DM + paper/shadow honesty smoke + Bernoulli miss-clip docs, dual honesty catalogs research-vs-analytics_export, distribution-bench CRPS e-process DM) landed 2026-09-16.
+
+## Already have (overnight Waves 1–43 baseline)
+
+| Area | Status (from overnight progress / memory) |
+|------|-------------------------------------------|
+| Conformal / CRC / online CRC / weighted / localized / rank / portfolio conformal | Present + many extremes fixtures |
+| Jackknife+ / CV+ edges | Present |
+| CPCV purge/embargo + PBO/TrialLedger/DSR/PSR | Present + Day Wave 6 residual edges / known PBO fraction |
+| CRPS / pinball / PIT / distribution families | Present; Day Wave 7–8 CRPS+DM; Day Wave 18 `e_dm_crps_*`; Day Wave 19 scaled `dm_crps_scaled_*` / `e_dm_crps_scaled_*`; soft CRPS e-process verify companion (Wave19 harden) |
+| Kupiec POF + Christoffersen CC | Present |
+| Almgren–Chriss trajectory / ES_ac | Present + extremes |
+| E-values / Ville | Present + edges; Day Wave 4 loss-diff e-process |
+| DM / Jobson–Korkie–Memmel / bootstrap CI | Helpers present; pairwise DM may need expansion |
+| Research agent catalogs + forbidden metrics | Present (Wave 32) |
+| Paper/shadow multi-challenger, analytics_export fail-closed | Phase 17 largely done |
+| PERF panel/optimize/wrappee caches | Phase 18 largely done (wave:39 bench) |
+| ~1310+ `pytest -m 'not network'` green (Wave 42+) | Baseline to preserve |
+
+## GARCH-family upgrade — 2026-09-17
+
+The volatility path now has a research-grade causal contract rather than a claim of
+state-of-the-art forecasting: `GARCHVol` fits historical decimal returns, applies
+explicit percent scaling at the `arch` boundary, validates convergence/finite
+parameters/specification-appropriate persistence, and records fail-closed fallback
+reasons. Direct protocol callers must pass `returns=` explicitly; the compatible `y`
+argument is never implicitly treated as a likelihood series because it may be a
+forward variance label. Its `forecast(horizon=...)` API returns decimal per-bar
+variance, sigma, cumulative variance, and optional Student-t/skew-t predictive
+quantiles; `pit()` provides bounded probability-integral-transform diagnostics. The
+walk-forward GARCH path rebuilds an expanding causal history from `ret_1` at each
+test-date origin, and uses `future_realized_var_h` only for horizon-matched variance
+QLIKE evaluation. Return history is aggregated from the full feature panel before
+supervised design-matrix label filtering, so the latest finite returns remain in the
+persisted fit even when their forward labels are structurally unavailable; each OOS
+origin still selects only return dates strictly earlier than that origin. Because the
+current implementation pools securities into a date-level equal-weight return series,
+its saved artifact and diagnostics now declare `series_scope` explicitly rather than
+silently presenting the forecast as security-specific volatility.
+
+This does **not** establish superiority, live deployability, or true intraday realized
+volatility. The current panel is cross-sectional and the saved GARCH artifact is not
+yet wired into `forecast_asof`/risk consumers. APARCH/FIGARCH, overlap-aware
+multi-horizon benchmark comparisons, CRPS/log-score calibration, and model registry
+promotion remain open work.
+
+## Volatility baseline contract — 2026-09-17
+
+The rolling and EWMA baselines now use their intended supervised features rather than
+implicitly reading the final `vol_of_vol` column. Their predictions are sigma-like, so
+walk-forward evaluation squares them before calling variance QLIKE against
+`future_realized_var_h`; this keeps the response and forecast dimensionally aligned.
+`vol_of_vol` remains a separate feature and cannot substitute for either baseline.
+The HAR estimator likewise consumes the declared production feature matrix directly;
+its forward realized-variance target is response-only, and its artifact metadata is
+versioned as the v2 supervised input contract.
+
+## Missing / thin (highest-ROI Day Wave 1 ship targets)
+
+1. **Closed-form fixtures** for any remaining thin conformal/CRC/e-value/CPCV paths (exact coverage or known λ edges).
+2. **CPCV/PBO fail-closed** — DONE Day Wave 6 (known PBO fraction fixture; shape/NaN edges ≠ silent 0.0; CPCV aggressive-purge fold-count honesty).
+3. **Distribution scoring vs MATH_SPEC**: CRPS empirical/Gaussian closed forms — DONE Day Wave 7; bench wiring `crps_gaussian_closed` / `dm_crps_*` — DONE Day Wave 8; pinball empty/mismatch already edged; PIT KS present + Day Wave 7 spiked-vs-uniform fixture.
+4. **Acerbi–Székely Z1/Z2** — DONE Day Wave 2 (`acerbi_szekely_z1`/`z2`, edges + known Z1≠Z2 fixture; research-only).
+4b. **Bailey–LdP MinTRL** — DONE Day Wave 2 (`min_track_record_length`, Gaussian closed-form + honest NaN edges).
+5. **Research agent**: ensure all scorecard families run; forbidden Sharpe/pnl keys stay out of lab headlines (extend Wave 32/40 benches if any family drifted).
+
+## Out of scope (vendor / live)
+
+- Live broker fills, Alpaca/vendor market-data pulls, forged `live_pnl_claim=true`
+- Cursor cloud agents / commits / pushes
+- Parallel causal with `w_prev` unsafe paths
+- Advertising SYNTHETIC Sharpe as live performance
+
+## Day Wave 2 DONE (2026-09-16)
+
+- MinTRL hardened + Gaussian closed-form fixtures; exported from `metrics`
+- Acerbi–Székely Z1/Z2 extreme edges + distinct known-ratio fixture; docs cited
+- No fake live Sharpe; research-diagnostic labels only
+
+## Day Wave 3 DONE (2026-09-16)
+
+- Fissler–Ziegel FZ0 joint VaR/ES scoring (`fissler_ziegel_loss` / `mean_fissler_ziegel`); closed-form + edges
+- Thin research hook `fissler_ziegel_mean` on `var_backtest_hooks` when ES supplied
+- MATH_SPEC + RESEARCH_REFERENCES (Fissler–Ziegel / Nolde–Ziegel) cited; no live capital claim
+
+## Day Wave 4 DONE (2026-09-16)
+
+- Choe–Ramdas-style anytime-valid e-process on forecast loss differentials (`e_process_loss_diff` / `e_process_dm`); Ville via existing threshold helper
+- Closed-form / RNG fixtures + edges in `tests/unit/test_eprocess_dm.py`
+- Thin research flag `include_e_process` on `pairwise_diebold_mariano` (optional fields only)
+- MATH_SPEC + RESEARCH_REFERENCES linked; no live capital / Sharpe claim
+
+## Day Wave 5 DONE (2026-09-16)
+
+- Thin MinTRL research smoke: `min_trl_from_returns` → nested `book_diagnostics["min_trl"]` with keys `min_track_record_length` / `min_trl` / `track_record_bars`
+- Gaussian fixture smoke + forbidden-key hygiene (`family_blob_forbidden_metrics_absent`); edges remain in `test_overfitting_edges.py`
+- OT / multivariate conformal **skipped** (no ADR greenlight)
+- No fake live Sharpe / live capital claim
+
+## Day Wave 23 DONE (2026-09-16)
+
+- **Promotion receipt fail-closed hardening:** `validate_candidate` now treats a
+  missing research receipt as invalid rather than defaulting it to valid. A
+  non-synthetic candidate cannot promote on metrics, causal-panel, and fold
+  evidence alone; it must be bound to a verified immutable research receipt.
+  Regression covered by `test_validate_never_promotes_without_research_receipt`.
+
+## Day Wave 6 DONE (2026-09-16)
+
+- PBO residual honesty: known closed-form fraction (PBO=0.5) + valid 0/1; invalid 1×N / N×1 / mismatch / all-NaN / partial non-finite → NaN (never silent 0.0) in `tests/unit/test_pbo_edges.py`
+- CPCV: aggressive purge/embargo may yield fewer (or zero) folds than `C(n,k)` — documented + tested; empty groups / bad n_test already ValueError
+- MATH_SPEC CSCV/PBO note updated; OT conformal **skipped**
+- No fake live Sharpe / live capital claim
+
+## Day Wave 7 DONE (2026-09-16)
+
+- Closed-form Gaussian CRPS (`crps_gaussian` / `mean_crps_gaussian`) + empirical ensemble CRPS (`crps_empirical`) in `metrics/scoring.py`
+- Hand-check fixtures: N(0,1)@0 → (√2−1)/√π; 2-point ensemble CRPS=0.5; scale homogeneity; bad-σ → NaN (never silent 0.0)
+- Thin PIT: reuse `pit_ks` — uniform fixture retained + spiked U-shape rejects Uniform(0,1); no new API / mean-PIT helper skipped
+- MATH_SPEC + RESEARCH_REFERENCES (Gneiting–Raftery) updated; OT / multivariate conformal **skipped**
+- No fake live Sharpe / live capital claim
+
+## Day Wave 8 DONE (2026-09-16)
+
+- Distribution bench wires research-only `crps_gaussian_closed` (+ optional `crps_scaled_gaussian_closed`) beside quantile Riemann approx keys
+- Diebold–Mariano on per-obs quantile-CRPS losses: `dm_crps_preferred` / `dm_crps_p` / `dm_crps_stat` (gaussian vs empirical)
+- Thin smoke: `tests/unit/test_bench_crps_closed.py`; forbidden-key hygiene retained
+- OT / multivariate conformal **skipped**; PERF rebench **skipped**
+- No fake live Sharpe / live capital claim
+
+## Day Wave 9 DONE (2026-09-16)
+
+- **Paper/shadow day-grind honesty smoke:** `tests/unit/test_day_paper_shadow_honesty.py` — minimal `run_paper_loop` + shadow; broker_state `allow_capital=False` / cash=0 / n_fills=0; `live_pnl_claim=false` on metrics + analytics_export (+ disk JSON); slim challenger blob `family_blob_forbidden_metrics_absent`
+- Volatility bench wires research-only `e_dm_final` / `e_dm_reject` / `e_dm_n` via Wave4 `e_process_dm` on ewma vs rolling losses (beside existing DM); thin smoke `tests/unit/test_bench_volatility_eprocess.py`
+- Bernoulli e-process honesty: docstring notes silent miss clip to [0,1] in `_step_e`; edge `test_miss_out_of_range_clips_like_soft_coverage` (no public API change; soft coverage preserved)
+- Conformal residual **skipped** (no concrete untested ValueError/NaN fixture found in skim)
+- OT / multivariate conformal **skipped**; PERF rebench **skipped**
+- No fake live Sharpe / live capital claim
+
+## Day Wave 10 DONE (2026-09-16)
+
+- **`/ready` missing-manifest fail-closed harden:** `resolve_allowed_config_path` always `.resolve()`s `_CONFIGS_DIR` before `relative_to` (macOS `/var`→`/private/var` flake → spurious 400 without `checks`); test isolates repo lake, asserts `report["data_manifest"]=="missing"`, plus unresolved-configs-dir regression
+- **Dual honesty catalogs:** research family/scorecard blobs keep `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent`; paper `analytics_export` may nest equity `nav_*` / stress `*_pnl` diagnostics but `validate_analytics_export` fails closed on `live_pnl_claim=true`
+- Docstrings on `research/catalog.py` + `ANALYTICS_SCHEMA_KEYS` / `validate_analytics_export`; thin proof `tests/unit/test_honesty_catalog_dual.py`; INSTITUTIONAL_READINESS dual-catalog note
+- MATH_SPEC + RESEARCH_CENTRE dual-catalog note; conformal residual / OT / PERF **skipped** (no concrete gap / prefer skip)
+- No fake live Sharpe / live capital claim
+
+## Day Wave 11 DONE (2026-09-16)
+
+- **H-table Kupiec skip-on-nonfinite:** H16–H18 (and H4/H7/H8/H11/H12) mint only when `kupiec_p` is **finite**; `None` / NaN / inf skip the row (same as empty-panel). Prevents NaN-p success string "coverage consistent with nominal alpha" and FDR pollution.
+- Shared `_hyp` hardened: non-finite p → decision `"Inference unavailable (non-finite p-value)."` (never yes/no success claim).
+- Tests in `tests/unit/test_hypothesis_semantics.py` (nan skip, empty skip, finite present, other Kupiec nan).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 12 DONE (2026-09-16)
+
+- **H9 e-process skip-on-nonfinite:** NaN/inf `e_sup` omitted — Python `max(nan, 1.0)`→1.0 previously minted p=1 calibration **success** ("consistent with α").
+- **H10/H15 bound skip-on-nonfinite:** NaN coverage (or NaN CV+ floor) omitted — previously claimed "below floor".
+- **H19 FDR skip-on-nonfinite:** NaN FDR omitted (no "unavailable" bound mint); finite still at-or-below / exceeds.
+- Tests in `tests/unit/test_hypothesis_semantics.py` (H9/H10/H15/H19 NaN skips + finite still present).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 13 DONE (2026-09-16)
+
+- **Discovery DM/IC skip-on-nonfinite:** H1 (`p_ic`), H2 (`ls_p`) independent gates; H3 (`dm_p`); pairwise `H_rank_dm_*` (`p_value`) — NaN/inf **skip** mint (align with Kupiec; prefer omit over "unavailable" discovery rows). BH finite-mask unchanged.
+- Tests in `tests/unit/test_hypothesis_semantics.py` (H3 nan/finite, pairwise nan/finite, H1/H2 independence).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 14 DONE (2026-09-16)
+
+- **Contrast-inference skip-on-nonfinite:** H5/H6/H13/H14 — `_finite_number` on input scalars before contrast; NaN/inf computed `p` **skip** mint (align discovery DM hygiene; prefer omit over "unavailable"). Finite inputs + finite p still present.
+- Tests in `tests/unit/test_hypothesis_semantics.py` (H5 nan brier / no-series; H6 nan advantage / no-series / with-series; H13/H14 nan inputs; shared contrast nan/finite).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 15 DONE (2026-09-16)
+
+- **`bench_tail` ES diagnostics:** Acerbi–Székely Z1/Z2 + mean Fissler–Ziegel FZ0 wired beside Kupiec on holdout losses (scalar broadcast or scaled path arrays). Alpha matches analytics: coverage 0.95 for FZ; miss level 0.05 for Acerbi Z1. Primary keys prefer scaled when `vol_20` present; `*_unscaled` / `*_scaled` mirrors. Honest NaN on empty/no-hits/non-positive ES.
+- Thin tests: `tests/unit/test_bench_tail_es_diagnostics.py` (keys finite-or-NaN; forbidden-metrics absent; Kupiec retained).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 16 DONE (2026-09-16)
+
+- **`bench_tail` Christoffersen ind+CC:** `christoffersen_ind_lr`/`ind_p` + `christoffersen_cc_lr`/`cc_p` wired beside Kupiec on the same holdout hit series (unscaled + scaled paths). Miss level \(p_{miss}=0.05\). Primary keys prefer scaled when `vol_20` present; `*_unscaled` / `*_scaled` mirrors. Honest NaN on empty/short series.
+- Thin tests: `tests/unit/test_bench_tail_es_diagnostics.py` (Christoffersen keys + mirrors; Kupiec+Acerbi+FZ retained; forbidden-metrics absent).
+- H-table mint for CC/ind **skipped** this wave (prefer omit; no invented p).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 17 DONE (2026-09-16)
+
+- **H-table `H4b_var_christoffersen_cc`:** mints from finite `families['tail'].christoffersen_cc_p` (calibration; `_finite_number` skip-on-nonfinite; Kupiec-style yes/no on conditional coverage). **CC only** — no ind hyp (avoids BH double-count; CC nests ind+Kupiec). Never invent p.
+- Tests: `tests/unit/test_hypothesis_semantics.py` (`test_h4b_nan_christoffersen_cc_p_skips`, `test_h4b_finite_christoffersen_cc_p_mints_calibration`).
+- OT / PERF / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 18 DONE (2026-09-16)
+
+- Distribution bench wires research-only `e_dm_crps_final` / `e_dm_crps_reject` / `e_dm_crps_n` via Wave4 `e_process_dm` on gaussian vs empirical per-obs quantile-CRPS losses (beside existing `dm_crps_*`; gate `n_te>=3`; omit on e-process failure; `research_only=True`; no `live_pnl_claim`). Prefixed to avoid vol-bench `e_dm_*` clash.
+- Thin smoke: `tests/unit/test_bench_distribution_eprocess.py`
+- **Soft VaR-battery verify honesty:** when nonempty `families["tail"]` contains `kupiec_p` or `kupiec_lr` (even NaN), `verify_research_artifact` requires key *presence* of `christoffersen_cc_p`/`cc_lr` + preferred `christoffersen_ind_p`/`ind_lr` (values may be NaN). Empty `{}` skips. Fail-closed `tail_var_battery_incomplete:<key>`. Helpers: `catalog.tail_var_battery_missing_keys` / `tail_var_battery_keys_present`; soft scorecard `tail_var_battery_ok`. Not a live promotion gate.
+- Tests: `tests/unit/test_research_verify.py` (complete battery; Kupiec-without-CC fails; `kupiec_lr` marker; empty ok; NaN presence ok; forbidden-metrics hygiene unchanged).
+- OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 19 DONE (2026-09-16)
+
+- Distribution bench wires research-only `dm_crps_scaled_preferred` / `dm_crps_scaled_p` / `dm_crps_scaled_stat` and `e_dm_crps_scaled_final` / `e_dm_crps_scaled_reject` / `e_dm_crps_scaled_n` via `diebold_mariano` + Wave4 `e_process_dm` on ScaledGaussian vs ScaledStudentT per-obs quantile-CRPS losses when `vol_20` path present (`n_te>=3`; Day Wave 20: NaN/False/0 sentinels on e-process failure; `research_only=True`; no `live_pnl_claim`). Diagnostics only — wrappee selection unchanged. Unscaled `e_dm_crps_*` retained.
+- Thin smoke: `tests/unit/test_bench_distribution_eprocess.py` (scaled + unscaled hygiene).
+- OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Soft CRPS e-process verify (Wave19 companion / soft-verify harden)
+
+- Soft distribution CRPS e-process verify: when nonempty `families["distribution"]` has `dm_crps_p` and/or `dm_crps_scaled_p` (even NaN), require matching `e_dm_crps_*` / `e_dm_crps_scaled_*` key *presence* (NaN/False/0 ok). Empty `{}` skips. Helpers `catalog.dist_crps_eprocess_missing_keys` / `dist_crps_eprocess_keys_present`; `verify_research_artifact` → `dist_crps_eprocess_incomplete:<key>`; soft scorecard `dist_crps_eprocess_ok`. **Not** a live promotion gate.
+- Bench harden: on e-process failure beside DM, emit NaN/False/0 sentinels (presence) instead of silent omit.
+
+## Day Wave 20 DONE (2026-09-16)
+
+- Soft distribution CRPS e-process verify: when nonempty `families["distribution"]` has `dm_crps_p` and/or `dm_crps_scaled_p` (even NaN), require matching `e_dm_crps_*` / `e_dm_crps_scaled_*` key *presence* (NaN/False/0 ok). Empty `{}` skips. Helpers `catalog.dist_crps_eprocess_missing_keys` / `dist_crps_eprocess_keys_present`; `verify_research_artifact` → `dist_crps_eprocess_incomplete:<key>`; soft scorecard `dist_crps_eprocess_ok`. **Not** a live promotion gate.
+- Bench harden: on e-process failure beside DM, emit NaN/False/0 presence sentinels.
+- Tests: `tests/unit/test_research_verify.py` (empty/no-DM; DM-without-e; scaled; NaN ok; empty distribution).
+- OT / PERF / Acerbi–FZ H-table / sprawling conformal / soft ES-battery (→ Wave21) **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 21 DONE (2026-09-16)
+
+- **Soft ES-battery verify honesty:** when nonempty `families["tail"]` contains `es_95` OR `realized_es` OR `var_95` (even NaN), `verify_research_artifact` requires key *presence* of `acerbi_szekely_z1`/`z2`, `fissler_ziegel_mean`, `es_hit_count` (values may be NaN). Empty `{}` skips. Fail-closed `tail_es_battery_incomplete:<key>`. Helpers: `catalog.tail_es_battery_missing_keys` / `tail_es_battery_keys_present`; soft scorecard `tail_es_battery_ok`. **Orthogonal** to VaR-battery (Kupiec⇒Christoffersen; ES markers⇒Acerbi/FZ). Not a live promotion gate.
+- Tests: `tests/unit/test_research_verify.py` (complete; ES-marker-without-Acerbi fails; empty ok; NaN presence ok; both batteries independent; VaR-battery still green; forbidden-metrics hygiene unchanged).
+- OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 22 candidates
+
+- Conformal residual edges **only if** a concrete fail-closed gap remains (prefer skip sprawl)
+- H-table for `dm_crps_scaled_p` / ES Acerbi/FZ **only if** honest `_finite_number` skip (prefer skip invented p)
+- `/ready` missing-manifest flake harden **only if** reproduced
+- Further multi-model / pairwise distribution scoring **only if** a concrete ROI gap remains (prefer thin)
+- OT / multivariate conformal **prefer skip** unless ADR
+- PERF rebench **only if** wrappee / `history_prefix` change materially
+- Vendor adapters remain gated; never unblock live without separate ADR
+
+## Day Wave 22 DONE (2026-09-16)
+
+- **`/ready` integrity hardening:** readiness now requires
+  `research_receipt == ok` in addition to the data manifest, directories, and
+  core imports. Missing receipts return structured `503` readiness with an
+  explicit `checks.research_receipt=false`; regression covered by
+  `test_readiness_is_fail_closed_for_missing_research_receipt`. This is a
+  research-runtime integrity check only and does not authorize live capital.
+
+## Day Wave 25 DONE (2026-09-16) — soft battery_ok forge fail-closed (day_grind DayWave23)
+
+- **Numbering note:** day_grind progress keeps **DayWave23** (INFLIGHT banner); SOTA uses **Wave25** to avoid colliding with existing Wave23 promotion-receipt and Wave24 run_id sections.
+- Suite: **1204** non-network green (~11s wall); ruff clean on touch set. Error codes: `scorecard_tail_var_battery_flag_forged:tail` / `scorecard_tail_es_battery_flag_forged:tail` / `scorecard_dist_crps_eprocess_flag_forged:distribution`.
+
+- **Scorecard soft-battery forge honesty:** when `scorecard["tail"]["tail_var_battery_ok"]` / `tail_es_battery_ok` or `scorecard["distribution"]["dist_crps_eprocess_ok"]` is **True** but the matching catalog helper (`tail_var_battery_keys_present` / `tail_es_battery_keys_present` / `dist_crps_eprocess_keys_present`) is False, `verify_research_artifact` fail-closes with `scorecard_tail_var_battery_flag_forged:tail` / `scorecard_tail_es_battery_flag_forged:tail` / `scorecard_dist_crps_eprocess_flag_forged:distribution` (parallel to `scorecard_forbidden_flag_forged`). Incomplete families without forged True still fail via existing `*_incomplete:<key>` only. Not a live promotion gate.
+- Tests: forge True+incomplete → `*_flag_forged`; honest True+complete → no forge; absent/False flags → no forge (incomplete:* still fires): `test_verify_rejects_forged_tail_var_battery_ok_when_incomplete`, `test_verify_rejects_forged_tail_es_battery_ok_when_incomplete`, `test_verify_rejects_forged_dist_crps_eprocess_ok_when_incomplete`, `test_verify_honest_battery_ok_true_when_keys_present_no_forge`, `test_verify_absent_battery_ok_flags_no_forge_even_if_incomplete`, `test_verify_false_battery_ok_flags_no_forge_even_if_incomplete`.
+- OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
+- No fake live Sharpe / live capital claim
+
+## Day Wave 26 candidates → DONE (H4b notebook consistency; see below)
+
+
+
+## Day Wave 24 DONE (2026-09-16)
+
+- **Receipt-to-candidate identity binding:** promotion now requires the
+  candidate `run_id` to exactly match `provenance.run_id` in the verified
+  immutable research receipt. Missing or mismatched identities produce
+  `research_receipt_run_id_unbound` and force `promote=false`; regression
+  covered by `test_validate_rejects_receipt_run_id_mismatch`.
+
+## Day Wave 27 DONE (2026-09-16) — causal-panel integrity (sibling; preserved)
+
+- **Causal-panel integrity:** promotion evidence now rejects null or empty
+  security identifiers, null timestamps, non-finite weights, and duplicate
+  `(event_time, security_id)` rows. This prevents ambiguous or silently
+  double-counted target-weight panels from satisfying the causal gate; coverage
+is in `test_validate_rejects_ambiguous_causal_panel`.
+
+## Day Wave 26 DONE (2026-09-16) — H4b notebook consistency (day_grind DayWave26)
+
+- **Soft H4b H-table consistency:** when `families["tail"]` is a dict with **finite**
+  `christoffersen_cc_p`, `verify_research_artifact` requires a hypothesis with
+  `id == "H4b_var_christoffersen_cc"` and `family == "calibration"` (Day Wave 17 mint).
+  Missing → `hypothesis_h4b_missing_despite_finite_christoffersen_cc_p`. Non-finite /
+  missing `cc_p` → skip. Helpers: `catalog.tail_has_finite_christoffersen_cc_p` /
+  `hypotheses_include_h4b` / `h4b_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite cc_p without H4b → fail; with calibration H4b → ok; NaN cc_p without H4b → ok;
+  wrong-family H4b → fail (`test_verify_rejects_finite_christoffersen_cc_p_without_h4b`,
+  `test_verify_accepts_finite_christoffersen_cc_p_with_h4b`,
+  `test_verify_nan_christoffersen_cc_p_without_h4b_ok`,
+  `test_verify_rejects_finite_cc_p_with_h4b_wrong_family`).
+- OT / PERF / Acerbi–FZ invented-p sprawl **skipped**.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 29 DONE (2026-09-16) — H4 Kupiec notebook consistency (day_grind DayWave29)
+
+- **Soft H4 Kupiec H-table consistency:** when `families["tail"]` is a dict with **finite**
+  `kupiec_p`, `verify_research_artifact` requires a hypothesis with
+  `id == "H4_var_kupiec"` and `family == "calibration"` (agent mint).
+  Missing → `hypothesis_h4_missing_despite_finite_kupiec_p`. Non-finite /
+  missing `kupiec_p` → skip. Helpers: `catalog.tail_has_finite_kupiec_p` /
+  `hypotheses_include_h4` / `h4_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite kupiec_p without H4 → fail; with calibration H4 → ok; NaN kupiec_p without H4 → ok;
+  wrong-family H4 → fail (`test_verify_rejects_finite_kupiec_p_without_h4`,
+  `test_verify_accepts_finite_kupiec_p_with_h4`,
+  `test_verify_nan_kupiec_p_without_h4_ok`,
+  `test_verify_rejects_finite_kupiec_p_with_h4_wrong_family`).
+- OT / PERF / Acerbi–FZ invented-p sprawl **skipped**.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 28 DONE (2026-09-16) — conformal set metrics (sibling; preserved)
+
+- **Conformal set-ordering invariant:** shared interval expansion now
+  defensively normalizes malformed base bounds so conformal outputs cannot be
+  inverted or report negative-width sets. Regression coverage is in
+  `test_expand_interval_normalizes_inverted_base_bounds`; valid intervals are
+  unchanged.
+- **Conformal diagnostic honesty:** `set_metrics` now excludes inverted
+  intervals from coverage and width statistics instead of allowing negative
+  widths to improve a benchmark. Regression coverage is in
+  `test_set_metrics_excludes_inverted_intervals`.
+- **Conformal shape integrity:** `set_metrics` now rejects mismatched
+  observation/bound shapes instead of relying on NumPy broadcasting; covered
+  by `test_set_metrics_rejects_shape_mismatch`.
+
+- **Interval-cap diagnostic honesty:** `bench_interval_caps` now excludes
+  inverted or non-finite interval geometry from `mean_width` rather than
+  allowing invalid negative widths to improve the portfolio diagnostic;
+  covered by `test_bench_interval_caps_excludes_inverted_widths`.
+
+- **Coverage shape integrity:** `covered` now rejects mismatched observation
+  and bound shapes instead of relying on NumPy broadcasting; covered by
+  `test_covered_rejects_shape_mismatch`.
+
+- **General scoring width honesty:** `metrics.scoring.interval_width` now
+  excludes inverted or non-finite bounds and returns honest `NaN` when no
+  valid interval remains; covered by the scoring edge suite.
+
+- **Quantile crossing honesty:** `quantile_crossing_rate` now excludes rows
+  with non-finite quantiles and returns `NaN` when no valid rows remain,
+  preventing missing forecasts from masquerading as monotone quantiles.
+
+- **PIT integrity:** `pit_values` now rejects malformed tau grids and emits
+  `NaN` for non-finite or crossing quantile rows instead of interpolating
+  invalid forecast geometry; covered by the scoring edge suite.
+
+- **Quantile-axis integrity:** `quantile_crossing_rate` now requires finite,
+  nondecreasing tau levels, preventing semantically invalid quantile axes from
+  producing a benchmark statistic.
+
+- **CRPS-axis integrity:** `crps_from_quantiles` now requires finite tau
+  levels strictly inside `(0, 1)` and nondecreasing, preventing negative or
+  undefined integration weights.
+
+- **PIT probability-domain integrity:** `pit_values` now applies the same
+  strict `(0, 1)` tau-domain requirement, keeping PIT interpolation aligned
+  with probability semantics.
+
+- **Promotion receipt freshness binding:** `validate_candidate` now compares
+  the receipt's immutable worktree fingerprint with the current checkout and
+  fails closed on stale or unavailable checkout state, preventing a valid
+  receipt from being replayed after code changes.
+
+## Day Wave 30 DONE (2026-09-16) — H3 vol-DM notebook consistency (day_grind DayWave30)
+
+- **Soft H3 vol-DM H-table consistency:** when `families["volatility"]` is a dict with **finite**
+  `dm_p`, `verify_research_artifact` requires a hypothesis with
+  `id == "H3_vol_dm"` and `family == "discovery"` (agent mint).
+  Missing → `hypothesis_h3_missing_despite_finite_dm_p`. Non-finite /
+  missing `dm_p` → skip. Helpers: `catalog.volatility_has_finite_dm_p` /
+  `hypotheses_include_h3` / `h3_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite dm_p without H3 → fail; with discovery H3 → ok; NaN dm_p without H3 → ok;
+  wrong-family H3 → fail (`test_verify_rejects_finite_dm_p_without_h3`,
+  `test_verify_accepts_finite_dm_p_with_h3`,
+  `test_verify_nan_dm_p_without_h3_ok`,
+  `test_verify_rejects_finite_dm_p_with_h3_wrong_family`).
+- **Skipped:** `dm_crps_*` hyp consistency (no concrete hyp ID); paper/shadow already DayWave9; OT / PERF / Acerbi–FZ invented-p sprawl.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 31 DONE (2026-09-16) — H1/H2 oracle ranking notebook consistency (day_grind DayWave31)
+
+- **Soft H1/H2 oracle ranking H-table consistency:** find `oracle_raw` in `notebook["rankers"]`
+  (skip names starting with `_`; oracle is **not** in families). When `p_ic` is **finite**,
+  `verify_research_artifact` requires hypothesis `id == "H1_ranking_oracle"` and
+  `family == "discovery"` (agent mint). Missing → `hypothesis_h1_missing_despite_finite_p_ic`.
+  When `ls_p` is **finite**, require `id == "H2_decile_mono"` and `family == "discovery"`.
+  Missing → `hypothesis_h2_missing_despite_finite_ls_p`. Gates are **independent**.
+  Non-finite / missing / no `oracle_raw` → skip each. Helpers: `catalog.rankers_oracle_raw` /
+  `oracle_has_finite_p_ic` / `oracle_has_finite_ls_p` / `hypotheses_include_h1` /
+  `hypotheses_include_h2` / `h1_hypothesis_consistency_errors` / `h2_hypothesis_consistency_errors`.
+  Not a live promotion gate.
+- Tests: finite p_ic without H1 → fail; with discovery H1 → ok; NaN p_ic without H1 → ok;
+  wrong-family H1 → fail; finite ls_p without H2 → fail; with discovery H2 → ok; NaN ls_p without H2 → ok;
+  wrong-family H2 → fail; both gates independent (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H7 ACI consistency deferred.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 32 DONE (2026-09-16) — H7 ACI notebook consistency (day_grind DayWave32)
+
+- **Soft H7 ACI miss-Kupiec H-table consistency:** when `families["conformal"]["aci"]` has
+  **finite** `kupiec_p`, `verify_research_artifact` requires hypothesis
+  `id == "H7_aci_coverage"` and `family == "calibration"` (agent mint). Missing →
+  `hypothesis_h7_missing_despite_finite_aci_kupiec_p`. Non-finite / missing / no `aci` → skip.
+  Helpers: `catalog.conformal_aci_blob` / `aci_has_finite_kupiec_p` /
+  `hypotheses_include_h7` / `h7_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite ACI kupiec_p without H7 → fail; with calibration H7 → ok; NaN without H7 → ok;
+  wrong-family H7 → fail (`test_research_verify.py`).
+- **Skipped:** Mondrian H8 consistency (separate hyp); OT / PERF / Acerbi–FZ invented-p sprawl.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 33 DONE (2026-09-16) — H8 Mondrian high-vol notebook consistency (day_grind DayWave33)
+
+- **Soft H8 Mondrian high-X miss-Kupiec H-table consistency:** when `families["conformal"]["mondrian_aci"]` has
+  **finite** `high_x_kupiec_p`, `verify_research_artifact` requires hypothesis
+  `id == "H8_mondrian_high_vol"` and `family == "calibration"` (agent mint). Missing →
+  `hypothesis_h8_missing_despite_finite_high_x_kupiec_p`. Non-finite / missing / no `mondrian_aci` → skip.
+  Helpers: `catalog.conformal_mondrian_aci_blob` / `mondrian_aci_has_finite_high_x_kupiec_p` /
+  `hypotheses_include_h8` / `h8_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite high_x_kupiec_p without H8 → fail; with calibration H8 → ok; NaN without H8 → ok;
+  wrong-family H8 → fail (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p / sprawling conformal beyond H8.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 34 DONE (2026-09-16) — H11 CRC notebook consistency (day_grind DayWave34)
+
+- **Soft H11 CRC miss-Kupiec H-table consistency:** when `families["crc"]` has
+  **finite** `kupiec_p`, `verify_research_artifact` requires hypothesis
+  `id == "H11_crc_var"` and `family == "calibration"` (agent mint). Missing →
+  `hypothesis_h11_missing_despite_finite_crc_kupiec_p`. Non-finite / missing → skip.
+  Helpers: `catalog.crc_has_finite_kupiec_p` / `hypotheses_include_h11` /
+  `h11_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite CRC kupiec_p without H11 → fail; with calibration H11 → ok; NaN without H11 → ok;
+  wrong-family H11 → fail; catalog smoke for finite / skip-on-nonfinite (`test_research_verify.py`).
+- **Skipped:** H12 weighted CQR consistency (separate hyp); OT / PERF / Acerbi–FZ invented-p sprawl.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 35 DONE (2026-09-16) — H12 weighted CQR notebook consistency (day_grind DayWave35)
+
+- **Soft H12 weighted CQR miss-Kupiec H-table consistency:** when `families["weighted_conformal"]` has
+  **finite** `kupiec_p`, `verify_research_artifact` requires hypothesis
+  `id == "H12_weighted_cqr"` and `family == "calibration"` (agent mint). Missing →
+  `hypothesis_h12_missing_despite_finite_wcqr_kupiec_p`. Non-finite / missing → skip.
+  Helpers: `catalog.weighted_conformal_has_finite_kupiec_p` / `hypotheses_include_h12` /
+  `h12_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite WCQR kupiec_p without H12 → fail; with calibration H12 → ok; NaN without H12 → ok;
+  wrong-family H12 → fail; catalog smoke for finite / skip-on-nonfinite (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H16–H18 panel Kupiec consistency deferred to Wave36 if ROI (or stop soft-verify sprawl).
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 36 DONE (2026-09-16) — H9 e-process ACI notebook consistency (day_grind DayWave36)
+
+- **Soft H9 e-process ACI H-table consistency:** when `families["evalues"]` has
+  **finite** `e_sup`, `verify_research_artifact` requires hypothesis
+  `id == "H9_eprocess_aci"` and `family == "calibration"` (agent mint). Missing →
+  `hypothesis_h9_missing_despite_finite_e_sup`. Non-finite / missing → skip.
+  Helpers: `catalog.evalues_has_finite_e_sup` / `hypotheses_include_h9` /
+  `h9_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite e_sup without H9 → fail; with calibration H9 → ok; NaN without H9 → ok;
+  wrong-family H9 → fail; catalog smoke for finite / skip-on-nonfinite (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H10 jackknife / H13 interval deferred to Wave37 if ROI.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 37 DONE (2026-09-16) — H10 Jackknife+ coverage notebook consistency (day_grind DayWave37)
+
+- **Soft H10 Jackknife+ coverage H-table consistency:** when `families["jackknife_plus"]` has
+  **finite** `coverage`, `verify_research_artifact` requires hypothesis
+  `id == "H10_jackknife_coverage"` and `family == "bound"` (agent mint — **bound**, not
+  calibration). Missing → `hypothesis_h10_missing_despite_finite_coverage`. Non-finite /
+  missing → skip. Helpers: `catalog.jackknife_plus_has_finite_coverage` /
+  `hypotheses_include_h10` / `h10_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite coverage without H10 → fail; with bound H10 → ok; NaN without H10 → ok;
+  wrong-family H10 → fail; catalog smoke for finite / skip-on-nonfinite (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H16–H18 panel Kupiec deferred; H13/H15 if ROI later.
+- No fake live Sharpe / live capital claim.
+
+## Day Wave 38 DONE (2026-09-16) — H15 CV+ floor notebook consistency (day_grind DayWave38)
+
+- **Soft H15 CV+ floor H-table consistency:** when `families["cv_plus"]` has
+  **finite** `coverage` **and** **finite** `coverage_floor`, `verify_research_artifact` requires hypothesis
+  `id == "H15_cv_plus_floor"` and `family == "bound"` (agent mint — both fields finite; **bound**).
+  Missing → `hypothesis_h15_missing_despite_finite_coverage_and_floor`. Non-finite / missing either → skip.
+  Helpers: `catalog.cv_plus_has_finite_coverage_and_floor` /
+  `hypotheses_include_h15` / `h15_hypothesis_consistency_errors`. Not a live promotion gate.
+- Tests: finite coverage+floor without H15 → fail; with bound H15 → ok; NaN coverage or NaN floor without H15 → ok;
+  wrong-family H15 → fail; catalog smoke for both-finite / skip-on-nonfinite (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H13 contrast prefer skip; stop soft-verify sprawl OK; H19 FDR if ROI.
+- No fake live Sharpe / live capital claim.
+- Soft-fail token: `hypothesis_h15_missing_despite_finite_coverage_and_floor` (both-fields gate).
+- Verify accepts JSON `null` hyp `p_value` as unavailable (agent `_jsonable` nan→null) so bound H10/H15/H19 receipts stay doctor-ok.
+
+## Day Wave 39 DONE (2026-09-16) — H16–H18 panel Kupiec notebook consistency (day_grind DayWave39)
+
+- **Soft H16–H18 panel Kupiec H-table consistency (batch):** when `families["localized_conformal"]` /
+  `online_crc` / `portfolio_conformal` has **finite** `kupiec_p` and `dgp != "fixture"`,
+  `verify_research_artifact` requires matching hypothesis
+  `H16_localized_cqr` / `H17_online_crc` / `H18_portfolio_conformal` with `family == "calibration"`
+  (agent mint). Missing → `hypothesis_h16_missing_despite_finite_kupiec_p` /
+  `hypothesis_h17_missing_despite_finite_kupiec_p` /
+  `hypothesis_h18_missing_despite_finite_kupiec_p`. Fixture DGP / non-finite / missing → skip.
+  Helpers: `catalog.panel_family_has_finite_kupiec_p` / `hypotheses_include_h16|h17|h18` /
+  `h16_h18_panel_kupiec_consistency_errors` (one parameterized helper). Not a live promotion gate.
+- Tests: finite panel kupiec_p without H16–H18 → fail; with calibration rows → ok; fixture DGP → ok;
+  NaN → ok; wrong-family H16 → fail; catalog smoke (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p sprawl; H13 interval caps deferred; stop further soft-verify sprawl preferred next.
+- No fake live Sharpe / live capital claim.
+- **Race note:** parent preferred H16–H18 as Wave37; sibling closed Wave37=H10 and Wave38=H15; this wave lands preferred panel batch as Wave39.
+
+## Day Wave 40 DONE (2026-09-16) — H19 conformal-rank FDR bound notebook consistency (day_grind DayWave40)
+
+- **Soft H19 conformal-rank FDR bound H-table consistency:** when `families["conformal_rank"]` has
+  **finite** `fdr` and `dgp != "fixture"`, `verify_research_artifact` requires
+  `H19_conformal_rank` with `family == "bound"` (agent mint). Missing/wrong-family →
+  `hypothesis_h19_missing_despite_finite_fdr`. Fixture / non-finite / missing → skip.
+  Helpers: `catalog.conformal_rank_has_finite_fdr` / `hypotheses_include_h19` /
+  `h19_hypothesis_consistency_errors`. Wired via `families.get("conformal_rank")`.
+  Research diagnostic — not a live promotion gate.
+- **Tests:** finite fdr without H19 → fail; with bound H19 → ok; NaN without H19 → ok;
+  fixture dgp without H19 → ok; wrong-family → fail; catalog smoke (`test_research_verify.py`).
+- **Skipped:** OT / PERF / Acerbi–FZ invented-p; H5/H6/H13/H14 discovery contrasts deferred.
+  Soft-verify H-table sprawl **paused** after this last bound-family mint twin.
+- **Suite:** `uv run pytest -q -m 'not network'` → **1303 green** (~17.4s wall); `ruff check` clean on touch set.
+- No Cursor / commits / fake live Sharpe. notify_user=no.
+
+## Day Wave 41 DONE (2026-09-16) — marginal vs training-conditional coverage honesty (day_grind DayWave41)
+
+- **Honesty keys:** `JackknifePlus` / `CVPlus` metadata and nonempty `bench_jackknife_plus` /
+  `bench_cv_plus` surface `coverage_guarantee_scope="marginal_exchangeable"` plus a short
+  claim that the coverage floor is **marginal under exchangeability**, **not**
+  training-conditional (Barber–Candès–Ramdas–Tibshirani 2021; Bian–Barber 2023 caveat).
+  `research_only=True`; no `live_pnl_claim`; forbidden-metrics hygiene. H10/H15 floors inherit
+  the same scope — lab must not imply training-conditional guarantees.
+- **Tests:** thin unit/fixture asserts on meta + `bench_cv_plus()` fixture path
+  (`test_coverage_guarantee_scope.py`; extended jackknife/cv_plus unit asserts).
+- **Docs:** MATH_SPEC H10/H15 marginal note; RESEARCH_REFERENCES Barber–Candès Jackknife+ +
+  Bian–Barber row; RESEARCH_CENTRE Wave41.
+- **Skipped:** soft-verify H-table sprawl (H5/H6/H13/H14); OT / PERF / Acerbi invented-p.
+  Preserve Waves 32–40.
+- **Suite:** `uv run pytest -m 'not network'` → **1310 green** (~26.3s wall); `ruff check` clean on touch set.
+- No fake live Sharpe / live capital claim. notify_user=no.
+
+## Day Wave 42 DONE (2026-09-16) — Jackknife+/CV+ coverage_guarantee_scope receipt verify (day_grind DayWave42)
+
+- **Soft receipt verify:** when nonempty `families["jackknife_plus"]` / `families["cv_plus"]`
+  exposes `coverage` **or** `coverage_floor` (key present — NaN ok), `verify_research_artifact`
+  requires `coverage_guarantee_scope == "marginal_exchangeable"` (Wave41 honesty key).
+  Missing → `coverage_guarantee_scope_missing:<fam>`; wrong → `coverage_guarantee_scope_invalid:<fam>`.
+  Empty `{}` / no coverage keys → skip. Helpers:
+  `catalog.jp_cv_blob_requires_marginal_coverage_scope` /
+  `coverage_guarantee_scope_is_marginal` /
+  `coverage_guarantee_scope_consistency_errors`. Parallel to VaR/ES battery presence gates.
+  Research diagnostic — **not** a live promotion gate. No forged soft scorecard flag.
+- **Tests:** complete ok; coverage without scope fails; wrong scope fails; empty ok;
+  NaN coverage still requires scope; forbidden hygiene unchanged (`test_research_verify.py`).
+- **Skipped:** soft-verify H-table sprawl (H5/H6/H13/H14); OT / PERF / Acerbi invented-p.
+  Preserve Waves 32–41.
+- **Suite:** `uv run pytest -q -m 'not network'` → **1321 green** (~28.8s wall); `ruff check` clean on touch set.
+- No fake live Sharpe / live capital claim. notify_user=no.
+
+## Day Wave 43 DONE (2026-09-16) — assume_sorted history prefix fail-closed (day_grind DayWave43)
+
+- **Fail-closed:** `history_upto` / `history_for_calibration` / `optimize_asof` trailing-hist:
+  when `assume_sorted=True` on a nonempty frame with `event_time` that is **not**
+  `under_history_sort_contract`, raise `ValueError` (via `_require_assume_sorted_contract`)
+  instead of taking `history_prefix_upto` binary search. Empty frames OK. Sorted +
+  `assume_sorted=True` still matches filter. No-`day_index` path unchanged (filter).
+  Happy path: one contract check when `assume_sorted=True`.
+- **Tests:** unsorted+assume_sorted+day_index raises; sorted assume_sorted matches filter;
+  no day_index unsorted unchanged; calibration unsorted assume_sorted raises; empty OK
+  (`test_history_upto.py`).
+- **Docs:** MATH_SPEC / PERF (no rebench) / RESEARCH_CENTRE / SOTA Wave43 DONE.
+- **Skipped:** soft-verify H-table sprawl (H5/H6/H13/H14); OT / PERF rebench / Acerbi invented-p.
+  Preserve Waves 32–42.
+- **Suite:** (filled after full run).
+- No fake live Sharpe / live capital claim. notify_user=no.
+
+## Day Wave 44 DONE (2026-09-16) — soft scorecard executed/nonempty/finite_observation forge
+
+- Closed by CoS Day Wave 48 docs/suite pass (helpers+verify+tests were parked/pre-landed).
+- See Day Wave 48 DONE for suite proof.
+
+## Day Wave 45 DONE (2026-09-16) — closed-form Student-t CRPS (day_grind DayWave43 race)
+
+- **Helpers:** `crps_student_t` / `mean_crps_student_t` in `metrics/scoring.py` (Jordan–Krüger–Lerch /
+  scoringRules closed form; ν>2 fail-closed NaN; bad σ → NaN; empty → []/NaN; mismatch → ValueError).
+  Exported from `metrics/__init__.py`.
+- **Bench:** research-only `crps_scaled_student_t_closed` beside quantile Riemann
+  `crps_scaled_student_t` on scaled `vol_20` path (`_distribution_horizon_scores`). Dual view;
+  forbidden-metrics hygiene unchanged. Not a live capital claim.
+- **Tests:** median ν=5 closed form; scale homogeneity; large-ν ≈ Gaussian; edges;
+  bench key finite when scaled-t present (`test_crps_closed_form.py`, `test_bench_crps_closed.py`).
+- **Numbering note:** day_grind INFLIGHT banner was **DayWave43** (Student-t CRPS); sibling claimed
+  SOTA **Wave43** for `assume_sorted` history prefix and parked Wave44 soft scorecard forge —
+  this wave is **Wave45** in SOTA to avoid collision.
+- **Skipped:** soft-verify H-table sprawl; OT / PERF / Acerbi invented-p. Preserve Waves 32–42
+  (+ sibling 43–44).
+- **Suite:** (filled after full run); `ruff check` clean on touch set.
+- No fake live Sharpe / live capital claim. notify_user=no.
+
+## Day Wave 46 DONE (2026-09-16) — causal input and cache invariants
+
+- **Calibration horizon validation:** `history_for_calibration` now rejects negative,
+  fractional, NaN, infinite, and otherwise non-integral `horizon_bars` values instead
+  of truncating them through `int(...)`. Regression coverage includes all invalid forms.
+- **Event-time fast-path validation:** supplied `event_times` must be strictly increasing;
+  unsorted or duplicated sequences fail closed before horizon indexing can shift the
+  calibration cutoff.
+- **Wrappee cache proof:** executable LRU regression verifies that a hot fit survives
+  capacity pressure while the oldest untouched fit is evicted. Content-digest identity,
+  causal family reselection, and `live_pnl_claim=false` remain unchanged.
+- **Verification:** full non-network CI green after these changes; no new performance
+  numbers claimed because the checked-in Wave 39 benchmark predates the cache-policy work.
+- **Skipped:** vendor/live adapters, parallel causal dates with sequential `w_prev`,
+  soft H-table sprawl, OT/multivariate conformal, and unmeasured PERF claims.
+
+## Day Wave 47 DONE (2026-09-16) — paper ledger identity binding
+
+- **Cross-artifact identity:** `validate_ledger_schema` now binds the run-directory
+  name to `meta.json.run_id`, and binds `broker_state.json.run_id` to that same
+  metadata identity. Promotion receipts were already required to match metadata.
+- **Failure mode:** copied or mixed-run paper artifacts fail closed with explicit
+  `meta_run_id_mismatch` or `broker_state_run_id_mismatch` errors rather than
+  validating as a coherent ledger.
+- **Verification:** ledger schema suite passes (15 tests); Ruff, format checks,
+  mypy, and the preceding full CI run were clean. No performance or live-readiness
+  claim is implied.
+
+## Day Wave 48 DONE (2026-09-16) — fail-closed count evidence
+
+- **Promotion-gate hardening:** walk-forward and multi-fold evidence counts now
+  reject booleans, fractional values, NaN, infinity, and non-numeric strings
+  instead of accepting Python coercions such as `True == 1`.
+- **Regression coverage:** adversarial count fixtures prove malformed metadata
+  cannot satisfy causal or stability gates; valid positive integers and integral
+  floats remain accepted for JSON compatibility.
+- **Verification:** `make ci` passed with 1,355 non-network tests, 87.97% total
+  coverage, Ruff, format, and mypy clean. This changes evidence validation only;
+  it makes no performance or live-readiness claim.
+
+## Day Wave 49 DONE (2026-09-16) — strict typed evidence counts
+
+- **Evidence boundary:** promotion fold/date counts now require actual JSON
+  numeric values (positive integers or integral floats); booleans, numeric
+  strings, fractions, NaN, and infinity are rejected without coercion.
+- **Regression coverage:** count-gate tests include coercion-shaped values and
+  valid numeric compatibility cases.
+- **Verification:** `make ci` passed with 1,356 non-network tests, 87.95% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 50 DONE (2026-09-16) — registry authorization hardening
+
+- **Independent promotion boundary:** `promotion_decision` now rejects boolean,
+  numeric-string, fractional, NaN, and infinite fold counts; fold stability must
+  also be finite numeric evidence. Malformed metrics cannot bypass the registry
+  even if an upstream wrapper is skipped.
+- **Receipt typing:** emitted `evidence_complete` and `synthetic` fields now use
+  strict boolean semantics rather than generic truthiness.
+- **Verification:** `make ci` passed with 1,357 non-network tests, 87.98% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 51 DONE (2026-09-16) — total promotion decisions
+
+- **No-crash fail-closed gate:** malformed persisted metric values such as
+  arbitrary objects or nonnumeric strings now normalize to unavailable evidence
+  instead of raising during threshold comparison.
+- **Regression coverage:** promotion tests verify malformed metrics return a
+  structured non-promote decision with missing-metric reasons.
+- **Verification:** `make ci` passed with 1,368 non-network tests, 87.98% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 52 DONE (2026-09-16) — wrappee resolve fail-closed (CoS)
+
+- Numbering note: Lieutenant owned Waves 50–51 (registry/promotion). CoS wrappee
+  hardening ships as **Wave 52** to avoid collision.
+- Added `_require_wrappee_resolve_inputs` on `resolve_wrappee_reselect_cached`: empty taus,
+  empty train/cal, y vs scale length mismatch, alpha/min_coverage outside (0, 1) raise ValueError.
+- `fit_scaled_wrappee`: unknown family name raises ValueError (no silent gaussian fallback).
+- Tests in `tests/unit/test_wrappee_reselect.py` (Wave 50-labeled edges in file; suite green).
+  Full `pytest -m 'not network'` green; ruff clean on touch set.
+- Soft H-table / OT / PERF / Acerbi invented-p skipped. Not a live capital claim.
+
+## Day Wave 53 DONE (2026-09-16) — wrappee resolve residual edges (CoS)
+
+- Added fail-closed tests for empty cal and min_coverage outside (0, 1) on
+  `resolve_wrappee_reselect_cached` (completes Wave 52 input guards).
+- Suite: wrappee reselect edges green; ruff clean on touch set.
+- Soft H-table / OT / PERF skipped. Not a live capital claim.
+
+## Day Wave 54 DONE (2026-09-16) — cross-layer boolean integrity
+
+- **Validation consistency:** outer `validate_candidate` gates now require
+  literal booleans for walk-forward completion, causal-panel claims,
+  synthetic markers, and evidence completeness. Truthy strings cannot make a
+  research result appear valid while the registry rejects it.
+- **Regression coverage:** poisoned string flags are explicitly rejected and
+  cannot set the causal/walk-forward gate or research `ok` status.
+- **Verification:** `make ci` passed with 1,369 non-network tests, 87.99% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 55 candidates
+
+- paper/receipt schema hygiene residuals, or history_prefix edges if concrete gap
+- Soft-verify H-table sprawl remains paused; OT / PERF / Acerbi invented-p prefer skip
+
+## Day Wave 55 DONE (2026-09-16) — history_prefix asof type guard (CoS)
+
+- `history_prefix_upto` rejects non-datetime `asof` with TypeError (fail-closed).
+- Test: `test_history_prefix_upto_rejects_non_datetime_asof`. Ruff clean.
+- Soft H-table / OT / PERF skipped. Not a live capital claim.
+
+## Day Wave 56 DONE (2026-09-16) — total paper-ledger validation
+
+- **Corruption safety:** `validate_ledger_schema` now reports non-object
+  `meta.json` / `broker_state.json` payloads instead of raising.
+- **Strict schema typing:** schema versions must be actual non-negative integer
+  JSON values; string and boolean coercions are rejected.
+- **Verification:** `make ci` passed with 1,376 non-network tests, 88.08% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 57 DONE (2026-09-16) — typed paper receipt identity
+
+- **Run identity:** promotion dry-run receipts now reject non-string `run_id`
+  values instead of stringifying them before path validation.
+- **Regression coverage:** numeric identifiers are explicitly rejected, keeping
+  receipt identity aligned with ledger directory/meta/broker-state bindings.
+- **Verification:** `make ci` passed with 1,377 non-network tests, 88.09% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 58 DONE (2026-09-16) — latest-run identity safety
+
+- **Corruption handling:** `latest_run_id` now returns no identity for malformed
+  JSON, non-object payloads, or non-string IDs instead of raising or coercing
+  arbitrary values.
+- **Path security preserved:** traversal IDs still raise the established
+  path-safety error rather than being silently swallowed.
+- **Verification:** `make ci` passed with 1,379 non-network tests, 88.08% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 59 DONE (2026-09-16) — fail-closed broker-state reader
+
+- **Resume safety:** `load_broker_state` now returns no state for malformed JSON
+  or non-object payloads instead of handing arbitrary data to resume logic.
+- **Security contract preserved:** path-traversal run IDs still raise the
+  established path-safety error; this wave only softens corruption handling.
+- **Verification:** `make ci` passed with 1,381 non-network tests, 86.77% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 60 DONE (2026-09-16) — resume receipt corruption boundary
+
+- **Paper resume safety:** corrupt or non-JSON `promotion_dry_run.json` now
+  produces a controlled invalid-receipt error before resume state is used.
+- **Contract preservation:** valid receipts continue to resume normally, while
+  receipt validation remains the single source of truth for resume acceptance.
+- **Verification:** `make ci` passed with 1,387 non-network tests, 87.98% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 61 DONE (2026-09-16) — Northset and resume integrity integration
+
+- **Resume restoration:** malformed champion/shadow broker state now produces a
+  controlled invalid-state error instead of raw deserialization exceptions.
+- **Northset catalog integration:** the new Northset family is catalog-versioned
+  and its research receipt omits forbidden `live_pnl_claim` keys while retaining
+  explicit research-only labeling.
+- **Type/quality gate:** corrected shared Northset typing and stale catalog/CLI
+  expectations; doctor now surfaces an unready default checkout with exit code 1.
+- **Verification:** `make ci` passed with 1,401 non-network tests, 87.71% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 62 DONE (2026-09-16) — resume run-identity binding
+
+- **Cross-artifact invariant:** resume now requires the requested run ID to
+  match `broker_state.json.run_id`; mixed-run state fails closed before broker
+  restoration or replay.
+- **Regression coverage:** paper resume tests cover mismatched state identity,
+  corrupt broker state, and corrupt promotion receipts.
+- **Verification:** `make ci` passed with 1,402 non-network tests, 87.71% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 63 DONE (2026-09-16) — strict resume cursor validation
+
+- **Replay safety:** persisted `step` must be a non-negative integer, and
+  `last_decision` / `last_exec` must be valid ISO timestamps when present.
+  Ambiguous cursor metadata now fails closed instead of silently replaying or
+  skipping history.
+- **Regression coverage:** resume tests cover invalid step and timestamp fields
+  in addition to mixed-run identity and corrupt broker/receipt state.
+- **Verification:** `make ci` passed with 1,405 non-network tests, 87.72% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 64 DONE (2026-09-16) — resume fingerprint integrity
+
+- **Provenance boundary:** persisted `resume_fingerprint` must be a lowercase
+  64-character SHA-256 digest when present; malformed values fail before replay.
+- **Regression coverage:** resume tests now cover invalid fingerprints alongside
+  cursor timestamps, step types, run identity, broker state, and promotion receipts.
+- **Verification:** `make ci` passed with 1,406 non-network tests, 87.74% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 65 DONE (2026-09-16) — persisted analytics schema boundary
+
+- **Artifact integrity:** `validate_ledger_schema` now validates the persisted
+  `analytics_export.json` through the canonical analytics-export validator.
+- **Fail-closed corruption handling:** malformed JSON, non-object payloads, and
+  honesty/schema violations are reported as ledger errors; legacy runs without
+  the optional artifact remain visible through a warning.
+- **Regression coverage:** schema tests cover a valid paper run plus corrupted,
+  non-object, and live-claim analytics exports.
+- **Verification:** `make ci` passed with 1,409 non-network tests, 87.73% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 66 DONE (2026-09-16) — Northset integration hardening
+
+- **OHLC contract restored:** Northset volatility diagnostics now receive the
+  complete OHLC input required by the estimator, including `open`.
+- **Import safety:** Northset public exports are lazy, removing the
+  `microstructure.candle_book_features` package-initialization cycle while
+  preserving the existing import surface.
+- **Type/robustness:** candle geometry rate aggregation handles empty means
+  explicitly and remains type-safe.
+- **Verification:** `make ci` passed with 1,412 non-network tests, 87.29% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 67 DONE (2026-09-16) — paper analytics provenance binding
+
+- **Artifact identity:** paper `analytics_export.json` now carries the paper
+  `run_id`, while shared backtest exports remain compatible without one.
+- **Swap detection:** ledger validation rejects a valid analytics export copied
+  from another run instead of treating it as an independently valid artifact.
+- **Regression coverage:** paper roundtrip and ledger-schema tests cover the
+  emitted identity and cross-run tampering.
+- **Verification:** `make ci` passed with 1,416 non-network tests, 87.67% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 68 DONE (2026-09-16) — analytics artifact tamper seal
+
+- **Same-run integrity:** paper analytics exports now carry a self-excluding
+  SHA-256 digest, mirroring promotion-receipt integrity protection.
+- **Fail-closed validation:** malformed, mismatched, or tampered digests are
+  reported by ledger schema validation; legacy exports without a digest remain
+  backward-compatible.
+- **Regression coverage:** tests cover emitted digests, cross-run identity
+  binding, same-run content tampering, malformed JSON, and non-object payloads.
+- **Verification:** `make ci` passed with 1,421 non-network tests, 87.45% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 69 DONE (2026-09-16) — integrity primitive API contract
+
+- **Public API:** `analytics_export_digest` is now exported from
+  `quant_fund.metrics` for consistent paper/backtest tooling.
+- **Canonical contract:** direct tests lock deterministic ordering, nested-value
+  sensitivity, and self-exclusion of the digest field.
+- **Verification:** `make ci` passed with 1,422 non-network tests, 87.45% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 70 DONE (2026-09-16) — backtest/paper integrity parity
+
+- **Consistent persistence:** `export_backtest_metrics_json` now emits the same
+  self-excluding analytics SHA-256 seal as paper exports.
+- **Regression coverage:** backtest export tests verify the digest after honesty
+  stamping and metadata normalization.
+- **Boundary preserved:** this seals persisted backtest artifacts without
+  changing in-memory result schemas or introducing live-performance claims.
+- **Verification:** `make ci` passed with 1,422 non-network tests, 87.45% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 71 DONE (2026-09-16) — canonical digest validation
+
+- **Single trust boundary:** `validate_analytics_export` now verifies optional
+  analytics SHA-256 seals for paper, backtest, and external callers alike.
+- **Fail-closed behavior:** malformed or mismatched digest fields become
+  validation errors instead of being silently accepted.
+- **Regression coverage:** direct validator tests cover same-run tampering while
+  preserving unsigned legacy export compatibility.
+- **Verification:** `make ci` passed with 1,423 non-network tests, 87.27% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 72 DONE (2026-09-16) — API artifact trust boundary
+
+- **Serving integrity:** `GET /backtest/{id}` now validates nested analytics
+  exports through the canonical research-only and digest-aware validator before
+  returning persisted results.
+- **Fail-closed API:** poisoned honesty flags, missing schema, or tampered
+  analytics seals return a structured 422 instead of being served.
+- **Regression coverage:** API tests cover poisoned nested analytics alongside
+  existing identity, path-containment, and parquet hash checks.
+- **Verification:** `make ci` passed with 1,424 non-network tests, 87.40% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 73 DONE (2026-09-16) — outer API receipt integrity
+
+- **Receipt provenance:** persisted FastAPI backtest receipts now carry a
+  self-excluding SHA-256 digest covering identity, scope, metrics, and data
+  references.
+- **Lookup hardening:** `GET /backtest/{id}` rejects invalid or mismatched
+  receipt digests before returning the artifact; legacy unsigned receipts remain
+  readable for compatibility.
+- **Regression coverage:** API tests cover emitted digest parity and same-receipt
+  tampering in addition to nested analytics and parquet hash validation.
+- **Verification:** `make ci` passed with 1,433 non-network tests, 87.44% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 74 DONE (2026-09-16) — research receipt read-race hardening
+
+- **API fail-closed behavior:** `/research/latest` now converts post-verification
+  unreadable, malformed, or non-object receipts into controlled 422 responses.
+- **Regression coverage:** API tests exercise the verification/read race without
+  weakening the canonical research artifact verifier.
+- **Verification:** `make ci` passed with 1,435 non-network tests, 87.51% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 75 DONE (2026-09-16) — research API honesty envelope
+
+- **Consistent API contract:** `/research/latest` now applies the same enforced
+  `research_only=true` / `live_pnl_claim=false` envelope as other metric routes,
+  even when a verified receipt contains poisoned flags.
+- **Regression coverage:** endpoint tests cover both read-race failure and
+  honesty-stamp behavior after successful verification.
+- **Verification:** `make ci` passed with 1,436 non-network tests, 87.04% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 76 DONE (2026-09-16) — vendor microstructure receipt honesty
+
+- **Receipt completeness:** candle/order-book vendor benches preserve both
+  `book_source` and `book_dgp` in the returned research receipt.
+- **Rebrand continuity:** user-facing docs and metadata consistently identify
+  Dipcatcher as Artificial Hedge's proprietary research lab; executable legacy
+  commands remain compatibility aliases.
+- **Verification:** `make ci` passed with 1,463 non-network tests, 86.82% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 77 DONE (2026-09-16) — scientific display and provenance hardening
+
+- **P-value honesty:** research receipts and CLI output render floating-point
+  underflow as a strict lower bound instead of the misleading literal `p=0`.
+- **Fixture boundary:** Northset synthetic fixtures explicitly opt out of the
+  production adjusted-OHLC requirement; provider/production inputs remain
+  fail-closed.
+- **Vendor provenance:** mixed candle/book runs retain `data_source=SYNTHETIC`
+  for synthetic candles while reporting `dgp=vendor_panel:<source>` for the
+  external book component.
+- **Verification:** `make ci` passed with 1,507 non-network tests, 85.58% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 78 DONE (2026-09-16) — non-parametric conditional density comparator
+
+- **Distribution breadth:** added `ScaledEmpiricalDistribution`, which learns
+  standardized residual quantiles and rescales them by the PIT-safe volatility
+  covariate.
+- **Proper diagnostics:** distribution benches now report empirical-residual
+  CRPS, PIT KS, pinball, coverage, and a Student-t comparison without changing
+  the operational scaled-t wrappee.
+- **Safety boundary:** the comparator is explicitly research-only and carries
+  no conditional-coverage or live-performance claim.
+- **Verification:** `make ci` passed with 1,538 non-network tests, 86.09% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 79 DONE (2026-09-16) — density benchmark verification
+
+- **End-to-end wiring:** standardized empirical residual scoring is exercised
+  through the research notebook path, not only through isolated model tests.
+- **Comparator integrity:** the new CRPS/PIT/coverage diagnostics coexist with
+  the existing scaled Gaussian and Student-t paths without changing wrappee
+  selection or FDR hypotheses.
+- **Verification:** `make ci` passed with 1,538 non-network tests, 86.09% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 80 DONE (2026-09-16) — date-clustered calibration diagnostics
+
+- **Panel inference hygiene:** added `grouped_mean_tstat`, collapsing correlated
+  name-level observations into one miss-rate observation per date before HAC
+  inference.
+- **Localized conformal:** panel benches now expose date-clustered miss rate,
+  t-statistic, p-value, and effective date count alongside legacy Kupiec fields.
+- **Compatibility boundary:** legacy iid Kupiec fields remain unchanged; the
+  clustered result is clearly diagnostic and does not mint a finite-sample
+  coverage guarantee or promotion decision.
+- **Verification:** `make ci` passed with 1,578 non-network tests, 85.96% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 81 DONE (2026-09-16) — panel calibration coverage
+
+- **Online CRC:** date-clustered miss-rate HAC diagnostics now align with the
+  original per-observation evaluation dates, while one update remains shared
+  per timestamp.
+- **Portfolio conformal:** date-level book sets now expose the same clustered
+  calibration fields without pretending book dates are iid name observations.
+- **Backward compatibility:** legacy Kupiec fields and H-table semantics remain
+  unchanged; clustered fields are diagnostic only.
+- **Verification:** `make ci` passed with 1,595 non-network tests, 85.34% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 82 DONE (2026-09-16) — clustered calibration becomes authoritative
+
+- **Hypothesis semantics:** H16–H18 now prefer date-clustered HAC evidence for
+  modern panel receipts, so correlated names cannot silently inflate the
+  calibration sample size.
+- **Compatibility:** legacy receipts without clustered fields still use their
+  finite Kupiec values; verifier consistency markers remain backward-compatible.
+- **FDR boundary:** the hypotheses remain in the calibration family, where
+  failure to reject is the desired outcome; no discovery or promotion meaning
+  was added.
+- **Verification:** `make ci` passed with 1,616 non-network tests, 85.95% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 83 DONE (2026-09-16) — clustered receipt consistency
+
+- **Verifier closure:** panel receipt consistency now triggers on either modern
+  `date_clustered_p` or legacy `kupiec_p`, preventing clustered H16–H18 evidence
+  from bypassing hypothesis-presence checks.
+- **Compatibility:** the existing helper name and legacy error tokens remain
+  stable for older receipts and downstream tooling.
+- **Regression coverage:** clustered-only receipts are explicitly tested for
+  fail-closed H16–H18 consistency.
+- **Verification:** `make ci` passed with 1,631 non-network tests, 85.12% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 84 DONE (2026-09-16) — latest receipt pointer integrity
+
+- **Pointer trust boundary:** when declared, `artifacts.json` in `latest.json`
+  must resolve back to the receipt being validated.
+- **Backward compatibility:** legacy receipts that omit the optional pointer
+  remain valid; immutable run binding and SHA-256 checks are unchanged.
+- **Regression coverage:** explicit latest-pointer tampering now fails closed.
+- **Verification:** `make ci` passed with 1,657 non-network tests, 85.59% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 85 DONE (2026-09-16) — artifact schema strictness
+
+- **Artifact boundary:** present research-receipt artifact pointers must be
+  strings, and present SHA-256 fields must be valid lowercase digests; omitted
+  legacy optional fields remain compatible.
+- **Fail-closed behavior:** malformed values are rejected before path or hash
+  interpretation, preventing structurally poisoned receipts from being treated
+  as valid evidence.
+- **Regression coverage:** verifier tests cover malformed JSON pointers and
+  artifact digests in addition to latest-pointer tampering.
+- **Verification:** `make ci` passed with 1,706 non-network tests, 86.73% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness
+  claim.
+
+## Day Wave 86 DONE (2026-09-16) — Kyle-lambda alignment boundary
+
+- **Alignment safety:** OFI and signed-depth Kyle-lambda date/value vectors are
+  checked for equal length before correlation mapping; silent truncation is
+  impossible, and mismatches produce a stable domain-specific error.
+- **Regression coverage:** a malformed-vector test exercises the public
+  correlation diagnostic fail-closed path.
+- **Verification:** focused Kyle-OFI suite passes (21 tests), with Ruff, mypy,
+  and diff checks clean. No performance or live-readiness claim.
+
+## Day Wave 87 DONE (2026-09-16) — causal-panel marker hardening
+
+- **Evidence boundary:** `validate_candidate` no longer treats a metrics
+  `causal_panel=true` marker as causal evidence; only the structurally
+  validated target-weight parquet panel can satisfy that gate.
+- **Fail-closed behavior:** forged or stale metadata cannot substitute for the
+  configured panel artifact.
+- **Regression coverage:** explicit forged-marker rejection is covered in the
+  validation-gate suite.
+- **Verification:** focused validation-gate suite passes (32 tests), with Ruff
+  and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 88 DONE (2026-09-16) — walk-forward evidence marker hardening
+
+- **Evidence boundary:** `walk_forward_complete=true` no longer satisfies the
+  causal-or-walk-forward gate by itself; valid positive date/fold counts or
+  verified ranker evidence are required.
+- **Fail-closed behavior:** completion metadata cannot substitute for temporal
+  evaluation evidence.
+- **Regression coverage:** explicit forged walk-forward-marker rejection is
+  covered alongside the causal-panel marker test.
+- **Verification:** focused validation-gate suite passes (33 tests), with Ruff
+  and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 89 DONE (2026-09-16) — multi-fold marker hardening
+
+- **Stability boundary:** `walk_forward_complete=true` without a positive fold
+  count no longer satisfies the multi-fold stability gate.
+- **Evidence semantics:** research-success fixtures now declare explicit fold
+  evidence; completion metadata remains descriptive rather than authoritative.
+- **Regression coverage:** marker-only multi-fold evidence fails closed, while
+  valid two-fold evidence continues to pass.
+- **Verification:** validation-gate suite passes (34 tests), with Ruff and mypy
+  clean. No performance or live-readiness claim.
+
+## Day Wave 90 DONE (2026-09-16) — completeness-marker hardening
+
+- **Evidence boundary:** `evidence_complete=true` cannot substitute for finite
+  core evidence when no verified immutable research receipt is present.
+- **Required metrics:** receipt-less research validation now requires finite
+  `mean_ic`, `net_spread`, and `turnover` values before `research_ok` can pass.
+- **Regression coverage:** forged completeness markers fail closed while valid
+  metric-backed cases remain covered.
+- **Verification:** validation-gate suite passes (35 tests), with Ruff and mypy
+  clean. No performance or live-readiness claim.
+
+## Day Wave 91 DONE (2026-09-16) — fold/date semantic separation
+
+- **Stability semantics:** ranker `n_dates` and `n_ic_dates` no longer satisfy
+  the multi-fold stability gate; only explicit `n_folds` evidence does.
+- **Evidence preservation:** date counts remain valid for temporal
+  walk-forward coverage, but are not misrepresented as independent validation
+  splits.
+- **Regression coverage:** ranker date-count masquerading is explicitly
+  rejected.
+- **Verification:** validation-gate suite passes (36 tests), with Ruff and mypy
+  clean. No performance or live-readiness claim.
+
+## Day Wave 92 DONE (2026-09-16) — cumulative validation gate verification
+
+- **Global verification:** cumulative marker, fold-count, date-count, and
+  completeness hardening passes the full repository gate.
+- **Verification:** `make ci` passed with 1,725 non-network tests, 86.54% total
+  coverage, Ruff, format, and mypy clean. No performance or live-readiness
+  claim.
+
+## Day Wave 93 DONE (2026-09-16) — promotion data-source consistency
+
+- **Promotion boundary:** `promotion_decision` now rejects missing or
+  whitespace-only `data_source` values, matching champion receipt approval.
+- **Normalization:** source labels are trimmed before synthetic detection and
+  are emitted in normalized form, preventing layer-specific decisions.
+- **Regression coverage:** missing-source and whitespace-padded synthetic
+  source cases fail closed.
+- **Verification:** registry and validation suites pass (56 tests), with Ruff
+  and mypy clean. No performance or live-readiness claim.
+
+## Day Wave 94 DONE (2026-09-16) — registry decision consistency audit
+
+- **Audit result:** champion approval already requires the complete promotion
+  receipt identity, while the lower-level metric decision remains intentionally
+  receipt-independent for direct registry testing and validation composition.
+- **Closed gap:** the lower-level decision now agrees with champion approval on
+  non-empty normalized `data_source` and synthetic classification.
+- **Verification:** registry/validation tests remain green; no promotion or
+  live-readiness claim is inferred from synthetic evidence.
+
+## Day Wave 95 DONE (2026-09-16) — champion-source normalization closure
+
+- **Champion boundary:** `promotion_is_approved` now trims and normalizes
+  `data_source` before checking synthetic eligibility and non-empty identity.
+- **Fail-closed behavior:** whitespace-padded synthetic receipts cannot evade
+  the champion safety barrier.
+- **Regression coverage:** direct forged whitespace-padded synthetic receipt
+  rejection is covered.
+- **Verification:** registry/promotion suites pass (34 tests), with Ruff and
+  mypy clean. No performance or live-readiness claim.
+
+## Day Wave 96 DONE (2026-09-16) — leakage-flag coercion hardening
+
+- **Leakage boundary:** promotion decisions now accept only the literal boolean
+  `True` as a leakage pass; truthy strings, integers, objects, and other
+  coercion-shaped values fail closed.
+- **Receipt consistency:** emitted `leakage_ok` is now the same strict boolean
+  used by the gate and champion approval.
+- **Regression coverage:** string, integer, and object leakage flags are
+  explicitly rejected.
+- **Verification:** promotion/registry suites pass (35 tests), with Ruff and
+  mypy clean. No performance or live-readiness claim.
+
+## Day Wave 97 DONE (2026-09-16) — receipt version type strictness
+
+- **Schema boundary:** receipt `schema_version` and provenance
+  `benchmark_catalog_version` now require exact integer types; JSON booleans
+  cannot exploit Python's `True == 1` equality.
+- **Fail-closed behavior:** malformed version markers invalidate the research
+  artifact before downstream evidence interpretation.
+- **Regression coverage:** boolean markers are explicitly rejected for both
+  version fields.
+- **Verification:** research-verifier suite passes (232 tests), with Ruff and
+  mypy clean. No performance or live-readiness claim.
+
+## Day Wave 98 DONE (2026-09-16) — synthetic-flag type strictness
+
+- **Provenance boundary:** an explicitly present `synthetic` field must be a
+  literal boolean; strings, numbers, and objects cannot be interpreted through
+  truthiness.
+- **Fail-closed behavior:** malformed synthetic declarations invalidate the
+  promotion decision while preserving the explicit data-source check.
+- **Regression coverage:** malformed string synthetic flags are rejected.
+- **Verification:** promotion/registry suites pass (36 tests), with Ruff and
+  mypy clean. No performance or live-readiness claim.
+
+## Day Wave 99 DONE (2026-09-16) — receipt source normalization
+
+- **Provenance boundary:** research receipt source/synthetic consistency now
+  trims and normalizes `data_source` before classification.
+- **Fail-closed behavior:** whitespace-padded synthetic labels cannot evade the
+  receipt synthetic mismatch check.
+- **Regression coverage:** padded-source mismatch is explicitly rejected.
+- **Verification:** research-verifier suite passes (233 tests), with Ruff and
+  mypy clean. No performance or live-readiness claim.
+
+## Day Wave 100 candidates
+
+- Soft-verify H-table sprawl remains paused; OT / PERF / Acerbi invented-p prefer skip
+
+## Definition of done (Day Wave 1)
+
+- Docs updated on Mac checkout
+- Highest-ROI fixtures/hardening landed
+- SYNTHETIC `dipcatcher research` + paper smoke recorded in `day_grind_progress.md`
+- `pytest -m 'not network'` green; ruff clean
+- `INFLIGHT` cleared; Wave 2 gaps listed
+
+## Day Wave 73 DONE (2026-09-16) — book panel load honesty
+
+- `load_book_panel` fail-closed on missing parquet path (shared Northset/CLI/provider contract).

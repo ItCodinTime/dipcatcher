@@ -1,0 +1,75 @@
+def kyle_ofi_label_nonempty_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify nest ``label`` nonempty when diagnostic markers are present.
+
+    Scan residual: SYN* / claim helpers skip blank labels. When any nest
+    diagnostic marker is present, ``label`` must be a nonempty string.
+    Absent markers → skip. Research diagnostic only; never live Sharpe.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    if not _kyle_ofi_has_nest_diagnostic_marker(kyle):
+        return []
+    label = kyle.get("label")
+    if label is None or not isinstance(label, str) or not str(label).strip():
+        return ["kyle_ofi_label_empty_with_markers"]
+    return []
+
+
+
+def kyle_ofi_date_series_counts_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``kyle_lambda_date_series_n_{depth,ofi}`` ≥ 0 ints when present.
+
+    Complements claim soft-verify on those stamps. Absent → skip.
+    """
+    kyle = _kyle_ofi_blob(blob)
+    if kyle is None:
+        return []
+    errors: list[str] = []
+    for key in ("kyle_lambda_date_series_n_depth", "kyle_lambda_date_series_n_ofi"):
+        if key not in kyle or kyle.get(key) is None:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append(f"kyle_ofi_{key}_non_numeric")
+            continue
+        if x != x or abs(x) == float("inf"):
+            errors.append(f"kyle_ofi_{key}_non_finite")
+        elif x < 0:
+            errors.append(f"kyle_ofi_{key}_negative")
+        elif abs(x - round(x)) > 1e-12:
+            errors.append(f"kyle_ofi_{key}_not_integer")
+    return errors
+
+
+def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
+    """Dispatcher: full kyle nest soft-verify suite (incl. label nonempty + date_series n)."""
+    errors: list[str] = []
+    errors.extend(kyle_residual_flow_honesty_errors(blob))
+    errors.extend(kyle_lambda_dispersion_honesty_errors(blob))
+    errors.extend(kyle_lambda_ofi_depth_corr_honesty_errors(blob))
+    errors.extend(kyle_ofi_join_coverage_honesty_errors(blob))
+    errors.extend(kyle_lambda_date_series_honesty_errors(blob))
+    errors.extend(kyle_ofi_synthetic_source_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_synthetic_honesty_errors(blob))
+    errors.extend(kyle_ofi_nest_claim_honesty_errors(blob))
+    errors.extend(kyle_ofi_ic_method_honesty_errors(blob))
+    errors.extend(kyle_ofi_family_honesty_errors(blob))
+    errors.extend(kyle_ofi_hac_lags_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_names_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_fused_scored_honesty_errors(blob))
+    errors.extend(kyle_ofi_book_panel_path_honesty_errors(blob))
+    errors.extend(kyle_ofi_min_join_coverage_pair_honesty_errors(blob))
+    errors.extend(kyle_ofi_dispersion_window_honesty_errors(blob))
+    errors.extend(kyle_ofi_diagnostic_string_honesty_errors(blob))
+    errors.extend(kyle_ofi_lambda_decile_order_honesty_errors(blob))
+    errors.extend(kyle_ofi_std_iqr_honesty_errors(blob))
+    errors.extend(kyle_ofi_rolling_mean_hac_band_honesty_errors(blob))
+    errors.extend(kyle_ofi_n_dates_companion_honesty_errors(blob))
+    errors.extend(kyle_ofi_pvalue_honesty_errors(blob))
+    errors.extend(kyle_ofi_spearman_honesty_errors(blob))
+    errors.extend(kyle_ofi_tstat_honesty_errors(blob))
+    errors.extend(kyle_ofi_label_nonempty_honesty_errors(blob))
+    errors.extend(kyle_ofi_date_series_counts_honesty_errors(blob))
+    return errors

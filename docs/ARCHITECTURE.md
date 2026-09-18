@@ -61,7 +61,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `registry` | MLflow champion/challenger |
 | `monitoring` | Drift, kill switch, promotion gates |
 | `api` | FastAPI service layer |
-| `cli` | `quant` Typer commands |
+| `cli` | `dipcatcher` Typer commands (`quant` compatibility alias) |
 
 ## Runtime modes
 
@@ -74,6 +74,21 @@ Configured by `runtime.mode`:
 - `live` — real orders; **requires explicit config**, never inferred
 
 Default is `research`. Live is refused unless `runtime.mode: live` and `runtime.allow_live: true`.
+
+### Backtest valuation integrity
+
+The event-driven backtester tracks the age of every close mark used to value a held
+position. A missing execution bar is not treated as a zero price, and a held name
+cannot be carried indefinitely at its last observed mark. Once the age exceeds
+`risk_gate.stale_price_bars`, the run fails closed with `StaleValuationError`
+rather than emitting fabricated NAV, P&L, exposure, or risk-gate inputs. Backtest
+metrics receipts are published through same-directory temporary files and atomic
+rename, so a failed write cannot replace a previously valid receipt with partial
+JSON. Before committing a fill, the backtester also requires every buy's notional
+plus transaction costs to be covered by current book cash. Cash-insufficient buys
+are rejected and counted in `metrics["cash_rejects"]`; the accounting path never
+creates a negative cash balance. Sell proceeds are applied normally and increase
+available cash for later fills.
 
 ## Time integrity
 
