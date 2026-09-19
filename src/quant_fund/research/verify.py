@@ -102,6 +102,7 @@ from quant_fund.research.catalog import (
     northset_shape_columns_ensured_rates_honesty_errors,
     northset_top_level_claim_honesty_errors,
     ranking_data_snooping_honesty_errors,
+    robinhood_plus_claim_honesty_errors,
     size_concentration_top_honesty_errors,
     structure_finite_rate_honesty_errors,
     tail_es_battery_keys_present,
@@ -613,6 +614,8 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
             errors.append(fc_err)
         for claim_err in candle_order_book_claim_honesty_errors(families.get("candle_order_book")):
             errors.append(claim_err)
+        for rh_err in robinhood_plus_claim_honesty_errors(families.get("robinhood_plus")):
+            errors.append(rh_err)
         for pear_err in candle_all_ic_pearson_unit_honesty_errors(
             families.get("candle_order_book")
         ):

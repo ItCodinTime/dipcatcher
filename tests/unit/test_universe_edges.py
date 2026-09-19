@@ -154,6 +154,44 @@ def test_build_membership_panel_empty_timestamps() -> None:
     assert build_membership_panel(_bars(5), _master(), [], UniverseConfig()).is_empty()
 
 
+def test_membership_asof_ignores_late_master_restatement() -> None:
+    """Late-available sector restatement cannot move the as-of universe join."""
+    bars = _bars(25)
+    asof = datetime(2020, 1, 21, tzinfo=UTC)
+    master = pl.DataFrame(
+        {
+            "security_id": ["A", "A", "B"],
+            "exchange": ["XNYS", "XNYS", "XNYS"],
+            "sector": ["tech", "health", "t"],
+            "industry": ["i", "i", "i"],
+            "security_type": ["common_stock", "common_stock", "common_stock"],
+            "ticker": ["AAA", "AAA", "BBB"],
+            "valid_from": [
+                datetime(2020, 1, 1, tzinfo=UTC),
+                datetime(2020, 1, 10, tzinfo=UTC),
+                datetime(2020, 1, 1, tzinfo=UTC),
+            ],
+            "valid_to": [None, None, None],
+            "available_time": [
+                datetime(2020, 1, 1, tzinfo=UTC),
+                datetime(2020, 2, 1, tzinfo=UTC),
+                datetime(2020, 1, 1, tzinfo=UTC),
+            ],
+        }
+    )
+    cfg = UniverseConfig(
+        min_price=1.0,
+        min_adv=0.0,
+        min_history_bars=5,
+        top_n_adv=None,
+        exchanges=["XNYS"],
+        security_types=["common_stock"],
+    )
+    mem = membership_asof(bars, master, asof, cfg).sort("security_id")
+    by_id = dict(zip(mem["security_id"].to_list(), mem["sector"].to_list(), strict=True))
+    assert by_id["A"] == "tech"
+
+
 def test_assert_universe_not_from_future_empty_membership_noop() -> None:
     bars = _bars(10)
     asof = bars["event_time"].unique().sort()[5]
@@ -207,9 +245,7 @@ def test_assert_universe_detects_late_available_bar() -> None:
         .alias("available_time"),
     )
     asof = datetime(2020, 1, 21, tzinfo=UTC)
-    membership = pl.DataFrame(
-        {"security_id": ["A"], "asof": [asof], "adv": [50_000_000.0]}
-    )
+    membership = pl.DataFrame({"security_id": ["A"], "asof": [asof], "adv": [50_000_000.0]})
 
     with pytest.raises(LeakageError, match="Universe ADV"):
         assert_universe_not_from_future(membership, bars, asof)
@@ -235,3 +271,86 @@ def test_assert_universe_leakage_raises_when_adv_diverges(monkeypatch: pytest.Mo
     monkeypatch.setattr("quant_fund.data.universe.trailing_adv", _fake_trailing)
     with pytest.raises(LeakageError, match="Universe ADV"):
         assert_universe_not_from_future(mem, bars, asof)
+
+
+def _listing_cfg() -> UniverseConfig:
+    return UniverseConfig(
+        min_price=1.0,
+        min_adv=0.0,
+        min_history_bars=5,
+        top_n_adv=None,
+        exchanges=["XNYS"],
+        security_types=["common_stock"],
+    )
+
+
+def test_membership_asof_drops_name_after_visible_delist() -> None:
+    bars = _bars(25)
+    times = bars["event_time"].unique().sort().to_list()
+    delist_on = times[20]
+    after = times[21]
+    actions = pl.DataFrame(
+        {
+            "security_id": ["A"],
+            "event_time": [delist_on],
+            "available_time": [delist_on],
+            "action_type": ["delist"],
+        }
+    )
+    cfg = _listing_cfg()
+    on_event = membership_asof(bars, _master(), delist_on, cfg, actions=actions)
+    after_event = membership_asof(bars, _master(), after, cfg, actions=actions)
+    assert "A" in on_event["security_id"].to_list()
+    assert "A" not in after_event["security_id"].to_list()
+    assert "B" in after_event["security_id"].to_list()
+
+
+def test_membership_asof_late_delist_cannot_rewrite_preavailability() -> None:
+    bars = _bars(25)
+    asof = datetime(2020, 1, 21, tzinfo=UTC)
+    actions = pl.DataFrame(
+        {
+            "security_id": ["A"],
+            "event_time": [datetime(2020, 1, 10, tzinfo=UTC)],
+            "available_time": [datetime(2020, 2, 1, tzinfo=UTC)],
+            "action_type": ["delist"],
+        }
+    )
+    mem = membership_asof(bars, _master(), asof, _listing_cfg(), actions=actions)
+    assert "A" in mem["security_id"].to_list()
+
+
+def test_membership_asof_ticker_change_overrides_symbol() -> None:
+    bars = _bars(25)
+    asof = datetime(2020, 1, 21, tzinfo=UTC)
+    actions = pl.DataFrame(
+        {
+            "security_id": ["A"],
+            "event_time": [datetime(2020, 1, 10, tzinfo=UTC)],
+            "available_time": [datetime(2020, 1, 10, tzinfo=UTC)],
+            "action_type": ["ticker_change"],
+            "new_ticker": ["AA2"],
+        }
+    )
+    mem = membership_asof(bars, _master(), asof, _listing_cfg(), actions=actions)
+    by_id = dict(zip(mem["security_id"].to_list(), mem["symbol"].to_list(), strict=True))
+    assert by_id["A"] == "AA2"
+    assert by_id["B"] == "BBB"
+
+
+def test_membership_asof_announced_delist_respects_include_delisted_flag() -> None:
+    bars = _bars(25)
+    asof = datetime(2020, 1, 15, tzinfo=UTC)
+    actions = pl.DataFrame(
+        {
+            "security_id": ["A"],
+            "event_time": [datetime(2020, 1, 25, tzinfo=UTC)],
+            "available_time": [datetime(2020, 1, 10, tzinfo=UTC)],
+            "action_type": ["delist"],
+        }
+    )
+    keep = membership_asof(bars, _master(), asof, _listing_cfg(), actions=actions)
+    drop_cfg = _listing_cfg().model_copy(update={"include_delisted": False})
+    drop = membership_asof(bars, _master(), asof, drop_cfg, actions=actions)
+    assert "A" in keep["security_id"].to_list()
+    assert "A" not in drop["security_id"].to_list()

@@ -123,6 +123,8 @@ class SyntheticMarketProvider:
         bars = pl.DataFrame(bar_rows)
 
         split_ts = _close_ts(self.days[split_i])
+        delist_ts = _close_ts(self.days[t - 15])
+        delist_sid = f"SEC_{n - 1:04d}"
         actions = pl.DataFrame(
             [
                 {
@@ -136,7 +138,19 @@ class SyntheticMarketProvider:
                     "factor": 2.0,
                     "amount": None,
                     "new_ticker": None,
-                }
+                },
+                {
+                    "security_id": delist_sid,
+                    "event_time": delist_ts,
+                    "available_time": delist_ts,
+                    "ingested_time": ingested,
+                    "source": SOURCE,
+                    "revision_id": REVISION,
+                    "action_type": "delist",
+                    "factor": None,
+                    "amount": None,
+                    "new_ticker": None,
+                },
             ]
         )
         master_rows = []
@@ -144,6 +158,7 @@ class SyntheticMarketProvider:
             sid = "SEC_MKT" if j == 0 else f"SEC_{j:04d}"
             ticker = "MKT" if j == 0 else f"S{j:04d}"
             valid_to = _close_ts(self.days[-16]) if j == n - 1 else None
+            valid_from = _close_ts(self.days[0])
             master_rows.append(
                 {
                     "security_id": sid,
@@ -154,8 +169,12 @@ class SyntheticMarketProvider:
                     "sector": "Market" if j == 0 else SECTORS[int(sector_idx[j])],
                     "industry": "Index" if j == 0 else SECTORS[int(sector_idx[j])],
                     "security_type": "common_stock",
-                    "valid_from": _close_ts(self.days[0]),
+                    "valid_from": valid_from,
                     "valid_to": valid_to,
+                    "available_time": valid_from,
+                    "ingested_time": ingested,
+                    "source": SOURCE,
+                    "revision_id": REVISION,
                 }
             )
         master = pl.DataFrame(master_rows)

@@ -4,15 +4,29 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import polars as pl
 
 from quant_fund.config.models import AppConfig
 from quant_fund.metrics.cross_section import date_ic_series
 from quant_fund.metrics.risk import losses_from_returns
-from quant_fund.metrics.scoring import icir, mean_pinball, qlike, quantile_crossing_rate
+from quant_fund.metrics.scoring import (
+    GARCH_ONE_STEP_CRPS_TAUS,
+    crps_from_quantiles,
+    crps_gaussian,
+    icir,
+    mean_pinball,
+    name_level_one_step_density_summary,
+    name_level_qlike,
+    one_step_density_summary,
+    overlap_aware_qlike,
+    qlike,
+    quantile_crossing_rate,
+)
 from quant_fund.models.alpha import HistoricalMeanAlpha
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
@@ -29,14 +43,28 @@ from quant_fund.models.ranking import (
     XGBRegRanker,
     group_sizes,
 )
+from quant_fund.models.realized_garch import (
+    REALIZED_GARCH_MEASURE,
+    RealizedGARCHVol,
+    parkinson_daily_variance,
+)
 from quant_fund.models.regime import GaussianHMMRegime, SingleStateRegime, VolThresholdRegime
 from quant_fund.models.tail import DrawdownClassifier, GaussianTail, HistoricalTail
-from quant_fund.models.volatility import EWMAVol, GARCHVol, HARVol, RollingVol, TreeVol
+from quant_fund.models.volatility import (
+    GARCH_DATE_LEVEL_SCOPE,
+    GARCH_SECURITY_LEVEL_SCOPE,
+    EWMAVol,
+    GARCHVol,
+    HARVol,
+    RollingVol,
+    TreeVol,
+)
 from quant_fund.pipeline.dataset import design_matrix, panel
 from quant_fund.registry.mlflow_store import (
     configure_tracking,
     log_run,
 )
+from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.seeds import set_global_seed
 from quant_fund.validation.purging import purge_mask
 from quant_fund.validation.walk_forward import Fold, walk_forward
@@ -175,17 +203,113 @@ def _require_model(name: str, catalog: set[str], family: str) -> str:
     return name
 
 
-def _garch_return_history(frame: Any) -> tuple[np.ndarray, np.ndarray]:
+def _stamp_strictly_before(stamp: object, asof: object) -> bool:
+    """Compare panel timestamps to asof without mixing naive/aware datetimes."""
+    if isinstance(stamp, datetime) and isinstance(asof, datetime):
+        if stamp.tzinfo is None and asof.tzinfo is not None:
+            return stamp.replace(tzinfo=asof.tzinfo) < asof
+        if stamp.tzinfo is not None and asof.tzinfo is None:
+            return stamp.replace(tzinfo=None) < asof
+        return stamp < asof
+    return bool(stamp < asof)  # type: ignore[operator]
+
+
+def _stamp_at_or_before(stamp: object, asof: object) -> bool:
+    """True when ``stamp`` is observable at the decision origin."""
+    if isinstance(stamp, datetime) and isinstance(asof, datetime):
+        if stamp.tzinfo is None and asof.tzinfo is not None:
+            return stamp.replace(tzinfo=asof.tzinfo) <= asof
+        if stamp.tzinfo is not None and asof.tzinfo is None:
+            return stamp.replace(tzinfo=None) <= asof
+        return stamp <= asof
+    return bool(stamp <= asof)  # type: ignore[operator]
+
+
+def _available_stamp_is_missing(stamp: object) -> bool:
+    if stamp is None:
+        return True
+    if isinstance(stamp, datetime):
+        return False
+    try:
+        if stamp != stamp:  # NaT / NaN
+            return True
+    except (TypeError, ValueError):
+        return True
+    return False
+
+
+def _require_garch_security_keys(frame: Any) -> None:
+    """Fail closed on blank ids or duplicate ``(security_id, event_time)`` keys.
+
+    Equal-weight date-level means and per-name histories are undefined when a
+    name is double-counted. Frames without ``security_id`` keep the legacy
+    date-only path used by univariate fixtures.
+    """
+    columns = set(frame.columns)
+    if "security_id" not in columns or "event_time" not in columns:
+        return
+    if frame.is_empty():
+        return
+    blank = frame.filter(
+        pl.col("security_id").is_null()
+        | (pl.col("security_id").cast(pl.String).str.strip_chars() == "")
+    )
+    if blank.height:
+        raise PointInTimeError("GARCH return history contains blank security_id")
+    if frame.select(["security_id", "event_time"]).is_duplicated().any():
+        raise PointInTimeError(
+            "GARCH return history contains duplicate security_id/event_time rows"
+        )
+
+
+def _garch_name_return_history(
+    frame: Any,
+    security_id: str,
+    asof: object | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Causal ``ret_1`` history for one security, never a pooled cross-section.
+
+    Duplicate panel keys fail closed on the full frame so a colliding name
+    cannot silently inflate another name's series. ``available_time`` uses the
+    same as-of contract as the date-level overlay.
+    """
+    if not isinstance(security_id, str) or not security_id.strip():
+        raise ValueError("per-security GARCH requires a non-empty security_id")
+    columns = set(frame.columns)
+    if "security_id" not in columns:
+        raise PointInTimeError("per-security GARCH frame missing security_id")
+    _require_garch_security_keys(frame)
+    sid = security_id.strip()
+    name_frame = frame.filter(pl.col("security_id").cast(pl.String) == sid)
+    if name_frame.is_empty():
+        return np.asarray([]), np.asarray([], dtype=float)
+    return _garch_return_history(name_frame, asof=asof)
+
+
+def _garch_return_history(
+    frame: Any,
+    asof: object | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Return finite equal-weight ``ret_1`` observations aggregated by date.
 
     This deliberately reads the full feature panel instead of the label-filtered
     design matrix: the latest returns are known even when their forward variance
-    labels are structurally unavailable.
+    labels are structurally unavailable. When ``asof`` is supplied, only rows
+    with ``event_time < asof`` enter the series. A present ``available_time``
+    column is PIT-filtered at the same origin (``available_time <= asof``);
+    null availability among otherwise usable rows fails closed rather than
+    treating an unpublished restatement as observable. Frames without
+    ``available_time`` keep the legacy event-time path.
     """
+    _require_garch_security_keys(frame)
     columns = set(frame.columns)
     if not {"event_time", "ret_1"}.issubset(columns):
         raise ValueError("GARCH requires event_time and ret_1 in the full feature panel")
-    history = frame.select(["event_time", "ret_1"]).drop_nulls()
+    has_availability = "available_time" in columns
+    selected = ["event_time", "ret_1"]
+    if has_availability:
+        selected.append("available_time")
+    history = frame.select(selected).drop_nulls(subset=["event_time", "ret_1"])
     raw_dates = np.asarray(history["event_time"].to_numpy())
     raw_values = np.asarray(history["ret_1"].to_numpy(), dtype=float)
     finite = np.isfinite(raw_values)
@@ -193,6 +317,37 @@ def _garch_return_history(frame: Any) -> tuple[np.ndarray, np.ndarray]:
         raise ValueError("GARCH return history contains no finite ret_1 observations")
     raw_dates = raw_dates[finite]
     raw_values = raw_values[finite]
+    raw_available = (
+        np.asarray(history["available_time"].to_numpy())[finite] if has_availability else None
+    )
+    if asof is not None:
+        keep = np.array(
+            [_stamp_strictly_before(stamp, asof) for stamp in raw_dates.tolist()],
+            dtype=bool,
+        )
+        if raw_available is not None:
+            available_stamps = raw_available.tolist()
+            missing = [
+                _available_stamp_is_missing(stamp)
+                for stamp, origin_ok in zip(available_stamps, keep.tolist(), strict=True)
+                if origin_ok
+            ]
+            if any(missing):
+                raise PointInTimeError(
+                    "GARCH return history has null available_time; "
+                    "refusing unobservable market overlay"
+                )
+            keep &= np.array(
+                [
+                    (not _available_stamp_is_missing(stamp)) and _stamp_at_or_before(stamp, asof)
+                    for stamp in available_stamps
+                ],
+                dtype=bool,
+            )
+        raw_dates = raw_dates[keep]
+        raw_values = raw_values[keep]
+        if raw_dates.size == 0:
+            return np.asarray([]), np.asarray([], dtype=float)
     ordered_dates = sorted(set(raw_dates.tolist()))
     dates = np.asarray(ordered_dates)
     values = np.asarray(
@@ -201,7 +356,100 @@ def _garch_return_history(frame: Any) -> tuple[np.ndarray, np.ndarray]:
     return dates, values
 
 
-def train_ranking(config: AppConfig, model_name: str = "ridge") -> dict[str, Any]:
+def _realized_garch_ohlc_columns(frame: Any) -> tuple[str, str]:
+    """Prefer split-adjusted high/low; never invent a close-to-close RV proxy."""
+    columns = set(frame.columns)
+    if {"high_split_adjusted", "low_split_adjusted"}.issubset(columns):
+        return "high_split_adjusted", "low_split_adjusted"
+    if {"high", "low"}.issubset(columns):
+        return "high", "low"
+    raise PointInTimeError(
+        "Realized GARCH requires daily OHLC high/low; refusing close-to-close squared proxy"
+    )
+
+
+def _realized_garch_history(
+    frame: Any,
+    asof: object | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Date-level equal-weight ``ret_1`` paired with same-name Parkinson variance.
+
+    One-day Parkinson is computed from daily OHLC. The 20-day ``vol_parkinson``
+    feature is never the realized measure. Names missing a finite return or
+    Parkinson drop from *both* means so the pair stays aligned. PIT filters
+    match ``_garch_return_history``.
+    """
+    _require_garch_security_keys(frame)
+    columns = set(frame.columns)
+    if not {"event_time", "ret_1"}.issubset(columns):
+        raise ValueError("Realized GARCH requires event_time and ret_1")
+    high_col, low_col = _realized_garch_ohlc_columns(frame)
+    has_availability = "available_time" in columns
+    selected = ["event_time", "ret_1", high_col, low_col]
+    if has_availability:
+        selected.append("available_time")
+    history = frame.select(selected).drop_nulls(subset=["event_time", "ret_1", high_col, low_col])
+    if history.is_empty():
+        raise ValueError("Realized GARCH history contains no finite OHLC/return pairs")
+    park = parkinson_daily_variance(history[high_col].to_numpy(), history[low_col].to_numpy())
+    raw_dates = np.asarray(history["event_time"].to_numpy())
+    raw_values = np.asarray(history["ret_1"].to_numpy(), dtype=float)
+    finite = np.isfinite(raw_values) & np.isfinite(park) & (park > 0.0)
+    if not np.any(finite):
+        raise ValueError("Realized GARCH history contains no finite Parkinson/return pairs")
+    raw_dates = raw_dates[finite]
+    raw_values = raw_values[finite]
+    raw_park = park[finite]
+    raw_available = (
+        np.asarray(history["available_time"].to_numpy())[finite] if has_availability else None
+    )
+    if asof is not None:
+        keep = np.array(
+            [_stamp_strictly_before(stamp, asof) for stamp in raw_dates.tolist()],
+            dtype=bool,
+        )
+        if raw_available is not None:
+            available_stamps = raw_available.tolist()
+            missing = [
+                _available_stamp_is_missing(stamp)
+                for stamp, origin_ok in zip(available_stamps, keep.tolist(), strict=True)
+                if origin_ok
+            ]
+            if any(missing):
+                raise PointInTimeError(
+                    "Realized GARCH history has null available_time; "
+                    "refusing unobservable Parkinson overlay"
+                )
+            keep &= np.array(
+                [
+                    (not _available_stamp_is_missing(stamp)) and _stamp_at_or_before(stamp, asof)
+                    for stamp in available_stamps
+                ],
+                dtype=bool,
+            )
+        raw_dates = raw_dates[keep]
+        raw_values = raw_values[keep]
+        raw_park = raw_park[keep]
+        if raw_dates.size == 0:
+            return np.asarray([]), np.asarray([], dtype=float), np.asarray([], dtype=float)
+    ordered_dates = sorted(set(raw_dates.tolist()))
+    dates = np.asarray(ordered_dates)
+    values = np.asarray(
+        [np.mean(raw_values[raw_dates == date]) for date in ordered_dates], dtype=float
+    )
+    measures = np.asarray(
+        [np.mean(raw_park[raw_dates == date]) for date in ordered_dates], dtype=float
+    )
+    return dates, values, measures
+
+
+def train_ranking(
+    config: AppConfig,
+    model_name: str = "ridge",
+    *,
+    frame: pl.DataFrame | None = None,
+    feature_names: list[str] | None = None,
+) -> dict[str, Any]:
     _require_model(
         model_name,
         {"composite", "ridge", "elasticnet", "xgboost", "lightgbm", "lambdarank", "xendcg"},
@@ -209,8 +457,8 @@ def train_ranking(config: AppConfig, model_name: str = "ridge") -> dict[str, Any
     )
     set_global_seed(config.train.random_seed)
     label = config.train.ranking_target
-    df = panel(config, label=label)
-    x, y, dates, feats, ids = design_matrix(df, label)
+    df = frame if frame is not None else panel(config, label=label)
+    x, y, dates, feats, ids = design_matrix(df, label, feature_names=feature_names)
     label_end_times = _aligned_label_end_times(df, label, feats)
     horizon = _label_horizon(label)
     evaluation_scores: list[np.ndarray] = []
@@ -363,7 +611,8 @@ def _garch_oos_predictions(
     label_horizon: int,
     return_dates: np.ndarray,
     return_values: np.ndarray,
-) -> tuple[np.ndarray, list[str]]:
+    return_frame: Any | None = None,
+) -> tuple[np.ndarray, list[str], dict[Any, dict[str, Any]]]:
     """Forecast each test row from the last information available at its origin.
 
     GARCH is a stateful time-series model, so one forecast from the fold boundary
@@ -373,6 +622,16 @@ def _garch_oos_predictions(
     ``return_dates``/``return_values`` come from the full feature panel, not the
     label-filtered design matrix, so structurally unavailable forward labels cannot
     remove otherwise usable historical returns.
+
+    When ``return_frame`` carries ``available_time``, each origin refits on the
+    PIT-observable equal-weight series rather than a pre-aggregated path that
+    already includes unpublished restatements. Density targets still use the
+    date-level ``ret_1`` outcome at the origin (evaluation vintage).
+
+    One-step density records score the date-level ``ret_1`` at the origin against
+    the predictive law fitted on strictly prior returns.  That object is not the
+    *h*-bar realized-variance QLIKE target and is never a multi-step Gaussian
+    approximation to ``cumulative_variance``.
     """
     date_values = np.asarray(dates)
     mask = np.asarray(test_mask, dtype=bool)
@@ -390,18 +649,33 @@ def _garch_oos_predictions(
         raise ValueError("label_horizon must be positive")
     test_indices = np.flatnonzero(mask)
     if test_indices.size == 0:
-        return np.empty(0, dtype=float), []
+        return np.empty(0, dtype=float), [], {}
 
+    history_lookup = {
+        date: float(value)
+        for date, value in zip(history_dates.tolist(), history_values.tolist(), strict=True)
+    }
+    pit_frame = (
+        return_frame
+        if return_frame is not None and "available_time" in getattr(return_frame, "columns", ())
+        else None
+    )
     by_date: dict[Any, float] = {}
+    density_by_date: dict[Any, dict[str, Any]] = {}
     statuses: list[str] = []
     for test_date in sorted(set(date_values[test_indices].tolist())):
         origin_mask = date_values < test_date
-        return_origin_mask = history_dates < test_date
-        if not np.any(return_origin_mask):
-            raise ValueError("GARCH test origin has no strictly prior return observations")
-        historical_returns = history_values[return_origin_mask]
-        if historical_returns.size == 0:
-            raise ValueError("GARCH test origin has no causal returns")
+        if pit_frame is not None:
+            _hist_dates, historical_returns = _garch_return_history(pit_frame, asof=test_date)
+            if historical_returns.size == 0:
+                raise ValueError("GARCH test origin has no strictly prior return observations")
+        else:
+            return_origin_mask = history_dates < test_date
+            if not np.any(return_origin_mask):
+                raise ValueError("GARCH test origin has no strictly prior return observations")
+            historical_returns = history_values[return_origin_mask]
+            if historical_returns.size == 0:
+                raise ValueError("GARCH test origin has no causal returns")
         model = make_model()
         model.fit(x[origin_mask], y[origin_mask], returns=historical_returns)
         forecast = model.forecast(horizon=label_horizon)
@@ -410,17 +684,288 @@ def _garch_oos_predictions(
             raise ValueError("GARCH produced an invalid out-of-sample forecast")
         by_date[test_date] = float(cumulative[label_horizon - 1])
         statuses.append(str(getattr(model, "fit_status", "unknown")))
+        if hasattr(model, "log_density") and hasattr(model, "pit"):
+            if test_date not in history_lookup:
+                raise ValueError("GARCH one-step density target missing origin ret_1")
+            density_by_date[test_date] = _garch_origin_density_record(
+                model, history_lookup[test_date], forecast
+            )
 
     predictions = np.asarray(
-        [by_date[date_values[index].item()] for index in test_indices], dtype=float
+        [by_date[date_values.tolist()[int(index)]] for index in test_indices], dtype=float
     )
-    return predictions, statuses
+    return predictions, statuses, density_by_date
+
+
+def _realized_garch_oos_predictions(
+    make_model: Callable[[], Any],
+    x: np.ndarray,
+    y: np.ndarray,
+    dates: np.ndarray,
+    test_mask: np.ndarray,
+    *,
+    label_horizon: int,
+    return_frame: Any,
+) -> tuple[np.ndarray, list[str], dict[Any, dict[str, Any]]]:
+    """Walk-forward Realized GARCH using strictly prior Parkinson/return pairs.
+
+    The realized measure is one-day Parkinson from daily OHLC. Origin-bar
+    OHLC cannot enter the fit; density still scores the origin's date-level
+    ``ret_1`` from the same paired cross-section (evaluation vintage).
+    """
+    date_values = np.asarray(dates)
+    mask = np.asarray(test_mask, dtype=bool)
+    if date_values.ndim != 1 or mask.shape != date_values.shape:
+        raise ValueError("dates and test_mask must be one-dimensional and aligned")
+    if return_frame is None:
+        raise ValueError("Realized GARCH walk-forward requires a return frame")
+    if label_horizon < 1:
+        raise ValueError("label_horizon must be positive")
+    test_indices = np.flatnonzero(mask)
+    if test_indices.size == 0:
+        return np.empty(0, dtype=float), [], {}
+    eval_dates, eval_returns, _eval_measures = _realized_garch_history(return_frame)
+    history_lookup = {
+        date: float(value)
+        for date, value in zip(eval_dates.tolist(), eval_returns.tolist(), strict=True)
+    }
+    by_date: dict[Any, float] = {}
+    density_by_date: dict[Any, dict[str, Any]] = {}
+    statuses: list[str] = []
+    for test_date in sorted(set(date_values[test_indices].tolist())):
+        origin_mask = date_values < test_date
+        _historical_dates, historical_returns, historical_measures = _realized_garch_history(
+            return_frame, asof=test_date
+        )
+        if historical_returns.size == 0 or historical_measures.size == 0:
+            raise ValueError("Realized GARCH test origin has no strictly prior Parkinson pairs")
+        model = make_model()
+        model.fit(
+            x[origin_mask],
+            y[origin_mask],
+            returns=historical_returns,
+            realized_measure=historical_measures,
+        )
+        forecast = model.forecast(horizon=label_horizon)
+        cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+        if cumulative.size < label_horizon or not np.isfinite(cumulative[label_horizon - 1]):
+            raise ValueError("Realized GARCH produced an invalid out-of-sample forecast")
+        by_date[test_date] = float(cumulative[label_horizon - 1])
+        statuses.append(str(getattr(model, "fit_status", "unknown")))
+        if test_date not in history_lookup:
+            raise ValueError("Realized GARCH one-step density target missing origin ret_1")
+        density_by_date[test_date] = _garch_origin_density_record(
+            model, history_lookup[test_date], forecast
+        )
+    predictions = np.asarray(
+        [by_date[date_values.tolist()[int(index)]] for index in test_indices], dtype=float
+    )
+    return predictions, statuses, density_by_date
+
+
+def _garch_name_origin_return_lookup(frame: Any) -> dict[tuple[str, Any], float]:
+    """Evaluation-vintage per-name ``ret_1`` at each origin (not PIT-filtered)."""
+    _require_garch_security_keys(frame)
+    columns = set(frame.columns)
+    if not {"event_time", "security_id", "ret_1"}.issubset(columns):
+        raise ValueError("per-security GARCH density requires event_time, security_id, and ret_1")
+    history = frame.select(["event_time", "security_id", "ret_1"]).drop_nulls()
+    if history.is_empty():
+        return {}
+    dates = np.asarray(history["event_time"].to_numpy())
+    ids = history["security_id"].to_list()
+    values = np.asarray(history["ret_1"].to_numpy(), dtype=float)
+    lookup: dict[tuple[str, Any], float] = {}
+    for sid_raw, date, value in zip(ids, dates.tolist(), values.tolist(), strict=True):
+        if isinstance(sid_raw, bool) or sid_raw is None or not isinstance(sid_raw, str):
+            raise ValueError("per-security GARCH security_ids must be strings")
+        sid = sid_raw.strip()
+        if not sid:
+            raise ValueError("per-security GARCH security_ids must be non-empty")
+        if not np.isfinite(value):
+            continue
+        key = (sid, date)
+        if key in lookup:
+            raise PointInTimeError(
+                "per-security GARCH origin returns contain duplicate security_id/event_time"
+            )
+        lookup[key] = float(value)
+    return lookup
+
+
+def _garch_name_row_id(raw: object) -> str:
+    if isinstance(raw, bool) or raw is None or not isinstance(raw, str):
+        raise ValueError("per-security GARCH security_ids must be strings")
+    sid = raw.strip()
+    if not sid:
+        raise ValueError("per-security GARCH security_ids must be non-empty")
+    return sid
+
+
+def _garch_name_oos_predictions(
+    make_model: Callable[[], Any],
+    x: np.ndarray,
+    y: np.ndarray,
+    dates: np.ndarray,
+    ids: np.ndarray,
+    test_mask: np.ndarray,
+    *,
+    label_horizon: int,
+    return_frame: Any,
+) -> tuple[np.ndarray, list[str], dict[tuple[str, Any], dict[str, Any]]]:
+    """Forecast each test name from that name's strictly prior ``ret_1``.
+
+    Date-level ``_garch_oos_predictions`` pools names into an equal-weight
+    market series. This path never does that: each ``security_id`` is a
+    separate univariate GARCH. QLIKE targets remain the row's
+    ``future_realized_var_h``; one-step density targets that name's origin
+    ``ret_1`` (evaluation vintage), never the cross-section mean.
+    ``available_time`` uses the same as-of contract as name-level as-of
+    forecasts. Duplicate ``(security_id, event_time)`` test keys fail closed.
+    """
+    date_values = np.asarray(dates)
+    id_values = np.asarray(ids)
+    mask = np.asarray(test_mask, dtype=bool)
+    if date_values.ndim != 1 or mask.shape != date_values.shape:
+        raise ValueError("dates and test_mask must be one-dimensional and aligned")
+    if id_values.shape != date_values.shape:
+        raise ValueError("ids and dates must be one-dimensional and aligned")
+    if x.shape[0] != date_values.shape[0] or y.shape[0] != date_values.shape[0]:
+        raise ValueError("x, y, dates, and ids must be aligned")
+    if label_horizon < 1:
+        raise ValueError("label_horizon must be positive")
+    if return_frame is None:
+        raise ValueError("per-security GARCH walk-forward requires a return frame")
+    test_indices = np.flatnonzero(mask)
+    if test_indices.size == 0:
+        return np.empty(0, dtype=float), [], {}
+
+    origin_returns = _garch_name_origin_return_lookup(return_frame)
+    by_key: dict[tuple[str, Any], float] = {}
+    density_by_key: dict[tuple[str, Any], dict[str, Any]] = {}
+    statuses: list[str] = []
+    dummy_x = np.zeros((0, 1), dtype=float)
+    dummy_y = np.zeros(0, dtype=float)
+    for index in test_indices.tolist():
+        sid = _garch_name_row_id(id_values.tolist()[int(index)])
+        test_date = date_values.tolist()[int(index)]
+        key = (sid, test_date)
+        if key in by_key:
+            raise ValueError("per-security GARCH walk-forward has duplicate security_id/event_time")
+        _hist_dates, historical_returns = _garch_name_return_history(
+            return_frame, sid, asof=test_date
+        )
+        if historical_returns.size == 0:
+            raise ValueError(
+                f"per-security GARCH test origin has no strictly prior returns for {sid!r}"
+            )
+        model = make_model()
+        model.fit(dummy_x, dummy_y, returns=historical_returns)
+        forecast = model.forecast(horizon=label_horizon)
+        cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+        if cumulative.size < label_horizon or not np.isfinite(cumulative[label_horizon - 1]):
+            raise ValueError("GARCH produced an invalid out-of-sample forecast")
+        by_key[key] = float(cumulative[label_horizon - 1])
+        statuses.append(str(getattr(model, "fit_status", "unknown")))
+        if hasattr(model, "log_density") and hasattr(model, "pit"):
+            if key not in origin_returns:
+                raise ValueError("per-security GARCH one-step density target missing origin ret_1")
+            density_by_key[key] = _garch_origin_density_record(model, origin_returns[key], forecast)
+
+    predictions = np.asarray(
+        [
+            by_key[
+                (
+                    _garch_name_row_id(id_values.tolist()[int(index)]),
+                    date_values.tolist()[int(index)],
+                )
+            ]
+            for index in test_indices.tolist()
+        ],
+        dtype=float,
+    )
+    return predictions, statuses, density_by_key
+
+
+def _garch_one_step_sigma(forecast: dict[str, Any]) -> float:
+    sigma_path = forecast.get("sigma")
+    var_path = forecast.get("variance")
+    if sigma_path is not None:
+        sigma = float(np.asarray(sigma_path, dtype=float).reshape(-1)[0])
+    elif var_path is not None:
+        variance = float(np.asarray(var_path, dtype=float).reshape(-1)[0])
+        sigma = (
+            float(np.sqrt(variance)) if np.isfinite(variance) and variance > 0.0 else float("nan")
+        )
+    else:
+        raise ValueError("GARCH one-step density requires forecast sigma or variance")
+    if not np.isfinite(sigma) or sigma <= 0.0:
+        raise ValueError("GARCH produced an invalid one-step sigma")
+    return sigma
+
+
+def _garch_origin_density_record(
+    model: Any, realized: float, forecast: dict[str, Any]
+) -> dict[str, Any]:
+    """Score the one-step predictive law against date-level ``ret_1`` at the origin."""
+    if not np.isfinite(realized):
+        raise ValueError("GARCH one-step density target must be finite")
+    sigma = _garch_one_step_sigma(forecast)
+    y = np.array([float(realized)], dtype=float)
+    sig = np.array([sigma], dtype=float)
+    log_s = np.asarray(model.log_density(y, sig), dtype=float).reshape(-1)
+    pit = np.asarray(model.pit(y, sig), dtype=float).reshape(-1)
+    if log_s.size != 1 or pit.size != 1:
+        raise ValueError("GARCH one-step density produced a malformed score")
+    dist = str(forecast.get("distribution", "normal"))
+    try:
+        mu = float(forecast["mean"])
+    except (KeyError, TypeError, ValueError):
+        mu = float(model._mean_decimal()) if hasattr(model, "_mean_decimal") else 0.0
+    if dist == "normal":
+        crps = float(crps_gaussian(y, np.array([mu], dtype=float), sig)[0])
+        crps_method = "gaussian_closed"
+    else:
+        taus = np.asarray(GARCH_ONE_STEP_CRPS_TAUS, dtype=float)
+        quantile_forecast = model.forecast(horizon=1, quantiles=tuple(taus.tolist()))
+        quantiles = np.asarray(quantile_forecast["quantiles"], dtype=float)
+        crps = float(crps_from_quantiles(y, quantiles, taus))
+        crps_method = "quantile_riemann"
+    return {
+        "y": float(realized),
+        "mu": mu,
+        "sigma": sigma,
+        "distribution": dist,
+        "requested_distribution": str(forecast.get("requested_distribution", dist)),
+        "log_score": float(log_s[0]),
+        "crps": crps,
+        "crps_method": crps_method,
+        "pit": float(pit[0]),
+        "fit_status": str(forecast.get("fit_status", "unknown")),
+        "density_horizon": 1,
+    }
+
+
+def _empty_garch_density_metrics() -> dict[str, Any]:
+    return {
+        "log_score_one_step": float("nan"),
+        "ignorance_one_step": float("nan"),
+        "crps_one_step": float("nan"),
+        "pit_ks_one_step": float("nan"),
+        "pit_ks_p_one_step": float("nan"),
+        "n_density_origins": 0,
+        "n_density_origins_qlike_stride": 0,
+        "log_score_one_step_qlike_origins": float("nan"),
+        "crps_one_step_qlike_origins": float("nan"),
+        "density_horizon": 1,
+        "density_target": "date_level_ret_1",
+    }
 
 
 def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, Any]:
     _require_model(
         model_name,
-        {"rolling", "ewma", "garch", "har", "xgboost", "lightgbm"},
+        {"rolling", "ewma", "garch", "realized_garch", "har", "xgboost", "lightgbm"},
         "volatility",
     )
     set_global_seed(config.train.random_seed)
@@ -433,6 +978,11 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
     return_dates, return_values = (
         _garch_return_history(df) if model_name == "garch" else (np.empty(0), np.empty(0))
     )
+    _realized_dates, realized_returns, realized_measures = (
+        _realized_garch_history(df)
+        if model_name == "realized_garch"
+        else (np.empty(0), np.empty(0), np.empty(0))
+    )
 
     def make_model() -> Any:
         catalog = {
@@ -443,7 +993,11 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
                 q=config.train.garch_q,
                 dist=config.train.garch_dist.value,
                 vol=config.train.garch_vol.value,
-                series_scope="date_level_equal_weight_cross_section",
+                series_scope=GARCH_DATE_LEVEL_SCOPE,
+            ),
+            "realized_garch": RealizedGARCHVol(
+                series_scope=GARCH_DATE_LEVEL_SCOPE,
+                realized_measure=REALIZED_GARCH_MEASURE,
             ),
             "har": HARVol(config.train.har_log),
             "xgboost": TreeVol("xgboost", config.train.random_seed),
@@ -455,7 +1009,9 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
 
     predictions: list[np.ndarray] = []
     targets: list[np.ndarray] = []
+    eval_dates: list[np.ndarray] = []
     fold_status: list[str] = []
+    density_by_date: dict[Any, dict[str, Any]] = {}
     label_horizon = _label_horizon(label)
 
     for train_mask, test_mask in _walk_forward_splits(
@@ -467,7 +1023,7 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
         if not train_mask.any() or not test_mask.any():
             continue
         if model_name == "garch":
-            fold_predictions, statuses = _garch_oos_predictions(
+            fold_predictions, statuses, fold_density = _garch_oos_predictions(
                 make_model,
                 x,
                 y,
@@ -476,9 +1032,32 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
                 label_horizon=label_horizon,
                 return_dates=return_dates,
                 return_values=return_values,
+                return_frame=df,
             )
             predictions.append(fold_predictions)
             fold_status.extend(statuses)
+            for origin, record in fold_density.items():
+                if origin in density_by_date:
+                    raise ValueError("GARCH one-step density origin repeated across folds")
+                density_by_date[origin] = record
+        elif model_name == "realized_garch":
+            fold_predictions, statuses, fold_density = _realized_garch_oos_predictions(
+                make_model,
+                x,
+                y,
+                dates,
+                test_mask,
+                label_horizon=label_horizon,
+                return_frame=df,
+            )
+            predictions.append(fold_predictions)
+            fold_status.extend(statuses)
+            for origin, record in fold_density.items():
+                if origin in density_by_date:
+                    raise ValueError(
+                        "Realized GARCH one-step density origin repeated across folds"
+                    )
+                density_by_date[origin] = record
         else:
             fold_model = make_model()
             fold_model.fit(x[train_mask], y[train_mask])
@@ -494,55 +1073,313 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
             sigma = np.asarray(fold_model.predict(sigma_features[test_mask]), dtype=float)
             predictions.append(np.square(sigma))
         targets.append(y[test_mask])
+        eval_dates.append(np.asarray(dates[test_mask]))
     if not predictions:
         raise ValueError("walk-forward training produced no trainable/evaluable fold")
     pred = np.clip(np.concatenate(predictions), config.train.qlike_floor, None)
     yy = np.concatenate(targets)
-    metrics = {"qlike": qlike(yy, pred, config.train.qlike_floor)}
-    if model_name == "garch" and fold_status:
-        metrics["fallback_rate"] = float(np.mean(np.asarray(fold_status) != "fitted"))
-    if model_name == "garch":
-        model = make_model().fit(x, y, returns=return_values)
+    if model_name in {"garch", "realized_garch"}:
+        session_index = {date: i for i, date in enumerate(sorted(set(np.asarray(dates).tolist())))}
+        scored = overlap_aware_qlike(
+            np.concatenate(eval_dates),
+            pred,
+            yy,
+            horizon_bars=label_horizon,
+            floor=config.train.qlike_floor,
+            session_index=session_index,
+        )
+        metrics: dict[str, Any] = {
+            "qlike": float(scored["qlike"]),
+            "qlike_overlapping_dates": float(scored["qlike_overlapping"]),
+            "n_origins_nonoverlapping": int(scored["n_origins_nonoverlapping"]),
+            "n_origins_overlapping": int(scored["n_origins_overlapping"]),
+            "origin_stride": int(scored["horizon_bars"]),
+            "scoring_scope": GARCH_DATE_LEVEL_SCOPE,
+        }
+        if model_name == "realized_garch":
+            metrics["realized_measure"] = REALIZED_GARCH_MEASURE
+            metrics["intraday_realized_variance"] = False
+        if density_by_date:
+            origin_dates = np.asarray(sorted(density_by_date), dtype=object)
+            density_metrics = one_step_density_summary(
+                origin_dates,
+                np.asarray(
+                    [density_by_date[date]["log_score"] for date in origin_dates.tolist()],
+                    dtype=float,
+                ),
+                np.asarray(
+                    [density_by_date[date]["crps"] for date in origin_dates.tolist()],
+                    dtype=float,
+                ),
+                np.asarray(
+                    [density_by_date[date]["pit"] for date in origin_dates.tolist()],
+                    dtype=float,
+                ),
+                horizon_bars=label_horizon,
+                session_index=session_index,
+            )
+            density_metrics.pop("scoring_scope", None)
+            density_metrics.pop("horizon_bars", None)
+            crps_methods = {
+                str(density_by_date[date]["crps_method"]) for date in origin_dates.tolist()
+            }
+            density_metrics["crps_method_one_step"] = (
+                crps_methods.pop() if len(crps_methods) == 1 else "mixed"
+            )
+            metrics.update(density_metrics)
+        else:
+            metrics.update(_empty_garch_density_metrics())
+        if fold_status:
+            metrics["fallback_rate"] = float(np.mean(np.asarray(fold_status) != "fitted"))
+        if model_name == "realized_garch":
+            model = make_model().fit(
+                x, y, returns=realized_returns, realized_measure=realized_measures
+            )
+        else:
+            model = make_model().fit(x, y, returns=return_values)
     else:
+        metrics = {"qlike": qlike(yy, pred, config.train.qlike_floor)}
         model = make_model().fit(x, y)
+    garch_params = {
+        "garch_p": config.train.garch_p,
+        "garch_q": config.train.garch_q,
+        "garch_dist": config.train.garch_dist.value,
+        "garch_vol": config.train.garch_vol.value,
+        "target": label,
+        "target_contract": "forward_realized_variance_evaluation_only",
+        "fit_input": "ret_1_decimal_returns",
+        "forecast_horizon": label_horizon,
+        "variance_units": "decimal_squared",
+        "series_scope": GARCH_DATE_LEVEL_SCOPE,
+        "oos_scoring": "date_level_nonoverlapping_qlike+one_step_density",
+        "origin_stride": label_horizon,
+    }
+    if model_name == "realized_garch":
+        garch_params.update(
+            {
+                "fit_input": "ret_1_and_parkinson_daily_ohlc",
+                "realized_measure": REALIZED_GARCH_MEASURE,
+                "intraday_realized_variance": False,
+                "garch_vol": "realized_garch",
+            }
+        )
     configure_tracking()
     run_id = log_run(
         family="volatility",
         name=model_name,
-        params={
-            **(
-                {
-                    "garch_p": config.train.garch_p,
-                    "garch_q": config.train.garch_q,
-                    "garch_dist": config.train.garch_dist.value,
-                    "garch_vol": config.train.garch_vol.value,
-                    "target": label,
-                    "target_contract": "forward_realized_variance_evaluation_only",
-                    "fit_input": "ret_1_decimal_returns",
-                    "forecast_horizon": label_horizon,
-                    "variance_units": "decimal_squared",
-                    "series_scope": "date_level_equal_weight_cross_section",
-                }
-                if model_name == "garch"
-                else {}
-            )
-        },
+        params=garch_params if model_name in {"garch", "realized_garch"} else {},
         metrics=metrics,
         tags={"data": config.data.source},
     )
     path = Path(config.data.root) / "metadata" / f"vol_{model_name}.joblib"
     model.save(path)
     result = {"metrics": metrics, "run_id": run_id, "path": str(path)}
-    if model_name == "garch":
-        result["diagnostics"] = {
+    if model_name in {"garch", "realized_garch"}:
+        diagnostics: dict[str, Any] = {
             "fit_status": model.fit_status,
             "converged": model.converged,
             "fallback_reason": model.fallback_reason,
             "n_obs": model.n_obs,
             "returns_scale": model.returns_scale,
-            "series_scope": "date_level_equal_weight_cross_section",
+            "series_scope": GARCH_DATE_LEVEL_SCOPE,
+            "oos_scoring": "date_level_nonoverlapping_qlike+one_step_density",
+            "n_origins_nonoverlapping": int(metrics["n_origins_nonoverlapping"]),
+            "n_origins_overlapping": int(metrics["n_origins_overlapping"]),
+            "origin_stride": label_horizon,
+            "n_density_origins": int(metrics["n_density_origins"]),
+            "density_target": "date_level_ret_1",
+            "density_horizon": 1,
         }
+        if model_name == "realized_garch":
+            diagnostics["realized_measure"] = REALIZED_GARCH_MEASURE
+            diagnostics["intraday_realized_variance"] = False
+        result["diagnostics"] = diagnostics
     return result
+
+
+def _requested_garch_security_ids(
+    security_ids: list[str] | tuple[str, ...] | None,
+) -> list[str] | None:
+    if security_ids is None:
+        return None
+    requested: list[str] = []
+    seen: set[str] = set()
+    for raw in security_ids:
+        if isinstance(raw, bool) or not isinstance(raw, str):
+            raise ValueError("per-security GARCH security_ids must be strings")
+        sid = raw.strip()
+        if not sid:
+            raise ValueError("per-security GARCH security_ids must be non-empty")
+        if sid in seen:
+            raise ValueError("per-security GARCH security_ids must be unique")
+        seen.add(sid)
+        requested.append(sid)
+    if not requested:
+        raise ValueError("per-security GARCH security_ids must be non-empty")
+    return requested
+
+
+def garch_name_walk_forward(
+    config: AppConfig,
+    *,
+    frame: Any | None = None,
+    security_ids: list[str] | tuple[str, ...] | None = None,
+    make_model: Callable[[], Any] | None = None,
+) -> dict[str, Any]:
+    """Walk-forward QLIKE/density for the per-security GARCH namespace.
+
+    Clones the training GARCH specification and refits each name on that name's
+    strictly prior ``ret_1``. Metrics stamp ``scoring_scope=security_level_ret_1``
+    and do not replace date-level ``train_volatility`` overlay scores,
+    ``vol_20``, or ``max_predicted_vol``. Density targets are each name's
+    origin ``ret_1``, never ``future_realized_var_h`` and never the
+    equal-weight cross-section. Research-diagnostic only.
+    """
+    set_global_seed(config.train.random_seed)
+    label = config.train.volatility_target
+    df = frame if frame is not None else panel(config, label=label)
+    requested = _requested_garch_security_ids(security_ids)
+    if "security_id" not in df.columns:
+        raise PointInTimeError("per-security GARCH frame missing security_id")
+    _require_garch_security_keys(df)
+    if requested is not None:
+        present = {str(sid).strip() for sid in df["security_id"].to_list() if sid is not None}
+        missing = [sid for sid in requested if sid not in present]
+        if missing:
+            raise ValueError(f"per-security GARCH has no rows for {missing[0]!r}")
+        df = df.filter(pl.col("security_id").cast(pl.String).is_in(requested))
+    x, y, dates, feats, ids = design_matrix(
+        df, label, ["vol_20", "vol_ewma", "vol_parkinson", "ret_1", "vol_of_vol"]
+    )
+    if x.shape[0] == 0:
+        raise ValueError("per-security GARCH walk-forward has no labeled rows")
+    label_end_times = _aligned_label_end_times(df, label, feats)
+    label_horizon = _label_horizon(label)
+
+    def _make() -> Any:
+        if make_model is not None:
+            return make_model()
+        return GARCHVol(
+            p=config.train.garch_p,
+            q=config.train.garch_q,
+            dist=config.train.garch_dist.value,
+            vol=config.train.garch_vol.value,
+            series_scope=GARCH_SECURITY_LEVEL_SCOPE,
+        )
+
+    predictions: list[np.ndarray] = []
+    targets: list[np.ndarray] = []
+    eval_dates: list[np.ndarray] = []
+    eval_ids: list[np.ndarray] = []
+    fold_status: list[str] = []
+    density_by_key: dict[tuple[str, Any], dict[str, Any]] = {}
+    for train_mask, test_mask in _walk_forward_splits(
+        dates,
+        config,
+        horizon_bars=label_horizon,
+        label_end_times=label_end_times,
+    ):
+        if (
+            not np.asarray(train_mask, dtype=bool).any()
+            or not np.asarray(test_mask, dtype=bool).any()
+        ):
+            continue
+        fold_predictions, statuses, fold_density = _garch_name_oos_predictions(
+            _make,
+            x,
+            y,
+            dates,
+            ids,
+            test_mask,
+            label_horizon=label_horizon,
+            return_frame=df,
+        )
+        if fold_predictions.size == 0:
+            continue
+        predictions.append(fold_predictions)
+        fold_status.extend(statuses)
+        targets.append(y[np.asarray(test_mask, dtype=bool)])
+        eval_dates.append(np.asarray(dates)[np.asarray(test_mask, dtype=bool)])
+        eval_ids.append(np.asarray(ids)[np.asarray(test_mask, dtype=bool)])
+        for origin, record in fold_density.items():
+            if origin in density_by_key:
+                raise ValueError("per-security GARCH one-step density origin repeated across folds")
+            density_by_key[origin] = record
+    if not predictions:
+        raise ValueError("walk-forward training produced no trainable/evaluable fold")
+    pred = np.clip(np.concatenate(predictions), config.train.qlike_floor, None)
+    yy = np.concatenate(targets)
+    scored_ids = np.concatenate(eval_ids)
+    scored_dates = np.concatenate(eval_dates)
+    session_index = {date: i for i, date in enumerate(sorted(set(np.asarray(dates).tolist())))}
+    scored = name_level_qlike(
+        scored_ids,
+        scored_dates,
+        pred,
+        yy,
+        horizon_bars=label_horizon,
+        floor=config.train.qlike_floor,
+        session_index=session_index,
+    )
+    metrics: dict[str, Any] = {
+        "qlike": float(scored["qlike"]),
+        "qlike_overlapping_dates": float(scored["qlike_overlapping"]),
+        "n_origins_nonoverlapping": int(scored["n_origins_nonoverlapping"]),
+        "n_origins_overlapping": int(scored["n_origins_overlapping"]),
+        "n_names": int(scored["n_names"]),
+        "origin_stride": int(scored["horizon_bars"]),
+        "scoring_scope": GARCH_SECURITY_LEVEL_SCOPE,
+    }
+    if density_by_key:
+        origin_keys = sorted(density_by_key)
+        density_metrics = name_level_one_step_density_summary(
+            [key[0] for key in origin_keys],
+            np.asarray([key[1] for key in origin_keys], dtype=object),
+            np.asarray([density_by_key[key]["log_score"] for key in origin_keys], dtype=float),
+            np.asarray([density_by_key[key]["crps"] for key in origin_keys], dtype=float),
+            np.asarray([density_by_key[key]["pit"] for key in origin_keys], dtype=float),
+            horizon_bars=label_horizon,
+            session_index=session_index,
+        )
+        density_metrics.pop("scoring_scope", None)
+        density_metrics.pop("horizon_bars", None)
+        crps_methods = {str(density_by_key[key]["crps_method"]) for key in origin_keys}
+        density_metrics["crps_method_one_step"] = (
+            crps_methods.pop() if len(crps_methods) == 1 else "mixed"
+        )
+        metrics.update(density_metrics)
+    else:
+        metrics.update(
+            {
+                "log_score_one_step": float("nan"),
+                "ignorance_one_step": float("nan"),
+                "crps_one_step": float("nan"),
+                "pit_ks_one_step": float("nan"),
+                "pit_ks_p_one_step": float("nan"),
+                "n_density_origins": 0,
+                "n_density_origins_qlike_stride": 0,
+                "log_score_one_step_qlike_origins": float("nan"),
+                "crps_one_step_qlike_origins": float("nan"),
+                "density_horizon": 1,
+                "density_target": "security_level_ret_1",
+            }
+        )
+    if fold_status:
+        metrics["fallback_rate"] = float(np.mean(np.asarray(fold_status) != "fitted"))
+    return {
+        "metrics": metrics,
+        "diagnostics": {
+            "series_scope": GARCH_SECURITY_LEVEL_SCOPE,
+            "oos_scoring": "security_level_nonoverlapping_qlike+one_step_density",
+            "n_origins_nonoverlapping": int(metrics["n_origins_nonoverlapping"]),
+            "n_origins_overlapping": int(metrics["n_origins_overlapping"]),
+            "origin_stride": label_horizon,
+            "n_density_origins": int(metrics["n_density_origins"]),
+            "n_names": int(metrics["n_names"]),
+            "density_target": "security_level_ret_1",
+            "density_horizon": 1,
+        },
+    }
 
 
 def train_alpha(config: AppConfig, model_name: str = "ridge") -> dict[str, Any]:
@@ -665,6 +1502,39 @@ def train_tail(config: AppConfig, model_name: str = "historical") -> dict[str, A
     return {"metrics": metrics, "path": str(path)}
 
 
+def train_robinhood_plus(config: AppConfig, model_name: str = "hierarchical_markov") -> dict[str, Any]:
+    """Persist the robinhood+ engine card. The tokenizer is unsupervised."""
+    _require_model(model_name, {"hierarchical_markov", "transformer"}, "robinhood_plus")
+    from quant_fund.models.robinhood_plus.bench import bench_robinhood_plus
+    from quant_fund.models.robinhood_plus.engine import RobinhoodPlusEngine
+
+    engine = RobinhoodPlusEngine(
+        lookback=config.robinhood_plus.lookback,
+        pred_len=config.robinhood_plus.pred_len,
+        sample_count=config.robinhood_plus.sample_count,
+        s1_bits=config.robinhood_plus.s1_bits,
+        s2_bits=config.robinhood_plus.s2_bits,
+        seed=config.train.random_seed,
+        decoder=model_name,
+    )
+    engine.fit(np.zeros((2, 1)), np.zeros(2))
+    path = Path(config.data.root) / "metadata" / f"robinhood_plus_{model_name}.joblib"
+    engine.save(path)
+    df = panel(config)
+    receipt = bench_robinhood_plus(df, config)
+    return {
+        "metrics": {
+            "mean_ic": receipt.get("mean_ic"),
+            "n_ok": receipt.get("n_ok"),
+            "ic_n_dates": receipt.get("ic_n_dates"),
+        },
+        "path": str(path),
+        "family": "robinhood_plus",
+        "research_only": True,
+        "execution_claim": "research_only",
+    }
+
+
 def train_family(config: AppConfig, family: str, model_name: str | None = None) -> dict[str, Any]:
     dispatch = {
         "ranking": lambda: train_ranking(config, model_name or "ridge"),
@@ -675,6 +1545,7 @@ def train_family(config: AppConfig, family: str, model_name: str | None = None) 
         "tail": lambda: train_tail(config, model_name or "historical"),
         "covariance": lambda: {"metrics": {}, "note": "covariance is estimated at forecast time"},
         "liquidity": lambda: {"metrics": {}, "note": "liquidity uses parameterized cost model"},
+        "robinhood_plus": lambda: train_robinhood_plus(config, model_name or "hierarchical_markov"),
     }
     if family not in dispatch:
         raise ValueError(f"unknown family {family}")

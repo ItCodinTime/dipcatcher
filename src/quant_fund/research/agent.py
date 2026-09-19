@@ -3,7 +3,9 @@
 Families: ranking, alpha, volatility, distribution, regime, tail,
 drawdown, liquidity, contextual bandits, conformal, e-values,
 Jackknife+, CRC, weighted CQR, interval caps, quantile Thompson,
-Northset (order book + candlesticks).
+Northset (order book + candlesticks). robinhood+ is a core forecast
+engine (ADR-023) and an optional catalog family via
+``dipcatcher robinhood-plus``.
 Proper scores only — no Sharpe.
 """
 

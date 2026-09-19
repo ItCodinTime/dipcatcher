@@ -9,8 +9,10 @@ import polars as pl
 
 from quant_fund.config.models import AppConfig
 from quant_fund.data.point_in_time import validate_feature_frame
-from quant_fund.features.cross_sectional import apply_cross_sectional
+from quant_fund.data.universe import attach_membership_flag
+from quant_fund.features.cross_sectional import apply_cross_sectional, decision_eligible_expr
 from quant_fund.features.metadata import FEATURE_SET_VERSION, FeatureMetadata
+from quant_fund.schemas.errors import PointInTimeError
 
 PX = "close_total_return"
 RAW_PX = "close"
@@ -127,9 +129,7 @@ def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame
 
 def add_market_features(df: pl.DataFrame, benchmark_id: str) -> pl.DataFrame:
     has_availability = "available_time" in df.columns
-    eligible = (
-        pl.col("available_time") <= pl.col("event_time") if has_availability else pl.lit(True)
-    )
+    eligible = decision_eligible_expr(df)
     mkt_columns = [
         "event_time",
         pl.col("ret_1").alias("mkt_ret_1"),
@@ -157,13 +157,12 @@ def add_market_features(df: pl.DataFrame, benchmark_id: str) -> pl.DataFrame:
     )
     out = out.join(cs, on="event_time", how="left")
     aggregate_columns = ["cs_dispersion", "breadth", "cs_mean_ret"]
-    if has_availability:
-        out = out.with_columns(
-            [
-                pl.when(eligible).then(pl.col(name)).otherwise(None).alias(name)
-                for name in aggregate_columns
-            ]
-        )
+    out = out.with_columns(
+        [
+            pl.when(eligible).then(pl.col(name)).otherwise(None).alias(name)
+            for name in aggregate_columns
+        ]
+    )
     if "sector" in out.columns:
         sec = available.group_by(["event_time", "sector"]).agg(
             pl.col("ret_1").mean().alias("sector_ret_1"),
@@ -217,8 +216,15 @@ def build_features(
     config: AppConfig,
     *,
     decision_time: datetime | None = None,
+    membership: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     df = compute_base_features(bars, config)
+    if membership is not None:
+        if membership.is_empty() and bars.height:
+            raise PointInTimeError(
+                "universe membership is empty; refusing unfiltered feature panel"
+            )
+        df = attach_membership_flag(df, membership)
     df = add_market_features(df, config.data.benchmark_id)
     names = [
         c
@@ -244,6 +250,10 @@ def build_features(
     ]
     sector = "sector" if "sector" in df.columns else None
     df = apply_cross_sectional(df, names, config.features.winsor_p, sector=sector)
+    if "_in_universe" in df.columns:
+        df = df.filter(pl.col("_in_universe").fill_null(False)).drop("_in_universe")
+        if df.is_empty():
+            raise PointInTimeError("membership filter removed every feature row")
     df = df.with_columns(
         pl.col("available_time").max().over("event_time").alias("max_source_available_time"),
         pl.col("event_time").alias("decision_time"),

@@ -65,3 +65,15 @@ def test_synthetic_filter_empty_and_seed_reproducible() -> None:
     master = p.get_security_master()
     assert "SEC_MKT" in master["security_id"].to_list()
     assert master.height == 4
+    for column in (
+        "valid_from",
+        "valid_to",
+        "available_time",
+        "ingested_time",
+        "source",
+        "revision_id",
+        "ticker",
+    ):
+        assert column in master.columns
+    assert (master["available_time"] == master["valid_from"]).all()
+    assert master["source"].unique().to_list() == [SOURCE]

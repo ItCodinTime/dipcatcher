@@ -50,3 +50,9 @@ def test_bench_volatility_exposes_eprocess_dm(tiny_synth_panel: tuple[Any, Any])
     assert out.get("live_pnl_claim") is not True
     assert "live_pnl_claim" not in out
     assert family_blob_forbidden_metrics_absent(out) is True
+    assert out["scoring_scope"] == "date_level_equal_weight"
+    assert int(out["horizon_bars"]) == 5
+    assert int(out["dm_lags"]) >= 4
+    assert int(out["n_dates"]) < df.height
+    assert int(out["n_origins_nonoverlapping"]) <= int(out["n_dates"])
+    assert "qlike_ewma_nonoverlapping" in out

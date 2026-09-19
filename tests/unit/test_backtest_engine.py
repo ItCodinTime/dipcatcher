@@ -353,3 +353,81 @@ def test_export_backtest_metrics_json_keeps_previous_receipt_on_replace_failure(
 
     assert out.read_text(encoding="utf-8") == '{"previous": true}'
     assert list(tmp_path.glob(".receipt.json.*.tmp")) == []
+
+
+def test_backtest_carries_last_target_between_rebalances(tmp_path) -> None:
+    """A 1-day weight row is a rebalance, not a 1-day hold then flatten."""
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    cfg.costs.frictionless = True
+    cfg.risk_gate.max_name = 1.0
+    cfg.risk_gate.max_net = 1.0
+    cfg.risk_gate.max_gross = 1.0
+    cfg.risk_gate.max_order_notional = 1e12
+    dates = [datetime(2024, 1, day, tzinfo=UTC) for day in (1, 2, 3, 4)]
+    bars = pl.DataFrame(
+        {
+            "security_id": ["A"] * 4,
+            "event_time": dates,
+            "open": [100.0, 100.0, 100.0, 100.0],
+            "close": [100.0, 100.0, 100.0, 100.0],
+            "close_total_return": [100.0, 110.0, 121.0, 133.1],
+            "volume": [1_000_000.0] * 4,
+            "adv": [100_000_000.0] * 4,
+            "vol_20": [0.02] * 4,
+            "source": ["file"] * 4,
+        }
+    )
+    weights = pl.DataFrame(
+        {
+            "event_time": [dates[0]],
+            "security_id": ["A"],
+            "target_weight": [1.0],
+        }
+    )
+    result = run_backtest(bars, weights, cfg, initial_nav=100_000.0)
+    navs = [float(v) for v in result.equity["nav"].to_list()]
+    assert navs[0] == pytest.approx(110_000.0)
+    assert navs[1] == pytest.approx(121_000.0)
+    assert navs[2] == pytest.approx(133_100.0)
+    # One entry fill; no flatten on the days without a weight row.
+    assert result.fills.height == 1
+
+
+def test_overlay_can_flatten_carried_targets(tmp_path) -> None:
+    from quant_fund.risk.overlay import BookRiskOverlay
+
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    cfg.costs.frictionless = True
+    cfg.risk_gate.max_name = 1.0
+    cfg.risk_gate.max_net = 1.0
+    cfg.risk_gate.max_gross = 1.0
+    cfg.risk_gate.max_order_notional = 1e12
+    dates = [datetime(2024, 1, day, tzinfo=UTC) for day in (1, 2, 3, 4)]
+    bars = pl.DataFrame(
+        {
+            "security_id": ["A"] * 4,
+            "event_time": dates,
+            "open": [100.0, 100.0, 90.0, 80.0],
+            "close": [100.0, 90.0, 80.0, 70.0],
+            "close_total_return": [100.0, 90.0, 80.0, 70.0],
+            "volume": [1_000_000.0] * 4,
+            "adv": [100_000_000.0] * 4,
+            "vol_20": [0.02] * 4,
+            "source": ["file"] * 4,
+        }
+    )
+    weights = pl.DataFrame(
+        {
+            "event_time": [dates[0]],
+            "security_id": ["A"],
+            "target_weight": [1.0],
+        }
+    )
+    overlay = BookRiskOverlay(vol_target=1.0, dd_limit=0.05, es_limit=1.0, lookback=8)
+    result = run_backtest(bars, weights, cfg, initial_nav=100_000.0, risk_overlay=overlay)
+    snap = result.metrics["book_risk_overlay"]
+    assert snap["n_halt"] >= 1
+    # After the 10% gap, overlay flattens; later opens do not keep 100% exposure.
+    assert overlay.n_halt >= 1

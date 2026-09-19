@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from collections import OrderedDict
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -13,11 +14,61 @@ import polars as pl
 from numpy.typing import NDArray
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.point_in_time import filter_trailing_returns_asof
+from quant_fund.data.universe import require_valid_membership_panel, restrict_to_membership
 from quant_fund.fusion.engine import fuse_signals
 from quant_fund.metrics.conformal import assign_terciles
 from quant_fund.metrics.cross_section import _date_keys
 from quant_fund.models.conformal import MondrianCQR, SplitCQR
-from quant_fund.models.covariance import ledoit_wolf_cov, repair_psd, sample_cov
+from quant_fund.models.covariance import (
+    DCC_COVARIANCE_OBJECT_ONE_STEP,
+    DCC_FAMILY_ADCC,
+    DCC_FAMILY_AGDCC,
+    DCC_FAMILY_AGDCC_FULL,
+    DCC_FAMILY_CCC,
+    DCC_FAMILY_GAUSSIAN,
+    DCC_FAMILY_STUDENT_T,
+    DCC_SPEC_ADCC,
+    DCC_SPEC_AGDCC,
+    DCC_SPEC_AGDCC_FULL,
+    DCC_SPEC_CCC,
+    DCC_SPEC_ENGLE_2002,
+    DCC_SPEC_STUDENT_T,
+    DCC_STAGE1_MIN_OBS,
+    EWMA_MIN_OBS,
+    EWMA_SPEC_RISKMETRICS,
+    IMPLEMENTED_OPTIMIZER_DCC_FAMILIES,
+    IMPLEMENTED_OPTIMIZER_NAMED_SPECS,
+    IMPLEMENTED_OPTIMIZER_ONE_STEP_SPECS,
+    NLSHRINK_MIN_OBS,
+    OAS_SPEC_CHEN_2010,
+    OPTIMIZER_COVARIANCE_EWMA,
+    OPTIMIZER_COVARIANCE_HOMOSKEDASTIC_PROXY,
+    OPTIMIZER_COVARIANCE_LEDOIT_WOLF,
+    OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR,
+    OPTIMIZER_COVARIANCE_OAS,
+    OPTIMIZER_COVARIANCE_OBJECT_DIAGONAL_PROXY,
+    OPTIMIZER_COVARIANCE_OBJECT_TRAILING,
+    OPTIMIZER_COVARIANCE_SAMPLE,
+    OPTIMIZER_COVARIANCE_SPEC_DIAGONAL_PROXY,
+    OPTIMIZER_COVARIANCE_SPEC_LEDOIT_WOLF,
+    OPTIMIZER_COVARIANCE_SPEC_LEDOIT_WOLF_NONLINEAR,
+    SAMPLE_SPEC_UNBIASED,
+    adcc,
+    agdcc,
+    agdcc_full,
+    ccc,
+    dcc_gaussian,
+    dcc_student_t,
+    dcc_trailing_complete_window,
+    ewma,
+    ledoit_wolf,
+    ledoit_wolf_nonlinear,
+    oas,
+    repair_psd,
+    require_implemented_optimizer_covariance,
+    sample,
+)
 from quant_fund.models.distribution import (
     GaussianDistribution,
     ScaledGaussianDistribution,
@@ -26,11 +77,41 @@ from quant_fund.models.distribution import (
     select_wrappee_family_name,
 )
 from quant_fund.models.ranking import RidgeRanker, available_features
+from quant_fund.models.realized_garch import (
+    REALIZED_GARCH_FAMILY,
+    REALIZED_GARCH_MEASURE,
+    RealizedGARCHVol,
+)
+from quant_fund.models.robinhood_plus.constants import ENGINE_NAME, MODEL_VERSION, STATUS_OK
+from quant_fund.models.robinhood_plus.engine import (
+    RobinhoodPlusNameForecast,
+    forecast_robinhood_plus_cross_section,
+    kline_columns_present,
+)
+from quant_fund.models.volatility import (
+    GARCH_DATE_LEVEL_SCOPE,
+    GARCH_SECURITY_LEVEL_SCOPE,
+    GARCHVol,
+)
 from quant_fund.pipeline.dataset import design_matrix, panel
+from quant_fund.pipeline.train import (
+    _garch_name_return_history,
+    _garch_return_history,
+    _realized_garch_history,
+    _require_garch_security_keys,
+    _stamp_strictly_before,
+)
 from quant_fund.portfolio.interval_risk import apply_interval_caps, interval_refs
 from quant_fund.portfolio.optimizer import optimize_mean_variance
-from quant_fund.schemas.errors import OptimizationInfeasible
-from quant_fund.schemas.forecast import AssetForecast, IntervalMethod, MarketState
+from quant_fund.schemas.errors import OptimizationInfeasible, PointInTimeError
+from quant_fund.schemas.forecast import (
+    MARKET_RISK_OVERLAY_GARCH,
+    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+    AssetForecast,
+    IntervalMethod,
+    MarketState,
+)
+from quant_fund.utils.hashing import hash_file
 from quant_fund.utils.logging import get_logger
 
 Array = NDArray[np.float64]
@@ -40,7 +121,12 @@ log = get_logger()
 INTERVAL_ALPHA = 0.10
 
 # Process-local caches for causal panel / multi-asof hot paths
-_RANKER_CACHE: dict[tuple[str, float], object] = {}
+_RANKER_CACHE: dict[tuple[str, str], object] = {}
+_GARCH_SPEC_CACHE: dict[tuple[str, str], GARCHVol] = {}
+_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_GARCH_NAME_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_REALIZED_GARCH_SPEC_CACHE: dict[tuple[str, str], RealizedGARCHVol] = {}
+_REALIZED_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
 _PANEL_ASOF_CACHE: dict[tuple[str, float, float], pl.DataFrame] = {}
 _CONFORMAL_CACHE: dict[tuple, ForecastIntervals] = {}
 # Wrappee train-fit reuse: key = train-primary fingerprint + selected family name.
@@ -262,8 +348,13 @@ def resolve_wrappee_reselect_cached(
 
 
 def clear_forecast_caches() -> None:
-    """Clear ranker / conformal / wrappee process-local caches (panel cache separate)."""
+    """Clear ranker / conformal / wrappee / GARCH process-local caches (panel cache separate)."""
     _RANKER_CACHE.clear()
+    _GARCH_SPEC_CACHE.clear()
+    _GARCH_ASOF_CACHE.clear()
+    _GARCH_NAME_ASOF_CACHE.clear()
+    _REALIZED_GARCH_SPEC_CACHE.clear()
+    _REALIZED_GARCH_ASOF_CACHE.clear()
     _PANEL_ASOF_CACHE.clear()
     _CONFORMAL_CACHE.clear()
     _WRAPPEE_CACHE.clear()
@@ -734,27 +825,1107 @@ def conformal_sets_asof(
     return result
 
 
+def _ranker_artifact_path(config: AppConfig) -> Path:
+    return Path(config.data.root) / "metadata" / "ranker_ridge.joblib"
+
+
+def _joblib_artifact_digest(path: Path) -> str:
+    """SHA-256 of joblib artifact bytes. Mtime is not identity."""
+    return hash_file(path)
+
+
 def _load_ranker_cached(config: AppConfig):
-    """Load ridge ranker joblib once per (path, mtime); None if missing."""
-    rank_path = Path(config.data.root) / "metadata" / "ranker_ridge.joblib"
+    """Load ridge ranker joblib; cache identity is artifact bytes, not mtime.
+
+    An in-place replacement that preserves mtime (Windows timestamp resolution,
+    ``os.utime``, or a same-size rewrite) must not reuse a stale ranker for
+    ``forecast_asof`` / ``optimize_asof``. Missing artifacts return None so the
+    momentum heuristic remains the explicit no-model path.
+    """
+    rank_path = _ranker_artifact_path(config)
     if not rank_path.exists():
         return None
-    key = (str(rank_path.resolve()), rank_path.stat().st_mtime)
+    digest = _joblib_artifact_digest(rank_path)
+    key = (str(rank_path.resolve()), digest)
     cached = _RANKER_CACHE.get(key)
     if cached is not None:
         return cached
     model = RidgeRanker.load(rank_path)
     _RANKER_CACHE[key] = model
-    # Bound cache size
     if len(_RANKER_CACHE) > 8:
         oldest = next(iter(_RANKER_CACHE))
         _RANKER_CACHE.pop(oldest, None)
     return model
 
 
+def _garch_artifact_path(config: AppConfig) -> Path:
+    return Path(config.data.root) / "metadata" / "vol_garch.joblib"
+
+
+def _universe_artifact_path(config: AppConfig) -> Path:
+    return Path(config.data.root) / "silver" / "universe.parquet"
+
+
+def _garch_history_digest(dates: np.ndarray, values: np.ndarray) -> str:
+    """Fingerprint the full causal return path, not only the last observation.
+
+    A last-date / last-value / length key can reuse a stale overlay after an
+    earlier membership or return rewrite that leaves the terminal mean unchanged.
+    """
+    digest = hashlib.sha256()
+    for stamp in np.asarray(dates).tolist():
+        if isinstance(stamp, datetime):
+            encoded = stamp.isoformat().encode("utf-8")
+        else:
+            encoded = str(stamp).encode("utf-8")
+        digest.update(encoded)
+        digest.update(b"\x1e")
+    digest.update(b"\x1f")
+    vals = np.ascontiguousarray(np.asarray(values, dtype=np.float64))
+    digest.update(str(vals.shape).encode("ascii"))
+    digest.update(vals.tobytes())
+    return digest.hexdigest()
+
+
+def _garch_overlay_return_frame(config: AppConfig, frame: pl.DataFrame) -> pl.DataFrame:
+    """Restrict the GARCH overlay series to the current PIT universe.
+
+    Training scores date-level equal-weight ``ret_1`` on the gold/PIT panel
+    (Waves 108–109). Paper/backtest execution bars may still carry ineligible
+    ADV/listing names for marks. Those names must not move the market vol
+    overlay. Missing universe keeps the caller frame (legacy/test fixtures).
+    An empty or invalid universe fails closed.
+    """
+    path = _universe_artifact_path(config)
+    if not path.is_file():
+        return frame
+    membership = pl.read_parquet(path)
+    require_valid_membership_panel(membership)
+    if membership.is_empty():
+        raise PointInTimeError(
+            "universe membership is empty; refusing unfiltered GARCH market overlay"
+        )
+    if "security_id" not in frame.columns:
+        raise PointInTimeError(
+            "GARCH overlay frame missing security_id; cannot apply PIT membership"
+        )
+    return restrict_to_membership(frame, membership)
+
+
+def _garch_artifact_digest(path: Path) -> str:
+    """SHA-256 of a GARCH/RGARCH joblib. Mtime is not identity."""
+    return _joblib_artifact_digest(path)
+
+
+def _load_garch_spec_cached(config: AppConfig) -> tuple[GARCHVol, str] | None:
+    """Load the trained GARCH spec; cache identity is artifact bytes, not mtime.
+
+    An in-place replacement that preserves mtime (Windows timestamp resolution,
+    ``os.utime``, or a same-size rewrite) must not reuse a stale variance
+    family, mean, or power. Missing artifacts return None.
+    """
+    path = _garch_artifact_path(config)
+    if not path.exists():
+        return None
+    digest = _garch_artifact_digest(path)
+    key = (str(path.resolve()), digest)
+    cached = _GARCH_SPEC_CACHE.get(key)
+    if cached is not None:
+        return cached, digest
+    model = GARCHVol.load(path)
+    _GARCH_SPEC_CACHE[key] = model
+    if len(_GARCH_SPEC_CACHE) > 8:
+        oldest = next(iter(_GARCH_SPEC_CACHE))
+        _GARCH_SPEC_CACHE.pop(oldest, None)
+    return model, digest
+
+
+def _clone_garch_spec(model: GARCHVol, *, series_scope: str | None = None) -> GARCHVol:
+    """Unfitted clone of a persisted GARCH spec so asof fits cannot reuse future params."""
+    return GARCHVol(
+        p=int(model.p),
+        q=int(model.q),
+        dist=str(model.dist),
+        vol=str(model.vol),
+        min_obs=int(model.min_obs),
+        mean=str(model.mean),
+        power=float(model.power),
+        series_scope=str(model.series_scope if series_scope is None else series_scope),
+    )
+
+
+@dataclass(frozen=True)
+class GarchMarketForecast:
+    """Causal univariate GARCH as-of forecast. Scope is stamped, never implied."""
+
+    sigma: float
+    variance: float
+    cumulative_variance: float
+    horizon: int
+    series_scope: str
+    fit_status: str
+    n_obs: int
+    fallback_reason: str | None
+
+
+def overlay_covariance_with_garch_market(sigma: Array, garch_variance: float) -> Array:
+    """Scale a name-covariance so equal-weight market variance matches the overlay.
+
+    The overlay supplies the *level* of date-level equal-weight variance; the
+    input matrix keeps relative covariances. One-step GARCH or Parkinson
+    Realized GARCH variance is in the same daily decimal-squared units as
+    ``ret_1`` sample covariance. PSD repair is reapplied after scaling. A
+    non-positive sample equal-weight variance skips the overlay rather than
+    inventing a scale.
+    """
+    sig = np.asarray(sigma, dtype=float)
+    if sig.ndim != 2 or sig.shape[0] != sig.shape[1] or sig.shape[0] == 0:
+        raise ValueError("sigma must be a non-empty square covariance")
+    if not np.isfinite(sig).all():
+        raise ValueError("sigma must contain only finite values")
+    var = float(garch_variance)
+    if not np.isfinite(var) or var <= 0.0:
+        raise ValueError("GARCH market variance must be finite and strictly positive")
+    n = int(sig.shape[0])
+    weights = np.full(n, 1.0 / n, dtype=float)
+    sample_mkt_var = float(weights @ sig @ weights)
+    if not np.isfinite(sample_mkt_var) or sample_mkt_var <= 0.0:
+        log.warning(
+            "garch_cov_overlay_skipped",
+            reason="nonpositive_sample_ew_variance",
+            sample_mkt_var=sample_mkt_var,
+        )
+        return sig
+    scaled = sig * (var / sample_mkt_var)
+    repaired, _ = repair_psd(scaled)
+    return repaired
+
+
+def _require_date_level_garch_spec(spec: GARCHVol) -> str:
+    scope = str(getattr(spec, "series_scope", "")).strip()
+    if scope != GARCH_DATE_LEVEL_SCOPE:
+        raise ValueError(
+            f"vol_garch.joblib series_scope must be {GARCH_DATE_LEVEL_SCOPE!r}; got {scope!r}"
+        )
+    return scope
+
+
+def _garch_asof_from_returns(
+    spec: GARCHVol,
+    hist_values: np.ndarray,
+    *,
+    horizon: int,
+    series_scope: str,
+) -> GarchMarketForecast:
+    """Refit the cloned spec on causal returns and stamp a scoped as-of forecast."""
+    model = _clone_garch_spec(spec, series_scope=series_scope)
+    model.fit_returns(hist_values)
+    forecast = model.forecast(horizon=horizon)
+    variance = np.asarray(forecast["variance"], dtype=float).reshape(-1)
+    cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+    if variance.size < 1 or not np.isfinite(variance[0]) or float(variance[0]) <= 0.0:
+        raise ValueError("GARCH produced an invalid one-step variance")
+    if (
+        cumulative.size < horizon
+        or not np.isfinite(cumulative[horizon - 1])
+        or float(cumulative[horizon - 1]) <= 0.0
+    ):
+        raise ValueError("GARCH produced an invalid horizon-cumulative variance")
+    return GarchMarketForecast(
+        sigma=float(np.sqrt(variance[0])),
+        variance=float(variance[0]),
+        cumulative_variance=float(cumulative[horizon - 1]),
+        horizon=int(horizon),
+        series_scope=series_scope,
+        fit_status=str(forecast.get("fit_status", model.fit_status)),
+        n_obs=int(model.n_obs),
+        fallback_reason=model.fallback_reason,
+    )
+
+
+def garch_market_forecast_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+) -> GarchMarketForecast | None:
+    """Causal GARCH market forecast from returns strictly before ``asof``.
+
+    Uses the persisted ``vol_garch.joblib`` *specification* (p, q, dist, vol,
+    series_scope) and refits on the date-level equal-weight ``ret_1`` history
+    with ``event_time < asof``. When ``available_time`` is present, late
+    restatements (``available_time > asof``) cannot enter that history even
+    when their ``event_time`` is earlier. When ``silver/universe.parquet`` is
+    present the overlay series is restricted to current PIT members so
+    execution-bar extras cannot move the gate. The as-of cache is keyed by a
+    digest of the full causal history and the SHA-256 of the spec artifact
+    bytes, not mtime or a partial ``(p, q, dist, vol)`` tuple. Mean/power
+    replacements therefore cannot reuse a stale overlay. The persisted
+    fitted parameters are never reused, so a full-sample artifact cannot
+    leak post-asof returns into a historical decision. Missing artifacts
+    return None. A present artifact with the wrong ``series_scope`` fails
+    closed: it is not an asset-specific vol.
+    """
+    loaded = _load_garch_spec_cached(config)
+    if loaded is None:
+        return None
+    spec, spec_digest = loaded
+    scope = _require_date_level_garch_spec(spec)
+    overlay = _garch_overlay_return_frame(config, frame)
+    dates, values = _garch_return_history(overlay, asof=asof)
+    origin_mask = np.array(
+        [_stamp_strictly_before(stamp, asof) for stamp in np.asarray(dates).tolist()],
+        dtype=bool,
+    )
+    if not np.any(origin_mask):
+        log.warning("garch_asof_skipped", reason="no_strictly_prior_returns", asof=str(asof))
+        return None
+    hist_dates = np.asarray(dates)[origin_mask]
+    hist_values = np.asarray(values, dtype=float)[origin_mask]
+    horizon = _horizon_bars(str(config.train.volatility_target), config)
+    path = _garch_artifact_path(config)
+    cache_key = (
+        str(path.resolve()),
+        spec_digest,
+        str(asof),
+        int(horizon),
+        _garch_history_digest(hist_dates, hist_values),
+        scope,
+    )
+    cached = _GARCH_ASOF_CACHE.get(cache_key)
+    if cached is not None:
+        _GARCH_ASOF_CACHE.move_to_end(cache_key)
+        return cached  # type: ignore[return-value]
+    result = _garch_asof_from_returns(spec, hist_values, horizon=horizon, series_scope=scope)
+    _GARCH_ASOF_CACHE[cache_key] = result
+    if len(_GARCH_ASOF_CACHE) > 64:
+        _GARCH_ASOF_CACHE.popitem(last=False)
+    return result
+
+
+def _garch_requested_security_ids(
+    overlay: pl.DataFrame,
+    security_ids: list[str] | tuple[str, ...] | None,
+) -> tuple[list[str], bool]:
+    """Return unique requested ids and whether the caller listed them explicitly."""
+    requested: list[str]
+    if security_ids is None:
+        requested = sorted(
+            {str(sid).strip() for sid in overlay["security_id"].to_list() if str(sid).strip()}
+        )
+        return requested, False
+    requested = []
+    seen: set[str] = set()
+    for raw in security_ids:
+        if not isinstance(raw, str) or isinstance(raw, bool):
+            raise ValueError("per-security GARCH security_ids must be strings")
+        sid = raw.strip()
+        if not sid:
+            raise ValueError("per-security GARCH security_ids must be non-empty")
+        if sid in seen:
+            raise ValueError("per-security GARCH security_ids must be unique")
+        seen.add(sid)
+        requested.append(sid)
+    return requested, True
+
+
+def garch_name_forecasts_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    security_ids: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, GarchMarketForecast]:
+    """Causal per-security GARCH one-step forecasts from returns strictly before ``asof``.
+
+    Clones the persisted date-level ``vol_garch.joblib`` specification and refits
+    each name on that name's ``ret_1`` only. Output ``series_scope`` is
+    ``security_level_ret_1`` so these forecasts cannot be mistaken for the
+    equal-weight market overlay. They do not replace ``vol_20`` or
+    ``max_predicted_vol``. Missing artifacts return an empty mapping. A present
+    artifact with the wrong scope fails closed. Explicit ``security_ids`` with
+    no strictly-prior observable returns fail closed; implicit scans omit
+    names without history. PIT universe membership and ``available_time``
+    follow the market overlay contract. Spec/as-of cache identity is the
+    artifact SHA-256, not mtime.
+    """
+    loaded = _load_garch_spec_cached(config)
+    if loaded is None:
+        return {}
+    spec, spec_digest = loaded
+    _require_date_level_garch_spec(spec)
+    overlay = _garch_overlay_return_frame(config, frame)
+    if "security_id" not in overlay.columns:
+        raise PointInTimeError("per-security GARCH frame missing security_id")
+    _require_garch_security_keys(overlay)
+    requested, explicit = _garch_requested_security_ids(overlay, security_ids)
+    horizon = _horizon_bars(str(config.train.volatility_target), config)
+    path = _garch_artifact_path(config)
+    path_key = str(path.resolve())
+    out: dict[str, GarchMarketForecast] = {}
+    for sid in requested:
+        hist_dates, hist_values = _garch_name_return_history(overlay, sid, asof=asof)
+        if hist_values.size == 0:
+            if explicit:
+                raise ValueError(f"per-security GARCH has no strictly prior returns for {sid!r}")
+            continue
+        cache_key = (
+            path_key,
+            spec_digest,
+            str(asof),
+            sid,
+            int(horizon),
+            _garch_history_digest(hist_dates, hist_values),
+            GARCH_SECURITY_LEVEL_SCOPE,
+        )
+        cached = _GARCH_NAME_ASOF_CACHE.get(cache_key)
+        if cached is not None:
+            _GARCH_NAME_ASOF_CACHE.move_to_end(cache_key)
+            out[sid] = cached  # type: ignore[assignment]
+            continue
+        result = _garch_asof_from_returns(
+            spec,
+            hist_values,
+            horizon=horizon,
+            series_scope=GARCH_SECURITY_LEVEL_SCOPE,
+        )
+        _GARCH_NAME_ASOF_CACHE[cache_key] = result
+        if len(_GARCH_NAME_ASOF_CACHE) > 256:
+            _GARCH_NAME_ASOF_CACHE.popitem(last=False)
+        out[sid] = result
+    return out
+
+
+def _realized_garch_artifact_path(config: AppConfig) -> Path:
+    return Path(config.data.root) / "metadata" / "vol_realized_garch.joblib"
+
+
+def _load_realized_garch_spec_cached(config: AppConfig) -> tuple[RealizedGARCHVol, str] | None:
+    """Load the trained Realized GARCH spec; cache identity is artifact bytes."""
+    path = _realized_garch_artifact_path(config)
+    if not path.exists():
+        return None
+    digest = _garch_artifact_digest(path)
+    key = (str(path.resolve()), digest)
+    cached = _REALIZED_GARCH_SPEC_CACHE.get(key)
+    if cached is not None:
+        return cached, digest
+    model = RealizedGARCHVol.load(path)
+    _REALIZED_GARCH_SPEC_CACHE[key] = model
+    if len(_REALIZED_GARCH_SPEC_CACHE) > 8:
+        oldest = next(iter(_REALIZED_GARCH_SPEC_CACHE))
+        _REALIZED_GARCH_SPEC_CACHE.pop(oldest, None)
+    return model, digest
+
+
+def _clone_realized_garch_spec(
+    model: RealizedGARCHVol, *, series_scope: str | None = None
+) -> RealizedGARCHVol:
+    """Unfitted clone so as-of fits cannot reuse post-origin parameters."""
+    return RealizedGARCHVol(
+        min_obs=int(model.min_obs),
+        mean=str(model.mean),
+        series_scope=str(model.series_scope if series_scope is None else series_scope),
+        realized_measure=str(model.realized_measure),
+    )
+
+
+def _require_date_level_realized_garch_spec(spec: RealizedGARCHVol) -> str:
+    scope = str(getattr(spec, "series_scope", "")).strip()
+    if scope != GARCH_DATE_LEVEL_SCOPE:
+        raise ValueError(
+            f"vol_realized_garch.joblib series_scope must be {GARCH_DATE_LEVEL_SCOPE!r}; "
+            f"got {scope!r}"
+        )
+    if str(spec.realized_measure) != REALIZED_GARCH_MEASURE:
+        raise ValueError(
+            f"vol_realized_garch.joblib realized_measure must be {REALIZED_GARCH_MEASURE!r}; "
+            f"got {spec.realized_measure!r}"
+        )
+    if bool(spec.intraday_realized_variance):
+        raise ValueError("vol_realized_garch.joblib cannot claim intraday realized variance")
+    return scope
+
+
+@dataclass(frozen=True)
+class RealizedGarchMarketForecast:
+    """Causal Realized GARCH as-of forecast. Parkinson daily OHLC, not HF RV."""
+
+    sigma: float
+    variance: float
+    cumulative_variance: float
+    horizon: int
+    series_scope: str
+    fit_status: str
+    n_obs: int
+    fallback_reason: str | None
+    realized_measure: str
+    intraday_realized_variance: bool
+    variance_family: str
+
+
+def realized_garch_market_forecast_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+) -> RealizedGarchMarketForecast | None:
+    """Causal Realized GARCH market forecast from Parkinson/return pairs before ``asof``.
+
+    Clones ``vol_realized_garch.joblib`` and refits on date-level equal-weight
+    ``ret_1`` paired with same-name one-day Parkinson. Origin-bar OHLC cannot
+    enter the fit. ``forecast_asof`` / ``optimize_asof`` / paper-backtest
+    ``check_order`` prefer this overlay when the artifact is present. It does
+    not replace name-level ``vol_20`` for impact/cost. Missing artifacts
+    return None. A present artifact with the wrong scope or a high-frequency
+    RV claim fails closed. PIT universe membership and ``available_time``
+    follow the GARCH overlay contract.
+    """
+    loaded = _load_realized_garch_spec_cached(config)
+    if loaded is None:
+        return None
+    spec, spec_digest = loaded
+    scope = _require_date_level_realized_garch_spec(spec)
+    overlay = _garch_overlay_return_frame(config, frame)
+    hist_dates, hist_values, hist_measures = _realized_garch_history(overlay, asof=asof)
+    if hist_values.size == 0 or hist_measures.size == 0:
+        log.warning(
+            "realized_garch_asof_skipped",
+            reason="no_strictly_prior_parkinson_pairs",
+            asof=str(asof),
+        )
+        return None
+    horizon = _horizon_bars(str(config.train.volatility_target), config)
+    path = _realized_garch_artifact_path(config)
+    cache_key = (
+        str(path.resolve()),
+        spec_digest,
+        str(asof),
+        int(horizon),
+        _garch_history_digest(hist_dates, hist_values),
+        _garch_history_digest(hist_dates, hist_measures),
+        scope,
+        REALIZED_GARCH_MEASURE,
+    )
+    cached = _REALIZED_GARCH_ASOF_CACHE.get(cache_key)
+    if cached is not None:
+        _REALIZED_GARCH_ASOF_CACHE.move_to_end(cache_key)
+        return cached  # type: ignore[return-value]
+    model = _clone_realized_garch_spec(spec, series_scope=scope)
+    model.fit_returns(hist_values, hist_measures)
+    forecast = model.forecast(horizon=horizon)
+    variance = np.asarray(forecast["variance"], dtype=float).reshape(-1)
+    cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+    if variance.size < 1 or not np.isfinite(variance[0]) or float(variance[0]) <= 0.0:
+        raise ValueError("Realized GARCH produced an invalid one-step variance")
+    if (
+        cumulative.size < horizon
+        or not np.isfinite(cumulative[horizon - 1])
+        or float(cumulative[horizon - 1]) <= 0.0
+    ):
+        raise ValueError("Realized GARCH produced an invalid horizon-cumulative variance")
+    result = RealizedGarchMarketForecast(
+        sigma=float(np.sqrt(variance[0])),
+        variance=float(variance[0]),
+        cumulative_variance=float(cumulative[horizon - 1]),
+        horizon=int(horizon),
+        series_scope=scope,
+        fit_status=str(forecast.get("fit_status", model.fit_status)),
+        n_obs=int(model.n_obs),
+        fallback_reason=model.fallback_reason,
+        realized_measure=REALIZED_GARCH_MEASURE,
+        intraday_realized_variance=False,
+        variance_family=REALIZED_GARCH_FAMILY,
+    )
+    _REALIZED_GARCH_ASOF_CACHE[cache_key] = result
+    if len(_REALIZED_GARCH_ASOF_CACHE) > 64:
+        _REALIZED_GARCH_ASOF_CACHE.popitem(last=False)
+    return result
+
+
+def resolve_market_variance_overlay_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+) -> tuple[GarchMarketForecast | RealizedGarchMarketForecast | None, str | None]:
+    """Causal date-level market overlay for forecast, optimize, and check_order.
+
+    Prefers Hansen–Huang–Shek Realized GARCH when ``vol_realized_garch.joblib``
+    is present. A present Realized GARCH artifact still fail-closes on missing
+    OHLC, a high-frequency RV claim, or the wrong ``series_scope``; it does not
+    silently fall back to return-only GARCH because the panel lacks ranges.
+    When the Realized GARCH artifact is absent, or the as-of history has no
+    strictly-prior Parkinson pairs, the return-only GARCH overlay is used.
+    Neither overlay replaces name-level ``vol_20`` for impact/cost. This does
+    not invent high-frequency realized variance.
+    """
+    rgarch = realized_garch_market_forecast_asof(config, frame, asof)
+    if rgarch is not None:
+        return rgarch, MARKET_RISK_OVERLAY_REALIZED_GARCH
+    garch = garch_market_forecast_asof(config, frame, asof)
+    if garch is not None:
+        return garch, MARKET_RISK_OVERLAY_GARCH
+    return None, None
+
+
+def apply_market_variance_overlay_to_covariance(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    sigma: Array,
+) -> tuple[Array, GarchMarketForecast | RealizedGarchMarketForecast | None, str | None]:
+    """Scale trailing name-covariance to the causal GARCH/RGARCH overlay.
+
+    ``optimize_asof`` and ``/risk/portfolio`` share this helper so the research
+    risk diagnostic cannot report unscaled Ledoit–Wolf or OAS while the
+    optimizer sized on the overlay. Precedence and fail-closed OHLC / scope /
+    high-frequency-RV gates match ``forecast_asof``. Missing artifacts leave
+    ``sigma`` unchanged and stamp None. Named one-step DCC/EWMA paths do not
+    call this helper. This does not invent high-frequency RV.
+    """
+    overlay, source = resolve_market_variance_overlay_asof(config, frame, asof)
+    if overlay is None or source is None:
+        return np.asarray(sigma, dtype=float), None, None
+    return (
+        overlay_covariance_with_garch_market(sigma, float(overlay.variance)),
+        overlay,
+        source,
+    )
+
+
+@dataclass(frozen=True)
+class OptimizerCovarianceEstimate:
+    """Named trailing covariance used by ``optimize_asof`` and ``/risk/portfolio``."""
+
+    sigma: Array
+    security_ids: list[str]
+    estimator: str
+    covariance_object: str
+    spec: str
+    n_obs: int
+    market_overlay: str | None
+    overlay: GarchMarketForecast | RealizedGarchMarketForecast | None
+    params: dict[str, float | str]
+    unmeasured_reason: str | None = None
+    fallback_reason: str | None = None
+
+
+def _trailing_return_matrix(
+    hist: pl.DataFrame, ids: list[str]
+) -> tuple[list[str], Array]:
+    if "ret_1" not in hist.columns or hist.is_empty() or not ids:
+        return [], np.empty((0, 0), dtype=float)
+    wide = (
+        hist.select(["event_time", "security_id", "ret_1"])
+        .sort(["event_time", "security_id"])
+        .pivot(on="security_id", index="event_time", values="ret_1")
+        .sort("event_time")
+    )
+    cols = [sid for sid in ids if sid in wide.columns]
+    if not cols:
+        return [], np.empty((0, 0), dtype=float)
+    return cols, np.asarray(wide.select(cols).to_numpy(), dtype=float)
+
+
+def _named_dcc_optimizer_estimate(
+    estimator: str,
+    mat: Array,
+    cols: list[str],
+    finite_rows: int,
+    psd_tol: float,
+) -> OptimizerCovarianceEstimate:
+    """Fit a named DCC optimizer path. Look up fitters at call time.
+
+    Patches of ``dcc_gaussian`` / ``dcc_student_t`` / ``adcc`` / ``ccc`` /
+    ``agdcc`` / ``agdcc_full`` on this module must still bind. A family or
+    covariance-object mismatch fails closed so unrestricted AG-DCC cannot
+    silently size as diagonal AG-DCC, scalar ADCC, Gaussian DCC,
+    Student-t DCC, or CCC, and diagonal AG-DCC cannot silently size as
+    those other specs either.
+    """
+    fitter: Callable[[Array], tuple[Array, dict[str, float | str]]]
+    if estimator == DCC_FAMILY_GAUSSIAN:
+        fitter = dcc_gaussian
+        default_spec = DCC_SPEC_ENGLE_2002
+    elif estimator == DCC_FAMILY_STUDENT_T:
+        fitter = dcc_student_t
+        default_spec = DCC_SPEC_STUDENT_T
+    elif estimator == DCC_FAMILY_ADCC:
+        fitter = adcc
+        default_spec = DCC_SPEC_ADCC
+    elif estimator == DCC_FAMILY_CCC:
+        fitter = ccc
+        default_spec = DCC_SPEC_CCC
+    elif estimator == DCC_FAMILY_AGDCC:
+        fitter = agdcc
+        default_spec = DCC_SPEC_AGDCC
+    elif estimator == DCC_FAMILY_AGDCC_FULL:
+        fitter = agdcc_full
+        default_spec = DCC_SPEC_AGDCC_FULL
+    else:
+        raise ValueError(f"unknown_optimizer_dcc_family:{estimator}")
+    prefix = f"optimizer_covariance_failed:{estimator}"
+    if len(cols) < 2:
+        raise ValueError(f"{prefix}:fewer_than_two_securities")
+    if finite_rows < DCC_STAGE1_MIN_OBS:
+        raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
+    try:
+        dcc_trailing_complete_window(mat, min_rows=DCC_STAGE1_MIN_OBS)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    try:
+        sigma, params = fitter(mat)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    sigma, _ = repair_psd(sigma, psd_tol)
+    family = str(params.get("family", ""))
+    if family != estimator:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", DCC_COVARIANCE_OBJECT_ONE_STEP))
+    spec_name = str(params.get("spec", default_spec))
+    if object_name != DCC_COVARIANCE_OBJECT_ONE_STEP:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=estimator,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=None,
+        overlay=None,
+        params=dict(params),
+    )
+
+
+def _named_ewma_optimizer_estimate(
+    mat: Array,
+    cols: list[str],
+    finite_rows: int,
+    psd_tol: float,
+    lam: float,
+) -> OptimizerCovarianceEstimate:
+    """Fit named RiskMetrics EWMA. Look up ``ewma`` at call time so patches bind.
+
+    A family or covariance-object mismatch fails closed so EWMA cannot
+    silently size as Ledoit–Wolf or DCC. The matrix is not GARCH-overlaid.
+    """
+    prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_EWMA}"
+    if len(cols) < 2:
+        raise ValueError(f"{prefix}:fewer_than_two_securities")
+    if finite_rows < EWMA_MIN_OBS:
+        raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
+    try:
+        dcc_trailing_complete_window(mat, min_rows=EWMA_MIN_OBS)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    try:
+        sigma, params = ewma(mat, lam=lam)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    sigma, _ = repair_psd(sigma, psd_tol)
+    family = str(params.get("family", ""))
+    if family != OPTIMIZER_COVARIANCE_EWMA:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", DCC_COVARIANCE_OBJECT_ONE_STEP))
+    spec_name = str(params.get("spec", EWMA_SPEC_RISKMETRICS))
+    if object_name != DCC_COVARIANCE_OBJECT_ONE_STEP:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=OPTIMIZER_COVARIANCE_EWMA,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=None,
+        overlay=None,
+        params=dict(params),
+    )
+
+
+def _named_sample_optimizer_estimate(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    mat: Array,
+    cols: list[str],
+    finite_rows: int,
+    psd_tol: float,
+) -> OptimizerCovarianceEstimate:
+    """Fit named unbiased sample covariance. Look up ``sample`` at call time.
+
+    A family or covariance-object mismatch fails closed so sample cannot
+    silently size as Ledoit–Wolf, OAS, EWMA, or DCC. The matrix is
+    GARCH/RGARCH overlay-scaled like trailing Ledoit–Wolf. When T>N the
+    estimator stays sample rather than switching to Ledoit–Wolf.
+    """
+    prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_SAMPLE}"
+    if len(cols) < 2:
+        raise ValueError(f"{prefix}:fewer_than_two_securities")
+    if finite_rows < 2:
+        raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
+    try:
+        sigma, params = sample(mat)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    sigma, _ = repair_psd(sigma, psd_tol)
+    family = str(params.get("family", ""))
+    if family != OPTIMIZER_COVARIANCE_SAMPLE:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", OPTIMIZER_COVARIANCE_OBJECT_TRAILING))
+    spec_name = str(params.get("spec", SAMPLE_SPEC_UNBIASED))
+    if object_name != OPTIMIZER_COVARIANCE_OBJECT_TRAILING:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    sigma, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+        config, frame, asof, sigma
+    )
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=OPTIMIZER_COVARIANCE_SAMPLE,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=overlay_kind,
+        overlay=overlay,
+        params=dict(params),
+    )
+
+
+def _named_oas_optimizer_estimate(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    mat: Array,
+    cols: list[str],
+    finite_rows: int,
+    psd_tol: float,
+) -> OptimizerCovarianceEstimate:
+    """Fit named Chen OAS. Look up ``oas`` at call time so patches bind.
+
+    A family or covariance-object mismatch fails closed so OAS cannot
+    silently size as Ledoit–Wolf, sample, EWMA, or DCC. The matrix is
+    GARCH/RGARCH overlay-scaled like trailing Ledoit–Wolf. When T<=N the
+    estimator stays OAS rather than switching to sample.
+    """
+    prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_OAS}"
+    if len(cols) < 2:
+        raise ValueError(f"{prefix}:fewer_than_two_securities")
+    if finite_rows < 2:
+        raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
+    try:
+        sigma, params = oas(mat)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    sigma, _ = repair_psd(sigma, psd_tol)
+    family = str(params.get("family", ""))
+    if family != OPTIMIZER_COVARIANCE_OAS:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", OPTIMIZER_COVARIANCE_OBJECT_TRAILING))
+    spec_name = str(params.get("spec", OAS_SPEC_CHEN_2010))
+    if object_name != OPTIMIZER_COVARIANCE_OBJECT_TRAILING:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    sigma, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+        config, frame, asof, sigma
+    )
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=OPTIMIZER_COVARIANCE_OAS,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=overlay_kind,
+        overlay=overlay,
+        params=dict(params),
+    )
+
+
+def _named_ledoit_wolf_nonlinear_optimizer_estimate(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    mat: Array,
+    cols: list[str],
+    finite_rows: int,
+    psd_tol: float,
+) -> OptimizerCovarianceEstimate:
+    """Fit named analytical nonlinear Ledoit-Wolf. Look up at call time.
+
+    A family or covariance-object mismatch fails closed so 2020 analytical
+    nonlinear shrinkage cannot silently size as 2004 linear Ledoit-Wolf,
+    OAS, sample, EWMA, or DCC. The matrix is GARCH/RGARCH overlay-scaled
+    like trailing Ledoit-Wolf. When T<=N the estimator stays nonlinear
+    rather than switching to sample or 2004 linear shrinkage.
+    """
+    prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR}"
+    if len(cols) < 2:
+        raise ValueError(f"{prefix}:fewer_than_two_securities")
+    if finite_rows < NLSHRINK_MIN_OBS:
+        raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
+    try:
+        sigma, params = ledoit_wolf_nonlinear(mat)
+    except ValueError as exc:
+        raise ValueError(f"{prefix}:{exc}") from exc
+    sigma, _ = repair_psd(sigma, psd_tol)
+    family = str(params.get("family", ""))
+    if family != OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", OPTIMIZER_COVARIANCE_OBJECT_TRAILING))
+    spec_name = str(params.get("spec", OPTIMIZER_COVARIANCE_SPEC_LEDOIT_WOLF_NONLINEAR))
+    if object_name != OPTIMIZER_COVARIANCE_OBJECT_TRAILING:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    if spec_name == OPTIMIZER_COVARIANCE_SPEC_LEDOIT_WOLF:
+        raise ValueError(f"{prefix}:unexpected_spec:{spec_name}")
+    sigma, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+        config, frame, asof, sigma
+    )
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=overlay_kind,
+        overlay=overlay,
+        params=dict(params),
+    )
+
+
+def _unmeasured_optimizer_covariance(
+    reason: str, ids: list[str]
+) -> OptimizerCovarianceEstimate:
+    n = len(ids)
+    sigma = np.empty((0, 0), dtype=float) if n == 0 else np.diag(np.ones(n) * 0.02**2)
+    return OptimizerCovarianceEstimate(
+        sigma=sigma,
+        security_ids=list(ids),
+        estimator=OPTIMIZER_COVARIANCE_HOMOSKEDASTIC_PROXY,
+        covariance_object=OPTIMIZER_COVARIANCE_OBJECT_DIAGONAL_PROXY,
+        spec=OPTIMIZER_COVARIANCE_SPEC_DIAGONAL_PROXY,
+        n_obs=0,
+        market_overlay=None,
+        overlay=None,
+        params={},
+        unmeasured_reason=reason,
+        fallback_reason=reason,
+    )
+
+
+def estimate_optimizer_covariance_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+    ids: list[str],
+    hist: pl.DataFrame,
+) -> OptimizerCovarianceEstimate:
+    r"""Estimate the named optimizer covariance on PIT-filtered trailing returns.
+
+    ``optimizer.covariance=ledoit_wolf`` (default) keeps trailing Ledoit-Wolf
+    2004 plus the GARCH/RGARCH overlay and stays Ledoit-Wolf when T<=N
+    rather than silently switching to sample. ``dcc_gaussian``,
+    ``dcc_student_t``, ``adcc``, ``ccc``, ``agdcc``, ``agdcc_full``, and
+    ``ewma`` return one-step-ahead H_{t+1} and do **not** apply that overlay.
+    Named ``oas`` returns trailing Chen OAS plus the overlay and must not
+    silently size as Ledoit-Wolf, sample, EWMA, or DCC; when T<=N it stays
+    OAS rather than switching to sample. Named ``ledoit_wolf_nonlinear``
+    returns trailing analytical 2020 nonlinear shrinkage plus the overlay
+    and must not silently size as 2004 linear Ledoit-Wolf, OAS, sample,
+    EWMA, or DCC; when T<=N it stays nonlinear rather than switching to
+    sample or 2004. Named ``sample`` returns trailing unbiased sample
+    covariance plus the overlay and must not silently size as Ledoit-Wolf,
+    OAS, EWMA, or DCC; when T>N it stays sample rather than switching to
+    Ledoit-Wolf. Sequential one-step samples use the trailing contiguous
+    complete-case window; holes are not concatenated and an incomplete
+    asof row fails closed rather than dropping \(r_t\) / \(z_t\).
+    OAS, named sample, named nonlinear Ledoit-Wolf, and default
+    Ledoit-Wolf listwise-delete. Those named paths are distinct and must
+    not substitute for each other or for Ledoit-Wolf 2004. A failed or
+    short named fit fails closed rather than silently substituting
+    Ledoit-Wolf. Named unrestricted AG-DCC must not silently size as
+    diagonal AG-DCC. Named diagonal AG-DCC must not silently size as
+    scalar ADCC. Named CCC must not silently size as Gaussian DCC or
+    Ledoit-Wolf. Factor stays unwired. This does not invent high-frequency
+    RV or wire factor covariance.
+    """
+    estimator = require_implemented_optimizer_covariance(config.optimizer.covariance)
+    cols, mat = _trailing_return_matrix(hist, ids)
+    finite_rows = int(np.isfinite(mat).all(axis=1).sum()) if mat.size else 0
+    if estimator == OPTIMIZER_COVARIANCE_SAMPLE:
+        return _named_sample_optimizer_estimate(
+            config,
+            frame,
+            asof,
+            mat,
+            cols,
+            finite_rows,
+            config.train.psd_eigen_tol,
+        )
+    if estimator == OPTIMIZER_COVARIANCE_OAS:
+        return _named_oas_optimizer_estimate(
+            config,
+            frame,
+            asof,
+            mat,
+            cols,
+            finite_rows,
+            config.train.psd_eigen_tol,
+        )
+    if estimator == OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR:
+        return _named_ledoit_wolf_nonlinear_optimizer_estimate(
+            config,
+            frame,
+            asof,
+            mat,
+            cols,
+            finite_rows,
+            config.train.psd_eigen_tol,
+        )
+    if estimator == OPTIMIZER_COVARIANCE_EWMA:
+        return _named_ewma_optimizer_estimate(
+            mat,
+            cols,
+            finite_rows,
+            config.train.psd_eigen_tol,
+            float(config.features.ewma_lambda),
+        )
+    if estimator in IMPLEMENTED_OPTIMIZER_DCC_FAMILIES:
+        return _named_dcc_optimizer_estimate(
+            estimator,
+            mat,
+            cols,
+            finite_rows,
+            config.train.psd_eigen_tol,
+        )
+
+    if "ret_1" not in hist.columns:
+        return _unmeasured_optimizer_covariance("no_ret_1", ids)
+    if len(cols) < 2:
+        return _unmeasured_optimizer_covariance("fewer_than_two_securities", ids)
+    if finite_rows < 2:
+        return _unmeasured_optimizer_covariance("insufficient_finite_rows", ids)
+    try:
+        sigma, params = ledoit_wolf(mat)
+    except ValueError:
+        log.warning("covariance_fallback", reason="estimation_failed", n_ids=len(ids))
+        return _unmeasured_optimizer_covariance("estimation_failed", ids)
+    family = str(params.get("family", ""))
+    prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_LEDOIT_WOLF}"
+    if family != OPTIMIZER_COVARIANCE_LEDOIT_WOLF:
+        raise ValueError(f"{prefix}:unexpected_family:{family}")
+    object_name = str(params.get("covariance_object", OPTIMIZER_COVARIANCE_OBJECT_TRAILING))
+    spec_name = str(params.get("spec", OPTIMIZER_COVARIANCE_SPEC_LEDOIT_WOLF))
+    if object_name != OPTIMIZER_COVARIANCE_OBJECT_TRAILING:
+        raise ValueError(f"{prefix}:unexpected_covariance_object:{object_name}")
+    sigma, _ = repair_psd(sigma, config.train.psd_eigen_tol)
+    sigma, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+        config, frame, asof, sigma
+    )
+    return OptimizerCovarianceEstimate(
+        sigma=np.asarray(sigma, dtype=float),
+        security_ids=cols,
+        estimator=OPTIMIZER_COVARIANCE_LEDOIT_WOLF,
+        covariance_object=object_name,
+        spec=spec_name,
+        n_obs=int(float(params.get("n_obs", finite_rows))),
+        market_overlay=overlay_kind,
+        overlay=overlay,
+        params=dict(params),
+    )
+
+
+def market_risk_overlay_asof(
+    config: AppConfig,
+    frame: pl.DataFrame,
+    asof: datetime,
+) -> tuple[float | None, str | None]:
+    """Causal date-level market sigma for paper/backtest ``check_order``."""
+    overlay, source = resolve_market_variance_overlay_asof(config, frame, asof)
+    if overlay is None:
+        return None, None
+    return float(overlay.sigma), source
+
+
+def _market_overlay_note(overlay_kind: str) -> str:
+    if overlay_kind == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+        return "realized_garch_market_cross_section"
+    return "garch_market_cross_section"
+
+
+def _market_overlay_diagnostics(
+    overlay: GarchMarketForecast | RealizedGarchMarketForecast,
+    overlay_kind: str,
+) -> dict[str, float | str]:
+    diagnostics: dict[str, float | str] = {
+        "garch_market_sigma": float(overlay.sigma),
+        "garch_market_variance": float(overlay.variance),
+        "garch_cumulative_variance": float(overlay.cumulative_variance),
+        "garch_horizon": float(overlay.horizon),
+        "garch_n_obs": float(overlay.n_obs),
+        "garch_series_scope": overlay.series_scope,
+        "garch_fit_status": overlay.fit_status,
+        "market_risk_overlay": overlay_kind,
+    }
+    if overlay_kind == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+        diagnostics["realized_measure"] = REALIZED_GARCH_MEASURE
+        diagnostics["intraday_realized_variance"] = "false"
+        diagnostics["garch_variance_family"] = REALIZED_GARCH_FAMILY
+    return diagnostics
+
+
 def _panel_cached(config: AppConfig) -> pl.DataFrame:
     """Thin wrapper — dataset.panel already caches; keep call site explicit."""
     return panel(config)
+
+
+def _count_robinhood_plus_ok(
+    rh_map: dict[str, RobinhoodPlusNameForecast],
+    security_ids: list[str],
+) -> int:
+    n_ok = 0
+    for sid in security_ids:
+        hit = rh_map.get(sid)
+        if hit is None or hit.forecast.status != STATUS_OK:
+            continue
+        mu = float(hit.forecast.expected_returns.get("5d", hit.forecast.rank_score))
+        if np.isfinite(mu):
+            n_ok += 1
+    return n_ok
+
+
+def _robinhood_plus_asof(
+    frame: pl.DataFrame,
+    asof: datetime,
+    config: AppConfig,
+    security_ids: list[str],
+) -> dict[str, RobinhoodPlusNameForecast]:
+    """Causal robinhood+ K-line forecasts. Torch backend is local-weights only."""
+    cfg = config.robinhood_plus
+    if not cfg.enabled:
+        return {}
+    if cfg.backend.value == "torch":
+        from quant_fund.models.robinhood_plus.torch_backend import forecast_cross_section_torch
+
+        return forecast_cross_section_torch(frame, asof, config, security_ids)
+    if not kline_columns_present(frame.columns):
+        return {}
+    return forecast_robinhood_plus_cross_section(
+        frame,
+        asof,
+        lookback=cfg.lookback,
+        pred_len=cfg.pred_len,
+        sample_count=cfg.sample_count,
+        s1_bits=cfg.s1_bits,
+        s2_bits=cfg.s2_bits,
+        clip=cfg.clip,
+        temperature=cfg.temperature,
+        top_p=cfg.top_p,
+        max_context=cfg.max_context,
+        seed=config.train.random_seed,
+        decoder=cfg.decoder.value,
+        security_ids=security_ids,
+        quantile_levels=tuple(float(q) for q in config.quantiles.levels),
+        horizons=tuple(int(h) for h in config.horizons.bars),
+    )
 
 
 def forecast_asof(
@@ -808,6 +1979,30 @@ def forecast_asof(
     )
     alpha = (pct - 0.5) * 2.0 * config.fusion.alpha_scale
     conf = np.clip(0.5 + np.abs(pct - 0.5), 0.2, 1.0)
+    security_ids = [str(row["security_id"]) for row in day.iter_rows(named=True)]
+    blend = float(config.robinhood_plus.blend_weight) if config.robinhood_plus.enabled else 0.0
+    # blend_weight=0: keep the engine as a stamped challenger and do not size
+    # the book. Still emit n_ok / n_fallback so a missing OHLC window cannot
+    # masquerade as a Kronos path when the engine *is* applied.
+    rh_map: dict[str, RobinhoodPlusNameForecast] = {}
+    if config.robinhood_plus.enabled and blend > 0.0:
+        rh_map = _robinhood_plus_asof(df, asof, config, security_ids)
+    rh_ok = _count_robinhood_plus_ok(rh_map, security_ids)
+    n_fallback = int(len(security_ids) - rh_ok)
+    if rh_map and blend > 0.0:
+        for i, sid in enumerate(security_ids):
+            hit = rh_map.get(sid)
+            if hit is None or hit.forecast.status != STATUS_OK:
+                continue
+            mu = float(hit.forecast.expected_returns.get("5d", hit.forecast.rank_score))
+            if not np.isfinite(mu):
+                continue
+            scores[i] = (1.0 - blend) * float(scores[i]) + blend * float(hit.forecast.rank_score)
+            alpha[i] = (1.0 - blend) * float(alpha[i]) + blend * mu
+            conf[i] = (1.0 - blend) * float(conf[i]) + blend * float(hit.forecast.confidence)
+        order = scores.argsort().argsort()
+        pct = (order + 0.5) / max(len(scores), 1)
+        conf = np.clip(conf, 0.2, 1.0)
     regime = np.ones(day.height)
     tail = np.clip(vol * 0.1, 0, None)
     liq = np.zeros(day.height)
@@ -815,6 +2010,16 @@ def forecast_asof(
     notes = []
     if config.data.source == "synthetic":
         notes.append("SYNTHETIC")
+    notes.append(f"robinhood_plus_n_ok={rh_ok}")
+    notes.append(f"robinhood_plus_n_fallback={n_fallback}")
+    notes.append(f"robinhood_plus_blend_weight={blend}")
+    if config.robinhood_plus.enabled and blend <= 0.0:
+        notes.append("robinhood_plus_challenger")
+    if rh_ok and blend > 0.0:
+        notes.append(ENGINE_NAME)
+    overlay, overlay_kind = resolve_market_variance_overlay_asof(config, df, asof)
+    if overlay is not None and overlay_kind is not None:
+        notes.append(_market_overlay_note(overlay_kind))
     # Research-only weight smoke: skip conformal when fusion.skip_intervals is set.
     if bool(getattr(config.fusion, "skip_intervals", False)):
         intervals = None
@@ -843,28 +2048,78 @@ def forecast_asof(
             hi_map = {intervals.horizon: intervals.upper[sid]}
             method = intervals.method
             i_alpha = intervals.alpha
+        diagnostics: dict[str, float | str] = {
+            "fused": float(fused[i]),
+            "robinhood_plus_n_ok": float(rh_ok),
+            "robinhood_plus_n_fallback": float(n_fallback),
+            "robinhood_plus_blend_weight": float(blend),
+        }
+        if overlay is not None and overlay_kind is not None:
+            diagnostics.update(_market_overlay_diagnostics(overlay, overlay_kind))
+        expected = {"5d": float(alpha[i])}
+        q_map: dict[str, dict[float, float]] = {"5d": {0.05: q05, 0.5: q50, 0.95: q95}}
+        p_map = {"5d": float(pct[i])}
+        hit = rh_map.get(sid)
+        if hit is not None and hit.forecast.status == STATUS_OK:
+            diagnostics["core_engine"] = ENGINE_NAME
+            diagnostics["robinhood_plus_status"] = hit.forecast.status
+            diagnostics["robinhood_plus_model_version"] = MODEL_VERSION
+            diagnostics["robinhood_plus_backend"] = str(hit.forecast.diagnostics.get("backend", "numpy"))
+            diagnostics["robinhood_plus_decoder"] = str(hit.forecast.diagnostics.get("decoder", ""))
+            if hit.forecast.expected_returns:
+                expected = dict(hit.forecast.expected_returns)
+                expected["5d"] = float(alpha[i])
+            if hit.forecast.quantiles:
+                q_map = {
+                    hz: {float(level): float(val) for level, val in levels.items()}
+                    for hz, levels in hit.forecast.quantiles.items()
+                }
+            if hit.forecast.probability_positive:
+                p_map = {
+                    hz: float(np.clip(val, 0.0, 1.0))
+                    for hz, val in hit.forecast.probability_positive.items()
+                }
+        elif config.robinhood_plus.enabled:
+            diagnostics["core_engine"] = "ridge"
+            diagnostics["robinhood_plus_status"] = (
+                hit.forecast.status if hit is not None else ("challenger" if blend <= 0.0 else "absent")
+            )
         forecasts.append(
             AssetForecast(
                 security_id=sid,
                 symbol=row.get("symbol", sid),
                 asof=asof,
                 model_version="fusion.v1",
-                expected_returns={"5d": float(alpha[i])},
-                quantiles={"5d": {0.05: q05, 0.5: q50, 0.95: q95}},
-                probability_positive={"5d": float(pct[i])},
+                expected_returns=expected,
+                quantiles=q_map,
+                probability_positive=p_map,
                 alpha={"5d": float(alpha[i])},
                 rank_score={"5d": float(scores[i])},
                 rank_percentile={"5d": float(pct[i])},
                 volatility={"5d": float(vol[i])},
                 confidence={"5d": float(conf[i])},
-                diagnostics={"fused": float(fused[i])},
+                diagnostics=diagnostics,
                 interval_lo=lo_map,
                 interval_hi=hi_map,
                 interval_alpha=i_alpha,
                 interval_method=method,
             )
         )
-    return MarketState(asof=asof, forecasts=forecasts, notes=notes)
+    if overlay is None or overlay_kind is None:
+        return MarketState(asof=asof, forecasts=forecasts, notes=notes)
+    return MarketState(
+        asof=asof,
+        forecasts=forecasts,
+        notes=notes,
+        garch_market_sigma=float(overlay.sigma),
+        garch_market_variance=float(overlay.variance),
+        garch_cumulative_variance=float(overlay.cumulative_variance),
+        garch_horizon=int(overlay.horizon),
+        garch_series_scope=overlay.series_scope,
+        garch_fit_status=overlay.fit_status,
+        garch_n_obs=int(overlay.n_obs),
+        market_risk_overlay=overlay_kind,
+    )
 
 
 def _alpha_vector(state: MarketState, config: AppConfig, *, use_fused: bool) -> Array:
@@ -992,7 +2247,34 @@ def optimize_asof(
     penalties use the prior book. Alpha sizing defaults to fused diagnostics
     (``fusion.use_fused_for_optimize``); set ``use_fused_alpha=False`` to force
     raw alpha. Conformal interval caps apply when intervals exist and
-    ``fusion.apply_interval_caps`` is true.
+    ``fusion.apply_interval_caps`` is true. Trailing name-covariance uses the
+    same ``available_time <= asof`` contract as the GARCH overlay: unpublished
+    restatements cannot move Ledoit–Wolf/sample, OAS, or named DCC risk. Null
+    availability among usable ``ret_1`` rows fails closed. Default covariance
+    is trailing Ledoit-Wolf 2004 plus the GARCH/RGARCH overlay helper shared
+    with ``/risk/portfolio``; when T<=N it stays Ledoit-Wolf rather than
+    switching to sample. Set ``optimizer.covariance=dcc_gaussian``,
+    ``dcc_student_t``, ``adcc``, ``ccc``, ``agdcc``, ``agdcc_full``, or
+    ``ewma`` for the named one-step path; those paths do not overlay
+    H_{t+1} and use the trailing contiguous complete-case window (holes
+    are not concatenated; an incomplete asof row fails closed). Set
+    ``optimizer.covariance=oas`` for trailing Chen OAS plus the overlay;
+    that path must not silently size as Ledoit–Wolf, sample, EWMA, or DCC,
+    and when T<=N it stays OAS. Set
+    ``optimizer.covariance=ledoit_wolf_nonlinear`` for trailing analytical
+    2020 nonlinear shrinkage plus the overlay; that path must not silently
+    size as 2004 linear Ledoit–Wolf, OAS, sample, EWMA, or DCC, and when
+    T<=N it stays nonlinear. Set ``optimizer.covariance=sample`` for
+    trailing unbiased sample covariance plus the overlay; that path must
+    not silently size as Ledoit–Wolf, OAS, EWMA, or DCC, and when T>N it
+    stays sample. Named paths fail closed rather than substituting the
+    default. Set ``optimizer.covariance=agdcc`` for diagonal CES AG-DCC
+    one-step H_{t+1} without overlay; that path must not silently size as
+    scalar ADCC or unrestricted AG-DCC. Set
+    ``optimizer.covariance=agdcc_full`` for unrestricted CES AG-DCC
+    one-step H_{t+1} without overlay; that path must not silently size as
+    diagonal AG-DCC. Named CCC must not silently size as Gaussian DCC.
+    Factor stays unwired.
     """
     state = forecast_asof(
         config,
@@ -1018,35 +2300,50 @@ def optimize_asof(
         hist = history_prefix_upto(base, state.asof)
     else:
         hist = base.filter(pl.col("event_time") <= state.asof)
-    if "ret_1" in hist.columns and hist.height > 20:
-        wide = hist.select(["event_time", "security_id", "ret_1"]).pivot(
-            on="security_id", index="event_time", values="ret_1"
+    hist = filter_trailing_returns_asof(hist, state.asof)
+    estimator = require_implemented_optimizer_covariance(config.optimizer.covariance)
+    if estimator in IMPLEMENTED_OPTIMIZER_NAMED_SPECS:
+        estimate = estimate_optimizer_covariance_asof(
+            config, base, state.asof, ids, hist
         )
-        cols = [c for c in ids if c in wide.columns]
-        mat = wide.select(cols).to_numpy() if cols else np.empty((0, 0))
-        finite_rows = int(np.isfinite(mat).all(axis=1).sum()) if mat.size else 0
-        if cols and finite_rows >= 2:
-            try:
-                sig = ledoit_wolf_cov(mat) if mat.shape[0] > mat.shape[1] else sample_cov(mat)
-                sig, _ = repair_psd(sig)
-                alpha_map = dict(zip(ids, alpha, strict=False))
-                alpha = np.array([alpha_map.get(c, 0.0) for c in cols], dtype=float)
-                ids = cols
-            except ValueError:
-                # Documented fallback, but never silent: the homoskedastic 2%
-                # proxy is recorded so downstream diagnostics can flag it.
-                log.warning("covariance_fallback", reason="estimation_failed", n_ids=len(ids))
-                sig = np.diag(np.ones(len(ids)) * 0.02**2)
+        alpha_map = dict(zip(ids, alpha, strict=False))
+        ids = estimate.security_ids
+        alpha = np.array([alpha_map.get(c, 0.0) for c in ids], dtype=float)
+        sig = estimate.sigma
+    elif "ret_1" in hist.columns and hist.height > 20:
+        estimate = estimate_optimizer_covariance_asof(
+            config, base, state.asof, ids, hist
+        )
+        if estimate.unmeasured_reason is None:
+            alpha_map = dict(zip(ids, alpha, strict=False))
+            ids = estimate.security_ids
+            alpha = np.array([alpha_map.get(c, 0.0) for c in ids], dtype=float)
+            sig = estimate.sigma
         else:
             log.warning(
                 "covariance_fallback",
-                reason="insufficient_finite_rows",
-                finite_rows=finite_rows,
+                reason=estimate.unmeasured_reason,
+                finite_rows=int(estimate.n_obs),
+                n_bars=int(hist.height),
             )
             sig = np.diag(np.ones(len(ids)) * 0.02**2)
+            sig, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+                config, base, state.asof, sig
+            )
+            estimate = replace(estimate, sigma=sig, overlay=overlay, market_overlay=overlay_kind)
     else:
-        log.warning("covariance_fallback", reason="insufficient_history", n_bars=int(hist.height))
+        reason = "insufficient_history" if "ret_1" in hist.columns else "no_ret_1"
+        log.warning("covariance_fallback", reason=reason, n_bars=int(hist.height))
         sig = np.diag(np.ones(len(ids)) * 0.02**2)
+        sig, overlay, overlay_kind = apply_market_variance_overlay_to_covariance(
+            config, base, state.asof, sig
+        )
+        estimate = replace(
+            _unmeasured_optimizer_covariance(reason, ids),
+            sigma=sig,
+            overlay=overlay,
+            market_overlay=overlay_kind,
+        )
     wp = _align_w_prev(ids, w_prev)
     # Planner cost vector: the same modeled one-way cost the execution engine
     # charges (commission + half spread + per-turnover bps), as a fraction of
@@ -1061,14 +2358,29 @@ def optimize_asof(
     tc_linear = np.full(len(ids), max(one_way_cost, 0.0), dtype=float)
     w, diag = optimize_mean_variance(alpha, sig, wp, config, tc_linear=tc_linear)
     w = _apply_forecast_interval_caps(w, state, ids, config, w_prev=wp)
-    out = pl.DataFrame(
-        {
-            "event_time": [state.asof] * len(ids),
-            "security_id": ids,
-            "target_weight": w.tolist(),
-            "alpha": alpha.tolist(),
-        }
-    )
+    payload: dict[str, object] = {
+        "event_time": [state.asof] * len(ids),
+        "security_id": ids,
+        "target_weight": w.tolist(),
+        "alpha": alpha.tolist(),
+        "covariance_estimator": [estimate.estimator] * len(ids),
+        "covariance_object": [estimate.covariance_object] * len(ids),
+        "covariance_spec": [estimate.spec] * len(ids),
+    }
+    if (
+        estimate.unmeasured_reason is None
+        and estimate.estimator in IMPLEMENTED_OPTIMIZER_ONE_STEP_SPECS
+    ):
+        payload["covariance_horizon"] = [1] * len(ids)
+    elif (
+        estimate.estimator not in IMPLEMENTED_OPTIMIZER_ONE_STEP_SPECS
+        and state.garch_market_sigma is not None
+    ):
+        payload["garch_market_sigma"] = [float(state.garch_market_sigma)] * len(ids)
+        payload["garch_market_variance"] = [float(state.garch_market_variance or 0.0)] * len(ids)
+        payload["garch_series_scope"] = [str(state.garch_series_scope)] * len(ids)
+        payload["market_risk_overlay"] = [str(state.market_risk_overlay)] * len(ids)
+    out = pl.DataFrame(payload)
     if persist:
         Path(config.data.root).joinpath("gold").mkdir(parents=True, exist_ok=True)
         out.write_parquet(Path(config.data.root) / "gold" / "target_weights.parquet")

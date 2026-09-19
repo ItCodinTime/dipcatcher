@@ -13,7 +13,15 @@ volatility forecasts on a bounded sample. It documents its own limits.
 - Origins: nonoverlapping every 5 dates. Fits use only returns observed
   before the origin. Validation origins start at return index 200; test
   origins at 300. Selection uses validation mean loss only, before any test
-  scoring.
+  scoring. Production `train_volatility` GARCH QLIKE now uses the same
+  nonoverlapping origin contract on the date-level equal-weight panel
+  (Wave 104); this frozen script remains the independent per-series protocol.
+  Production   `train_volatility` also scores the one-step date-level return
+  density (log-score / CRPS / PIT; Wave 105) without changing this script.
+  Production name-level walk-forward QLIKE/density (Wave 114) is a separate
+  `security_level_ret_1` namespace and is also outside this frozen script.
+  Production Realized GARCH on daily Parkinson (Wave 115) is likewise outside
+  this frozen script and does not replace the return-only overlay.
 - Losses: QLIKE `log(forecast) + target/forecast`, equal-weighted across
   five complete synthetic series per origin date.
 - Inference: two-sided HAC Diebold–Mariano versus each baseline, Bonferroni
@@ -23,10 +31,13 @@ volatility forecasts on a bounded sample. It documents its own limits.
 
 - `sota_proven` is hard-coded `False`. Synthetic bars (36 securities, 504
   dates, complete-history selection) cannot certify real-market accuracy.
-- The candidate set omits realized-GARCH and modern hybrid estimators. A
-  HAR-style daily-squared-return proxy was added after v1 and compared
-  exploratorily against the recorded GJR-t losses (it slightly beat them);
-  it was not part of the pre-registered v1 selection.
+- The candidate set omits realized-GARCH and modern hybrid estimators. Production
+  `GARCHVol` now also exposes APARCH and FIGARCH (Wave 106); they are not part
+  of this frozen v1 candidate set. Production `RealizedGARCHVol` (Wave 115) uses
+  daily Parkinson OHLC, not high-frequency RV, and is also outside this frozen
+  set. A HAR-style daily-squared-return proxy was added after v1 and compared
+  exploratorily against the recorded GJR-t losses (it slightly beat them); it
+  was not part of the pre-registered v1 selection.
 - Failed or nonconverged fits fall back to the rolling forecast and stay in
   the scored sample; fallback counts are reported.
 - The estimators here are deliberately simple; the production `GARCHVol`

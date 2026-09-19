@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import polars as pl
 from numpy.typing import NDArray
 from sklearn.linear_model import ElasticNet, Ridge
 from sklearn.preprocessing import StandardScaler
@@ -24,12 +25,24 @@ PUBLIC_FEATURES = [
 ORACLE_FEATURES = [
     "cs_z_planted_signal",
 ]
+# Raw planted column plus the CS-z feature. Neither is a public K-line competitor.
+ORACLE_COLUMNS = ("planted_signal", "cs_z_planted_signal")
 DEFAULT_FEATURES = [*PUBLIC_FEATURES, *ORACLE_FEATURES]
 
 
 def available_features(columns: list[str], wanted: list[str] | None = None) -> list[str]:
     wanted = wanted or DEFAULT_FEATURES
     return [c for c in wanted if c in columns]
+
+
+def drop_oracle_columns(frame: pl.DataFrame) -> pl.DataFrame:
+    """Drop labeled SYNTHETIC oracle columns. Public-feature cards must call this.
+
+    ``planted_signal`` / ``cs_z_planted_signal`` recover the DGP by construction.
+    They are not a fair champion for Kronos / robinhood+.
+    """
+    drop = [name for name in ORACLE_COLUMNS if name in frame.columns]
+    return frame.drop(drop) if drop else frame
 
 
 def _finite(x: NDArray[np.float64], y: NDArray[np.float64] | None = None) -> Any:

@@ -18,14 +18,22 @@ Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC
 
 - Bollerslev (1986). GARCH.
 - RiskMetrics EWMA.
+- Parkinson (1980). The Extreme Value Method for Estimating the Variance of the Rate of Return.
+- Hansen, Huang, Shek (2012). Realized GARCH: A Joint Model for Returns and Realized Measures of Volatility. *Journal of Applied Econometrics*.
 - Corsi (2009). HAR-RV.
 - Patton (2011). Volatility forecast comparison / QLIKE.
 
 ## Covariance
 
-- Ledoit, Wolf (2004). A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices.
+- Ledoit, Wolf (2004). A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices. Default `optimizer.covariance=ledoit_wolf` is trailing 2004 linear shrinkage plus the GARCH/RGARCH overlay (Wave 139) and stays Ledoit–Wolf when \(T\le N\), not silent sample and not one-step \(H_{t+1}\). Named `optimizer.covariance=sample` is trailing unbiased (`ddof=1`) sample covariance plus the overlay (Wave 132). Factor stays unwired.
+- Ledoit, Wolf (2020). Analytical Nonlinear Shrinkage of Large-Dimensional Covariance Matrices. *Annals of Statistics*. Named `optimizer.covariance=ledoit_wolf_nonlinear` is trailing analytical 2020 spectral shrinkage plus the overlay (Wave 140), not 2004 linear shrinkage and not numerical QuEST (2017). Generic `ledoit_wolf_2017` / `quest` stay unknown.
+- Chen, Wiesel, Eldar, Hero (2010). Shrinkage Algorithms for MMSE Covariance Estimation. *IEEE Transactions on Signal Processing*. Named `optimizer.covariance=oas` is trailing listwise OAS plus the GARCH/RGARCH overlay (Wave 131), not Ledoit–Wolf and not one-step \(H_{t+1}\).
+- J.P. Morgan (1996). RiskMetrics Technical Document. Named `optimizer.covariance=ewma` is one-step \(H_{t+1}\) on the trailing complete window (Wave 130), not listwise-deleted in-sample last \(H_t\).
 - Engle (2002). Dynamic Conditional Correlation.
+- Bollerslev (1990). Modelling the Coherence in Short-run Nominal Exchange Rates: A Multivariate Generalized ARCH Model. *Review of Economics and Statistics*. Catalog `ccc` is two-stage Gaussian GARCH + constant \(R\) (Wave 133). Named `optimizer.covariance=ccc` is one-step \(H_{t+1}\) without overlay (Wave 134). Not Engle DCC.
 - Engle, Sheppard (2001). Theoretical and empirical properties of DCC.
+- Cappiello, Engle, Sheppard (2006). Asymmetric Dynamics in the Correlations of Global Equity and Bond Returns. Scalar `adcc` is a catalog estimator (Wave 128) and a named optimizer path (Wave 129). Diagonal `agdcc` is a catalog estimator (Wave 135) and a named optimizer path (Wave 136). Unrestricted full-matrix `agdcc_full` is a catalog estimator (Wave 137) and a named optimizer path (Wave 138). Student-t DCC is a catalog estimator (Wave 126) and a named optimizer path (Wave 127).
+- Bauwens, Laurent, Rombouts (2006). Multivariate GARCH models: a survey. Covariance Student-t DCC likelihood (scale \(((ν-2)/ν)R\)).
 - Higham (1988). Computing a nearest symmetric positive semidefinite matrix.
 
 ## Regime
@@ -107,7 +115,7 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 | Citation | Why it matters | Repo map |
 |----------|----------------|----------|
-| Gneiting & Raftery, *Strictly Proper Scoring Rules, Prediction, and Estimation*, JASA 102(477) (2007) | CRPS, energy score, propriety | `crps_from_quantiles` (Riemann); `crps_gaussian` / `mean_crps_gaussian` (closed-form); `crps_student_t` / `mean_crps_student_t` (Day Wave 45); `crps_empirical` (ensemble); bench keys `crps_gaussian_closed` / `dm_crps_*` (Day Wave 8) + `crps_scaled_student_t_closed` (Day Wave 45); MATH_SPEC |
+| Gneiting & Raftery, *Strictly Proper Scoring Rules, Prediction, and Estimation*, JASA 102(477) (2007) | CRPS, logarithmic score, energy score, propriety | `crps_from_quantiles` (Riemann); `crps_gaussian` / `mean_crps_gaussian` (closed-form); `crps_student_t` / `mean_crps_student_t` (Day Wave 45); `crps_empirical` (ensemble); `log_score_gaussian` / GARCH one-step `log_score_one_step` (Day Wave 105); bench keys `crps_gaussian_closed` / `dm_crps_*` (Day Wave 8) + `crps_scaled_student_t_closed` (Day Wave 45); MATH_SPEC |
 | Jordan, Krüger & Lerch, *Evaluating Probabilistic Forecasts with scoringRules*, J. Stat. Softw. 90(12) (2019) | Closed-form CRPS for parametric families incl. location-scale Student-t | `crps_student_t` / `mean_crps_student_t`; bench `crps_scaled_student_t_closed` (Day Wave 45); MATH_SPEC |
 | Gneiting et al., *Probabilistic Forecasts, Calibration and Sharpness* | PIT, sharpness subject to calibration | PIT diagnostics |
 | Pinball / quantile loss (Koenker; Gneiting quantile scores) | Proper for τ-quantile | Pinball / mean_pinball |
@@ -152,6 +160,11 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 | Acerbi & Székely (2014), Backtesting Expected Shortfall | Unconditional Z1 / conditional Z2 ES tests | `acerbi_szekely_z1`/`z2` + `var_backtest_hooks` (Day Wave 2); `bench_tail` primary + unscaled/scaled (Day Wave 15) |
 | Fissler & Ziegel (2016), Higher order elicitability and Osband's principle | Joint (VaR, ES) elicitability | `fissler_ziegel_loss` / `mean_fissler_ziegel` (Day Wave 3); `bench_tail.fissler_ziegel_mean` (Day Wave 15) |
 | Nolde & Ziegel (2017), Elicitability and backtesting | FZ0 0-homogeneous joint score; comparative backtests | FZ0 formula in MATH_SPEC + `var_backtest_hooks.fissler_ziegel_mean` + `bench_tail` (Day Wave 15) |
+
+## K-line foundation models
+
+- Shi, Fu, Chen, Zhao, Xu, Zhang, Li (2025). Kronos: A Foundation Model for the Language of Financial Markets. *arXiv:2508.02739*. Hierarchical discrete K-line tokens + autoregressive decoder. Dipcatcher engine: **robinhood+** (ADR-023). MIT. https://github.com/shiyu-coder/Kronos
+- Zhao, Goyal, Mentzer, Van Gool (2024). Binary Spherical Quantization. *arXiv:2406.07548*. Tokenizer stage used by Kronos / robinhood+.
 
 ## Repo honesty anchors
 

@@ -83,6 +83,8 @@ def test_optimize_asof_forwards_w_prev(tmp_path: Path) -> None:
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 4
     cfg.data.synthetic_n_days = 40
+    cfg.universe.min_history_bars = 5
+    cfg.universe.min_adv = 0.0
     cfg.fusion.apply_interval_caps = False
     build_gold(cfg)
     state = forecast_asof(cfg)
@@ -112,6 +114,8 @@ def test_optimize_asof_uses_fused_when_enabled(tmp_path: Path) -> None:
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 4
     cfg.data.synthetic_n_days = 40
+    cfg.universe.min_history_bars = 5
+    cfg.universe.min_adv = 0.0
     cfg.fusion.use_fused_for_optimize = True
     cfg.fusion.apply_interval_caps = False
     build_gold(cfg)

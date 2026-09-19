@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -87,3 +89,39 @@ def test_length_mismatch_and_coverage_identity() -> None:
     assert "not training-conditional" in str(meta.extra["coverage_guarantee_claim"])
     assert meta.extra["research_only"] is True
     assert "sharpe" not in meta.extra
+
+
+def test_vol_scaled_location_is_in_return_units() -> None:
+    """Heteroskedastic fit (y/vol) must convert LOO loc through vol at test time.
+
+    Scaling only the residual half-width leaves the band centered at a
+    dimensionless LOO mean while y is a daily return — coverage collapses.
+    """
+    rng = np.random.default_rng(21)
+    vol = rng.uniform(0.01, 0.04, 500)
+    y = rng.normal(0.15, 1.0, 500) * vol
+    jp = JackknifePlus(ALPHA).fit(y[:200] / vol[:200])
+    lo, hi = jp.predict_interval(np.zeros(300), vol[200:])
+    metrics = set_metrics(y[200:], lo, hi)
+    assert metrics.n == 300
+    assert metrics.coverage >= COVERAGE_FLOOR
+
+
+@pytest.mark.synthetic
+def test_jackknife_plus_synthetic_panel_meets_floor(tmp_path: Path) -> None:
+    from quant_fund.config import load_config
+    from quant_fund.pipeline.dataset import build_gold, panel
+    from quant_fund.research.benches import bench_jackknife_plus
+
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    cfg.data.synthetic_n_assets = 16
+    cfg.data.synthetic_n_days = 160
+    cfg.universe.min_history_bars = 5
+    cfg.universe.min_adv = 0.0
+    build_gold(cfg)
+    blob = bench_jackknife_plus(panel(cfg), cfg)
+    assert blob, "jackknife+ bench returned an empty receipt"
+    assert blob.get("meets_coverage_floor") is True
+    assert float(blob["coverage"]) >= 0.78
+    assert "sharpe" not in str(blob).lower()

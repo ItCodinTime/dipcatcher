@@ -51,7 +51,7 @@ REQUIRED_BENCHMARK_FAMILIES = frozenset(
 # but are never required by the benchmark catalog. ``candle_order_book`` is the
 # optional candlestick+L2 family emitted by the ``candle-book`` CLI; without
 # this allow-list the verify.py candle honesty dispatch could never run.
-OPTIONAL_BENCHMARK_FAMILIES = frozenset({"candle_order_book"})
+OPTIONAL_BENCHMARK_FAMILIES = frozenset({"candle_order_book", "robinhood_plus"})
 
 BENCHMARK_FAMILY_ORDER = (
     "ranking",
@@ -6040,6 +6040,41 @@ def candle_order_book_claim_honesty_errors(blob: object) -> list[str]:
         if blob.get("claim") != "research_diagnostic_only":
             errs.append("candle_claim_not_research_diagnostic_only")
     return errs
+
+
+def robinhood_plus_claim_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify robinhood+ research_only / execution_claim / family stamps.
+
+    When ``family == "robinhood_plus"``: research_only must be True,
+    execution_claim must be research_only, and claim must be
+    research_metric_only. Do not stamp a ``pnl`` key token. Never a live
+    capital or promotion gate.
+    """
+    if not isinstance(blob, dict):
+        return []
+    if blob.get("family") != "robinhood_plus":
+        return []
+    errors: list[str] = []
+    if blob.get("research_only") is not True:
+        errors.append("robinhood_plus_research_only_invalid")
+    if blob.get("execution_claim") != "research_only":
+        errors.append("robinhood_plus_execution_claim_invalid")
+    if blob.get("claim") != "research_metric_only":
+        errors.append("robinhood_plus_claim_invalid")
+    backend = blob.get("backend")
+    if backend not in (None, "numpy", "torch"):
+        errors.append("robinhood_plus_backend_invalid")
+    sizes = blob.get("sizes_book")
+    if sizes is True:
+        try:
+            ic_chal = float(blob.get("mean_ic_challenger"))  # type: ignore[arg-type]
+            ic_champ = float(blob.get("mean_ic_champion"))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errors.append("robinhood_plus_sizes_book_without_ic_win")
+        else:
+            if not (ic_chal == ic_chal and ic_champ == ic_champ and ic_chal > ic_champ):
+                errors.append("robinhood_plus_sizes_book_without_ic_win")
+    return errors
 
 
 def candle_all_ic_pearson_unit_honesty_errors(blob: object) -> list[str]:

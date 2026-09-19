@@ -33,16 +33,26 @@ Empirical, Gaussian, linear QR, tree quantiles, pinball/CRPS/crossing.
 ## Phase 8 — Volatility
 
 Rolling/EWMA baselines plus a causal GARCH-family subsystem (GARCH, EGARCH,
-GJR; Gaussian, Student-t, skew-t), explicit return/variance units, convergence and
-stationarity gates, horizon-indexed probabilistic forecasts, PIT diagnostics, and
-variance-contract QLIKE. Walk-forward evaluation must use historical `ret_1` as the
-fit input and forward realized variance only as the evaluation label. APARCH,
-FIGARCH, realized-GARCH, and intraday realized measures remain explicit future work;
-this phase makes no SOTA or live-performance claim.
+GJR, APARCH, FIGARCH; Gaussian, Student-t, skew-t), explicit return/variance
+units, convergence and stationarity gates, horizon-indexed probabilistic
+forecasts, PIT diagnostics, and variance-contract QLIKE. Walk-forward
+evaluation must use historical `ret_1` as the fit input and forward realized
+variance only as the evaluation label. Walk-forward GARCH QLIKE is date-level
+and overlap-aware (nonoverlapping *h*-step origins). Walk-forward also scores
+the one-step date-level `ret_1` density (log-score, CRPS, PIT). Per-security
+causal GARCH is a separate `security_level_ret_1` as-of namespace and does not
+replace the date-level overlay. Realized-GARCH is implemented as a separate
+log-linear Gaussian namespace whose realized measure is one-day Parkinson
+variance from daily OHLC (not high-frequency RV). Paper/backtest
+`check_order` uses that Parkinson overlay for `max_predicted_vol` when the
+artifact is present; `forecast_asof` / `optimize_asof` consume the same overlay
+for market variance and covariance scaling. Name-level `vol_20` remains the
+impact/cost sigma. Intraday realized measures remain
+unavailable; this phase makes no SOTA or live-performance claim.
 
 ## Phase 9 — Covariance
 
-Sample, EWMA, Ledoit–Wolf, factor, DCC, PSD repair.
+Sample, EWMA, Ledoit–Wolf, OAS, factor, DCC, PSD repair.
 
 ## Phase 10 — Portfolio optimizer
 
@@ -109,7 +119,9 @@ deferred.
 - Parallel causal dates (`w_prev` sequential) — SKIP (unsafe to parallelize).
 - Causal 25d wall still ~0.29–0.35s above Wave 5 best on this machine after prefix path.
 - Fundamentals / options / macro features require PIT release timestamps; not faked.
-- Neural nets behind extra `[nn]`, unimplemented until baselines exist.
+- Neural nets remain behind extra `[nn]` except robinhood+ (ADR-023): the
+  Kronos-derived K-line engine is a core forecast path with a NumPy default;
+  official Kronos weights are optional and offline-by-default.
 - Nonlinear covariance shrinkage deferred.
 - Torch GPU determinism is not claimed.
 - Cross-fitted ridge stacking is research-only: chronological folds, explicit

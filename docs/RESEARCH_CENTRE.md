@@ -29,6 +29,7 @@ Dipcatcher is Artificial Hedge's **proprietary research lab**. It measures forec
 | Portfolio conformal | One CQR set per date for the scalar book return (w^\top r) |
 | Northset | OHLC / book / session identities; candle geometry + CLV; Parkinson / Garman–Klass / Rogers–Satchell / Yang–Zhang / overnight-split QLIKE; Kyle λ, Roll, Corwin–Schultz, Abdi–Ranaldo, Amihud, OFI, VPIN; liquidity sweeps; date-level ICs; BNS jumps |
 | CPCV audit | Combinatorial purged/embargoed date folds; integrity only, no return claim |
+| robinhood+ (optional) | Kronos-derived K-line path IC on split-adjusted OHLCV; hierarchical tokens + autoregression; not a live claim |
 
 ## What is not a lab headline
 

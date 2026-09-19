@@ -27,7 +27,13 @@ from quant_fund.metrics.analytics import (
 )
 from quant_fund.metrics.returns import max_drawdown, sharpe_ratio
 from quant_fund.monitoring.kill_switch import KillSwitch
+from quant_fund.pipeline.forecast import (
+    MARKET_RISK_OVERLAY_GARCH,
+    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+    market_risk_overlay_asof,
+)
 from quant_fund.portfolio.risk_gate import check_order
+from quant_fund.risk.overlay import BookRiskOverlay
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
 
@@ -146,10 +152,15 @@ def run_backtest(
     config: AppConfig,
     *,
     initial_nav: float = 1_000_000.0,
+    risk_overlay: BookRiskOverlay | None = None,
 ) -> BacktestResult:
     """`weights` columns: event_time, security_id, target_weight.
 
     Target computed from close t is executed at next open (unless close auction enabled).
+    Weight rows are a rebalance grid: the last target is held until the next
+    row. The optional ``risk_overlay`` may scale or flatten those carried
+    weights using prior-close NAV only. Names that do not mark today are
+    targeted to 0 so the book can exit while a last print still exists.
     """
     _validate_target_weight_panel(weights)
     px = bars.select(
@@ -180,6 +191,9 @@ def run_backtest(
     cash_reject_count = 0
     halt_count = 0
     order_seq = 0
+    garch_overlay_dates = 0
+    realized_garch_overlay_dates = 0
+    last_target_w: dict[str, float] = {}
 
     use_next_open = (
         config.execution.fill is FillConvention.NEXT_OPEN
@@ -245,9 +259,30 @@ def run_backtest(
         nav = book.nav(nav_prices)
         if nav <= 0:
             break
-        target_w = _target_weight_map(tgt_rows)
+        # Sparse rebalance panels must hold until the next decision date.
+        # Missing rows are not a flatten-to-cash instruction.
+        if tgt_rows.height > 0:
+            last_target_w = _target_weight_map(tgt_rows)
+        target_w = dict(last_target_w)
+        if risk_overlay is not None:
+            overlay_scale = float(risk_overlay.preview_scale())
+            if overlay_scale != 1.0:
+                target_w = {key: float(value) * overlay_scale for key, value in target_w.items()}
+        # A missing mark is an exit, not a ghost hold. Flatten those names
+        # while a last execution print may still exist.
+        for sid in list(target_w):
+            if sid not in marked_today:
+                target_w[sid] = 0.0
+        for sid, shares in book.shares.items():
+            if abs(shares) > 1e-12 and sid not in marked_today:
+                target_w[sid] = 0.0
         ids = set(exec_mark) | set(book.shares) | set(target_w)
         traded_turn = 0.0
+        market_vol, overlay_source = market_risk_overlay_asof(config, bars, dt)
+        if overlay_source == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+            realized_garch_overlay_dates += 1
+        elif overlay_source == MARKET_RISK_OVERLAY_GARCH:
+            garch_overlay_dates += 1
         for sid in sorted(ids):
             price = exec_mark.get(sid)
             if price is None:
@@ -299,6 +334,7 @@ def run_backtest(
                     participation=participation,
                     predicted_vol=vols.get(sid, 0.02),
                     config=config,
+                    market_predicted_vol=market_vol,
                 )
             except RiskGateRejected:
                 reject_count += 1
@@ -352,6 +388,8 @@ def run_backtest(
                 "turnover": traded_turn,
             }
         )
+        if risk_overlay is not None:
+            risk_overlay.observe(float(nav_close))
     eq = pl.DataFrame(navs) if navs else pl.DataFrame({"event_time": [], "nav": []})
     if eq.height >= 2:
         rets = eq["nav"].pct_change().drop_nulls().to_numpy()
@@ -397,6 +435,8 @@ def run_backtest(
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,
+            "garch_risk_overlay_dates": garch_overlay_dates,
+            "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
             "analytics": diag,
             "analytics_export": analytics_export,
             "research_only": True,
@@ -412,9 +452,13 @@ def run_backtest(
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,
+            "garch_risk_overlay_dates": garch_overlay_dates,
+            "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
             "research_only": True,
             "live_pnl_claim": False,
         }
+    if risk_overlay is not None:
+        metrics["book_risk_overlay"] = risk_overlay.snapshot()
     if config.costs.frictionless:
         metrics["label"] = "FRICTIONLESS RESEARCH ONLY"
     note = "SYNTHETIC" if synthetic else "file"

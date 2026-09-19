@@ -19,6 +19,8 @@ def test_optimize_asof_reraises_infeasible(tmp_path: Path) -> None:
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 4
     cfg.data.synthetic_n_days = 40
+    cfg.universe.min_history_bars = 5
+    cfg.universe.min_adv = 0.0
     build_gold(cfg)
 
     def boom(*_a, **_k):
@@ -39,6 +41,8 @@ def test_optimize_asof_reraises_generic_optimizer_errors(tmp_path: Path) -> None
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 4
     cfg.data.synthetic_n_days = 40
+    cfg.universe.min_history_bars = 5
+    cfg.universe.min_adv = 0.0
     build_gold(cfg)
 
     def boom(*_a, **_k):

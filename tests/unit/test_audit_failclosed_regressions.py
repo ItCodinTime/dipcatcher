@@ -183,7 +183,9 @@ def test_rate_and_coverage_helpers_reject_bool_coercion() -> None:
 
 def test_candle_family_is_optional_and_verifiable() -> None:
     assert "candle_order_book" in OPTIONAL_BENCHMARK_FAMILIES
+    assert "robinhood_plus" in OPTIONAL_BENCHMARK_FAMILIES
     assert "candle_order_book" not in REQUIRED_BENCHMARK_FAMILIES
+    assert "robinhood_plus" not in REQUIRED_BENCHMARK_FAMILIES
     src = Path("src/quant_fund/research/verify.py").read_text(encoding="utf-8")
     assert "OPTIONAL_BENCHMARK_FAMILIES" in src
 

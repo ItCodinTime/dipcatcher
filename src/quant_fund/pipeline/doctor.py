@@ -15,7 +15,7 @@ from quant_fund.config.models import AppConfig, RuntimeMode
 from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION, BENCHMARK_FAMILY_ORDER
 from quant_fund.research.verify import verify_research_artifact
 
-_REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver"})
+_REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver", "universe"})
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -114,4 +114,10 @@ def doctor(config_path: str | None = None) -> dict[str, str]:
     except ImportError as exc:
         status["core_imports"] = f"fail:{exc}"
     status["default_fill"] = cfg.execution.fill.value
+    status["core_kline_engine"] = "robinhood_plus" if cfg.robinhood_plus.enabled else "disabled"
+    status["robinhood_plus_backend"] = cfg.robinhood_plus.backend.value
+    status["robinhood_plus_blend_weight"] = float(cfg.robinhood_plus.blend_weight)
+    status["robinhood_plus_sizes_book"] = bool(
+        cfg.robinhood_plus.enabled and cfg.robinhood_plus.blend_weight > 0.0
+    )
     return status

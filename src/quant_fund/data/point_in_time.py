@@ -36,6 +36,31 @@ def filter_available(frame: pl.DataFrame, decision_time: datetime) -> pl.DataFra
     return frame.filter(pl.col("available_time") <= decision_time)
 
 
+def filter_trailing_returns_asof(frame: pl.DataFrame, asof: datetime) -> pl.DataFrame:
+    """Drop unpublished restatements from trailing ``ret_1`` covariance inputs.
+
+    GARCH/RGARCH overlays already refuse ``available_time > asof`` (Wave 111).
+    Optimizer and portfolio-risk covariance must share that observability
+    contract so a late restatement of an earlier return cannot move relative
+    risk after the overlay scale is PIT-clean. Frames without
+    ``available_time`` keep the legacy event-time path. Null availability
+    among otherwise usable ``ret_1`` rows fails closed rather than treating
+    an unpublished restatement as observable.
+    """
+    if "available_time" not in frame.columns:
+        return frame
+    if frame.is_empty():
+        return frame
+    if "ret_1" in frame.columns:
+        usable = frame.filter(pl.col("ret_1").is_not_null())
+        if usable.height and usable["available_time"].null_count() > 0:
+            raise PointInTimeError(
+                "trailing return covariance has null available_time; "
+                "refusing unobservable restatements"
+            )
+    return frame.filter(pl.col("available_time") <= asof)
+
+
 def validate_feature_frame(frame: pl.DataFrame, decision_time: datetime) -> None:
     """Reject unavailable feature rows, including mixed as-of snapshots.
 

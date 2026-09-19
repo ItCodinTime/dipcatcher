@@ -51,6 +51,30 @@ class GarchVolSpec(str, Enum):
     GARCH = "garch"
     EGARCH = "egarch"
     GJR = "gjr"
+    APARCH = "aparch"
+    FIGARCH = "figarch"
+
+
+class RobinhoodPlusBackend(str, Enum):
+    """K-line foundation backends. Torch is the optional [nn] extra."""
+
+    NUMPY = "numpy"
+    TORCH = "torch"
+
+
+class RobinhoodPlusDecoder(str, Enum):
+    """NumPy decoders for hierarchical K-line tokens."""
+
+    HIERARCHICAL_MARKOV = "hierarchical_markov"
+    TRANSFORMER = "transformer"
+
+
+class RobinhoodPlusVariant(str, Enum):
+    """Kronos zoo sizes. Numpy uses the same names for research-scale maps."""
+
+    MINI = "mini"
+    SMALL = "small"
+    BASE = "base"
 
 
 class RuntimeConfig(StrictConfigModel):
@@ -290,6 +314,28 @@ class OptimizerConfig(StrictConfigModel):
     solver: str = "CLARABEL"
     mode: str = "mean_variance"
     risk_aversion: float = 1.0
+    # Named covariance path for optimize_asof / /risk/portfolio. Default stays
+    # trailing Ledoit–Wolf 2004 plus the GARCH/RGARCH overlay. dcc_gaussian,
+    # dcc_student_t, adcc, ccc, agdcc, agdcc_full, and ewma are explicit
+    # one-step paths. oas, ledoit_wolf_nonlinear, and sample are explicit
+    # trailing paths plus the overlay. Generic dcc and catalog estimators
+    # that are not optimizer-wired (factor) fail closed rather than
+    # silently substituting. Named ledoit_wolf_nonlinear is analytical
+    # 2020 spectral shrinkage and must not silently size as 2004 linear
+    # Ledoit–Wolf. Named agdcc is diagonal CES AG-DCC; named agdcc_full
+    # is unrestricted CES AG-DCC and must not silently size as diagonal
+    # AG-DCC. Scalar CES ADCC is not diagonal AG-DCC. CCC is Bollerslev
+    # constant correlation, not Engle DCC.
+    covariance: str = "ledoit_wolf"
+
+    @field_validator("covariance")
+    @classmethod
+    def implemented_optimizer_covariance(cls, value: object) -> str:
+        from quant_fund.models.covariance import require_implemented_optimizer_covariance
+
+        if not isinstance(value, str):
+            raise ValueError("optimizer covariance must be a non-empty string")
+        return require_implemented_optimizer_covariance(value)
 
     @model_validator(mode="after")
     def valid_optimizer_bounds(self) -> OptimizerConfig:
@@ -454,6 +500,10 @@ class TrainConfig(StrictConfigModel):
             raise ValueError("elasticnet_l1 must be in [0, 1]")
         if self.qlike_floor <= 0 or self.psd_eigen_tol <= 0:
             raise ValueError("qlike_floor and psd_eigen_tol must be positive")
+        if self.garch_vol == GarchVolSpec.FIGARCH and (
+            self.garch_p not in (0, 1) or self.garch_q not in (0, 1)
+        ):
+            raise ValueError("FIGARCH garch_p and garch_q must be 0 or 1")
         return self
 
 
@@ -705,6 +755,57 @@ class NorthsetConfig(StrictConfigModel):
         return self
 
 
+class RobinhoodPlusConfig(StrictConfigModel):
+    """Kronos-derived K-line foundation engine (robinhood+). ADR-023."""
+
+    enabled: bool = True
+    backend: RobinhoodPlusBackend = RobinhoodPlusBackend.NUMPY
+    decoder: RobinhoodPlusDecoder = RobinhoodPlusDecoder.HIERARCHICAL_MARKOV
+    variant: RobinhoodPlusVariant = RobinhoodPlusVariant.MINI
+    lookback: int = 64
+    pred_len: int = 20
+    sample_count: int = 8
+    s1_bits: int = 5
+    s2_bits: int = 5
+    temperature: float = 1.0
+    top_p: float = 0.9
+    max_context: int = 512
+    clip: float = 5.0
+    # Default 0: numpy Markov lost the SYNTHETIC ridge champion/challenger card.
+    # An engine that cannot beat the baseline must not size the book (ADR-023).
+    blend_weight: float = 0.0
+    allow_network: bool = False
+    tokenizer_path: str | None = None
+    model_path: str | None = None
+
+    @model_validator(mode="after")
+    def valid_robinhood_plus(self) -> RobinhoodPlusConfig:
+        if self.lookback < 2:
+            raise ValueError("robinhood_plus.lookback must be at least 2")
+        if self.pred_len < 1:
+            raise ValueError("robinhood_plus.pred_len must be positive")
+        if self.sample_count < 1:
+            raise ValueError("robinhood_plus.sample_count must be positive")
+        if self.s1_bits < 1 or self.s2_bits < 1:
+            raise ValueError("robinhood_plus s1_bits/s2_bits must be positive")
+        if self.s1_bits + self.s2_bits > 16:
+            raise ValueError("robinhood_plus codebook bits must be <= 16 for the numpy backend")
+        if self.max_context < 1:
+            raise ValueError("robinhood_plus.max_context must be positive")
+        for name in ("temperature", "clip"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError(f"robinhood_plus.{name} must be finite and positive")
+        if not np.isfinite(self.top_p) or not 0.0 < self.top_p <= 1.0:
+            raise ValueError("robinhood_plus.top_p must be finite and in (0, 1]")
+        if not np.isfinite(self.blend_weight) or not 0.0 <= self.blend_weight <= 1.0:
+            raise ValueError("robinhood_plus.blend_weight must be finite and in [0, 1]")
+        if self.backend is RobinhoodPlusBackend.TORCH and self.allow_network:
+            # Hub downloads are explicit; CI and default research stay offline.
+            pass
+        return self
+
+
 class AppConfig(StrictConfigModel):
     """Fully resolved experiment configuration."""
 
@@ -729,6 +830,7 @@ class AppConfig(StrictConfigModel):
     kill_switch: KillSwitchConfig = Field(default_factory=KillSwitchConfig)
     paper: PaperConfig = Field(default_factory=PaperConfig)
     northset: NorthsetConfig = Field(default_factory=NorthsetConfig)
+    robinhood_plus: RobinhoodPlusConfig = Field(default_factory=RobinhoodPlusConfig)
     inherit: str | None = None
 
     def embargo_bars(self) -> int:

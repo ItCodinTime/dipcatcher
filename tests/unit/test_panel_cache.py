@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import polars as pl
 import pytest
 
-from quant_fund.config.loader import load_config
+from quant_fund.config.models import AppConfig
+from quant_fund.features.metadata import FEATURE_SET_VERSION
 from quant_fund.pipeline import dataset as dataset_module
 from quant_fund.pipeline.dataset import (
     _PANEL_CACHE,
@@ -18,9 +19,34 @@ from quant_fund.pipeline.dataset import (
 )
 
 
+def _write_valid_gold_lake(root) -> AppConfig:
+    times = [datetime(2020, 1, 2, tzinfo=UTC), datetime(2020, 1, 3, tzinfo=UTC)]
+    (root / "gold").mkdir(parents=True, exist_ok=True)
+    (root / "silver").mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        {
+            "security_id": ["A", "A"],
+            "event_time": times,
+            "available_time": times,
+            "feature_set_version": [FEATURE_SET_VERSION, FEATURE_SET_VERSION],
+            "ret_1": [0.1, 0.2],
+        }
+    ).write_parquet(root / "gold" / "features.parquet")
+    pl.DataFrame(
+        {
+            "security_id": ["A", "A"],
+            "event_time": times,
+            "future_ret_1": [0.0, 0.1],
+        }
+    ).write_parquet(root / "gold" / "labels.parquet")
+    pl.DataFrame({"security_id": ["A", "A"], "asof": times}).write_parquet(
+        root / "silver" / "universe.parquet"
+    )
+    return AppConfig.model_validate({"data": {"root": str(root)}})
+
+
 def test_panel_cache_hit_and_clear(tmp_path):
-    cfg = load_config("configs/research.yaml")
-    # Use real repo data root so gold exists; isolate cache via clear
+    cfg = _write_valid_gold_lake(tmp_path)
     clear_panel_cache()
     assert len(_PANEL_CACHE) == 0
     a = panel(cfg)
@@ -34,11 +60,23 @@ def test_panel_cache_hit_and_clear(tmp_path):
     assert c.height == a.height
 
 
+def _write_cache_key_artifacts(
+    tmp_path, *, features: bytes, labels: bytes, universe: bytes
+) -> tuple:
+    feat_path = tmp_path / "features.parquet"
+    lab_path = tmp_path / "labels.parquet"
+    univ_dir = tmp_path / "silver"
+    univ_dir.mkdir(parents=True, exist_ok=True)
+    feat_path.write_bytes(features)
+    lab_path.write_bytes(labels)
+    (univ_dir / "universe.parquet").write_bytes(universe)
+    return feat_path, lab_path
+
+
 def test_panel_cache_key_changes_when_artifact_bytes_change(tmp_path) -> None:
-    features = tmp_path / "features.parquet"
-    labels = tmp_path / "labels.parquet"
-    features.write_bytes(b"features-v1")
-    labels.write_bytes(b"labels-v1")
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
     first = _panel_cache_key(tmp_path, features, labels)
     assert first is not None
     features.write_bytes(b"features-v2")
@@ -47,13 +85,36 @@ def test_panel_cache_key_changes_when_artifact_bytes_change(tmp_path) -> None:
     assert first[0] == second[0]
     assert first[1] != second[1]
     assert first[2] == second[2]
+    assert first[3] == second[3]
 
 
-def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeypatch) -> None:
+def test_panel_cache_key_changes_when_universe_bytes_change(tmp_path) -> None:
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
+    first = _panel_cache_key(tmp_path, features, labels)
+    assert first is not None
+    (tmp_path / "silver" / "universe.parquet").write_bytes(b"universe-v2")
+    second = _panel_cache_key(tmp_path, features, labels)
+    assert second is not None
+    assert first[1] == second[1]
+    assert first[2] == second[2]
+    assert first[3] != second[3]
+
+
+def test_panel_cache_key_missing_universe_is_uncacheable(tmp_path) -> None:
     features = tmp_path / "features.parquet"
     labels = tmp_path / "labels.parquet"
     features.write_bytes(b"features-v1")
     labels.write_bytes(b"labels-v1")
+    assert _panel_cache_key(tmp_path, features, labels) is None
+
+
+def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeypatch) -> None:
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
+    universe = tmp_path / "silver" / "universe.parquet"
     real_hash_file = dataset_module.hash_file
     calls: list[str] = []
 
@@ -65,7 +126,7 @@ def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeyp
     first = _panel_cache_key(tmp_path, features, labels)
     second = _panel_cache_key(tmp_path, features, labels)
     assert first == second
-    assert calls == [str(features.resolve()), str(labels.resolve())]
+    assert calls == [str(features.resolve()), str(labels.resolve()), str(universe.resolve())]
 
     features.write_bytes(b"features-v2")
     third = _panel_cache_key(tmp_path, features, labels)
@@ -73,11 +134,12 @@ def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeyp
     assert third[1] != first[1]
     assert calls.count(str(features.resolve())) == 2
     assert calls.count(str(labels.resolve())) == 1
+    assert calls.count(str(universe.resolve())) == 1
 
 
-def test_panel_cache_miss_when_feature_names_requested() -> None:
+def test_panel_cache_miss_when_feature_names_requested(tmp_path) -> None:
     """Explicit feature_names bypasses the default-key cache path."""
-    cfg = load_config("configs/research.yaml")
+    cfg = _write_valid_gold_lake(tmp_path)
     clear_panel_cache()
     full = panel(cfg)
     assert len(_PANEL_CACHE) >= 1
@@ -89,15 +151,15 @@ def test_panel_cache_miss_when_feature_names_requested() -> None:
     assert "ret_1" in subset.columns
 
 
-def test_panel_missing_feature_columns_fail_closed() -> None:
-    cfg = load_config("configs/research.yaml")
+def test_panel_missing_feature_columns_fail_closed(tmp_path) -> None:
+    cfg = _write_valid_gold_lake(tmp_path)
     clear_panel_cache()
     with pytest.raises(ValueError, match="requested feature columns missing"):
         panel(cfg, feature_names=["definitely_not_a_feature_zzz"])
 
 
-def test_panel_missing_label_fail_closed() -> None:
-    cfg = load_config("configs/research.yaml")
+def test_panel_missing_label_fail_closed(tmp_path) -> None:
+    cfg = _write_valid_gold_lake(tmp_path)
     clear_panel_cache()
     with pytest.raises(ValueError, match="requested label"):
         panel(cfg, label="future_not_a_real_label_zzz")

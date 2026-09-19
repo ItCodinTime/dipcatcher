@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted (amended by ADR-023 for the robinhood+ / Kronos K-line engine only)
 
 ## Date
 

@@ -9,6 +9,11 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 IntervalMethod = Literal["mondrian_cqr", "split_cqr"]
+MARKET_RISK_OVERLAY_GARCH = "garch"
+MARKET_RISK_OVERLAY_REALIZED_GARCH = "realized_garch"
+ALLOWED_MARKET_RISK_OVERLAYS = frozenset(
+    {MARKET_RISK_OVERLAY_GARCH, MARKET_RISK_OVERLAY_REALIZED_GARCH}
+)
 
 
 class AssetForecast(BaseModel):
@@ -118,6 +123,17 @@ class MarketState(BaseModel):
     regime_probabilities: dict[str, float] = Field(default_factory=dict)
     covariance_condition_number: float | None = None
     notes: list[str] = Field(default_factory=list)
+    # Date-level equal-weight market overlay. Parkinson Realized GARCH when
+    # vol_realized_garch.joblib is present, else return-only GARCH. Never a
+    # substitute for per-security vol_20. market_risk_overlay stamps the family.
+    garch_market_sigma: float | None = None
+    garch_market_variance: float | None = None
+    garch_cumulative_variance: float | None = None
+    garch_horizon: int | None = None
+    garch_series_scope: str | None = None
+    garch_fit_status: str | None = None
+    garch_n_obs: int | None = None
+    market_risk_overlay: str | None = None
 
     @field_validator("covariance_condition_number")
     @classmethod
@@ -125,3 +141,57 @@ class MarketState(BaseModel):
         if value is not None and (not math.isfinite(value) or value <= 0.0):
             raise ValueError("covariance_condition_number must be finite and strictly positive")
         return value
+
+    @field_validator("garch_market_sigma", "garch_market_variance", "garch_cumulative_variance")
+    @classmethod
+    def validate_garch_positive_floats(cls, value: float | None) -> float | None:
+        if value is not None and (not math.isfinite(value) or value <= 0.0):
+            raise ValueError("GARCH market variance/sigma must be finite and strictly positive")
+        return value
+
+    @field_validator("garch_horizon", "garch_n_obs")
+    @classmethod
+    def validate_garch_positive_ints(cls, value: int | None) -> int | None:
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value < 1
+        ):
+            raise ValueError("GARCH horizon and n_obs must be positive integers")
+        return value
+
+    @field_validator("garch_series_scope", "garch_fit_status")
+    @classmethod
+    def validate_garch_nonempty_strings(cls, value: str | None) -> str | None:
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ValueError("GARCH series_scope and fit_status must be non-empty strings")
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("market_risk_overlay")
+    @classmethod
+    def validate_market_risk_overlay(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("market_risk_overlay must be a non-empty string")
+        kind = value.strip()
+        if kind not in ALLOWED_MARKET_RISK_OVERLAYS:
+            raise ValueError(
+                "market_risk_overlay must be one of "
+                f"{sorted(ALLOWED_MARKET_RISK_OVERLAYS)}; got {kind!r}"
+            )
+        return kind
+
+    @model_validator(mode="after")
+    def validate_garch_fields_together(self) -> MarketState:
+        present = [
+            self.garch_market_sigma is not None,
+            self.garch_market_variance is not None,
+            self.garch_cumulative_variance is not None,
+            self.garch_horizon is not None,
+            self.garch_series_scope is not None,
+            self.garch_fit_status is not None,
+            self.garch_n_obs is not None,
+            self.market_risk_overlay is not None,
+        ]
+        if any(present) and not all(present):
+            raise ValueError("GARCH market overlay fields must be supplied together")
+        return self

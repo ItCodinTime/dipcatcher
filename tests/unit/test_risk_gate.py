@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from quant_fund.config import load_config
-from quant_fund.portfolio.risk_gate import check_order
+from quant_fund.portfolio.risk_gate import check_order, resolve_gate_predicted_vol
 from quant_fund.schemas.errors import RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide
 
@@ -98,3 +98,45 @@ def test_risk_gate_rejects_impossible_nonnegative_metrics() -> None:
     ):
         with pytest.raises(RiskGateRejected, match=message):
             check_order(_order(), **{**_kwargs(), key: -0.01}, config=cfg)
+
+
+def test_resolve_gate_predicted_vol_prefers_market_overlay() -> None:
+    assert resolve_gate_predicted_vol(0.2, None) == 0.2
+    assert resolve_gate_predicted_vol(0.2, 0.01) == 0.01
+
+
+def test_risk_gate_uses_market_overlay_instead_of_name_vol() -> None:
+    cfg = load_config("configs/research.yaml")
+    cfg.risk_gate.max_predicted_vol = 0.1
+    # Name vol would reject; market overlay is inside the limit.
+    check_order(
+        _order(),
+        **{**_kwargs(), "predicted_vol": 0.5},
+        config=cfg,
+        market_predicted_vol=0.05,
+    )
+    with pytest.raises(RiskGateRejected, match="predicted vol 0.5"):
+        check_order(
+            _order(),
+            **{**_kwargs(), "predicted_vol": 0.05},
+            config=cfg,
+            market_predicted_vol=0.5,
+        )
+
+
+def test_risk_gate_name_vol_still_fail_closed_when_overlay_present() -> None:
+    cfg = load_config("configs/research.yaml")
+    with pytest.raises(RiskGateRejected, match="predicted volatility"):
+        check_order(
+            _order(),
+            **{**_kwargs(), "predicted_vol": -0.01},
+            config=cfg,
+            market_predicted_vol=0.05,
+        )
+    with pytest.raises(RiskGateRejected, match="non-finite"):
+        check_order(
+            _order(),
+            **{**_kwargs(), "predicted_vol": 0.05},
+            config=cfg,
+            market_predicted_vol=float("nan"),
+        )

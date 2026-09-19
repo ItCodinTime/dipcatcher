@@ -1,5 +1,662 @@
 # SOTA gap analysis — Day Wave 21 (2026-09-16)
 
+## Day Wave 142 — robinhood+ challenger card, leakage stamps, Jackknife+ units — 2026-09-19
+
+- Causal SYNTHETIC ridge-only vs robinhood+ (blend_weight 1) on the same
+  panel and as-ofs: date-level IC, pinball/CRPS, Diebold–Mariano. No Sharpe.
+  numpy Markov lost (IC −0.35 vs ridge +0.77). Default ``blend_weight`` is 0.
+  The engine stays enabled as a stamped challenger and does not size the book.
+- Every ``forecast_asof`` stamps ``robinhood_plus_n_ok`` /
+  ``robinhood_plus_n_fallback``. Poison-next-bar and unpublished
+  ``available_time`` tests gate leakage.
+- ``backend: torch`` is wired for local Kronos-mini only
+  (``allow_network: false``). On this workstation Kronos-mini loaded from
+  ``third_party/kronos_weights``: date IC −0.26 vs ridge +0.71 vs numpy Markov
+  −0.51. It still does not size the book. Missing weights fail closed and
+  never fall back to numpy.
+- Jackknife+ coverage 0.07 vs ≥0.78 in the research notebook was a
+  residual-unit bug: LOO location stayed in y/vol space while the band width
+  was in returns. Scaling loc by the test-time vol restores coverage ~0.92
+  on the 36×220 DGP (floor 0.80). That is receipt integrity, not a robinhood+
+  score.
+
+## Day Wave 141 — robinhood+ Kronos K-line engine — 2026-09-19
+
+- Kronos (Shi et al., 2025, arXiv:2508.02739, MIT) is implemented in-repo as
+  **robinhood+**: hierarchical BSQ K-line tokens + s1-then-s2 autoregression.
+  Default backend is NumPy (no Hub download, no GPU). Optional torch loads
+  official NeoQuasar/Kronos-* weights only with `[nn]` and `allow_network` or
+  local paths. `forecast_asof` consumes robinhood+ as a core rank/alpha/
+  distribution engine; fusion and the risk gate still apply. Name-level
+  `vol_20` is unchanged. Optional research family `robinhood_plus` (not
+  required). Internal name only — not affiliated with Robinhood Markets, Inc.
+- This is a foundation-model wiring claim, not a live-performance claim.
+
+## Day Wave 140 — named analytical nonlinear Ledoit–Wolf path — 2026-09-19
+
+- `ledoit_wolf_nonlinear` is now a stamped catalog estimator, matching `oas` /
+  `sample`. Ledoit–Wolf (2020) analytical spectral shrinkage on the
+  listwise-complete trailing window returns trailing \(\Sigma\) with
+  `family=ledoit_wolf_nonlinear` / `spec=ledoit_wolf_2020_analytical` /
+  `covariance_object=trailing` / `sample=listwise_complete`. This is not
+  2004 linear shrinkage and not numerical QuEST.
+- Named `optimizer.covariance=ledoit_wolf_nonlinear` / `/risk/portfolio`
+  consumes that matrix plus the GARCH/RGARCH overlay. Family or 2004-spec
+  mismatch fails closed. Short or failed fits fail closed rather than
+  Ledoit–Wolf 2004. When \(T\le N\) the estimator stays on the singular-case
+  analytical map. Generic `shrinkage` / `ledoit_wolf_2017` / `quest` stay
+  unknown. Default `ledoit_wolf` stays 2004. Factor stays unwired. This does
+  not invent high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 139 — default Ledoit–Wolf stays Ledoit–Wolf when T≤N — 2026-09-19
+
+- `ledoit_wolf` is now a stamped catalog estimator, matching `oas` / `sample`.
+  sklearn `LedoitWolf` 2004 linear shrinkage on the listwise-complete trailing
+  window returns trailing \(\Sigma\) with `family=ledoit_wolf` /
+  `spec=ledoit_wolf_2004_linear` / `covariance_object=trailing` /
+  `sample=listwise_complete` and the fitted shrinkage intensity.
+- Default `optimizer.covariance=ledoit_wolf` / `/risk/portfolio` now stays
+  Ledoit–Wolf when \(T\le N\) rather than silently switching to unbiased
+  sample covariance. The named `sample` path is unchanged. Family mismatch
+  fails closed. Short or failed default fits stay the homoskedastic proxy
+  rather than sample. Overlay still applies (trailing LW has no \(D_{t+1}\)).
+  This is not nonlinear Ledoit–Wolf 2017. Factor stays unwired. This does
+  not invent high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 138 — named unrestricted CES AG-DCC optimize_asof path — 2026-09-19
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=agdcc_full` path. It consumes the Wave 137 two-stage
+  CES (2006) unrestricted AG-DCC one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) and
+  does **not** apply the GARCH/RGARCH overlay (AG-DCC already supplies
+  \(D_{t+1}\)). Weights and `/risk/portfolio` stamp
+  `covariance_estimator=agdcc_full` / `covariance_object=one_step_ahead` /
+  `covariance_spec=cappiello_engle_sheppard_2006_full_agdcc`.
+- This is not diagonal AG-DCC with a `parameterization` stamp: the named path
+  does not call `agdcc`, `adcc`, `dcc_gaussian`, `dcc_student_t`, or `ccc`.
+  Family mismatch (including an `agdcc` stamp), short history, incomplete asof
+  rows, and failed fits fail closed rather than Ledoit–Wolf. Generic `dcc`
+  stays unknown. Factor stays unwired. This does not invent high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 137 — unrestricted CES AG-DCC catalog estimator — 2026-09-19
+
+- `agdcc_full` is now a two-stage catalog estimator, not an unspecified
+  DCC alias. Stage 1 is univariate Gaussian GARCH(1,1). Stage 2 QML uses
+  the CES (2006) unrestricted AG-DCC recursion
+  \(Q_t=(\bar Q-A\bar Q A^\top-B\bar Q B^\top-G\bar N G^\top)
+  +A z_{t-1}z_{t-1}^\top A^\top + B Q_{t-1} B^\top
+  + G n_{t-1}n_{t-1}^\top G^\top\). Diagonal \(A,B,G\) recover Wave 135
+  diagonal AG-DCC; nonzero off-diagonals do not. The public matrix is
+  one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) on the trailing contiguous
+  complete-case window. Params stamp `family=agdcc_full` /
+  `spec=cappiello_engle_sheppard_2006_full_agdcc` /
+  `parameterization=full` / `asymmetric=true`.
+- This is not diagonal AG-DCC with a `parameterization` stamp:
+  `agdcc_full` does not call `agdcc`, `adcc`, `dcc_gaussian`,
+  `dcc_student_t`, or `ccc`. `/models` lists it among implemented
+  covariance estimators. `optimize_asof` / `/risk/portfolio` stay
+  unwired (`unwired_optimizer_covariance:agdcc_full`) so unrestricted
+  AG-DCC cannot silently size as diagonal AG-DCC, scalar ADCC, Gaussian
+  DCC, CCC, or Ledoit–Wolf. Generic `dcc` stays unknown. Factor stays
+  unwired. This does not invent high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 136 — named diagonal CES AG-DCC optimize_asof path — 2026-09-19
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=agdcc` path. It consumes the Wave 135 two-stage
+  CES (2006) diagonal AG-DCC one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) and
+  does **not** apply the GARCH/RGARCH overlay (AG-DCC already supplies
+  \(D_{t+1}\)). Weights and `/risk/portfolio` stamp
+  `covariance_estimator=agdcc` / `covariance_object=one_step_ahead` /
+  `covariance_spec=cappiello_engle_sheppard_2006_diagonal_agdcc`.
+- This is not scalar ADCC with a `parameterization` stamp: the named path
+  does not call `adcc`, `dcc_gaussian`, `dcc_student_t`, or `ccc`. Family
+  mismatch (including an `adcc` stamp), short history, incomplete asof
+  rows, and failed fits fail closed rather than Ledoit–Wolf. Generic
+  `dcc` stays unknown. Unrestricted full-matrix AG-DCC (`agdcc_full`)
+  stays unspecified. Factor stays unwired. This does not invent
+  high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 135 — diagonal CES AG-DCC catalog estimator — 2026-09-19
+
+- `agdcc` is now a two-stage catalog estimator, not an unknown DCC alias.
+  Stage 1 is univariate Gaussian GARCH(1,1). Stage 2 QML uses the CES (2006)
+  diagonal AG-DCC recursion \(Q_t=(\bar Q-A\bar Q A-B\bar Q B-G\bar N G)
+  +A z_{t-1}z_{t-1}^\top A+B Q_{t-1}B+G n_{t-1}n_{t-1}^\top G\) with
+  diagonal \(A,B,G\). Equal diagonals recover scalar CES ADCC; heterogeneous
+  diagonals do not. The public matrix is one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\)
+  on the trailing contiguous complete-case window. Params stamp `family=agdcc`
+  / `spec=cappiello_engle_sheppard_2006_diagonal_agdcc` /
+  `parameterization=diagonal` / `asymmetric=true`.
+- This is not scalar ADCC with a `parameterization` stamp: `agdcc` does not
+  call `adcc`, `dcc_gaussian`, or `dcc_student_t`. `/models` lists it among
+  implemented covariance estimators. `optimize_asof` / `/risk/portfolio` stay
+  unwired (`unwired_optimizer_covariance:agdcc`) so diagonal AG-DCC cannot
+  silently size as scalar ADCC, Gaussian DCC, CCC, or Ledoit–Wolf.
+  Unrestricted full-matrix AG-DCC (`agdcc_full`) stays unspecified. Generic
+  `dcc` stays unknown. Factor stays unwired. This does not invent
+  high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 134 — named Bollerslev CCC optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=ccc` path. It consumes the Wave 133 two-stage
+  Bollerslev (1990) CCC one-step \(H_{t+1}=D_{t+1} R D_{t+1}\) and does
+  **not** apply the GARCH/RGARCH overlay (CCC already supplies
+  \(D_{t+1}\)). Weights and `/risk/portfolio` stamp
+  `covariance_estimator=ccc` / `covariance_object=one_step_ahead` /
+  `covariance_spec=bollerslev_1990_ccc`.
+- This is not Gaussian DCC with \(a=b=0\): the named path does not call
+  `dcc_gaussian`, `dcc_student_t`, or `adcc`. Family mismatch, short
+  history, incomplete asof rows, and failed fits fail closed rather than
+  Ledoit–Wolf. Generic `dcc` stays unknown. Factor stays unwired. This
+  does not invent high-frequency RV or implement matrix AG-DCC.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 133 — Bollerslev CCC catalog estimator — 2026-09-18
+
+- `ccc` is now a two-stage catalog estimator, not an unknown DCC alias.
+  Stage 1 is univariate Gaussian GARCH(1,1). Stage 2 is Bollerslev (1990)
+  constant \(R=\mathrm{corr}(z)\) of standardized residuals. There is no
+  \(Q\) recursion and no \(a,b\) QML. The public matrix is one-step
+  \(H_{t+1}=D_{t+1} R D_{t+1}\) on the trailing contiguous complete-case
+  window. Params stamp `family=ccc` / `spec=bollerslev_1990_ccc` /
+  `dynamic_correlation=false` / `covariance_object=one_step_ahead`.
+- This is not Gaussian DCC with \(a=b=0\): `ccc` does not call
+  `dcc_gaussian`, `dcc_student_t`, or `adcc`. `/models` lists it among
+  implemented covariance estimators. `optimize_asof` / `/risk/portfolio`
+  stay unwired (`unwired_optimizer_covariance:ccc`) so CCC cannot silently
+  size as Gaussian DCC, Student-t DCC, scalar ADCC, or Ledoit–Wolf.
+  Generic `dcc` stays unknown. This does not invent high-frequency RV,
+  implement matrix AG-DCC, or wire factor covariance.
+- This is covariance-spec honesty, not a live-performance claim.
+
+## Day Wave 132 — named unbiased sample optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=sample` path. It consumes unbiased (`ddof=1`)
+  sample covariance on the listwise-complete trailing `ret_1` window and
+  **does** apply the GARCH/RGARCH overlay (trailing sample has no
+  \(D_{t+1}\)). Weights and `/risk/portfolio` stamp
+  `covariance_estimator=sample` / `covariance_object=trailing` /
+  `covariance_spec=unbiased_sample`.
+- This is not Ledoit–Wolf or OAS with a different stamp: the named path
+  calls `sample`, refuses a Ledoit–Wolf family stamp, and fails closed on
+  a short or failed fit rather than substituting Ledoit–Wolf, OAS, EWMA,
+  or DCC. When \(T>N\) the estimator stays sample rather than silently
+  switching to Ledoit–Wolf. The default Ledoit–Wolf path still falls back
+  to this same unbiased spec when \(T\le N\). Factor stays unwired so
+  missing PIT factor returns cannot be invented. Default remains trailing
+  Ledoit–Wolf plus the overlay. This does not invent high-frequency RV or
+  implement matrix AG-DCC.
+- This is optimizer covariance-object identity, not a live-performance claim.
+
+## Day Wave 131 — named Chen OAS optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=oas` path. It consumes Chen–Wiesel–Eldar–Hero (2010)
+  Oracle Approximating Shrinkage on the listwise-complete trailing `ret_1`
+  window and **does** apply the GARCH/RGARCH overlay (trailing shrinkage has
+  no \(D_{t+1}\)). Weights and `/risk/portfolio` stamp
+  `covariance_estimator=oas` / `covariance_object=trailing` /
+  `covariance_spec=chen_wiesel_eldar_hero_2010`.
+- This is not Ledoit–Wolf with a different stamp: the named path calls `oas`,
+  refuses a Ledoit–Wolf family stamp, and fails closed on a short or failed
+  fit rather than substituting Ledoit–Wolf, sample, EWMA, or DCC. When
+  \(T\le N\) the estimator stays OAS rather than silently switching to
+  sample. Generic `shrinkage` stays unknown. Default remains trailing
+  Ledoit–Wolf plus the overlay. This does not invent high-frequency RV or
+  implement matrix AG-DCC.
+- This is optimizer covariance-object identity, not a live-performance claim.
+
+## Day Wave 130 — named RiskMetrics EWMA optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=ewma` path. It consumes one-step RiskMetrics
+  \(H_{t+1}=\lambda H_t+(1-\lambda)r_t r_t'\) on the trailing contiguous
+  complete-case window (`features.ewma_lambda`). That matrix is **not**
+  GARCH/RGARCH overlay-scaled. Weights and `/risk/portfolio` stamp
+  `covariance_estimator=ewma` / `covariance_object=one_step_ahead` /
+  `covariance_spec=jpmorgan_riskmetrics_1996`.
+- Sequential EWMA no longer listwise-deletes holes or omits asof \(r_t\):
+  an incomplete terminal row fails closed, and interior holes are not
+  concatenated. The named path does not call Gaussian DCC, Student-t DCC,
+  scalar ADCC, or Ledoit–Wolf, and a short or failed fit fails closed
+  rather than substituting those estimators. Sample and factor stay
+  unwired. Default remains trailing Ledoit–Wolf plus the overlay. This
+  does not invent high-frequency RV or implement matrix AG-DCC.
+- This is optimizer covariance-object identity, not a live-performance claim.
+
+## Day Wave 129 — named scalar ADCC optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=adcc` path. It consumes the Wave 128 two-stage
+  Cappiello–Engle–Sheppard scalar ADCC estimator (Gaussian GARCH stage 1 +
+  CES stage-2 QML) and returns one-step \(H_{t+1}\) on the trailing
+  contiguous complete-case window. That matrix is **not** GARCH/RGARCH
+  overlay-scaled. Weights and `/risk/portfolio` stamp
+  `covariance_estimator=adcc` / `covariance_object=one_step_ahead` /
+  `covariance_spec=cappiello_engle_sheppard_2006`.
+- This is not Gaussian or Student-t DCC with an `asymmetric` stamp: the
+  named path calls `adcc`, refuses a non-ADCC family stamp, and fails
+  closed on a short or failed fit rather than substituting `dcc_gaussian`,
+  `dcc_student_t`, or Ledoit–Wolf. Generic `dcc` stays fail-closed.
+  Default remains trailing Ledoit–Wolf plus the overlay. This is scalar
+  CES ADCC, not matrix AG-DCC, and does not invent high-frequency RV.
+- This is optimizer covariance-object identity, not a live-performance claim.
+
+## Day Wave 128 — Cappiello–Engle–Sheppard scalar ADCC — 2026-09-18
+
+- `adcc` is now a two-stage catalog estimator, not a named fail-closed stub.
+  Stage 1 is univariate Gaussian GARCH(1,1). Stage 2 QML uses the CES (2006)
+  scalar recursion \(Q_t=(1-a-b)\bar Q - g\bar N + a z_{t-1}z_{t-1}^\top +
+  b Q_{t-1} + g n_{t-1}n_{t-1}^\top\) with \(n_t=I[z_t<0]\odot z_t\) and
+  \(\bar N=\mathbb{E}[n_t n_t^\top]\). PD uses \(a+b+\kappa g<1\). The public
+  matrix remains one-step \(H_{t+1}\) on the trailing contiguous complete-case
+  window. Params stamp `family=adcc` / `spec=cappiello_engle_sheppard_2006` /
+  `asymmetric=true` / `g` / `kappa`.
+- This is not Gaussian DCC with an `asymmetric` stamp: `adcc` does not call
+  `dcc_gaussian` or `dcc_student_t`. `/models` lists it among implemented
+  covariance estimators. `optimize_asof` / `/risk/portfolio` stay unwired
+  (`unwired_optimizer_covariance:adcc`) so ADCC cannot silently size as
+  Gaussian DCC, Student-t DCC, or Ledoit–Wolf. This is scalar CES ADCC, not
+  matrix AG-DCC, and does not invent high-frequency RV.
+- This is DCC likelihood honesty, not a live-performance claim.
+
+## Day Wave 127 — named Student-t DCC optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named
+  `optimizer.covariance=dcc_student_t` path. It consumes the Wave 126 two-stage
+  Student-t DCC estimator (univariate Student-t GARCH + covariance-t QML) and
+  returns Engle one-step \(H_{t+1}\) on the trailing contiguous complete-case
+  window. That matrix is **not** GARCH/RGARCH overlay-scaled. Weights and
+  `/risk/portfolio` stamp `covariance_estimator=dcc_student_t` /
+  `covariance_object=one_step_ahead` / `covariance_spec=engle_2002_student_t_dcc`.
+- This is not Gaussian DCC with a `dist` stamp: the named path calls
+  `dcc_student_t`, refuses a Gaussian family stamp, and fails closed on a
+  short or failed fit rather than substituting `dcc_gaussian` or Ledoit–Wolf.
+  Ambiguous aliases (`t`, `student_t`) are rejected so they cannot be read as
+  a return law. Generic `dcc` and ADCC stay fail-closed. Default remains
+  trailing Ledoit–Wolf plus the overlay. This does not invent high-frequency RV.
+- This is optimizer covariance-object identity, not a live-performance claim.
+
+## Day Wave 126 — Student-t DCC likelihood — 2026-09-18
+
+- `dcc_student_t` is now a two-stage catalog estimator, not a named
+  fail-closed stub. Stage 1 is univariate Student-t GARCH(1,1). Stage 2 QML
+  uses the covariance Student-t correlation likelihood
+  (`student_t_corr_nll`, \(ν>2\), scale \(((ν-2)/ν)R\)). The public matrix
+  remains Engle one-step \(H_{t+1}\) on the trailing contiguous complete-case
+  window. Params stamp `family=dcc_student_t`, `dist=student_t`,
+  `spec=engle_2002_student_t_dcc`, and `nu`.
+- This is not Gaussian DCC with a `dist` stamp: `dcc_student_t` does not call
+  `dcc_gaussian`. `/models` lists it among implemented covariance estimators.
+  `optimize_asof` / `/risk/portfolio` stay unwired (`unwired_optimizer_covariance:dcc_student_t`)
+  so Student-t DCC cannot silently size as Gaussian DCC or Ledoit–Wolf.
+  ADCC remains unspecified. This does not invent high-frequency RV.
+- This is DCC likelihood honesty, not a live-performance claim.
+
+## Day Wave 125 — DCC trailing complete-window honesty — 2026-09-18
+
+- Gaussian DCC no longer listwise-deletes holes and concatenates the survivors
+  as if they were adjacent observations. The estimation sample is the trailing
+  contiguous complete-case window ending at the last row
+  (`sample=trailing_complete_window`). An incomplete terminal row fails closed
+  (`incomplete_terminal_row`) so advertised one-step \(H_{t+1}\) cannot drop
+  asof \(z_t\). A hole that leaves fewer than 50 contiguous complete rows
+  fails closed rather than stitching earlier dates onto the suffix.
+- `optimize_asof` / `/risk/portfolio` share that contract, and trailing
+  return pivots are sorted by `event_time` so reversed history cannot make
+  the earliest bar look like \(z_t\). Ledoit–Wolf/sample still listwise-delete
+  because they are not sequential likelihoods. This does not invent
+  high-frequency RV or implement Student-t DCC / ADCC.
+- This is DCC sample-path honesty, not a live-performance claim.
+
+## Day Wave 124 — named Gaussian DCC optimize_asof path — 2026-09-18
+
+- `optimize_asof` and `/risk/portfolio` now honor a named `optimizer.covariance`
+  path. Default remains trailing Ledoit–Wolf (or sample when \(T\le N\)) plus
+  the GARCH/RGARCH overlay. `dcc_gaussian` uses Engle (2002) one-step-ahead
+  \(H_{t+1}\) on the same PIT-filtered trailing `ret_1` and does **not** scale
+  that matrix by the market overlay (univariate GARCH already sits on
+  \(D_{t+1}\)). Weights and `/risk/portfolio` stamp `covariance_estimator` /
+  `covariance_object` / `covariance_spec`.
+- Student-t DCC, ADCC, generic `dcc`, and catalog estimators that are not
+  optimizer-wired (`sample` / `ewma` / `factor`) fail closed rather than
+  silently running Ledoit–Wolf or Gaussian DCC. A short or failed Gaussian DCC
+  fit fails closed rather than substituting the overlay path. `/models` lists
+  `optimizer_covariance` separately from the estimator catalog.
+- This is optimizer covariance-object identity, not a live-performance claim,
+  high-frequency RV, or an implemented Student-t / ADCC likelihood.
+
+## Day Wave 123 — one-step-ahead Gaussian DCC — 2026-09-18
+
+- `dcc_gaussian` now returns Engle (2002) one-step-ahead \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\), not in-sample last \(H_t\). \(Q_{t+1}\) uses the last standardized residual \(z_t\); \(D_{t+1}\) is the univariate GARCH one-step sigma. Params stamp `covariance_object=one_step_ahead` and `horizon=1`. A failed one-step univariate forecast fails closed.
+- Stage-1 QML, named fail-closed Student-t / ADCC, and `/models` listing are unchanged. This does not wire DCC into `optimize_asof`, replace Ledoit–Wolf, or invent high-frequency RV.
+- This is covariance-object honesty, not a live-performance claim or an implemented Student-t / ADCC likelihood.
+
+## Day Wave 122 — named fail-closed DCC specs — 2026-09-18
+
+- Student-t DCC and Cappiello–Engle–Sheppard ADCC are now named specs
+  (`dcc_student_t`, `adcc`, `require_implemented_dcc_spec`) that fail closed
+  with `unspecified_dcc_spec:*`. They must not silently run Engle (2002)
+  Gaussian DCC. `dcc_gaussian` stamps `family=dcc_gaussian`,
+  `spec=engle_2002_gaussian_dcc`, `dist=normal`, and `asymmetric=false`.
+- `/models` lists `dcc_gaussian` among implemented covariance estimators and
+  `dcc_student_t` / `adcc` under `covariance_unspecified`, so a generic `dcc`
+  catalog entry cannot be read as a Student-t or asymmetric fit. This does
+  not wire DCC into `optimize_asof`, replace Ledoit–Wolf, or invent
+  high-frequency RV.
+- This is covariance-spec honesty, not a live-performance claim or an
+  implemented Student-t / ADCC likelihood.
+
+## Day Wave 121 — ranker cache content digest — 2026-09-18
+
+- Process-local `ranker_ridge.joblib` cache now keys by SHA-256 of the
+  artifact bytes, not `(path, mtime)`. An in-place ranker replacement that
+  preserves mtime cannot reuse a stale ridge for `forecast_asof` /
+  `optimize_asof` alpha. Missing artifacts still return None so the
+  momentum heuristic remains the explicit no-model path.
+- GARCH/RGARCH spec caches already used this digest (Wave 113); ranker
+  identity is now the same contract. This does not change `vol_20`, the
+  GARCH/RGARCH overlay, or `max_predicted_vol`.
+- This is ranker provenance and cache integrity, not a live-performance
+  claim, high-frequency RV, Student-t DCC, or ADCC.
+
+## Day Wave 120 — /risk/portfolio overlay identity — 2026-09-18
+
+- `/risk/portfolio` now scales trailing Ledoit–Wolf with the same causal
+  GARCH/RGARCH market overlay `optimize_asof` uses
+  (`apply_market_variance_overlay_to_covariance`). The response stamps
+  `market_risk_overlay` (`realized_garch` vs `garch` vs null) so unscaled
+  sample risk cannot be mistaken for the optimizer's covariance object.
+- A present Realized GARCH artifact still fail-closes on missing OHLC, the
+  wrong `series_scope`, or a high-frequency RV claim rather than reporting
+  unscaled Ledoit–Wolf. Per-name `vol_20` remains the impact/cost sigma.
+- This is research-lab risk-object identity, not a live-performance claim,
+  high-frequency RV, Student-t DCC, or ADCC.
+
+## Day Wave 119 — optimizer covariance available_time PIT — 2026-09-18
+
+- Trailing name-covariance in `optimize_asof` and `/risk/portfolio` now drops
+  `available_time > asof` restatements of earlier `ret_1`. Wave 111 already
+  closed that hole for the GARCH/RGARCH overlay scale; unpublished revisions
+  can no longer move relative Ledoit–Wolf/sample risk after the overlay is
+  PIT-clean. Null availability among usable `ret_1` rows fails closed.
+  Frames without `available_time` keep the legacy event-time path.
+- This is optimizer/API covariance observability, not a live-performance
+  claim, high-frequency RV, Student-t DCC, or ADCC.
+
+## Day Wave 118 — Realized GARCH forecast/optimize overlay — 2026-09-18
+
+- `forecast_asof` and `optimize_asof` now consume the same causal Parkinson
+  Realized GARCH market overlay that paper/backtest `check_order` prefers when
+  `vol_realized_garch.joblib` is present. Precedence matches Wave 117:
+  Realized GARCH, else return-only GARCH, else name-level `vol_20`.
+- `MarketState.market_risk_overlay` stamps `realized_garch` versus `garch` so
+  covariance scaling cannot be mistaken for the return-only overlay. A present
+  Realized GARCH artifact still fail-closes on missing OHLC, the wrong
+  `series_scope`, or a high-frequency RV claim; it does not fall back to GARCH
+  because ranges are absent. Per-name `vol_20` remains the impact/cost sigma.
+  The realized measure remains one-day Parkinson from daily OHLC
+  (`intraday_realized_variance=false`).
+- This is a research-lab risk-object identity fix, not a live-performance or
+  high-frequency realized-variance claim.
+
+## Day Wave 117 — Realized GARCH check_order overlay — 2026-09-18
+
+- Paper and backtest `check_order` now consume the causal date-level
+  Hansen–Huang–Shek Realized GARCH one-step market sigma when
+  `vol_realized_garch.joblib` is present. The realized measure remains
+  one-day Parkinson from daily OHLC (`intraday_realized_variance=false`).
+- Precedence is explicit: Realized GARCH, else return-only GARCH, else
+  name-level `vol_20`. A present Realized GARCH artifact still fail-closes
+  on missing OHLC, the wrong `series_scope`, or a high-frequency RV claim;
+  it does not silently fall back to GARCH because ranges are absent.
+  Metrics stamp `realized_garch_risk_overlay_dates` separately from
+  `garch_risk_overlay_dates`. `forecast_asof` / `optimize_asof` still use
+  `vol_garch.joblib`. Per-name `vol_20` remains the impact/cost sigma.
+- This is a research-lab risk overlay, not a live-performance or
+  high-frequency realized-variance claim.
+
+## Day Wave 116 — DCC stage-1 arch GARCH — 2026-09-18
+
+- Gaussian DCC(1,1) stage 1 now fits univariate GARCH(1,1) via `arch` /
+  `GARCHVol` on each name's decimal returns and uses those standardized
+  residuals for stage-2 QML. RiskMetrics EWMA is no longer a silent substitute
+  for Engle (2002) stage-1 innovations (ADR-004 / MATH_SPEC).
+- Failed, short, zero-variance, or fallback univariate fits fail closed.
+  Params stamp `stage1=garch`. Last \(H_t\) still uses in-sample GARCH sigma
+  with PSD repair; this does not replace `vol_20`, the GARCH market overlay,
+  or `max_predicted_vol`. No Student-t DCC or ADCC.
+- This is a research-lab covariance estimator, not a live-performance claim.
+
+## Day Wave 115 — Realized GARCH on daily Parkinson — 2026-09-18
+
+- Causal `RealizedGARCHVol` is Hansen–Huang–Shek log-linear Realized GARCH(1,1)
+  with a Gaussian return law. The realized measure is one-day Parkinson variance
+  from daily OHLC (`high_split_adjusted`/`low_split_adjusted`, else `high`/`low`).
+  Diagnostics stamp `realized_measure=parkinson_daily_ohlc` and
+  `intraday_realized_variance=false`. Close-to-close \(r_t^2\) is not inferred,
+  and the 20-day `vol_parkinson` feature is not the measure.
+- `realized_garch_market_forecast_asof` clones `vol_realized_garch.joblib` and
+  refits on date-level equal-weight `ret_1` paired with same-name Parkinson.
+  Origin-bar OHLC cannot enter the fit. Unpublished `available_time` restatements
+  cannot move the overlay. This namespace does not replace `vol_garch.joblib`,
+  `vol_20`, or `max_predicted_vol`. Missing OHLC fail-closed. Walk-forward
+  `train_volatility(..., "realized_garch")` uses the same overlap-aware QLIKE
+  and one-step density contract as the return-only GARCH overlay.
+- This is a research-lab range-based Realized GARCH, not a live-performance or
+  high-frequency realized-variance claim.
+
+## Day Wave 114 — name-level GARCH walk-forward QLIKE/density — 2026-09-18
+
+- Per-security GARCH now has a walk-forward scorer that is not the date-level
+  market overlay. `garch_name_walk_forward` refits each name on that name's
+  strictly prior PIT-observable `ret_1` and scores QLIKE against the name's
+  `future_realized_var_h`. One-step log-score, CRPS, and PIT KS use that
+  name's origin `ret_1`, never the equal-weight cross-section and never
+  `future_realized_var_h`. Hansen–Lunde stride is applied independently per
+  name. Metrics stamp `scoring_scope=security_level_ret_1`.
+- Date-level `overlap_aware_qlike` still fail-closes when forecasts disagree
+  within a date, so name-level forecasts cannot be silently collapsed into the
+  market QLIKE. Duplicate `(security_id, event_time)` keys, missing origin
+  `ret_1`, and empty prior history fail closed. `available_time` restatements
+  cannot enter a name's expanding fit. This does not replace `vol_20`,
+  `max_predicted_vol`, or `train_volatility` overlay scores.
+- This is a research-lab per-name scoring namespace, not a live-performance
+  or realized-GARCH claim.
+
+## Day Wave 113 — GARCH spec-cache content digest — 2026-09-18
+
+- Process-local GARCH spec and as-of caches now key `vol_garch.joblib` by
+  SHA-256 of the artifact bytes, not `(path, mtime)` or a partial
+  `(p, q, dist, vol, min_obs)` tuple. An in-place spec replacement that
+  preserves mtime cannot reuse a stale variance family, mean, or power for
+  `garch_market_forecast_asof` or `garch_name_forecasts_asof`.
+- Mean/power are cloned into as-of refits but were previously absent from the
+  as-of key, so a same-mtime Constant→Zero rewrite could keep the old overlay.
+  History digest (Wave 110) is unchanged. Missing artifacts still return
+  empty/None; wrong `series_scope` still fails closed.
+- This is overlay provenance and cache integrity, not a live-performance,
+  realized-GARCH, or name-level walk-forward scoring claim.
+
+## Day Wave 112 — per-security GARCH namespace — 2026-09-18
+
+- Causal `garch_name_forecasts_asof` clones the date-level `vol_garch.joblib`
+  specification and refits each name on that name's strictly prior `ret_1`.
+  Output `series_scope` is `security_level_ret_1`, so these forecasts cannot be
+  mistaken for the equal-weight market overlay. They do not replace `vol_20`
+  or `max_predicted_vol`; `forecast_asof` / `check_order` stay on the date-level
+  overlay.
+- PIT universe membership and `available_time <= asof` follow the overlay
+  contract. Duplicate `(security_id, event_time)` keys and blank ids fail
+  closed. Missing artifacts return an empty mapping; a present artifact with
+  the wrong scope fails closed. Explicit ids with no strictly-prior history
+  fail closed; implicit scans omit names without history.
+- This is a research-lab per-name variance namespace, not a live-performance
+  or realized-GARCH claim.
+
+## Day Wave 111 — GARCH overlay available_time PIT — 2026-09-18
+
+- Causal GARCH market overlay and walk-forward OOS fits now keep only
+  `ret_1` rows with `event_time < asof` **and** `available_time <= asof` when
+  that column is present. A late restatement of an earlier date cannot move
+  `max_predicted_vol`, `optimize_asof` covariance scaling, or origin-level
+  QLIKE/density fits. Null `available_time` among otherwise usable prior rows
+  fails closed. Frames without the column keep the legacy event-time path.
+- Density scoring still uses the origin's date-level `ret_1` outcome
+  (evaluation vintage). This is overlay/walk-forward PIT honesty, not a
+  live-performance, per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 110 — GARCH overlay PIT membership + history digest — 2026-09-18
+
+- Causal `garch_market_forecast_asof` now restricts the date-level equal-weight
+  `ret_1` series to the current `silver/universe.parquet` when that artifact
+  exists. Paper/backtest execution bars may still carry ineligible ADV/listing
+  names for marks; those names cannot move `max_predicted_vol`. Empty universe
+  or a present universe without `security_id` fails closed. Missing universe
+  keeps the caller frame for legacy fixtures.
+- The process-local as-of cache is keyed by a SHA-256 digest of the full
+  causal date/return path. A last-date / last-value / length fingerprint can
+  reuse a stale overlay after an earlier membership or return rewrite that
+  leaves the terminal mean unchanged.
+- This is overlay provenance and cache integrity, not a live-performance,
+  per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 109 — gold panel load-time PIT membership — 2026-09-18
+
+- Training/forecast `panel()` now fail-closes unless persisted gold feature and
+  label keys are a subset of the current `silver/universe.parquet` membership.
+  Wave 108 inner-joined at materialization; a later universe shrink or
+  hand-edited gold file can no longer silently train, rank, or score names the
+  PIT universe rejected. Missing universe beside gold fails closed rather than
+  re-ingesting silver under stale gold.
+- The process-local gold cache key includes the universe parquet digest, so an
+  in-place membership replacement invalidates cached training inputs even when
+  gold bytes are unchanged. Extra membership rows remain allowed (incomplete
+  gold is not leakage). Direct feature callers that omit membership keep the
+  legacy unfiltered frame.
+- This is decision-universe honesty on the consumption path, not a
+  live-performance, per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 108 — gold/CS consume PIT universe membership — 2026-09-18
+
+- `build_gold` now inner-joins features and labels to `silver/universe.parquet`
+  on `(security_id, event_time)`. Name-level rolling history still uses the
+  full silver panel, but ineligible ADV/listing/history names cannot remain in
+  gold or move cross-sectional ranks, market aggregates, or idio-label means.
+  Empty, duplicate-keyed, or schema-invalid membership fails closed instead of
+  silently training on unfiltered silver. Paper/backtest CLI feature panels
+  use the same membership.
+- This is decision-universe honesty after Wave 107's listing-action artifact,
+  not a live-performance, per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 107 — delist/ticker_change on production panel — 2026-09-18
+
+- File-adapter `delist` and `ticker_change` events now apply on the production
+  silver path instead of dying after the parquet contract gate. Ingest overlays
+  PIT-visible ticker changes onto `symbol`, drops leftover bars after a knowable
+  delist (last listed session kept), and persists `silver/universe.parquet`.
+  `membership_asof` consumes the same actions: late announcements cannot rewrite
+  pre-availability membership, and `include_delisted=False` excludes a name as
+  soon as the announcement is available.
+- `ticker_change` fails closed on missing or blank `new_ticker`. Doctor now
+  requires the universe artifact. This is bronze/silver listing integrity, not a
+  live-performance, per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 106 — APARCH/FIGARCH variance specs — 2026-09-18
+
+- Causal `GARCHVol` now accepts APARCH and FIGARCH alongside GARCH/EGARCH/GJR.
+  Config `garch_vol` enumerates the same set. APARCH uses the asymmetric power
+  specification (`o=1`); FIGARCH allows only \(p,q\in\{0,1\}\) and rejects
+  higher orders fail-closed.
+- Fit gates stay specification-appropriate: GARCH/GJR/APARCH use the symmetric
+  persistence check (GJR still adds \(\frac12\gamma\)); APARCH requires
+  \(\delta>0\); FIGARCH requires \(0<d<1\) rather than \(\alpha+\beta\).
+  Multi-step APARCH forecasts use seeded simulation, matching EGARCH, because
+  `arch` has no analytic path beyond one step. Density/QLIKE consumers still
+  clone the persisted spec and refit on strictly prior `ret_1`.
+- This is a research-lab variance-family expansion, not a live-performance,
+  per-name GARCH, or realized-GARCH claim.
+
+## Day Wave 105 — GARCH one-step density calibration — 2026-09-18
+
+- Walk-forward GARCH now scores the one-step date-level equal-weight `ret_1`
+  predictive density in addition to overlap-aware *h*-step QLIKE. Log-score,
+  CRPS, and PIT KS use the origin law fitted on strictly prior returns; the
+  density target is never `future_realized_var_h` and never a Gaussian
+  approximation to `cumulative_variance`.
+- Gaussian CRPS is closed-form; t/skew-t CRPS is quantile-Riemann from the
+  fitted `arch` ppf. Student-t log-score uses the standardized GARCH
+  innovation, not textbook location-scale *t*. Fallback fits remain explicitly
+  Gaussian. Missing origin `ret_1` fails closed.
+- This is scoring honesty for the advertised predictive law, not a
+  live-performance, per-name GARCH, or APARCH/FIGARCH claim.
+
+## Day Wave 104 — overlap-aware multi-horizon vol scoring — 2026-09-18
+
+- Date-level GARCH walk-forward QLIKE no longer concatenates name-level rows
+  onto a market forecast. Primary `qlike` is the equal-weight cross-section
+  realized variance on Hansen–Lunde nonoverlapping origins (session stride =
+  label horizon). Overlapping-date QLIKE remains a diagnostic. Within-date
+  forecast disagreement fails closed.
+- `bench_volatility` collapses holdout observations to one date before QLIKE
+  and Diebold–Mariano, and uses Hansen–Hodrick HAC lags of at least \(h-1\).
+  Nonoverlapping companion keys are stamped. This is scoring honesty, not a
+  live-performance or per-name GARCH claim.
+
+## Day Wave 103 — check_order GARCH market overlay — 2026-09-18
+
+- Paper and backtest `check_order` now compare `max_predicted_vol` to the causal
+  date-level GARCH one-step market sigma when `vol_garch.joblib` is present.
+  Callers still pass per-name `vol_20` as `predicted_vol`; the optional
+  `market_predicted_vol` overlay replaces it for the vol gate only.
+- Impact/cost models keep name-level `vol_20`. Missing artifacts and origins
+  with no strictly-prior `ret_1` fall back to name vol. A present artifact with
+  the wrong `series_scope`, or with no `ret_1` on the execution panel, fails
+  closed. Late returns on or after the decision origin cannot change the gate.
+- Regression coverage includes overlay-vs-name unit edges, broker passthrough,
+  backtest admit/reject identity, late-return non-leakage, wrong-scope and
+  missing-`ret_1` fail-closed, and a paper-loop overlay admit path. This is
+  simulated/paper integrity only; it is not a live-performance or per-name
+  GARCH claim.
+
+## Day Wave 102 — causal GARCH market overlay — 2026-09-18
+
+- `forecast_asof` now consumes `vol_garch.joblib` as a date-level equal-weight
+  market overlay: it clones the artifact specification and refits on `ret_1`
+  dates strictly before the decision origin. Persisted full-sample parameters
+  cannot leak post-asof returns into a historical as-of.
+- Per-security `vol_20` remains the name-level volatility field. The GARCH
+  one-step variance is stamped on `MarketState` and forecast diagnostics with
+  `series_scope=date_level_equal_weight_cross_section`. A present artifact with
+  any other scope fails closed.
+- `optimize_asof` scales trailing name-covariance so equal-weight market
+  variance matches the causal GARCH level (PSD-repaired). This is a research-lab
+  risk overlay, not a live-performance or asset-specific GARCH claim.
+- Regression coverage includes overlay identity, name-vol preservation, late
+  return non-leakage, full-sample fit non-reuse, wrong-scope fail-closed, and
+  persisted overlay columns.
+
+## Day Wave 101 — security-master PIT/schema fail-closed — 2026-09-18
+
+- File-adapter security master now requires identity + PIT columns (`security_id`, `ticker`, `valid_from`/`valid_to`, `available_time`, `ingested_time`, `source`, `revision_id`). Blank identity/source, non-temporal timestamps, inverted windows, and duplicate `(security_id, valid_from)` or `(ticker, valid_from)` rows fail closed instead of silently joining.
+- Lookup and universe/ingest consumers respect `available_time`: late restatements cannot rewrite pre-availability ticker identity or sector attributes, and vintaged masters no longer explode the bar panel. Direct callers without `available_time` retain the legacy valid-window lookup.
+- Regression coverage includes parquet contract fixtures, closed-form restatement edges, and membership/ingest PIT joins. This is bronze-input integrity only; it is not live-data or live-performance evidence.
+
+## Day Wave 98 — corporate-action contract fail-closed — 2026-09-18
+
+- File-adapter corporate actions now require the DATA_CONTRACTS schema: `action_type` in `{split, cash_dividend, special_dividend, delist, ticker_change}`, PIT timestamps, and non-blank source/security identity. Unknown or blank types, non-positive/non-finite split factors, negative/non-finite dividend amounts, and duplicate `(security_id, event_time, action_type)` rows fail closed instead of silently no-oping or exploding the bar panel.
+- Adjustment still respects `available_time`: late-arriving splits/dividends cannot rewrite pre-availability history. Same-day cash and special dividends are summed onto one bar instead of duplicating rows. Direct callers with a missing `action_type` column remain a documented no-op.
+- Regression coverage includes parquet PIT/contract fixtures and closed-form split/dividend edges. This is bronze-input integrity only; it is not live-data or live-performance evidence.
+
 ## Day Wave 95 — canonical lineage-bound research inputs — 2026-09-17
 
 - Research provenance now fingerprints materialized frames using canonical sorted columns, schema dtypes, and a sorted multiset of canonicalized rows. The digest is invariant to dataframe row/column ordering, counts duplicate rows, and normalizes non-finite values to null.
@@ -81,15 +738,99 @@ QLIKE evaluation. Return history is aggregated from the full feature panel befor
 supervised design-matrix label filtering, so the latest finite returns remain in the
 persisted fit even when their forward labels are structurally unavailable; each OOS
 origin still selects only return dates strictly earlier than that origin. Because the
-current implementation pools securities into a date-level equal-weight return series,
-its saved artifact and diagnostics now declare `series_scope` explicitly rather than
+current implementation pools securities into a date-level equal-weight return series
+on the PIT-universe gold panel (Wave 108). Cached gold loaded by `panel()`
+fail-closes if its keys sit outside the current universe artifact (Wave 109).
+Its saved artifact and diagnostics now declare `series_scope` explicitly rather than
 silently presenting the forecast as security-specific volatility.
 
 This does **not** establish superiority, live deployability, or true intraday realized
-volatility. The current panel is cross-sectional and the saved GARCH artifact is not
-yet wired into `forecast_asof`/risk consumers. APARCH/FIGARCH, overlap-aware
-multi-horizon benchmark comparisons, CRPS/log-score calibration, and model registry
-promotion remain open work.
+volatility. The current panel is cross-sectional. `forecast_asof` / `optimize_asof` consume the saved GARCH artifact as a
+date-level equal-weight market overlay (Wave 102), and paper/backtest
+`check_order` uses that same causal one-step market sigma for
+`max_predicted_vol` (Wave 103). Walk-forward QLIKE and the volatility bench
+now score that overlay on date-level, overlap-aware *h*-step origins
+(Wave 104). Walk-forward also scores the one-step date-level `ret_1`
+predictive density with log-score, CRPS, and PIT KS (Wave 105). APARCH and
+FIGARCH are first-class `GARCHVol` variance specs (Wave 106). The overlay
+series is PIT-universe restricted when membership exists, and the as-of
+cache digests the full causal history (Wave 110). Overlay and walk-forward
+fits also drop unpublished `available_time > asof` restatements (Wave 111).
+Per-security causal forecasts exist as `garch_name_forecasts_asof` with
+`series_scope=security_level_ret_1` (Wave 112) and do not replace the market
+overlay, `vol_20`, or `max_predicted_vol`. Spec and as-of caches key the
+joblib by content digest rather than mtime (Wave 113). Walk-forward QLIKE
+and one-step density now exist for that name-level namespace
+(`garch_name_walk_forward`, Wave 114) with per-name Hansen–Lunde stride;
+they do not replace date-level overlay scores. Realized-GARCH now exists as a
+Parkinson-daily-OHLC namespace (Wave 115) and still does not replace the
+return-only overlay, `vol_20`, or `max_predicted_vol`. DCC stage-1 now uses
+univariate `arch` GARCH rather than EWMA residuals (Wave 116); a failed
+univariate fit fails closed. Paper/backtest `check_order` now uses the
+Parkinson Realized GARCH overlay when `vol_realized_garch.joblib` is present
+(Wave 117). `forecast_asof` / `optimize_asof` consume that same overlay for
+market variance and covariance scaling, stamped as
+`market_risk_overlay=realized_garch` (Wave 118), else the return-only GARCH
+overlay, else `vol_20`. Trailing name-covariance in `optimize_asof` and
+`/risk/portfolio` now refuses unpublished `available_time > asof`
+restatements of earlier `ret_1` (Wave 119), matching the overlay PIT
+contract. `/risk/portfolio` now also applies that same overlay scale and
+stamps `market_risk_overlay` (Wave 120), so the research diagnostic cannot
+report unscaled Ledoit–Wolf while the optimizer sized on GARCH/RGARCH.
+The ridge ranker cache now keys `ranker_ridge.joblib` by SHA-256 bytes
+rather than mtime (Wave 121), matching the GARCH spec-cache contract so a
+same-mtime rewrite cannot reuse stale alpha. Named `dcc_student_t` and
+`adcc` entry points fail closed rather than masquerading as Gaussian DCC
+(Wave 122); `/models` lists `dcc_gaussian` as the implemented spec.
+Gaussian DCC now returns one-step-ahead \(H_{t+1}\) rather than in-sample
+last \(H_t\) (Wave 123), stamped `covariance_object=one_step_ahead`.
+Named `optimizer.covariance=dcc_gaussian` sizes `optimize_asof` /
+`/risk/portfolio` on that matrix without the GARCH/RGARCH overlay
+(Wave 124); default remains Ledoit–Wolf plus overlay. The DCC sample is
+the trailing contiguous complete-case window; incomplete asof rows and
+stitched holes fail closed (Wave 125). Student-t DCC is a catalog estimator
+with a real multivariate-t stage-2 likelihood (Wave 126); named
+`optimizer.covariance=dcc_student_t` now sizes `optimize_asof` /
+`/risk/portfolio` on that matrix without overlay (Wave 127) rather than
+silently substituting Gaussian DCC or Ledoit–Wolf. Scalar Cappiello–Engle–
+Sheppard ADCC is a catalog estimator with a real CES stage-2 likelihood
+(Wave 128); named `optimizer.covariance=adcc` now sizes `optimize_asof` /
+`/risk/portfolio` on that matrix without overlay (Wave 129) rather than
+silently substituting Gaussian DCC, Student-t DCC, or Ledoit–Wolf.
+Named `optimizer.covariance=ewma` now sizes `optimize_asof` /
+`/risk/portfolio` on one-step RiskMetrics \(H_{t+1}\) without overlay
+(Wave 130) rather than listwise-deleting holes, dropping asof \(r_t\), or
+silently substituting Ledoit–Wolf or DCC.
+Named `optimizer.covariance=oas` now sizes `optimize_asof` /
+`/risk/portfolio` on trailing Chen OAS plus the overlay (Wave 131) rather
+than silently substituting Ledoit–Wolf, sample, EWMA, or DCC, and rather
+than switching to sample when \(T\le N\).
+Named `optimizer.covariance=sample` now sizes `optimize_asof` /
+`/risk/portfolio` on trailing unbiased sample covariance plus the overlay
+(Wave 132) rather than silently substituting Ledoit–Wolf, OAS, EWMA, or
+DCC, and rather than switching to Ledoit–Wolf when \(T>N\).
+Bollerslev (1990) CCC is a catalog estimator with constant \(R\) and
+one-step \(D_{t+1}\) (Wave 133); named `optimizer.covariance=ccc` now sizes
+`optimize_asof` / `/risk/portfolio` on that matrix without overlay
+(Wave 134) rather than silently substituting Gaussian DCC, Student-t DCC,
+scalar ADCC, or Ledoit–Wolf.
+Diagonal CES AG-DCC is a catalog estimator with matrix diagonals \(A,B,G\)
+(Wave 135); named `optimizer.covariance=agdcc` now sizes
+`optimize_asof` / `/risk/portfolio` on that matrix without overlay
+(Wave 136) rather than silently substituting scalar ADCC, Gaussian DCC,
+CCC, or Ledoit–Wolf. Unrestricted full-matrix AG-DCC is a catalog
+estimator (Wave 137); named `optimizer.covariance=agdcc_full` now sizes
+`optimize_asof` / `/risk/portfolio` on that matrix without overlay
+(Wave 138) rather than silently substituting diagonal AG-DCC, scalar
+ADCC, Gaussian DCC, CCC, or Ledoit–Wolf. Default `optimizer.covariance=ledoit_wolf`
+now stays Ledoit–Wolf 2004 when \(T\le N\) rather than silently switching
+to unbiased sample (Wave 139); the named `sample` path is unchanged.
+Named `optimizer.covariance=ledoit_wolf_nonlinear` now sizes
+`optimize_asof` / `/risk/portfolio` on trailing analytical 2020 nonlinear
+shrinkage plus the overlay (Wave 140) rather than silently substituting
+2004 linear Ledoit–Wolf, OAS, sample, EWMA, or DCC, and rather than
+switching to sample or 2004 when \(T\le N\).
+High-frequency RV remains unavailable. Factor stays unwired.
 
 ## Volatility baseline contract — 2026-09-17
 

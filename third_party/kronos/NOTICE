@@ -1,0 +1,11 @@
+Kronos (https://github.com/shiyu-coder/Kronos) is licensed under the MIT
+License (see LICENSE in this directory). Dipcatcher's robinhood+ engine
+implements the Kronos two-stage K-line foundation-model framework
+(hierarchical discrete tokens + autoregressive decoder) and can optionally
+load official Hugging Face weights (NeoQuasar/Kronos-*).
+
+Paper: Shi et al., 2025. Kronos: A Foundation Model for the Language of
+Financial Markets. arXiv:2508.02739.
+
+robinhood+ is an internal Dipcatcher engine name. It is not affiliated with
+Robinhood Markets, Inc.

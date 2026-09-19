@@ -144,10 +144,14 @@ class SimulatedBroker:
         sigma: float = 0.02,
         price_age_bars: int | None = None,
         model_age_hours: float | None = None,
+        market_predicted_vol: float | None = None,
     ) -> OrderRecord:
         """Validate + optionally fill immediately (marketable paper order).
 
         Shadow / no-capital slots record intent and reject capital moves.
+        ``sigma`` is name-level vol for impact costs. ``market_predicted_vol``
+        is the optional date-level Realized GARCH or GARCH overlay for
+        ``check_order``.
         """
         if not np.isfinite(float(order.quantity)) or float(order.quantity) <= 0.0:
             rec = OrderRecord(
@@ -172,6 +176,10 @@ class SimulatedBroker:
             or float(adv_dollars) <= 0
             or not np.isfinite(float(sigma))
             or float(sigma) < 0
+            or (
+                market_predicted_vol is not None
+                and (not np.isfinite(float(market_predicted_vol)) or float(market_predicted_vol) < 0)
+            )
         ):
             rec = OrderRecord(
                 order=order.model_copy(update={"status": OrderStatus.REJECTED}),
@@ -248,6 +256,7 @@ class SimulatedBroker:
                 config=self.config,
                 price_age_bars=price_age_bars,
                 model_age_hours=model_age_hours,
+                market_predicted_vol=market_predicted_vol,
             )
         except RiskGateRejected as exc:
             self.reject_count += 1

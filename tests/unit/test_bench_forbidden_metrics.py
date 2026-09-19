@@ -46,6 +46,7 @@ def tiny_synth_panel(tmp_path_factory: pytest.TempPathFactory) -> tuple[Any, Any
     cfg.data.root = root
     cfg.data.synthetic_n_assets = 8
     cfg.data.synthetic_n_days = 60
+    cfg.universe.min_history_bars = 10
     build_gold(cfg)
     df = panel(cfg)
     label = cfg.train.ranking_target

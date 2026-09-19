@@ -1,0 +1,26 @@
+# Artificial Hedge fund lab — paper/backtest analytics catalog.
+# Sharpe / Sortino / Calmar live here, not in research family blobs.
+# Session-close Yahoo/Stooq tape is not SIP. Not a live P&L claim.
+# blend_weight stays 0 until a real (non-SYNTHETIC) public-ridge win.
+inherit: sota_file.yaml
+runtime:
+  mode: backtest
+costs:
+  frictionless: false
+fusion:
+  skip_intervals: true
+  apply_interval_caps: false
+# Paper-book overlay (pyRisk + pyriskmgmt) is on by default in HedgeLabProtocol.
+# vol_target 2.5% ≈ dd_limit/2. --no-risk-overlay disables it. Not a live claim.
+risk_gate:
+  stale_price_bars: 10
+robinhood_plus:
+  blend_weight: 0.0
+universe:
+  top_n_adv: 50
+  min_history_bars: 60
+validation:
+  train_bars: 252
+  val_bars: 63
+  test_bars: 63
+  embargo_bars: 5

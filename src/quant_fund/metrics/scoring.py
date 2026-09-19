@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.special import betaln, erf
 from scipy.stats import t as student_t
+
+from quant_fund.metrics.probability import pit_ks
 
 Array = NDArray[np.float64]
 
@@ -237,6 +241,53 @@ def mean_crps_student_t(y: Array, mu: Array, sigma: Array, nu: float | Array) ->
     return float(np.mean(finite))
 
 
+def log_score_gaussian(y: Array, mu: Array, sigma: Array) -> Array:
+    r"""Elementwise logarithmic score of :math:`N(\mu,\sigma^2)` (research-only).
+
+    Gneiting & Raftery logarithmic score :math:`\log f(y)` (higher is better):
+
+    .. math::
+
+        \log\varphi_{\mu,\sigma}(y)
+        = -\tfrac12\log(2\pi) - \log\sigma - \tfrac12 z^2,
+        \qquad z=(y-\mu)/\sigma.
+
+    Empty → empty array. Length mismatch → ValueError. Non-positive or
+    non-finite ``sigma`` (or non-finite ``y``/``mu``) → NaN at those indices.
+    This is a proper density score, not a live-performance claim.
+    """
+    y_arr = _as_1d("y", y)
+    mu_arr = _as_1d("mu", mu)
+    sig_arr = _as_1d("sigma", sigma)
+    _require_same_length(("y", y_arr), ("mu", mu_arr), ("sigma", sig_arr))
+    if y_arr.size == 0:
+        return np.asarray([], dtype=float)
+    out = np.full(y_arr.shape, np.nan, dtype=float)
+    ok = np.isfinite(y_arr) & np.isfinite(mu_arr) & np.isfinite(sig_arr) & (sig_arr > 0.0)
+    if not np.any(ok):
+        return out
+    z = (y_arr[ok] - mu_arr[ok]) / sig_arr[ok]
+    out[ok] = -0.5 * np.log(2.0 * np.pi) - np.log(sig_arr[ok]) - 0.5 * z * z
+    return out
+
+
+def mean_log_score_gaussian(y: Array, mu: Array, sigma: Array) -> float:
+    """Mean Gaussian logarithmic score. Empty / all-NaN → honest NaN.
+
+    Research-diagnostic only — never live Sharpe / promotion evidence.
+    """
+    scores = log_score_gaussian(y, mu, sigma)
+    if scores.size == 0:
+        return float("nan")
+    finite = scores[np.isfinite(scores)]
+    if finite.size == 0:
+        return float("nan")
+    return float(np.mean(finite))
+
+
+GARCH_ONE_STEP_CRPS_TAUS: tuple[float, ...] = tuple(float(x) for x in np.linspace(0.05, 0.95, 19))
+
+
 def crps_empirical(y: float | Array, sample: Array) -> float:
     r"""Empirical CRPS from an ensemble sample (research-only).
 
@@ -288,6 +339,372 @@ def qlike(realized_var: Array, forecast_var: Array, floor: float = 1e-12) -> flo
     hv = np.clip(yhat[valid], floor, None)
     ratio = yv / hv
     return float(np.mean(ratio - np.log(ratio) - 1.0))
+
+
+def _require_positive_int(name: str, value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or int(value) < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return int(value)
+
+
+def date_level_equal_weight(dates: object, values: Array) -> tuple[NDArray[np.object_], Array]:
+    """Equal-weight mean of finite values by date, sorted by date.
+
+    Dates with no finite observations are omitted. Length mismatch fails closed.
+    Research-diagnostic only — not a live-performance claim.
+    """
+    raw_dates = np.asarray(dates)
+    raw_values = _as_1d("values", np.asarray(values, dtype=float))
+    if raw_dates.shape[0] != raw_values.shape[0]:
+        raise ValueError("dates and values must have the same length")
+    if raw_dates.size == 0:
+        return np.asarray([], dtype=object), np.asarray([], dtype=float)
+    ordered = sorted(set(raw_dates.tolist()))
+    out_dates: list[Any] = []
+    out_values: list[float] = []
+    for date in ordered:
+        finite = raw_values[raw_dates == date]
+        finite = finite[np.isfinite(finite)]
+        if finite.size == 0:
+            continue
+        out_dates.append(date)
+        out_values.append(float(np.mean(finite)))
+    return np.asarray(out_dates, dtype=object), np.asarray(out_values, dtype=float)
+
+
+def nonoverlapping_origin_mask(session_positions: object, horizon_bars: int) -> NDArray[np.bool_]:
+    """Keep origins whose *h*-bar realized windows do not overlap.
+
+    ``session_positions`` are strictly increasing integer session indices
+    aligned with the origin series. Origin *i* is kept if its session index is
+    at least ``horizon_bars`` after the previously kept origin (Hansen–Lunde
+    nonoverlapping subsample). Empty input returns an empty mask.
+    """
+    horizon = _require_positive_int("horizon_bars", horizon_bars)
+    pos = np.asarray(session_positions)
+    if pos.ndim != 1:
+        raise ValueError("session_positions must be 1d")
+    if pos.size == 0:
+        return np.asarray([], dtype=bool)
+    if not np.issubdtype(pos.dtype, np.integer):
+        if not np.issubdtype(pos.dtype, np.floating) or not np.all(pos == np.floor(pos)):
+            raise ValueError("session_positions must be integer-valued")
+        pos = pos.astype(int)
+    if not np.isfinite(np.asarray(pos, dtype=float)).all():
+        raise ValueError("session_positions must be finite")
+    if pos.size >= 2 and np.any(np.diff(pos.astype(int)) <= 0):
+        raise ValueError("session_positions must be strictly increasing")
+    keep = np.zeros(pos.size, dtype=bool)
+    next_allowed = int(pos[0])
+    for i, session in enumerate(pos.tolist()):
+        index = int(session)
+        if index >= next_allowed:
+            keep[i] = True
+            next_allowed = index + horizon
+    return keep
+
+
+def overlap_aware_qlike(
+    dates: object,
+    forecast: Array,
+    realized: Array,
+    *,
+    horizon_bars: int,
+    floor: float = 1e-12,
+    session_index: dict[Any, int] | None = None,
+) -> dict[str, Any]:
+    """Date-level QLIKE for a market forecast with nonoverlapping *h*-step origins.
+
+    A date-level (equal-weight) forecast must be unique within each date;
+    name-level realized variance is collapsed with the same equal-weight mean.
+    Primary ``qlike`` uses the nonoverlapping origin subsample so consecutive
+    *h*-bar realized windows are not double-counted. ``qlike_overlapping`` is
+    the diagnostic on every origin date. Empty nonoverlapping subsamples fail
+    closed rather than silently scoring overlapping windows as independent.
+    """
+    horizon = _require_positive_int("horizon_bars", horizon_bars)
+    if not np.isfinite(floor) or float(floor) <= 0.0:
+        raise ValueError("floor must be finite and positive")
+    raw_dates = np.asarray(dates)
+    yhat = _as_1d("forecast", np.asarray(forecast, dtype=float))
+    y = _as_1d("realized", np.asarray(realized, dtype=float))
+    if raw_dates.shape[0] != yhat.shape[0] or yhat.shape[0] != y.shape[0]:
+        raise ValueError("dates, forecast, and realized must have the same length")
+    if raw_dates.size == 0:
+        raise ValueError("overlap-aware QLIKE requires at least one observation")
+    for date in sorted(set(raw_dates.tolist())):
+        finite = yhat[raw_dates == date]
+        finite = finite[np.isfinite(finite)]
+        if finite.size > 1 and int(np.unique(finite).size) > 1:
+            raise ValueError("forecast must be unique within each date")
+    date_keys, forecast_d = date_level_equal_weight(raw_dates, yhat)
+    realized_keys, realized_d = date_level_equal_weight(raw_dates, y)
+    if date_keys.size == 0 or realized_keys.size == 0:
+        raise ValueError("overlap-aware QLIKE has no finite date-level observations")
+    if date_keys.shape != realized_keys.shape or not np.array_equal(date_keys, realized_keys):
+        shared = [key for key in date_keys.tolist() if key in set(realized_keys.tolist())]
+        if not shared:
+            raise ValueError("overlap-aware QLIKE has no overlapping finite dates")
+        forecast_lookup = {
+            key: float(val) for key, val in zip(date_keys.tolist(), forecast_d, strict=True)
+        }
+        realized_lookup = {
+            key: float(val) for key, val in zip(realized_keys.tolist(), realized_d, strict=True)
+        }
+        date_keys = np.asarray(shared, dtype=object)
+        forecast_d = np.asarray([forecast_lookup[key] for key in shared], dtype=float)
+        realized_d = np.asarray([realized_lookup[key] for key in shared], dtype=float)
+    if session_index is None:
+        positions = np.arange(date_keys.size, dtype=int)
+    else:
+        try:
+            positions = np.asarray(
+                [int(session_index[key]) for key in date_keys.tolist()], dtype=int
+            )
+        except KeyError as exc:
+            raise ValueError("session_index missing origin date") from exc
+        if positions.size >= 2 and np.any(np.diff(positions) <= 0):
+            raise ValueError("session_index positions must be strictly increasing along dates")
+    keep = nonoverlapping_origin_mask(positions, horizon)
+    if int(keep.sum()) < 1:
+        raise ValueError("nonoverlapping origin subsample is empty")
+    return {
+        "qlike": qlike(realized_d[keep], forecast_d[keep], floor),
+        "qlike_overlapping": qlike(realized_d, forecast_d, floor),
+        "n_origins_nonoverlapping": int(keep.sum()),
+        "n_origins_overlapping": int(date_keys.size),
+        "horizon_bars": horizon,
+        "scoring_scope": "date_level_equal_weight",
+    }
+
+
+def _mean_finite(values: Array) -> float:
+    arr = np.asarray(values, dtype=float).reshape(-1)
+    finite = arr[np.isfinite(arr)]
+    if finite.size == 0:
+        return float("nan")
+    return float(np.mean(finite))
+
+
+def one_step_density_summary(
+    dates: object,
+    log_scores: Array,
+    crps: Array,
+    pits: Array,
+    *,
+    horizon_bars: int,
+    session_index: dict[Any, int] | None = None,
+) -> dict[str, Any]:
+    """Aggregate one-step density scores on unique date-level origins.
+
+    Primary ``log_score_one_step`` / ``crps_one_step`` average every origin:
+    a one-step return density does not double-count an *h*-bar realized window.
+    Companion ``*_qlike_origins`` keys reuse the Hansen–Lunde stride so the
+    density diagnostics can be compared on the same origin subset as QLIKE.
+    Empty input fails closed. Research-diagnostic only.
+    """
+    horizon = _require_positive_int("horizon_bars", horizon_bars)
+    raw_dates = np.asarray(dates)
+    log_arr = _as_1d("log_scores", np.asarray(log_scores, dtype=float))
+    crps_arr = _as_1d("crps", np.asarray(crps, dtype=float))
+    pit_arr = _as_1d("pits", np.asarray(pits, dtype=float))
+    if raw_dates.shape[0] != log_arr.shape[0] or log_arr.shape[0] != crps_arr.shape[0]:
+        raise ValueError("dates, log_scores, and crps must have the same length")
+    if pit_arr.shape[0] != log_arr.shape[0]:
+        raise ValueError("pits must have the same length as log_scores")
+    if raw_dates.size == 0:
+        raise ValueError("one-step density summary requires at least one origin")
+    if len(set(raw_dates.tolist())) != raw_dates.size:
+        raise ValueError("one-step density origins must be unique dates")
+    if session_index is None:
+        positions = np.arange(raw_dates.size, dtype=int)
+    else:
+        try:
+            positions = np.asarray(
+                [int(session_index[key]) for key in raw_dates.tolist()], dtype=int
+            )
+        except KeyError as exc:
+            raise ValueError("session_index missing origin date") from exc
+        if positions.size >= 2 and np.any(np.diff(positions) <= 0):
+            raise ValueError("session_index positions must be strictly increasing along dates")
+    keep = nonoverlapping_origin_mask(positions, horizon)
+    log_mean = _mean_finite(log_arr)
+    pit_stat, pit_p = pit_ks(pit_arr)
+    return {
+        "log_score_one_step": log_mean,
+        "ignorance_one_step": (-log_mean if np.isfinite(log_mean) else float("nan")),
+        "crps_one_step": _mean_finite(crps_arr),
+        "pit_ks_one_step": float(pit_stat),
+        "pit_ks_p_one_step": float(pit_p),
+        "n_density_origins": int(raw_dates.size),
+        "n_density_origins_qlike_stride": int(keep.sum()),
+        "log_score_one_step_qlike_origins": _mean_finite(log_arr[keep]),
+        "crps_one_step_qlike_origins": _mean_finite(crps_arr[keep]),
+        "density_horizon": 1,
+        "density_target": "date_level_ret_1",
+        "scoring_scope": "date_level_equal_weight",
+        "horizon_bars": horizon,
+    }
+
+
+def _security_id_list(security_ids: object) -> list[str]:
+    raw = np.asarray(security_ids)
+    if raw.ndim != 1:
+        raise ValueError("security_ids must be 1d")
+    out: list[str] = []
+    for item in raw.tolist():
+        if isinstance(item, bool) or item is None or not isinstance(item, str):
+            raise ValueError("security_ids must be strings")
+        sid = item.strip()
+        if not sid:
+            raise ValueError("security_ids must be non-empty")
+        out.append(sid)
+    return out
+
+
+def _require_unique_name_dates(security_ids: list[str], dates: np.ndarray) -> None:
+    keys = list(zip(security_ids, dates.tolist(), strict=True))
+    if len(keys) != len(set(keys)):
+        raise ValueError("name-level origins must be unique (security_id, event_time)")
+
+
+def _per_name_nonoverlapping_mask(
+    security_ids: list[str],
+    dates: np.ndarray,
+    *,
+    horizon_bars: int,
+    session_index: dict[Any, int] | None,
+) -> NDArray[np.bool_]:
+    """Hansen–Lunde stride applied independently on each name's calendar."""
+    n = len(security_ids)
+    keep = np.zeros(n, dtype=bool)
+    if n == 0:
+        return keep
+    calendar = (
+        {date: i for i, date in enumerate(sorted(set(dates.tolist())))}
+        if session_index is None
+        else session_index
+    )
+    by_name: dict[str, list[int]] = {}
+    for i, sid in enumerate(security_ids):
+        by_name.setdefault(sid, []).append(i)
+    for idxs in by_name.values():
+        ordered = sorted(idxs, key=lambda i: (dates[i], i))
+        try:
+            positions = np.asarray([int(calendar[dates[i]]) for i in ordered], dtype=int)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("session_index missing origin date") from exc
+        if positions.size >= 2 and np.any(np.diff(positions) <= 0):
+            raise ValueError("session_index positions must be strictly increasing along dates")
+        name_keep = nonoverlapping_origin_mask(positions, horizon_bars)
+        for flag, index in zip(name_keep.tolist(), ordered, strict=True):
+            keep[index] = bool(flag)
+    return keep
+
+
+def name_level_qlike(
+    security_ids: object,
+    dates: object,
+    forecast: Array,
+    realized: Array,
+    *,
+    horizon_bars: int,
+    floor: float = 1e-12,
+    session_index: dict[Any, int] | None = None,
+) -> dict[str, Any]:
+    """Per-name QLIKE with Hansen–Lunde stride applied independently per name.
+
+    Unlike ``overlap_aware_qlike``, this does not equal-weight collapse names
+    within a date. Duplicate ``(security_id, event_time)`` keys fail closed.
+    Primary ``qlike`` pools the union of per-name nonoverlapping origins.
+    ``qlike_overlapping`` scores every name-date pair. Research-diagnostic
+    only — not a live-performance or market-overlay claim.
+    """
+    horizon = _require_positive_int("horizon_bars", horizon_bars)
+    if not np.isfinite(floor) or float(floor) <= 0.0:
+        raise ValueError("floor must be finite and positive")
+    ids = _security_id_list(security_ids)
+    raw_dates = np.asarray(dates)
+    yhat = _as_1d("forecast", np.asarray(forecast, dtype=float))
+    y = _as_1d("realized", np.asarray(realized, dtype=float))
+    if raw_dates.ndim != 1:
+        raise ValueError("dates must be 1d")
+    if raw_dates.shape[0] != len(ids) or yhat.shape[0] != len(ids) or y.shape[0] != len(ids):
+        raise ValueError("security_ids, dates, forecast, and realized must have the same length")
+    if raw_dates.size == 0:
+        raise ValueError("name-level QLIKE requires at least one observation")
+    _require_unique_name_dates(ids, raw_dates)
+    keep = _per_name_nonoverlapping_mask(
+        ids, raw_dates, horizon_bars=horizon, session_index=session_index
+    )
+    if int(keep.sum()) < 1:
+        raise ValueError("nonoverlapping origin subsample is empty")
+    return {
+        "qlike": qlike(y[keep], yhat[keep], floor),
+        "qlike_overlapping": qlike(y, yhat, floor),
+        "n_origins_nonoverlapping": int(keep.sum()),
+        "n_origins_overlapping": int(raw_dates.size),
+        "n_names": int(len(set(ids))),
+        "horizon_bars": horizon,
+        "scoring_scope": "security_level_ret_1",
+    }
+
+
+def name_level_one_step_density_summary(
+    security_ids: object,
+    dates: object,
+    log_scores: Array,
+    crps: Array,
+    pits: Array,
+    *,
+    horizon_bars: int,
+    session_index: dict[Any, int] | None = None,
+) -> dict[str, Any]:
+    """Aggregate one-step density scores on unique ``(security_id, event_time)``.
+
+    Primary ``log_score_one_step`` / ``crps_one_step`` average every name-origin
+    pair. Companion ``*_qlike_origins`` keys reuse the per-name Hansen–Lunde
+    stride so density diagnostics can be compared on the same subsample as
+    name-level QLIKE. PIT KS is a pooled calibration diagnostic; contemporaneous
+    names remain cross-sectionally dependent. Empty input fails closed.
+    Research-diagnostic only.
+    """
+    horizon = _require_positive_int("horizon_bars", horizon_bars)
+    ids = _security_id_list(security_ids)
+    raw_dates = np.asarray(dates)
+    log_arr = _as_1d("log_scores", np.asarray(log_scores, dtype=float))
+    crps_arr = _as_1d("crps", np.asarray(crps, dtype=float))
+    pit_arr = _as_1d("pits", np.asarray(pits, dtype=float))
+    if raw_dates.ndim != 1:
+        raise ValueError("dates must be 1d")
+    if raw_dates.shape[0] != len(ids) or log_arr.shape[0] != len(ids):
+        raise ValueError("security_ids, dates, and log_scores must have the same length")
+    if crps_arr.shape[0] != len(ids) or pit_arr.shape[0] != len(ids):
+        raise ValueError("crps and pits must have the same length as security_ids")
+    if raw_dates.size == 0:
+        raise ValueError("name-level one-step density summary requires at least one origin")
+    _require_unique_name_dates(ids, raw_dates)
+    keep = _per_name_nonoverlapping_mask(
+        ids, raw_dates, horizon_bars=horizon, session_index=session_index
+    )
+    log_mean = _mean_finite(log_arr)
+    pit_stat, pit_p = pit_ks(pit_arr)
+    return {
+        "log_score_one_step": log_mean,
+        "ignorance_one_step": (-log_mean if np.isfinite(log_mean) else float("nan")),
+        "crps_one_step": _mean_finite(crps_arr),
+        "pit_ks_one_step": float(pit_stat),
+        "pit_ks_p_one_step": float(pit_p),
+        "n_density_origins": int(raw_dates.size),
+        "n_density_origins_qlike_stride": int(keep.sum()),
+        "n_names": int(len(set(ids))),
+        "log_score_one_step_qlike_origins": _mean_finite(log_arr[keep]),
+        "crps_one_step_qlike_origins": _mean_finite(crps_arr[keep]),
+        "density_horizon": 1,
+        "density_target": "security_level_ret_1",
+        "scoring_scope": "security_level_ret_1",
+        "horizon_bars": horizon,
+    }
 
 
 def pearson_ic(pred: Array, realized: Array) -> float:

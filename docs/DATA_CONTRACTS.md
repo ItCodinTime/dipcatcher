@@ -16,6 +16,19 @@ Every stored observation includes:
 
 `available_time <= decision_time` is mandatory for every feature. For daily bars, default `available_time = event_time` (close). Ingestion lag is recorded but does not relax availability.
 
+### Public file tape (Stooq)
+
+`quant_fund.data.adapters.stooq` writes a PIT-shaped lake from Stooq daily CSVs.
+If Stooq returns a JavaScript challenge instead of CSV, `yahoo_eod` writes the
+same lake from Yahoo v8 daily charts (`revision_id=YAHOO_VENDOR_ADJ`).
+`available_time` equals session close (16:00 America/New_York for US, 16:30
+Europe/London for UK) — a close-published convention, **not** SIP as-of
+vintages. Vendor EOD prints are **split-adjusted as received**; bronze stores
+them with an explicit vendor-adjusted revision and silver split factors are
+identity unless a separate corporate-action file is supplied. Universe
+membership is a liquidity filter on this tape, not an index reconstitution.
+This tape can be scored scientifically. It cannot mint a live P&L claim.
+
 ## Bars (bronze)
 
 Columns: `security_id`, `symbol`, `event_time`, `available_time`, `ingested_time`, `source`, `revision_id`, `open`, `high`, `low`, `close`, `volume`, `currency`, `session`.
@@ -49,19 +62,19 @@ Computed, never replacing raw:
 
 ## Security master
 
-`security_id`, `ticker`, `name`, `exchange`, `currency`, `sector`, `industry`, `valid_from`, `valid_to`. Ticker lookup is as-of dated.
+`security_id`, `ticker`, `name`, `exchange`, `currency`, `sector`, `industry`, `valid_from`, `valid_to`, plus the universal PIT fields `available_time`, `ingested_time`, `source`, and `revision_id`. Ticker lookup is as-of dated: `valid_from`/`valid_to` define the economic window, while `available_time` is when the mapping could be known. Late-arriving restatements may have `valid_from` earlier than `available_time`; they must not rewrite pre-availability identity. The file adapter fails closed on missing PIT/identity columns, blank source/ticker/security_id, inverted windows, and duplicate `(security_id, valid_from)` or `(ticker, valid_from)` rows. Direct `FrameSecurityMaster` callers without `available_time` retain the legacy valid-window lookup.
 
 ## Universe membership
 
-`effective_from`, `effective_to`, `security_id`, `symbol`, `sector`, `industry`, `exchange`. Membership at \(t\) uses only information with `available_time <= t` (trailing ADV, price, history). Today's index constituents are never applied historically. Delisted names remain in history through `effective_to`.
+`effective_from`, `effective_to`, `security_id`, `symbol`, `sector`, `industry`, `exchange`. Membership at \(t\) uses only information with `available_time <= t` (trailing ADV, price, history, and PIT-visible `delist` / `ticker_change` corporate actions). Today's index constituents are never applied historically. Delisted names remain in history through the last listed session; late-arriving delists cannot rewrite pre-availability membership. Ingest persists `silver/universe.parquet` and drops post-delist bars from the silver panel once the event is knowable. `ticker_change` requires a non-blank `new_ticker` and overrides `symbol` only after both `event_time` and `available_time`. Gold features/labels, cross-sectional ranks, market aggregates, and the paper/backtest feature panel inner-join that membership on `(security_id, event_time)`; name-level rolling history is still computed on silver, but ineligible names cannot move decision-time ranks or remain in the persisted gold panel. An empty or duplicate-keyed universe artifact fails closed rather than silently training on the unfiltered silver panel. Cached gold loaded by training/forecast `panel()` is checked again against the current universe artifact: keys outside membership fail closed, and the panel cache is keyed by universe bytes so an in-place membership replacement cannot reuse a stale joined frame. The causal GARCH market overlay uses that same membership when the universe artifact exists: ineligible names on paper/backtest execution bars cannot move `max_predicted_vol`. The overlay as-of cache is keyed by a digest of the full causal return path.
 
 ## Feature frames (gold)
 
-Must include `decision_time`, `max_source_available_time`, `security_id`, feature columns, and `feature_set_version`. Building a frame with `max_source_available_time > decision_time` raises `PointInTimeError`.
+Must include `decision_time`, `max_source_available_time`, `security_id`, feature columns, and `feature_set_version`. Building a frame with `max_source_available_time > decision_time` raises `PointInTimeError`. Production `build_gold` persists only PIT-universe members at each `event_time`; cross-sectional and market aggregates use that same membership, not the full silver panel. Loading cached gold for training or `forecast_asof` re-checks those keys against `silver/universe.parquet` and refuses ineligible rows.
 
 ## Forecasts
 
-See `AssetForecast` in `quant_fund.schemas.forecast`. Horizon keys are strings `1d`, `5d`, `20d`. All engines write `model_version`. Optional conformal fields `interval_lo`, `interval_hi`, `interval_alpha`, and `interval_method` (`mondrian_cqr` / `split_cqr`) are coverage-guaranteed sets and do not replace raw quantile PIT, pinball, or CRPS.
+See `AssetForecast` in `quant_fund.schemas.forecast`. Horizon keys are strings `1d`, `5d`, `20d`. All engines write `model_version`. Optional conformal fields `interval_lo`, `interval_hi`, `interval_alpha`, and `interval_method` (`mondrian_cqr` / `split_cqr`) are coverage-guaranteed sets and do not replace raw quantile PIT, pinball, or CRPS. When `robinhood_plus.enabled` and `blend_weight > 0`, fused forecasts may carry K-line path expected returns / quantiles / `P(R>0)` from split-adjusted lookback bars with `event_time` (and `available_time` when present) \(\le\) the decision clock. Every as-of stamps `robinhood_plus_n_ok` and `robinhood_plus_n_fallback`; a missing OHLC window is a fallback, never a fabricated path. Diagnostics stamp `core_engine=robinhood_plus` only when that name produced a finite path and the blend is applied; fusion still wraps and the risk gate still applies.
 
 ## Persisted model and target-weight artifacts
 

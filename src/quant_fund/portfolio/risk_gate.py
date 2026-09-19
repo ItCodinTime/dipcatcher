@@ -9,6 +9,19 @@ from quant_fund.schemas.errors import RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide
 
 
+def resolve_gate_predicted_vol(name_vol: float, market_vol: float | None) -> float:
+    """Vol compared to ``max_predicted_vol``.
+
+    A present date-level market overlay (Realized GARCH Parkinson when
+    ``vol_realized_garch.joblib`` is available, else return-only GARCH) replaces
+    name-level ``vol_20`` for the gate. Impact/cost models keep the name vol.
+    ``market_vol is None`` keeps the legacy name-vol comparison.
+    """
+    if market_vol is None:
+        return float(name_vol)
+    return float(market_vol)
+
+
 def check_order(
     order: Order,
     *,
@@ -22,9 +35,20 @@ def check_order(
     config: AppConfig,
     price_age_bars: int | None = None,
     model_age_hours: float | None = None,
+    market_predicted_vol: float | None = None,
 ) -> None:
     g = config.risk_gate
-    values = (nav, price, current_weight, gross_after, net_after, participation, predicted_vol)
+    values: list[float] = [
+        nav,
+        price,
+        current_weight,
+        gross_after,
+        net_after,
+        participation,
+        predicted_vol,
+    ]
+    if market_predicted_vol is not None:
+        values.append(market_predicted_vol)
     if any(not math.isfinite(float(value)) for value in values):
         raise RiskGateRejected("non-finite pre-trade risk input")
     if nav <= 0.0 or price <= 0.0:
@@ -34,6 +58,8 @@ def check_order(
     if participation < 0.0:
         raise RiskGateRejected("participation cannot be negative")
     if predicted_vol < 0.0:
+        raise RiskGateRejected("predicted volatility cannot be negative")
+    if market_predicted_vol is not None and market_predicted_vol < 0.0:
         raise RiskGateRejected("predicted volatility cannot be negative")
     if not math.isfinite(float(order.quantity)) or order.quantity <= 0.0:
         raise RiskGateRejected("quantity must be finite and strictly positive")
@@ -62,5 +88,6 @@ def check_order(
         raise RiskGateRejected(f"net {net_after} > {g.max_net}")
     if participation > g.max_participation:
         raise RiskGateRejected(f"participation {participation} > {g.max_participation}")
-    if predicted_vol > g.max_predicted_vol:
-        raise RiskGateRejected(f"predicted vol {predicted_vol} > {g.max_predicted_vol}")
+    gate_vol = resolve_gate_predicted_vol(predicted_vol, market_predicted_vol)
+    if gate_vol > g.max_predicted_vol:
+        raise RiskGateRejected(f"predicted vol {gate_vol} > {g.max_predicted_vol}")

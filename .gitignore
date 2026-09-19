@@ -26,5 +26,13 @@ data/gold/**
 !data/gold/.gitkeep
 data/metadata/**
 !data/metadata/.gitkeep
+data/file_us/**
+data/file_uk/**
+artifacts/hedge_lab/**
+!artifacts/hedge_lab/.gitkeep
+!artifacts/hedge_lab/*.json
 .ipynb_checkpoints/
 uv.lock.bak
+third_party/kronos_src/
+third_party/kronos_weights/
+.tmp_*/

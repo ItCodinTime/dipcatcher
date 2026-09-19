@@ -14,17 +14,22 @@ from quant_fund.config.models import AppConfig
 from quant_fund.data.ingest import ingest
 from quant_fund.data.lake import Lake
 from quant_fund.data.point_in_time import validate_feature_frame
+from quant_fund.data.universe import (
+    require_panel_keys_in_membership,
+    require_valid_membership_panel,
+)
 from quant_fund.features.engine import build_features
 from quant_fund.features.metadata import FEATURE_SET_VERSION
 from quant_fund.labels.engine import build_labels
 from quant_fund.models.ranking import available_features
+from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.hashing import hash_file
 
 # Process-local cache: avoid re-reading gold parquet on every asof date. The
 # cache key includes content digests, not only mtimes, so an in-place artifact
 # replacement cannot silently reuse stale research inputs. File metadata is a
 # cheap first-level guard; a full digest is recomputed only after metadata moves.
-_PANEL_CACHE: dict[tuple[str, str, str], pl.DataFrame] = {}
+_PANEL_CACHE: dict[tuple[str, str, str, str], pl.DataFrame] = {}
 _FILE_DIGEST_CACHE: dict[Path, tuple[tuple[int, int, int, int, int], str]] = {}
 
 
@@ -50,24 +55,65 @@ def _cached_file_digest(path: Path) -> str:
     return digest
 
 
-def _panel_cache_key(root: Path, feat_path: Path, lab_path: Path) -> tuple[str, str, str] | None:
-    if not feat_path.is_file() or not lab_path.is_file():
+def _universe_path(root: Path) -> Path:
+    return Path(root) / "silver" / "universe.parquet"
+
+
+def _panel_cache_key(
+    root: Path, feat_path: Path, lab_path: Path
+) -> tuple[str, str, str, str] | None:
+    univ_path = _universe_path(root)
+    if not feat_path.is_file() or not lab_path.is_file() or not univ_path.is_file():
         return None
-    return (str(root.resolve()), _cached_file_digest(feat_path), _cached_file_digest(lab_path))
+    return (
+        str(root.resolve()),
+        _cached_file_digest(feat_path),
+        _cached_file_digest(lab_path),
+        _cached_file_digest(univ_path),
+    )
 
 
 def ensure_silver(config: AppConfig, *, refresh: bool = False) -> pl.DataFrame:
     lake = Lake(Path(config.data.root))
-    if refresh or not lake.exists("silver/bars.parquet"):
+    if (
+        refresh
+        or not lake.exists("silver/bars.parquet")
+        or not lake.exists("silver/universe.parquet")
+    ):
         ingest(config)
     return lake.read_parquet("silver/bars.parquet")
+
+
+def read_membership_artifact(config: AppConfig) -> pl.DataFrame:
+    """Read the persisted PIT universe without ingesting or rebuilding silver.
+
+    Training ``panel()`` uses this so a missing universe cannot be repaired by
+    a silent re-ingest that would disagree with already-materialized gold.
+    """
+    lake = Lake(Path(config.data.root))
+    if not lake.exists("silver/universe.parquet"):
+        raise PointInTimeError("silver/universe.parquet is required for gold and decision panels")
+    membership = lake.read_parquet("silver/universe.parquet")
+    require_valid_membership_panel(membership)
+    if membership.is_empty():
+        raise PointInTimeError(
+            "universe membership is empty; refusing to materialize gold from the unfiltered panel"
+        )
+    return membership
+
+
+def load_membership(config: AppConfig, *, refresh: bool = False) -> pl.DataFrame:
+    """Load the PIT universe artifact after ensuring silver exists."""
+    ensure_silver(config, refresh=refresh)
+    return read_membership_artifact(config)
 
 
 def build_gold(config: AppConfig, *, refresh: bool = False) -> tuple[pl.DataFrame, pl.DataFrame]:
     lake = Lake(Path(config.data.root))
     bars = ensure_silver(config, refresh=refresh)
-    feats = build_features(bars, config)
-    labs = build_labels(bars, config)
+    membership = load_membership(config, refresh=False)
+    feats = build_features(bars, config, membership=membership)
+    labs = build_labels(bars, config, membership=membership)
     lake.write_parquet(feats, "gold/features.parquet")
     lake.write_parquet(labs, "gold/labels.parquet")
     return feats, labs
@@ -125,6 +171,14 @@ def panel(
         )
     else:
         validate_feature_frame(feats, cast(datetime, feats.get_column("event_time").min()))
+
+    # Wave 108 joins membership at gold materialization. Cached gold is still
+    # untrusted: a later universe rebuild or hand-edit must not train names the
+    # current PIT membership rejected. Do not ingest here; missing universe
+    # fails closed instead of silently rebuilding silver under stale gold.
+    membership = read_membership_artifact(config)
+    require_panel_keys_in_membership(feats, membership)
+    require_panel_keys_in_membership(labs, membership)
 
     keys = ["security_id", "event_time"]
     lab_cols = [c for c in labs.columns if c.startswith("future_") or c in keys]

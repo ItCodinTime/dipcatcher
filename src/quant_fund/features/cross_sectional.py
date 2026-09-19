@@ -4,6 +4,25 @@ from __future__ import annotations
 
 import polars as pl
 
+_MEMBERSHIP_FLAG = "_in_universe"
+
+
+def decision_eligible_expr(df: pl.DataFrame) -> pl.Expr:
+    """Rows allowed to enter a decision-time cross-section.
+
+    Late ``available_time`` is excluded (Wave 94). When ``_in_universe`` is
+    stamped, names outside the PIT membership panel are also excluded so
+    ineligible ADV/listing rows cannot move ranks or market aggregates.
+    """
+    eligible = (
+        pl.col("available_time") <= pl.col("event_time")
+        if "available_time" in df.columns
+        else pl.lit(True)
+    )
+    if _MEMBERSHIP_FLAG in df.columns:
+        eligible = eligible & pl.col(_MEMBERSHIP_FLAG).fill_null(False)
+    return eligible
+
 
 def apply_cross_sectional(
     df: pl.DataFrame,
@@ -13,11 +32,7 @@ def apply_cross_sectional(
 ) -> pl.DataFrame:
     out = df
     lo, hi = winsor_p, 1.0 - winsor_p
-    eligible = (
-        pl.col("available_time") <= pl.col("event_time")
-        if "available_time" in df.columns
-        else pl.lit(True)
-    )
+    eligible = decision_eligible_expr(df)
     for col in columns:
         g = pl.col(col)
         # Late-arriving observations must not influence the cross-section at

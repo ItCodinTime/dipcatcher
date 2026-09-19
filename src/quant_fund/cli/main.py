@@ -68,6 +68,18 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         "verify-research: runs northset_session_means_honesty_errors "
         "(session soft-verify dispatcher; research_only, no Sharpe)"
     )
+    typer.echo(
+        "robinhood-plus: dipcatcher robinhood-plus --g1 "
+        "(public-feature ridge vs Kronos-mini; SYNTHETIC not promotable)"
+    )
+    typer.echo(
+        "sota: dipcatcher sota "
+        "(frozen protocol, dual scoreboards, calibration gate; research_only)"
+    )
+    typer.echo(
+        "hedge-lab: dipcatcher hedge-lab "
+        "(paper-book Sharpe/Calmar/Sortino; not a live claim; blend_weight stays 0)"
+    )
     cfg = _cfg(config)
     ns = cfg.northset
     typer.echo(
@@ -133,7 +145,8 @@ def train_callback(
     if ctx.invoked_subcommand is not None:
         return
     typer.echo(
-        "Specify a family: ranking, distribution, volatility, alpha, regime, tail, covariance, liquidity"
+        "Specify a family: ranking, distribution, volatility, alpha, regime, tail, "
+        "covariance, liquidity, robinhood_plus"
     )
 
 
@@ -195,6 +208,14 @@ def train_liquidity(config: Path = typer.Option(Path("configs/research.yaml"))) 
     _train("liquidity", config, None)
 
 
+@train_app.command("robinhood-plus")
+def train_robinhood_plus_cmd(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    model: str = "hierarchical_markov",
+) -> None:
+    _train("robinhood_plus", config, model)
+
+
 @app.command()
 def validate(
     model_id: str,
@@ -241,6 +262,16 @@ def forecast(
     state = forecast_asof(cfg, asof)
     if "SYNTHETIC" in state.notes:
         typer.echo("SYNTHETIC")
+    if state.garch_market_sigma is not None:
+        typer.echo(
+            "garch_market "
+            f"sigma={state.garch_market_sigma:.4f} "
+            f"var={state.garch_market_variance} "
+            f"scope={state.garch_series_scope} "
+            f"overlay={state.market_risk_overlay} "
+            f"status={state.garch_fit_status} "
+            f"n_obs={state.garch_n_obs}"
+        )
     for f in state.forecasts[:15]:
         hz = next(iter(f.interval_lo), "5d")
         lo = f.interval_lo.get(hz)
@@ -255,6 +286,147 @@ def forecast(
             f"{f.symbol:8} alpha={f.alpha.get('5d', 0):+.4%} rank={f.rank_percentile.get('5d', 0):.2f} "
             f"vol={f.volatility.get('5d', 0):.3f}{extra}"
         )
+
+
+@app.command("robinhood-plus")
+def robinhood_plus_cmd(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    compare: bool = typer.Option(False, "--compare", help="Ridge vs robinhood+ causal card"),
+    kronos_mini: bool = typer.Option(
+        False, "--kronos-mini", help="Also score local Kronos-mini vs numpy vs ridge"
+    ),
+    g1: bool = typer.Option(
+        False, "--g1", help="Fair public-feature ridge vs Kronos-mini (oracle columns dropped)"
+    ),
+) -> None:
+    """Run the robinhood+ K-line foundation bench (Kronos-derived, research only)."""
+    import json
+
+    from quant_fund.models.robinhood_plus.bench import bench_robinhood_plus
+    from quant_fund.models.robinhood_plus.compare import (
+        compare_g1_public_ridge_vs_kronos,
+        compare_numpy_vs_kronos_mini_vs_ridge,
+        compare_ridge_vs_robinhood_plus,
+    )
+    from quant_fund.models.robinhood_plus.constants import AFFILIATION_DISCLAIMER, ENGINE_DISPLAY
+    from quant_fund.pipeline.dataset import panel
+
+    cfg = _cfg(config)
+    gold = panel(cfg)
+    if g1:
+        receipt = compare_g1_public_ridge_vs_kronos(cfg, gold)
+    elif kronos_mini:
+        receipt = compare_numpy_vs_kronos_mini_vs_ridge(cfg, gold)
+    elif compare:
+        receipt = compare_ridge_vs_robinhood_plus(cfg, gold)
+    else:
+        receipt = bench_robinhood_plus(gold, cfg)
+    if cfg.data.source == "synthetic":
+        typer.echo("SYNTHETIC")
+        typer.echo("SYNTHETIC is not promotion evidence and cannot take a champion alias")
+    typer.echo(f"{ENGINE_DISPLAY} — Kronos-derived K-line foundation engine")
+    typer.echo(AFFILIATION_DISCLAIMER)
+    typer.echo(json.dumps(receipt, indent=2, default=str))
+
+
+@app.command()
+def sota(
+    config: Path = typer.Option(Path("configs/sota_g1.yaml")),
+    protocol: Path = typer.Option(Path("configs/sota_protocol.yaml")),
+    skip_torch: bool = typer.Option(False, "--skip-torch"),
+    skip_path: bool = typer.Option(False, "--skip-path"),
+    skip_calibration: bool = typer.Option(False, "--skip-calibration"),
+    fetch_tape: bool = typer.Option(
+        False, "--fetch-tape", help="Download Stooq US daily bars into data/file_us/raw"
+    ),
+    fetch_uk: bool = typer.Option(
+        False, "--fetch-uk", help="Download Stooq UK daily bars into data/file_uk/raw"
+    ),
+) -> None:
+    """Frozen SOTA protocol: G1, path RankIC, calibration gate. Research only."""
+    import json
+
+    from quant_fund.data.adapters.stooq import UK_LIQUID, US_LIQUID, download_stooq_universe
+    from quant_fund.data.adapters.yahoo_eod import YAHOO_UK, YAHOO_US, download_yahoo_universe
+    from quant_fund.models.robinhood_plus.constants import AFFILIATION_DISCLAIMER, ENGINE_DISPLAY
+    from quant_fund.research.sota_protocol import load_sota_protocol, run_sota_protocol
+
+    if fetch_tape:
+        tape = download_stooq_universe(Path("data/file_us/raw"), US_LIQUID)
+        if tape.get("status") != "ok":
+            tape = download_yahoo_universe(Path("data/file_us/raw"), YAHOO_US)
+            tape["stooq_fallback"] = "yahoo_v8_chart"
+        typer.echo(json.dumps(tape, indent=2, default=str))
+    if fetch_uk:
+        tape_uk = download_stooq_universe(Path("data/file_uk/raw"), UK_LIQUID)
+        if tape_uk.get("status") != "ok":
+            tape_uk = download_yahoo_universe(Path("data/file_uk/raw"), YAHOO_UK)
+            tape_uk["stooq_fallback"] = "yahoo_v8_chart"
+        typer.echo(json.dumps(tape_uk, indent=2, default=str))
+    cfg = _cfg(config)
+    proto = load_sota_protocol(protocol)
+    receipt = run_sota_protocol(
+        cfg,
+        proto,
+        include_torch=not skip_torch,
+        include_path_rankic=not skip_path,
+        include_calibration=not skip_calibration,
+    )
+    if cfg.data.source == "synthetic":
+        typer.echo("SYNTHETIC")
+        typer.echo("SYNTHETIC is not promotion evidence and cannot take a champion alias")
+    typer.echo(f"{ENGINE_DISPLAY} — frozen protocol {proto.protocol_id}")
+    typer.echo(AFFILIATION_DISCLAIMER)
+    typer.echo(json.dumps(receipt, indent=2, default=str))
+
+
+@app.command("hedge-lab")
+def hedge_lab(
+    config: Path = typer.Option(Path("configs/hedge_lab.yaml")),
+    skip_bootstrap: bool = typer.Option(False, "--skip-bootstrap"),
+    n_boot: int | None = typer.Option(None, "--n-boot"),
+    fetch_tape: bool = typer.Option(
+        False, "--fetch-tape", help="Download expanded Yahoo US daily bars into data/file_us/raw"
+    ),
+    fetch_zoo: bool = typer.Option(
+        False, "--fetch-zoo", help="Snapshot Kronos-small weights locally; never Hub in CI"
+    ),
+    skip_ram_claim: bool = typer.Option(False, "--skip-ram-claim"),
+    rebalance_every: int = typer.Option(5, "--rebalance-every"),
+    no_risk_overlay: bool = typer.Option(False, "--no-risk-overlay"),
+) -> None:
+    """Paper-book fund lab: causal weights, costs, Sharpe/Calmar. Not live P&L."""
+    import json
+
+    from quant_fund.hedge_lab.runner import HedgeLabProtocol, run_hedge_lab
+
+    refresh = False
+    if fetch_tape:
+        from quant_fund.hedge_lab.tape import fetch_hedge_lab_tape
+
+        tape = fetch_hedge_lab_tape()
+        typer.echo(json.dumps(tape, indent=2, default=str))
+        refresh = True
+    if fetch_zoo:
+        from quant_fund.hedge_lab.zoo import fetch_kronos_variant
+
+        zoo = fetch_kronos_variant("small")
+        typer.echo(json.dumps(zoo, indent=2, default=str))
+    cfg = _cfg(config)
+    proto = HedgeLabProtocol(rebalance_every=rebalance_every, risk_overlay=not no_risk_overlay)
+    receipt = run_hedge_lab(
+        cfg,
+        proto,
+        bootstrap=not skip_bootstrap,
+        n_boot=n_boot,
+        refresh_gold=refresh,
+        claim_ram=not skip_ram_claim,
+    )
+    if cfg.data.source == "synthetic":
+        typer.echo("SYNTHETIC")
+        typer.echo("SYNTHETIC is not promotion evidence and cannot take a champion alias")
+    typer.echo("Artificial Hedge fund lab — paper book, not a live P&L claim")
+    typer.echo(json.dumps(receipt, indent=2, default=str))
 
 
 @app.command()
@@ -274,7 +446,7 @@ def optimize(
 @app.command()
 def backtest(config: Path = typer.Option(Path("configs/backtest.yaml"))) -> None:
     from quant_fund.backtest.engine import run_backtest
-    from quant_fund.pipeline.dataset import ensure_silver
+    from quant_fund.pipeline.dataset import ensure_silver, load_membership
     from quant_fund.pipeline.forecast import build_causal_weight_panel
 
     cfg = _cfg(config)
@@ -282,7 +454,7 @@ def backtest(config: Path = typer.Option(Path("configs/backtest.yaml"))) -> None
     # features for adv/vol
     from quant_fund.features.engine import build_features
 
-    feat = build_features(bars, cfg)
+    feat = build_features(bars, cfg, membership=load_membership(cfg))
     dates = feat["event_time"].unique().sort().to_list()
     # Causal: optimize_asof(asof=d) per date — no end-of-sample weight broadcast
     weights = build_causal_weight_panel(cfg, dates)
@@ -1288,7 +1460,7 @@ def paper(
     from quant_fund.features.engine import build_features
     from quant_fund.paper.ledger import latest_run_id
     from quant_fund.paper.loop import build_scaled_challenger_weights, run_paper_loop
-    from quant_fund.pipeline.dataset import ensure_silver
+    from quant_fund.pipeline.dataset import ensure_silver, load_membership
     from quant_fund.pipeline.forecast import build_causal_weight_panel
 
     cfg = _cfg(config)
@@ -1299,7 +1471,7 @@ def paper(
     if clear_halt:
         cfg.kill_switch.state = "ENABLED"
     bars = ensure_silver(cfg)
-    feat = build_features(bars, cfg)
+    feat = build_features(bars, cfg, membership=load_membership(cfg))
     dates = feat["event_time"].unique().sort().to_list()
     steps = max_steps if max_steps is not None else cfg.paper.max_steps
     resume_id = run_id or (

@@ -5,6 +5,8 @@ from __future__ import annotations
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.universe import attach_membership_flag, restrict_to_membership
+from quant_fund.schemas.errors import PointInTimeError
 
 PX = "close_total_return"
 
@@ -12,13 +14,22 @@ PX = "close_total_return"
 _LABEL_REQUIRED = ("security_id", "event_time", PX)
 
 
-def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
+def build_labels(
+    bars: pl.DataFrame,
+    config: AppConfig,
+    *,
+    membership: pl.DataFrame | None = None,
+) -> pl.DataFrame:
     if bars.height == 0:
         raise ValueError("bars must be non-empty for build_labels")
     missing = [c for c in _LABEL_REQUIRED if c not in bars.columns]
     if missing:
         raise ValueError(f"bars missing required OHLCV columns: {missing}")
     df = bars.sort(["security_id", "event_time"])
+    if membership is not None:
+        if membership.is_empty():
+            raise PointInTimeError("universe membership is empty; refusing unfiltered label panel")
+        df = attach_membership_flag(df, membership)
     mkt_id = config.data.benchmark_id
     # Compute benchmark forwards on the benchmark's own observed calendar before
     # joining them to securities.  Shifting after a panel join would make a
@@ -44,11 +55,17 @@ def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
                 f"future_excess_return_{h}"
             )
         )
+        idio_src = pl.col(f"future_return_{h}")
+        if membership is not None:
+            idio_src = (
+                pl.when(pl.col("_in_universe").fill_null(False))
+                .then(pl.col(f"future_return_{h}"))
+                .otherwise(None)
+            )
         df = df.with_columns(
-            (
-                pl.col(f"future_return_{h}")
-                - pl.col(f"future_return_{h}").mean().over("event_time")
-            ).alias(f"future_idio_return_{h}")
+            (pl.col(f"future_return_{h}") - idio_src.mean().over("event_time")).alias(
+                f"future_idio_return_{h}"
+            )
         )
         # Realized volatility is the square root of forward squared log returns.
         # This remains defined for a one-bar horizon (unlike sample std, whose
@@ -83,8 +100,16 @@ def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
         _ = name
     if "sector" in df.columns:
         h = config.horizons.bars[0]
+        sec_src = pl.col(f"future_return_{h}")
+        if "_in_universe" in df.columns:
+            sec_src = (
+                pl.when(pl.col("_in_universe").fill_null(False))
+                .then(pl.col(f"future_return_{h}"))
+                .otherwise(None)
+            )
+        df = df.with_columns(sec_src.alias("_sec_src"))
         sec = df.group_by(["event_time", "sector"]).agg(
-            pl.col(f"future_return_{h}").mean().alias(f"_sec_fwd_{h}")
+            pl.col("_sec_src").mean().alias(f"_sec_fwd_{h}")
         )
         df = df.join(sec, on=["event_time", "sector"], how="left")
         df = df.with_columns(
@@ -92,5 +117,9 @@ def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
                 f"future_sector_relative_return_{h}"
             )
         )
+    if membership is not None:
+        df = restrict_to_membership(df, membership)
+        if df.is_empty():
+            raise PointInTimeError("membership filter removed every label row")
     drop = [c for c in df.columns if c.startswith("_")]
-    return df.drop(drop)
+    return df.drop(drop) if drop else df

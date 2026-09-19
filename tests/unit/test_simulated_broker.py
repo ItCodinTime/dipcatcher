@@ -111,6 +111,48 @@ def test_risk_gate_reject(tmp_path):
     assert broker.reject_count == 1
 
 
+def test_broker_gate_uses_market_overlay_not_name_sigma(tmp_path):
+    cfg = _cfg(tmp_path)
+    cfg.risk_gate.max_predicted_vol = 0.1
+    cfg.costs.frictionless = True
+    broker = SimulatedBroker(config=cfg, initial_cash=100_000.0)
+    admitted = broker.submit(
+        _order(oid="overlay-in", qty=10.0),
+        price=100.0,
+        nav=100_000.0,
+        adv_dollars=1e9,
+        sigma=0.5,
+        market_predicted_vol=0.02,
+    )
+    assert admitted.order.status is OrderStatus.FILLED
+    blocked = SimulatedBroker(config=cfg, initial_cash=100_000.0).submit(
+        _order(oid="overlay-out", qty=10.0),
+        price=100.0,
+        nav=100_000.0,
+        adv_dollars=1e9,
+        sigma=0.02,
+        market_predicted_vol=0.5,
+    )
+    assert blocked.order.status is OrderStatus.REJECTED
+    assert blocked.reject_reason is not None
+    assert "predicted vol" in blocked.reject_reason
+
+
+def test_broker_rejects_invalid_market_overlay(tmp_path):
+    cfg = _cfg(tmp_path)
+    broker = SimulatedBroker(config=cfg, initial_cash=100_000.0)
+    rec = broker.submit(
+        _order(oid="bad-mkt"),
+        price=100.0,
+        nav=100_000.0,
+        adv_dollars=1e9,
+        sigma=0.02,
+        market_predicted_vol=float("nan"),
+    )
+    assert rec.order.status is OrderStatus.REJECTED
+    assert rec.reject_reason == RejectReason.INVALID_MARKET_DATA.value
+
+
 def test_shadow_no_capital(tmp_path):
     cfg = _cfg(tmp_path)
     shadow = SimulatedBroker(config=cfg, initial_cash=0.0, slot="shadow", allow_capital=False)

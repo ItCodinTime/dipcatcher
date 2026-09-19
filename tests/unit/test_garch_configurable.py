@@ -21,6 +21,17 @@ def _returns(n: int = 150, seed: int = 7) -> np.ndarray:
     return rng.normal(0.0, 0.01, size=n)
 
 
+def _clustered_returns(n: int = 400, seed: int = 11) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    sigma = 0.012
+    out = np.empty(n)
+    for i in range(n):
+        shock = rng.normal(0.0, 1.0)
+        out[i] = sigma * shock
+        sigma = float(np.sqrt(8e-7 + 0.07 * out[i] ** 2 + 0.91 * sigma * sigma))
+    return out
+
+
 # --- construction validation (fail-closed) ---
 
 
@@ -40,7 +51,7 @@ def test_garch_rejects_unknown_dist_and_vol() -> None:
     with pytest.raises(ValueError, match="dist"):
         GARCHVol(dist="laplace")
     with pytest.raises(ValueError, match="vol"):
-        GARCHVol(vol="aparch")
+        GARCHVol(vol="harch")
 
 
 def test_garch_rejects_non_string_dist_vol() -> None:
@@ -54,20 +65,31 @@ def test_garch_accepts_and_normalizes_case() -> None:
     m = GARCHVol(dist="SkewT", vol="GJR")
     assert m.dist == "skewt"
     assert m.vol == "gjr"
+    assert GARCHVol(vol="APARCH").vol == "aparch"
+    assert GARCHVol(vol="FIGARCH").vol == "figarch"
 
 
 # --- fitted paths per variant ---
 
 
-@pytest.mark.parametrize("vol_spec", ["garch", "gjr", "egarch"])
+@pytest.mark.parametrize("vol_spec", ["garch", "gjr", "egarch", "aparch", "figarch"])
 def test_garch_vol_specs_fit_and_predict(vol_spec: str) -> None:
-    r = _returns(150)
+    r = _clustered_returns() if vol_spec in {"aparch", "figarch"} else _returns(150)
     m = GARCHVol(vol=vol_spec)
     assert m.fit_returns(r) is m
     assert m.result is not None
     pred = m.predict(np.zeros((3, 1)))
     assert pred.shape == (3,)
     assert np.all(np.isfinite(pred) & (pred > 0.0))
+
+
+def test_figarch_allows_zero_order_and_rejects_higher_order() -> None:
+    GARCHVol(vol="figarch", p=0, q=1)
+    GARCHVol(vol="figarch", p=1, q=0)
+    with pytest.raises(ValueError, match="FIGARCH p and q"):
+        GARCHVol(vol="figarch", p=2, q=1)
+    with pytest.raises(ValueError, match="FIGARCH p and q"):
+        GARCHVol(vol="figarch", p=1, q=2)
 
 
 @pytest.mark.parametrize("dist", ["normal", "t", "skewt"])
@@ -128,6 +150,10 @@ def test_trainconfig_garch_fields_roundtrip() -> None:
     )
     assert cfg2.train.garch_dist is GarchDist.SKEWT
     assert cfg2.train.garch_vol is GarchVolSpec.EGARCH
+    cfg3 = AppConfig.model_validate({"train": {"garch_vol": "aparch"}})
+    assert cfg3.train.garch_vol is GarchVolSpec.APARCH
+    cfg4 = AppConfig.model_validate({"train": {"garch_vol": "figarch"}})
+    assert cfg4.train.garch_vol is GarchVolSpec.FIGARCH
 
 
 def test_trainconfig_rejects_unknown_garch_values() -> None:
@@ -136,9 +162,61 @@ def test_trainconfig_rejects_unknown_garch_values() -> None:
     with pytest.raises(ValidationError):
         AppConfig.model_validate({"train": {"garch_dist": "laplace"}})
     with pytest.raises(ValidationError):
-        AppConfig.model_validate({"train": {"garch_vol": "aparch"}})
+        AppConfig.model_validate({"train": {"garch_vol": "harch"}})
+    with pytest.raises(ValidationError, match="FIGARCH"):
+        AppConfig.model_validate({"train": {"garch_vol": "figarch", "garch_p": 2}})
 
 
 def test_garch_allowed_sets_match_config_enums() -> None:
     assert set(_ALLOWED_GARCH_DISTS) == {e.value for e in GarchDist}
     assert set(_ALLOWED_GARCH_VOLS) == {e.value for e in GarchVolSpec}
+
+
+class _Params:
+    def __init__(self, data: dict[str, float]) -> None:
+        self._data = data
+        self.index = list(data)
+
+    def __getitem__(self, key: str) -> float:
+        return self._data[key]
+
+
+def test_aparch_and_figarch_inadmissible_specs_fail_closed() -> None:
+    aparch = GARCHVol(vol="aparch")
+    assert (
+        aparch._spec_inadmissible_reason(
+            _Params(
+                {
+                    "omega": 0.1,
+                    "alpha[1]": 0.2,
+                    "gamma[1]": 0.1,
+                    "beta[1]": 0.85,
+                    "delta": 1.5,
+                }
+            )
+        )
+        == "nonstationary_persistence"
+    )
+    assert (
+        aparch._spec_inadmissible_reason(
+            _Params(
+                {
+                    "omega": 0.1,
+                    "alpha[1]": 0.05,
+                    "gamma[1]": 0.1,
+                    "beta[1]": 0.8,
+                    "delta": 0.0,
+                }
+            )
+        )
+        == "invalid_aparch_delta"
+    )
+    figarch = GARCHVol(vol="figarch")
+    assert (
+        figarch._spec_inadmissible_reason(_Params({"omega": 0.1, "phi": 0.2, "d": 0.0, "beta": 0.3}))
+        == "invalid_fractional_d"
+    )
+    assert (
+        figarch._spec_inadmissible_reason(_Params({"omega": 0.1, "phi": 0.2, "d": 0.4, "beta": 0.3}))
+        is None
+    )

@@ -40,7 +40,9 @@ def paper_root(data_root: Path | str, subdir: str = "paper") -> Path:
     relative = Path(subdir)
     if (
         not subdir.strip()
+        or subdir.startswith(("/", chr(92)))
         or relative.is_absolute()
+        or bool(relative.drive)
         or any(part in {"", ".", ".."} for part in relative.parts)
     ):
         raise ValueError("paper ledger subdir must be a safe relative path")
@@ -600,6 +602,7 @@ def validate_ledger_schema(
     else:
         errors.append("meta.json_missing")
 
+    state = {}
     state_path = root / "broker_state.json"
     present["broker_state.json"] = state_path.is_file()
     if state_path.is_file():
@@ -667,9 +670,11 @@ def validate_ledger_schema(
 
     equity_path = root / "equity.parquet"
     present["equity.parquet"] = equity_path.is_file()
+    equity_rows = None
     if equity_path.is_file():
         try:
             eq = pl.read_parquet(equity_path)
+            equity_rows = eq.height
             cols = set(eq.columns)
             # Accept either ledger snapshot schema (asof/nav/cash) or loop equity
             # schema (event_time/nav/cash) — both are valid Wave-2+ artifacts.
@@ -682,6 +687,19 @@ def validate_ledger_schema(
                 errors.append("equity_missing:asof_or_event_time")
         except Exception as exc:  # noqa: BLE001 — report, don't crash validator
             errors.append(f"equity_unreadable:{type(exc).__name__}:{exc}")
+
+    # Positive broker cursors must have matching durable champion equity rows.
+    # Otherwise resume could skip observations that have no auditable NAV history.
+    state_step = state.get("step") if isinstance(state, dict) else None
+    if isinstance(state_step, bool) or not isinstance(state_step, int) or state_step < 0:
+        state_step = None
+    if state_step is not None and state_step > 0:
+        if not present["equity.parquet"]:
+            errors.append("broker_state_step_requires_equity")
+        elif equity_rows == 0:
+            errors.append("broker_state_step_equity_empty")
+        elif equity_rows is not None and equity_rows != state_step:
+            errors.append(f"broker_state_step_equity_count_mismatch:step={state_step}:rows={equity_rows}")
 
     orders_path = root / "orders.parquet"
     present["orders.parquet"] = orders_path.is_file()

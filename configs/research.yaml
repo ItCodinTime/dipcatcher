@@ -16,6 +16,14 @@ validation:
   train_bars: 180
   val_bars: 40
   test_bars: 40
+# Core K-line engine stays on as a stamped challenger; blend_weight 0 until
+# it beats ridge on the causal SYNTHETIC card (date IC / pinball / CRPS / DM).
+robinhood_plus:
+  enabled: true
+  lookback: 32
+  pred_len: 5
+  sample_count: 4
+  blend_weight: 0.0
 # Transparent fusion on; learned fusion remains off (ADR). Interval caps on.
 fusion:
   alpha_weight: 1.0

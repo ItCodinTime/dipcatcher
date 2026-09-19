@@ -263,6 +263,7 @@ def test_research_receipt_records_runtime_fingerprint(tmp_path: Path) -> None:
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 6
     cfg.data.synthetic_n_days = 50
+    cfg.universe.min_history_bars = 10
     nb = run_research(cfg)
 
     runtime = nb.provenance["runtime"]

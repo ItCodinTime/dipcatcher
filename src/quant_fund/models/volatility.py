@@ -67,10 +67,20 @@ class EWMAVol(JoblibMixin):
         return ModelMeta(family="volatility", name="ewma", version="v1", extra={"lambda": self.lam})
 
 
-_ALLOWED_GARCH_VOLS = {"garch": ("GARCH", 0), "egarch": ("EGARCH", 0), "gjr": ("GARCH", 1)}
+_ALLOWED_GARCH_VOLS = {
+    "garch": ("GARCH", 0),
+    "egarch": ("EGARCH", 0),
+    "gjr": ("GARCH", 1),
+    "aparch": ("APARCH", 1),
+    "figarch": ("FIGARCH", 0),
+}
 _ALLOWED_GARCH_DISTS = {"normal", "t", "skewt"}
+_SIMULATED_MULTI_STEP_VOLS = frozenset({"egarch", "aparch"})
+_GARCH_PERSISTENCE_VOLS = frozenset({"garch", "gjr", "aparch"})
 _GARCH_SCALE = 100.0
 _GARCH_VARIANCE_FLOOR = 1e-16
+GARCH_DATE_LEVEL_SCOPE = "date_level_equal_weight_cross_section"
+GARCH_SECURITY_LEVEL_SCOPE = "security_level_ret_1"
 
 
 class GARCHVol(JoblibMixin):
@@ -79,13 +89,20 @@ class GARCHVol(JoblibMixin):
     The model is fitted to *decimal returns*, not to a forward realized
     variance label.  Returns are converted to percent units only at the
     ``arch`` boundary and forecast variances are converted back to decimal
-    squared units.  ``forecast`` is the explicit probabilistic API; ``predict``
+    squared units.      ``forecast`` is the explicit probabilistic API; ``predict``
     remains a compatibility adapter returning the current-origin sigma.
+    ``log_density`` / ``pit`` score that origin law on decimal returns.
 
-    ``vol`` selects symmetric GARCH, EGARCH, or GJR-GARCH and ``dist`` selects
-    normal, Student-t, or skewed Student-t innovations.  Failed, non-finite,
-    non-converged, or too-short fits fail closed to a documented sample-sigma
-    fallback and expose the reason through diagnostics attributes.
+    ``vol`` selects symmetric GARCH, EGARCH, GJR-GARCH, APARCH, or FIGARCH and
+    ``dist`` selects normal, Student-t, or skewed Student-t innovations.
+    Failed, non-finite, non-converged, or too-short fits fail closed to a
+    documented sample-sigma fallback and expose the reason through diagnostics
+    attributes. Date-level equal-weight overlays keep
+    ``series_scope=date_level_equal_weight_cross_section``. Per-security
+    causal fits live in a separate namespace
+    (``series_scope=security_level_ret_1``) and cannot replace the market
+    overlay or name-level ``vol_20``. This is still not a live-performance
+    claim.
     """
 
     def __init__(
@@ -103,8 +120,8 @@ class GARCHVol(JoblibMixin):
         if (
             isinstance(p, bool)
             or isinstance(q, bool)
-            or not (isinstance(p, int) and p >= 1)
-            or not (isinstance(q, int) and q >= 1)
+            or not isinstance(p, int)
+            or not isinstance(q, int)
         ):
             raise ValueError("p and q must be positive integers")
         if isinstance(dist, bool) or not isinstance(dist, str):
@@ -117,6 +134,11 @@ class GARCHVol(JoblibMixin):
             raise ValueError(f"dist must be one of {sorted(_ALLOWED_GARCH_DISTS)}")
         if vol_key not in _ALLOWED_GARCH_VOLS:
             raise ValueError(f"vol must be one of {sorted(_ALLOWED_GARCH_VOLS)}")
+        if vol_key == "figarch":
+            if p not in (0, 1) or q not in (0, 1):
+                raise ValueError("FIGARCH p and q must be 0 or 1")
+        elif p < 1 or q < 1:
+            raise ValueError("p and q must be positive integers")
         if isinstance(min_obs, bool) or not isinstance(min_obs, int) or min_obs < 2:
             raise ValueError("min_obs must be an integer >= 2")
         if mean not in {"Constant", "Zero"}:
@@ -161,6 +183,13 @@ class GARCHVol(JoblibMixin):
             return [float(params[key]) for key in keys if str(key).startswith(prefix)]
         except (AttributeError, KeyError, TypeError, ValueError):
             return []
+
+    @staticmethod
+    def _param_scalar(params: Any, name: str) -> float:
+        try:
+            return float(params[name])
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return float("nan")
 
     def fit_returns(self, returns: NDArray[np.float64]) -> GARCHVol:
         """Fit directly on a causal decimal-return series."""
@@ -218,12 +247,9 @@ class GARCHVol(JoblibMixin):
             params = result.params
             if not np.isfinite(np.asarray(params, dtype=float)).all():
                 return self._fallback(returns_percent, "nonfinite_parameters")
-            alpha = sum(self._param_values(params, "alpha["))
-            beta = sum(self._param_values(params, "beta["))
-            gamma = sum(self._param_values(params, "gamma["))
-            persistence = alpha + beta + (0.5 * gamma if self.vol == "gjr" else 0.0)
-            if self.vol in {"garch", "gjr"} and persistence >= 1.0:
-                return self._fallback(returns_percent, "nonstationary_persistence")
+            spec_reason = self._spec_inadmissible_reason(params)
+            if spec_reason is not None:
+                return self._fallback(returns_percent, spec_reason)
         except Exception as exc:
             return self._fallback(returns_percent, f"fit_error:{type(exc).__name__}")
         self.result = result
@@ -232,6 +258,25 @@ class GARCHVol(JoblibMixin):
         self.fallback_reason = None
         self.last_sigma = float(cond_vol[-1] / _GARCH_SCALE)
         return self
+
+    def _spec_inadmissible_reason(self, params: Any) -> str | None:
+        """Return a fail-closed fit reason when the fitted spec is not usable."""
+        if self.vol in _GARCH_PERSISTENCE_VOLS:
+            alpha = sum(self._param_values(params, "alpha["))
+            beta = sum(self._param_values(params, "beta["))
+            gamma = sum(self._param_values(params, "gamma["))
+            persistence = alpha + beta + (0.5 * gamma if self.vol == "gjr" else 0.0)
+            if persistence >= 1.0:
+                return "nonstationary_persistence"
+        if self.vol == "aparch":
+            delta = self._param_scalar(params, "delta")
+            if not np.isfinite(delta) or delta <= 0.0:
+                return "invalid_aparch_delta"
+        if self.vol == "figarch":
+            frac_d = self._param_scalar(params, "d")
+            if not np.isfinite(frac_d) or not 0.0 < frac_d < 1.0:
+                return "invalid_fractional_d"
+        return None
 
     def forecast(
         self,
@@ -260,6 +305,7 @@ class GARCHVol(JoblibMixin):
                 "variance": variance,
                 "sigma": np.sqrt(variance),
                 "cumulative_variance": np.cumsum(variance),
+                "mean": self._mean_decimal(),
                 # Fallbacks use an explicitly Gaussian predictive law.  Keep the
                 # requested specification separate so consumers cannot mistake a
                 # t/skew-t request for calibrated non-Gaussian tail forecasts.
@@ -278,11 +324,11 @@ class GARCHVol(JoblibMixin):
                     self.last_sigma * norm.ppf(levels)[None, :] + self._mean_decimal()
                 )
             return out
-        # arch cannot analytically recurse EGARCH beyond one step.  Use a
-        # deterministic simulation in that case rather than returning an
-        # exception or silently substituting a repeated one-step value.
+        # arch cannot analytically recurse EGARCH/APARCH beyond one step.
+        # Use a deterministic simulation rather than returning an exception
+        # or silently substituting a repeated one-step value.
         forecast_method = method
-        if self.vol == "egarch" and horizon > 1 and method == "analytic":
+        if self.vol in _SIMULATED_MULTI_STEP_VOLS and horizon > 1 and method == "analytic":
             forecast_method = "simulation"
         random_state = np.random.RandomState(0 if seed is None else seed)
         forecast = self.result.forecast(
@@ -299,6 +345,7 @@ class GARCHVol(JoblibMixin):
             "variance": variance,
             "sigma": np.sqrt(variance),
             "cumulative_variance": np.cumsum(variance),
+            "mean": self._mean_decimal(),
             "distribution": self.dist,
             "requested_distribution": self.dist,
             "horizon": horizon,
@@ -351,6 +398,47 @@ class GARCHVol(JoblibMixin):
         out[valid] = distribution.cdf(standardized, params)
         return np.clip(out, 0.0, 1.0)
 
+    def log_density(
+        self, returns: NDArray[np.float64], sigma: NDArray[np.float64] | None = None
+    ) -> NDArray[np.float64]:
+        """Log predictive density of decimal returns under the origin law.
+
+        Sigma must be in decimal return units.  Fitted Student-t / skew-t
+        scores use the ``arch`` standardized innovation (unit variance), not
+        a textbook location-scale *t*.  Fallback fits are scored as Gaussian.
+        Empty-valid inputs return NaNs rather than a silent zero score.
+        """
+        values = np.asarray(returns, dtype=float).reshape(-1)
+        scales = (
+            np.full(values.size, self.last_sigma)
+            if sigma is None
+            else np.asarray(sigma, dtype=float).reshape(-1)
+        )
+        if values.size != scales.size:
+            raise ValueError("returns and sigma must have the same length")
+        valid = np.isfinite(values) & np.isfinite(scales) & (scales > 0.0)
+        out = np.full(values.size, np.nan)
+        if not np.any(valid):
+            return out
+        mu = self._mean_decimal()
+        resids = values[valid] - mu
+        sigma2 = np.square(scales[valid])
+        if self.result is None:
+            z = resids / scales[valid]
+            out[valid] = -0.5 * np.log(2.0 * np.pi) - np.log(scales[valid]) - 0.5 * z * z
+            return out
+        distribution = self.result.model.distribution
+        names = distribution.parameter_names()
+        params = [float(self.result.params[name]) for name in names]
+        ll = np.asarray(
+            distribution.loglikelihood(params, resids, sigma2, individual=True),
+            dtype=float,
+        ).reshape(-1)
+        if ll.size != int(valid.sum()):
+            raise ValueError("GARCH log-density size mismatch")
+        out[valid] = ll
+        return out
+
     def diagnostics(self) -> dict[str, Any]:
         """Return a small JSON/joblib-safe audit record for the fitted model."""
         return {
@@ -366,6 +454,28 @@ class GARCHVol(JoblibMixin):
             "vol": self.vol,
             "series_scope": getattr(self, "series_scope", "univariate_return_series"),
         }
+
+    def in_sample_sigma_and_z(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return decimal in-sample sigma and standardized residuals.
+
+        Requires a successful ``arch`` fit. Sample-sigma fallbacks fail closed
+        so covariance consumers cannot treat EWMA or sample residuals as GARCH
+        stage-1 innovations.
+        """
+        if self.result is None or self.fit_status != "fitted":
+            reason = self.fallback_reason or self.fit_status
+            raise ValueError(f"in-sample GARCH path requires a successful fit; {reason}")
+        sigma = np.asarray(self.result.conditional_volatility, dtype=float).reshape(-1)
+        sigma = sigma / _GARCH_SCALE
+        try:
+            z = np.asarray(self.result.std_resid, dtype=float).reshape(-1)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ValueError("in-sample GARCH standardized residuals are unavailable") from exc
+        if sigma.size == 0 or z.size != sigma.size:
+            raise ValueError("in-sample GARCH path length mismatch")
+        if not np.isfinite(sigma).all() or not np.isfinite(z).all() or np.any(sigma <= 0.0):
+            raise ValueError("in-sample GARCH path is non-finite or non-positive")
+        return sigma, z
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compatibility adapter: current-origin sigma for each requested row."""

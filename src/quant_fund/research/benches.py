@@ -26,7 +26,11 @@ from quant_fund.metrics.conformal import (
 )
 from quant_fund.metrics.cross_section import _date_keys, date_ic_series, decile_portfolios
 from quant_fund.metrics.evalues import bench_e_coverage, e_process, e_process_dm
-from quant_fund.metrics.inference import diebold_mariano, pairwise_diebold_mariano
+from quant_fund.metrics.inference import (
+    diebold_mariano,
+    overlap_aware_hac_lags,
+    pairwise_diebold_mariano,
+)
 from quant_fund.metrics.probability import (
     acerbi_szekely_z1,
     acerbi_szekely_z2,
@@ -41,10 +45,12 @@ from quant_fund.metrics.probability import (
 from quant_fund.metrics.scoring import (
     coverage,
     crps_from_quantiles,
+    date_level_equal_weight,
     mean_crps_gaussian,
     mean_crps_student_t,
     mean_fissler_ziegel,
     mean_pinball,
+    nonoverlapping_origin_mask,
     pearson_ic,
     pinball_loss,
     pit_values,
@@ -84,7 +90,7 @@ from quant_fund.models.rl import run_linucb_panel
 from quant_fund.models.tail import DrawdownClassifier, HistoricalTail, ScaledHistoricalTail
 from quant_fund.models.weighted_conformal import WeightedSplitCQR
 from quant_fund.pipeline.dataset import design_matrix
-from quant_fund.pipeline.train import _fit_ranker, _make_ranker
+from quant_fund.pipeline.train import _fit_ranker, _label_horizon, _make_ranker
 from quant_fund.portfolio.interval_risk import (
     bench_interval_caps,
     cap_from_interval,
@@ -516,24 +522,54 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if label not in need or "vol_20" not in need:
         return {}
     sub = frame.select(["event_time", *need]).drop_nulls().sort("event_time")
-    y = sub[label].to_numpy().astype(float)
-    roll = np.clip(sub["vol_20"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None)
+    dates_d, y_d = date_level_equal_weight(
+        sub["event_time"].to_numpy(), sub[label].to_numpy().astype(float)
+    )
+    _, roll_d = date_level_equal_weight(
+        sub["event_time"].to_numpy(), sub["vol_20"].to_numpy().astype(float) ** 2
+    )
     if "vol_ewma" in sub.columns:
-        ewma = np.clip(
-            sub["vol_ewma"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None
+        _, ewma_d = date_level_equal_weight(
+            sub["event_time"].to_numpy(), sub["vol_ewma"].to_numpy().astype(float) ** 2
         )
     else:
-        ewma = roll
-    _, te = _holdout(y.size)
-    yy = np.clip(y[te], config.train.qlike_floor, None)
-    q_roll = qlike(yy, roll[te], config.train.qlike_floor)
-    q_ewma = qlike(yy, ewma[te], config.train.qlike_floor)
-    loss_e = (np.sqrt(yy) - np.sqrt(ewma[te])) ** 2
-    loss_r = (np.sqrt(yy) - np.sqrt(roll[te])) ** 2
-    dm = diebold_mariano(loss_e, loss_r, name_a="ewma", name_b="rolling")
+        ewma_d = roll_d
+    if dates_d.size == 0 or dates_d.size != roll_d.size or dates_d.size != ewma_d.size:
+        return {}
+    horizon = _label_horizon(label)
+    _, te = _holdout(int(dates_d.size))
+    yy = np.clip(y_d[te], config.train.qlike_floor, None)
+    roll_te = np.clip(roll_d[te], config.train.qlike_floor, None)
+    ewma_te = np.clip(ewma_d[te], config.train.qlike_floor, None)
+    q_roll = qlike(yy, roll_te, config.train.qlike_floor)
+    q_ewma = qlike(yy, ewma_te, config.train.qlike_floor)
+    loss_e = (np.sqrt(yy) - np.sqrt(ewma_te)) ** 2
+    loss_r = (np.sqrt(yy) - np.sqrt(roll_te)) ** 2
+    dm_lags = overlap_aware_hac_lags(int(yy.size), horizon)
+    dm = diebold_mariano(loss_e, loss_r, lags=dm_lags, name_a="ewma", name_b="rolling")
     # Research-only Choe–Ramdas e-process on the same loss differential (Wave4 helper).
     # Never a live capital / promotion claim — diagnostic keys only.
     ep = e_process_dm(loss_e, loss_r)
+    keep = nonoverlapping_origin_mask(np.arange(int(yy.size), dtype=int), horizon)
+    if int(keep.sum()) >= 1:
+        q_roll_non = qlike(yy[keep], roll_te[keep], config.train.qlike_floor)
+        q_ewma_non = qlike(yy[keep], ewma_te[keep], config.train.qlike_floor)
+        dm_non = diebold_mariano(
+            loss_e[keep],
+            loss_r[keep],
+            lags=overlap_aware_hac_lags(int(keep.sum()), 1),
+            name_a="ewma",
+            name_b="rolling",
+        )
+        dm_non_preferred = dm_non.preferred
+        dm_non_p = dm_non.p_value
+        dm_non_stat = dm_non.statistic
+    else:
+        q_roll_non = float("nan")
+        q_ewma_non = float("nan")
+        dm_non_preferred = "inconclusive"
+        dm_non_p = float("nan")
+        dm_non_stat = float("nan")
     return {
         "qlike_ewma": q_ewma,
         "qlike_rolling": q_roll,
@@ -543,6 +579,16 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         "e_dm_final": float(ep["e_final"]),  # type: ignore[arg-type]
         "e_dm_reject": bool(ep["reject"]),
         "e_dm_n": int(cast(Any, ep["n"])),
+        "scoring_scope": "date_level_equal_weight",
+        "horizon_bars": int(horizon),
+        "dm_lags": int(dm.lags),
+        "n_dates": int(yy.size),
+        "n_origins_nonoverlapping": int(keep.sum()),
+        "qlike_ewma_nonoverlapping": q_ewma_non,
+        "qlike_rolling_nonoverlapping": q_roll_non,
+        "dm_preferred_nonoverlapping": dm_non_preferred,
+        "dm_p_nonoverlapping": dm_non_p,
+        "dm_stat_nonoverlapping": dm_non_stat,
         "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
     }
 
@@ -993,6 +1039,12 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     cqr = SplitCQR(alpha).calibrate(y[cal], q_cal[:, 0], q_cal[:, 1])
     lo_c, hi_c = cqr.predict_sets(q_te[:, 0], q_te[:, 1])
     cqr_m = set_metrics(y[te], lo_c, hi_c)
+    cqr_miss = 1.0 - covered(y[te], lo_c, hi_c)
+    cqr_miss = cqr_miss[np.isfinite(cqr_miss)]
+    if cqr_miss.size >= 10:
+        cqr_rate, cqr_lr, cqr_kp = kupiec_pof(cqr_miss, alpha)
+    else:
+        cqr_rate, cqr_lr, cqr_kp = float("nan"), float("nan"), float("nan")
     qr_m: dict[str, float] | None = None
     if 80 <= int(tr.stop - tr.start) <= 4000:
         try:
@@ -1207,6 +1259,9 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
             "median_width": cqr_m.median_width,
             "qhat": cqr.qhat,
             "n": cqr_m.n,
+            "miss_rate": cqr_rate,
+            "kupiec_lr": cqr_lr,
+            "kupiec_p": cqr_kp,
         },
         "aci": {
             "coverage": aci_m.coverage,
@@ -1444,8 +1499,9 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
     if y_cal.size < 2 or y_te.size < 8:
         return {}
     jp = JackknifePlus(alpha).fit(y_cal / sc_cal)
-    # predict_interval scales only the score half-width; the LOO location term
-    # must stay unscaled (manual lo_z * sc_te would scale it too).
+    # Residual was fit in y/vol space. predict_interval must convert both the
+    # LOO location and the scores back to return units via sc_te. Scaling only
+    # the half-width was a unit bug (Jackknife+ coverage ~0.07 vs 1-2α).
     lo, hi = jp.predict_interval(np.zeros_like(y_te), sc_te)
     metrics = set_metrics(y_te, lo, hi)
     hits = 1.0 - covered(y_te, lo, hi)
@@ -1455,6 +1511,7 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
     else:
         rate, lr, kp = float("nan"), float("nan"), float("nan")
     floor = jackknife_plus_coverage_level(alpha)
+    loc = jp.loo_loc_
     return {
         "target": split["label"],
         "alpha": alpha,
@@ -1462,6 +1519,12 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
         "mean_width": metrics.mean_width,
         "median_width": metrics.median_width,
         "coverage_floor": floor,
+        "meets_coverage_floor": bool(
+            np.isfinite(metrics.coverage) and metrics.coverage + 1e-12 >= floor
+        ),
+        "mean_loo_loc": float(np.mean(loc)) if loc is not None and loc.size else float("nan"),
+        "mean_abs_y_te": float(np.mean(np.abs(y_te))) if y_te.size else float("nan"),
+        "mean_scale_te": float(np.mean(sc_te)) if sc_te.size else float("nan"),
         "coverage_identity": "1-2*alpha",
         "coverage_guarantee_scope": "marginal_exchangeable",
         "coverage_guarantee_claim": (

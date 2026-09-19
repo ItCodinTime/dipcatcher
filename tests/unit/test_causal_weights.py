@@ -50,6 +50,7 @@ def test_causal_panel_not_broadcast(tmp_path: Path) -> None:
     cfg.data.root = tmp_path
     cfg.data.synthetic_n_assets = 4
     cfg.data.synthetic_n_days = 80
+    cfg.universe.min_history_bars = 10
     feats, _ = build_gold(cfg)
     dates = feats["event_time"].unique().sort().to_list()
     sample = [dates[10], dates[40], dates[-1]]

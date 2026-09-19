@@ -1,0 +1,24 @@
+# G1 SYNTHETIC public-feature card. Engine-correctness only — not promotion.
+inherit: research.yaml
+data:
+  synthetic_n_assets: 12
+  synthetic_n_days: 160
+  synthetic_seed: 7
+universe:
+  min_history_bars: 20
+  min_adv: 0.0
+validation:
+  train_bars: 60
+  val_bars: 20
+  test_bars: 20
+  embargo_bars: 5
+robinhood_plus:
+  enabled: true
+  lookback: 32
+  pred_len: 5
+  sample_count: 4
+  variant: mini
+  blend_weight: 0.0
+  allow_network: false
+fusion:
+  skip_intervals: true

@@ -27,6 +27,7 @@ from quant_fund.pipeline.train import (
     train_tail,
     train_volatility,
 )
+from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.validation.walk_forward import Fold
 
 
@@ -166,7 +167,7 @@ def test_garch_oos_predictions_use_full_causal_return_history() -> None:
         def forecast(self, *, horizon):
             return {"cumulative_variance": np.array([self.last_return + horizon])}
 
-    predictions, statuses = _garch_oos_predictions(
+    predictions, statuses, density = _garch_oos_predictions(
         lambda: FakeGarch(),
         x,
         y,
@@ -180,6 +181,7 @@ def test_garch_oos_predictions_use_full_causal_return_history() -> None:
     assert predictions.tolist() == [3.0, 4.0, 3.0]
     assert statuses == ["fitted", "fitted"]
     assert fit_lengths == [3, 4]
+    assert density == {}
 
 
 def test_garch_return_history_keeps_latest_unlabeled_returns() -> None:
@@ -195,6 +197,100 @@ def test_garch_return_history_keeps_latest_unlabeled_returns() -> None:
 
     assert dates.tolist() == [0, 1, 2]
     assert values.tolist() == pytest.approx([0.01, 0.02, 0.03])
+
+
+def test_garch_return_history_asof_excludes_late_available_rows() -> None:
+    start = datetime(2020, 1, 2, 16, 0, 0)
+    d0, d1, d2 = start, start + timedelta(days=1), start + timedelta(days=2)
+    frame = pl.DataFrame(
+        {
+            "event_time": [d0, d0, d1, d1],
+            "security_id": ["A", "B", "A", "B"],
+            "ret_1": [0.01, 0.80, 0.02, 0.03],
+            "available_time": [d0, d2, d1, d1],
+        }
+    )
+    dates, values = _garch_return_history(frame, asof=d1)
+    assert dates.tolist() == [d0]
+    assert values.tolist() == pytest.approx([0.01])
+
+    dates_visible, values_visible = _garch_return_history(frame, asof=d2)
+    assert dates_visible.tolist() == [d0, d1]
+    assert values_visible.tolist() == pytest.approx([0.405, 0.025])
+
+
+def test_garch_return_history_asof_null_available_time_fails_closed() -> None:
+    start = datetime(2020, 1, 2, 16, 0, 0)
+    d0, d1 = start, start + timedelta(days=1)
+    frame = pl.DataFrame(
+        {
+            "event_time": [d0, d0],
+            "ret_1": [0.01, 0.02],
+            "available_time": [d0, None],
+        }
+    )
+    with pytest.raises(PointInTimeError, match="available_time"):
+        _garch_return_history(frame, asof=d1)
+
+
+def test_garch_oos_fit_ignores_late_available_restatement() -> None:
+    start = datetime(2020, 1, 2, 16, 0, 0)
+    dates = [start + timedelta(days=i) for i in range(6)]
+    rows: list[dict[str, object]] = []
+    for stamp in dates:
+        rows.append(
+            {"event_time": stamp, "security_id": "A", "ret_1": 0.01, "available_time": stamp}
+        )
+        rows.append(
+            {"event_time": stamp, "security_id": "B", "ret_1": 0.02, "available_time": stamp}
+        )
+    frame = (
+        pl.DataFrame(rows)
+        .with_columns(
+            pl.when((pl.col("security_id") == "B") & (pl.col("event_time") == dates[0]))
+            .then(pl.lit(0.80))
+            .otherwise(pl.col("ret_1"))
+            .alias("ret_1")
+        )
+        .with_columns(
+            pl.when((pl.col("security_id") == "B") & (pl.col("event_time") == dates[0]))
+            .then(pl.lit(dates[5]))
+            .otherwise(pl.col("available_time"))
+            .alias("available_time")
+        )
+    )
+    return_dates, return_values = _garch_return_history(frame)
+    x = np.zeros((6, 1))
+    y = np.ones(6)
+    panel_dates = np.asarray(dates, dtype=object)
+    fits: list[list[float]] = []
+
+    class FakeGarch:
+        fit_status = "fitted"
+
+        def fit(self, _x, _y, *, returns):  # noqa: ANN001
+            fits.append(np.asarray(returns, dtype=float).tolist())
+            self.last_return = float(returns[-1])
+            return self
+
+        def forecast(self, *, horizon):
+            return {"cumulative_variance": np.array([self.last_return + horizon])}
+
+    _garch_oos_predictions(
+        lambda: FakeGarch(),
+        x,
+        y,
+        panel_dates,
+        panel_dates >= dates[3],
+        label_horizon=1,
+        return_dates=return_dates,
+        return_values=return_values,
+        return_frame=frame,
+    )
+    # Origin dates[3]: B's restated day-0 return is not yet observable.
+    assert fits[0][0] == pytest.approx(0.01)
+    # Origin dates[5]: restatement available_time == origin, so it enters the fit.
+    assert fits[-1][0] == pytest.approx(0.405)
 
 
 def test_train_garch_persisted_fit_uses_latest_return_history(
@@ -244,6 +340,20 @@ def test_train_garch_persisted_fit_uses_latest_return_history(
     assert observed[-1][-1] == pytest.approx(
         float(frame.filter(pl.col("event_time") == latest)["ret_1"].mean())
     )
+    assert result["metrics"]["scoring_scope"] == "date_level_equal_weight_cross_section"
+    assert result["metrics"]["origin_stride"] == 5
+    assert int(result["metrics"]["n_origins_nonoverlapping"]) >= 1
+    assert int(result["metrics"]["n_origins_overlapping"]) >= int(
+        result["metrics"]["n_origins_nonoverlapping"]
+    )
+    assert np.isfinite(result["metrics"]["qlike"])
+    assert np.isfinite(result["metrics"]["qlike_overlapping_dates"])
+    assert result["diagnostics"]["oos_scoring"] == (
+        "date_level_nonoverlapping_qlike+one_step_density"
+    )
+    assert int(result["metrics"]["n_density_origins"]) == 0
+    assert result["metrics"]["density_target"] == "date_level_ret_1"
+    assert result["metrics"]["density_horizon"] == 1
 
 
 @pytest.mark.parametrize("model_name", ["threshold", "single_state"])

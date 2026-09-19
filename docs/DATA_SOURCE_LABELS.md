@@ -10,7 +10,7 @@ fallback adapter.
 | Label | Meaning |
 |---|---|
 | **SYNTHETIC** | Planted-factor / simulator panel. Recovering IC, coverage, or bandit regret is an **engine correctness** test. Never a production promotion input. |
-| **public / file** | Features built from the configured non-synthetic adapter (parquet, etc.). Scores are scientific (proper rules) still, not a live-P&L claim. |
+| **public / file** | Features built from the configured non-synthetic adapter (parquet, Stooq session-close tape, etc.). Scores are scientific (proper rules) still, not a live-P&L claim. Session-close `available_time` is not a SIP vintage. |
 
 ## Where the label appears
 

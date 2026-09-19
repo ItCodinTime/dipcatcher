@@ -48,6 +48,23 @@ def test_egarch_uses_a_valid_multi_step_path() -> None:
     assert np.all(forecast["variance"] > 0.0)
 
 
+def test_aparch_and_figarch_use_valid_multi_step_paths() -> None:
+    rng = np.random.default_rng(11)
+    sigma = 0.012
+    returns = np.empty(400)
+    for i in range(returns.size):
+        shock = rng.normal(0.0, 1.0)
+        returns[i] = sigma * shock
+        sigma = float(np.sqrt(8e-7 + 0.07 * returns[i] ** 2 + 0.91 * sigma * sigma))
+    for vol in ("aparch", "figarch"):
+        model = GARCHVol(vol=vol).fit_returns(returns)
+        forecast = model.forecast(horizon=3, seed=11)
+        assert model.result is not None
+        assert forecast["variance"].shape == (3,)
+        assert np.all(np.isfinite(forecast["variance"]))
+        assert np.all(forecast["variance"] > 0.0)
+
+
 def test_garch_joblib_roundtrip_preserves_forecast_contract(tmp_path) -> None:
     model = GARCHVol(dist="skewt").fit_returns(_returns())
     path = tmp_path / "garch.joblib"
@@ -210,3 +227,16 @@ def test_garch_fallback_exposes_reason() -> None:
     assert forecast["variance"].shape == (2,)
     assert forecast["distribution"] == "normal"
     assert forecast["requested_distribution"] == "t"
+    with pytest.raises(ValueError, match="successful fit"):
+        model.in_sample_sigma_and_z()
+
+
+def test_in_sample_sigma_and_z_is_decimal_and_standardized() -> None:
+    model = GARCHVol().fit_returns(_returns())
+    sigma, z = model.in_sample_sigma_and_z()
+    assert sigma.shape == (240,)
+    assert z.shape == (240,)
+    assert np.all(np.isfinite(sigma))
+    assert np.all(sigma > 0.0)
+    assert np.allclose(sigma[-1], model.last_sigma)
+    assert abs(float(np.std(z, ddof=1)) - 1.0) < 0.25

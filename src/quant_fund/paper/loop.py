@@ -41,6 +41,11 @@ from quant_fund.paper.ledger import (
     promotion_dry_run,
     validate_promotion_dry_run_receipt,
 )
+from quant_fund.pipeline.forecast import (
+    MARKET_RISK_OVERLAY_GARCH,
+    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+    market_risk_overlay_asof,
+)
 from quant_fund.portfolio.portfolio_conformal import SplitPortfolioCQR, gaussian_band
 from quant_fund.utils.hashing import hash_bytes
 
@@ -505,6 +510,8 @@ def run_paper_loop(
     steps_this_run = 0
     last_decision: datetime | None = skip_after
     last_exec: datetime | None = _parse_iso(prior_state.get("last_exec")) if prior_state else None
+    garch_overlay_dates = 0
+    realized_garch_overlay_dates = 0
 
     # Seed equity from prior ledger if resuming (for conformal / diagnostics continuity)
     if resume:
@@ -585,6 +592,12 @@ def run_paper_loop(
         if nav <= 0:
             break
 
+        market_vol, overlay_source = market_risk_overlay_asof(config, px, dt)
+        if overlay_source == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+            realized_garch_overlay_dates += 1
+        elif overlay_source == MARKET_RISK_OVERLAY_GARCH:
+            garch_overlay_dates += 1
+
         # Champion orders + fills
         c_orders = champ.target_to_orders(c_tgt, marks, signal_time=dt, order_time=exec_dt, nav=nav)
         step_recs: list[OrderRecord] = []
@@ -598,6 +611,7 @@ def run_paper_loop(
                 nav=nav,
                 adv_dollars=advs.get(sid, 1.0),
                 sigma=vols.get(sid, 0.02),
+                market_predicted_vol=market_vol,
             )
             step_recs.append(rec)
             all_orders.append(
@@ -628,6 +642,7 @@ def run_paper_loop(
                     nav=1.0,
                     adv_dollars=advs.get(sid, 1.0),
                     sigma=vols.get(sid, 0.02),
+                    market_predicted_vol=market_vol,
                 )
                 step_recs.append(rec)
                 shadow.shares[sid] = float(s_tgt.get(sid, 0.0))
@@ -804,6 +819,8 @@ def run_paper_loop(
         "equity_analytics": eq_analytics,
         "risk_gate_rejects": champ.risk_gate_reject_count,
         "kill_switch_halts": champ.halt_count,
+        "garch_risk_overlay_dates": garch_overlay_dates,
+        "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
         "reject_total": champ.reject_count,
         "reject_accounting": risk_acct,
         "n_steps": step,
