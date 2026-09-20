@@ -858,6 +858,40 @@ def _load_ranker_cached(config: AppConfig):
     return model
 
 
+def _paper_challenger_stamp(
+    config: AppConfig,
+    x: NDArray[np.float64],
+    ridge_scores: NDArray[np.float64],
+    dates: NDArray[np.float64] | None = None,
+    ids: NDArray[np.float64] | None = None,
+) -> tuple[str, dict[str, float | str]]:
+    """List fitted paper rankers. Spearman vs ridge only. Never blended into alpha."""
+    import joblib
+    from scipy.stats import spearmanr
+
+    from quant_fund.pipeline.train import _predict_ranker
+
+    present: list[str] = []
+    extra: dict[str, float | str] = {"paper_challengers_blend": 0.0}
+    root = Path(config.data.root) / "metadata"
+    for name in config.train.paper_rankers:
+        path = root / f"ranker_{name}.joblib"
+        if not path.is_file():
+            continue
+        try:
+            model = joblib.load(path)
+            pred = np.asarray(_predict_ranker(model, name, x, dates, ids), dtype=float)
+        except (TypeError, ValueError, OSError, AttributeError):
+            continue
+        present.append(name)
+        if pred.shape[0] == ridge_scores.shape[0] and pred.size >= 4:
+            rho = spearmanr(ridge_scores, pred, nan_policy="omit").correlation
+            if rho is not None and np.isfinite(rho):
+                extra[f"paper_{name}_spearman_vs_ridge"] = float(rho)
+    extra["paper_challengers"] = ",".join(present) if present else "none"
+    return f"paper_challengers={extra['paper_challengers']}", extra
+
+
 def _garch_artifact_path(config: AppConfig) -> Path:
     return Path(config.data.root) / "metadata" / "vol_garch.joblib"
 
@@ -2013,6 +2047,14 @@ def forecast_asof(
     notes.append(f"robinhood_plus_n_ok={rh_ok}")
     notes.append(f"robinhood_plus_n_fallback={n_fallback}")
     notes.append(f"robinhood_plus_blend_weight={blend}")
+    paper_note, paper_diag = _paper_challenger_stamp(
+        config,
+        x,
+        scores,
+        dates=np.asarray([asof] * len(scores), dtype=object),
+        ids=np.asarray(security_ids, dtype=object),
+    )
+    notes.append(paper_note)
     if config.robinhood_plus.enabled and blend <= 0.0:
         notes.append("robinhood_plus_challenger")
     if rh_ok and blend > 0.0:
@@ -2053,6 +2095,7 @@ def forecast_asof(
             "robinhood_plus_n_ok": float(rh_ok),
             "robinhood_plus_n_fallback": float(n_fallback),
             "robinhood_plus_blend_weight": float(blend),
+            **paper_diag,
         }
         if overlay is not None and overlay_kind is not None:
             diagnostics.update(_market_overlay_diagnostics(overlay, overlay_kind))

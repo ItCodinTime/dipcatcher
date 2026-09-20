@@ -90,7 +90,7 @@ from quant_fund.models.rl import run_linucb_panel
 from quant_fund.models.tail import DrawdownClassifier, HistoricalTail, ScaledHistoricalTail
 from quant_fund.models.weighted_conformal import WeightedSplitCQR
 from quant_fund.pipeline.dataset import design_matrix
-from quant_fund.pipeline.train import _fit_ranker, _label_horizon, _make_ranker
+from quant_fund.pipeline.train import _fit_ranker, _label_horizon, _make_ranker, _predict_ranker
 from quant_fund.portfolio.interval_risk import (
     bench_interval_caps,
     cap_from_interval,
@@ -370,6 +370,7 @@ def oos_rank_scores(
     x: NDArray[np.float64],
     y: NDArray[np.float64],
     dates: NDArray[Any],
+    ids: NDArray[Any] | None = None,
 ) -> NDArray[np.float64]:
     times = sorted(set(dates.tolist()))
     folds = walk_forward(
@@ -381,8 +382,10 @@ def oos_rank_scores(
         tr = np.isin(dates, times[:cut])
         te = np.isin(dates, times[cut:])
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr])
-        pred[te] = model.predict(x[te])
+        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], None if ids is None else ids[tr])
+        pred[te] = _predict_ranker(
+            model, model_name, x[te], dates[te], None if ids is None else ids[te]
+        )
         return pred
     for fold in folds:
         tr = np.isin(dates, np.array(fold.train_times, dtype=object))
@@ -390,8 +393,10 @@ def oos_rank_scores(
         if not tr.any() or not te.any():
             continue
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr])
-        pred[te] = model.predict(x[te])
+        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], None if ids is None else ids[tr])
+        pred[te] = _predict_ranker(
+            model, model_name, x[te], dates[te], None if ids is None else ids[te]
+        )
     return pred
 
 
@@ -447,6 +452,54 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
                 "ic_dates": [str(date) for date in ic.dates],
             }
         )
+    public_feats = available_features(frame.columns, PUBLIC_FEATURES)
+    if public_feats:
+        x_pub, y_pub, dates_pub, _, ids_pub = design_matrix(frame, label, public_feats)
+        n_dates_pub = len({str(d) for d in dates_pub.tolist()})
+        # Tiny CI panels skip the paper universe. A serious panel (enough
+        # dates and names for managed-portfolio estimators) always runs it.
+        run_paper = n_dates_pub >= 80 and n_names >= 12
+        if run_paper:
+            for model_name in config.train.paper_rankers:
+                row_name = f"{model_name}_public"
+                try:
+                    scores = oos_rank_scores(
+                        model_name, config, x_pub, y_pub, dates_pub, ids_pub
+                    )
+                except (ValueError, np.linalg.LinAlgError):
+                    continue
+                mask = np.isfinite(scores) & np.isfinite(y_pub)
+                if int(mask.sum()) < 5:
+                    continue
+                ic = date_ic_series(scores[mask], y_pub[mask], dates_pub[mask], min_names=5)
+                dec = decile_portfolios(
+                    scores[mask],
+                    y_pub[mask],
+                    dates_pub[mask],
+                    n_buckets=n_buckets,
+                    min_names=5,
+                )
+                rows.append(
+                    {
+                        "name": row_name,
+                        "feature_set": "public",
+                        "engine": model_name,
+                        "mean_ic": ic.mean_pearson,
+                        "mean_rank_ic": ic.mean_spearman,
+                        "t_ic": ic.t_pearson,
+                        "p_ic": ic.p_pearson,
+                        "icir": ic.icir_pearson,
+                        "n_dates": ic.n_dates,
+                        "n_folds": ic.n_dates,
+                        "decile_monotonicity": dec.monotonicity,
+                        "ls_mean": dec.mean_ls,
+                        "ls_t": dec.t_ls,
+                        "ls_p": dec.p_ls,
+                        "decile_means": dec.mean_returns,
+                        "ic_series": [float(v) for v in ic.pearson.tolist()],
+                        "ic_dates": [str(date) for date in ic.dates],
+                    }
+                )
     # Pairwise Diebold–Mariano on -IC series across rankers. Align by the
     # intersection of date keys, never by positional truncation: different
     # feature sets can have different missing-date patterns.

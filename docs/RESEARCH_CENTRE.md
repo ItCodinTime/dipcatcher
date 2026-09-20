@@ -6,7 +6,7 @@ Dipcatcher is Artificial Hedge's **proprietary research lab**. It measures forec
 
 | Family | Scientific scores |
 |---|---|
-| Ranking | Date-level IC / RankIC, HAC t, decile monotonicity |
+| Ranking | Date-level IC / RankIC, HAC t, decile monotonicity. Public-feature challengers: `rff`, `rff_ridgeless`, `sdf_ridge`, `sdf_en`, `ipca`, `ipca_alpha`, `rp_pca`, `fnw`, `gx3pass`, `ds_lasso`, `fm`, `pcr`, `pls`, `tprf`, `gbrt`, `pp` (ADR-026/027/028). Champion remains public ridge until a non-SYNTHETIC card wins. Pairwise DM is on −IC, not Sharpe. |
 | Alpha | Holdout MSE vs historical mean, Pearson IC |
 | Volatility | QLIKE, Diebold–Mariano |
 | Distribution | Pinball, CRPS, interval coverage, crossing, PIT KS (raw Gaussian + vol-scaled Gaussian / Student-t / standardized empirical residuals); 1d and 5d scored as separate keys |

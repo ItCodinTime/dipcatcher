@@ -28,6 +28,25 @@ from quant_fund.metrics.scoring import (
     quantile_crossing_rate,
 )
 from quant_fund.models.alpha import HistoricalMeanAlpha
+from quant_fund.models.asset_pricing import IPCARanker, RandomFourierRanker, SDFRidgeRanker
+from quant_fund.models.cs_papers import (
+    DATED_FIT_RANKERS,
+    DATED_PREDICT_RANKERS,
+    ID_FIT_RANKERS,
+    ID_PREDICT_RANKERS,
+    PAPER_RANKER_NAMES,
+    DoubleSelectionRanker,
+    FamaMacBethRanker,
+    FNWRanker,
+    GBRTRanker,
+    GXThreePassRanker,
+    PCRRanker,
+    PLSRanker,
+    PrincipalPortfolioRanker,
+    RPPCARanker,
+    SDFElasticNetRanker,
+    ThreePassFilterRanker,
+)
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
@@ -68,6 +87,17 @@ from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.seeds import set_global_seed
 from quant_fund.validation.purging import purge_mask
 from quant_fund.validation.walk_forward import Fold, walk_forward
+
+RANKING_MODEL_NAMES = {
+    "composite",
+    "ridge",
+    "elasticnet",
+    "xgboost",
+    "lightgbm",
+    "lambdarank",
+    "xendcg",
+    *PAPER_RANKER_NAMES,
+}
 
 
 def _chronological_split(
@@ -450,11 +480,7 @@ def train_ranking(
     frame: pl.DataFrame | None = None,
     feature_names: list[str] | None = None,
 ) -> dict[str, Any]:
-    _require_model(
-        model_name,
-        {"composite", "ridge", "elasticnet", "xgboost", "lightgbm", "lambdarank", "xendcg"},
-        "ranking",
-    )
+    _require_model(model_name, RANKING_MODEL_NAMES, "ranking")
     set_global_seed(config.train.random_seed)
     label = config.train.ranking_target
     df = frame if frame is not None else panel(config, label=label)
@@ -473,8 +499,8 @@ def train_ranking(
         if not tr.any() or not te.any():
             continue
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr])
-        evaluation_scores.append(np.asarray(model.predict(x[te]), dtype=float))
+        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], ids[tr])
+        evaluation_scores.append(_predict_ranker(model, model_name, x[te], dates[te], ids[te]))
         evaluation_targets.append(y[te])
         evaluation_dates.append(dates[te])
         last_model = model
@@ -525,18 +551,46 @@ def _make_ranker(name: str, config: AppConfig) -> Any:
         "lightgbm": LGBMRegRanker(t.lgbm_n_estimators, t.lgbm_num_leaves, t.random_seed),
         "lambdarank": LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "lambdarank"),
         "xendcg": LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "rank_xendcg"),
+        "rff": RandomFourierRanker(t.rff_n_features, t.rff_gamma, t.rff_z, t.random_seed),
+        "rff_ridgeless": RandomFourierRanker(t.rff_n_features, t.rff_gamma, 0.0, t.random_seed),
+        "sdf_ridge": SDFRidgeRanker(t.sdf_ridge_z),
+        "sdf_en": SDFElasticNetRanker(t.sdf_en_l2, t.sdf_en_l1),
+        "ipca": IPCARanker(t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=False),
+        "ipca_alpha": IPCARanker(t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=True),
+        "rp_pca": RPPCARanker(t.rp_pca_n_factors, t.rp_pca_gamma),
+        "fnw": FNWRanker(t.fnw_n_intervals, t.fnw_lam),
+        "gx3pass": GXThreePassRanker(t.gx_n_factors),
+        "ds_lasso": DoubleSelectionRanker(t.ds_lasso_alpha),
+        "fm": FamaMacBethRanker(),
+        "pcr": PCRRanker(t.pcr_n_factors),
+        "pls": PLSRanker(t.pls_n_factors),
+        "tprf": ThreePassFilterRanker(t.tprf_n_factors),
+        "gbrt": GBRTRanker(t.gbrt_n_estimators, t.gbrt_max_depth, t.gbrt_learning_rate, t.random_seed),
+        "pp": PrincipalPortfolioRanker(t.pp_n_factors),
     }
     if name not in catalog:
         raise ValueError(f"unknown ranking model {name!r}")
     return catalog[name]
 
 
-def _fit_ranker(model: Any, name: str, x, y, dates) -> None:
+def _fit_ranker(model: Any, name: str, x, y, dates, ids=None) -> None:
     if name in {"lambdarank", "xendcg"}:
         order = np.argsort(dates, kind="mergesort")
         model.fit(x[order], y[order], group=group_sizes(dates[order]))
+    elif name in ID_FIT_RANKERS:
+        model.fit(x, y, dates=dates, ids=ids)
+    elif name in DATED_FIT_RANKERS:
+        model.fit(x, y, dates=dates)
     else:
         model.fit(x, y)
+
+
+def _predict_ranker(model: Any, name: str, x, dates, ids=None) -> np.ndarray:
+    if name in ID_PREDICT_RANKERS:
+        return np.asarray(model.predict(x, dates=dates, ids=ids), dtype=float)
+    if name in DATED_PREDICT_RANKERS:
+        return np.asarray(model.predict(x, dates=dates), dtype=float)
+    return np.asarray(model.predict(x), dtype=float)
 
 
 def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[str, Any]:
@@ -1385,7 +1439,7 @@ def garch_name_walk_forward(
 def train_alpha(config: AppConfig, model_name: str = "ridge") -> dict[str, Any]:
     _require_model(
         model_name,
-        {"mean", "ridge", "elasticnet", "xgboost", "lightgbm", "lambdarank", "xendcg", "composite"},
+        {"mean", *RANKING_MODEL_NAMES},
         "alpha",
     )
     if model_name == "mean":

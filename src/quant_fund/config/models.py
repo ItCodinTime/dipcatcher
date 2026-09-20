@@ -463,6 +463,48 @@ class TrainConfig(StrictConfigModel):
     lgbm_num_leaves: int = 15
     ridge_alpha: float = 1.0
     elasticnet_l1: float = 0.5
+    rff_n_features: int = 256
+    rff_gamma: float = 2.0
+    rff_z: float = 1.0
+    sdf_ridge_z: float = 1.0
+    sdf_en_l2: float = 1.0
+    sdf_en_l1: float = 0.05
+    ipca_n_factors: int = 3
+    ipca_max_iter: int = 50
+    ipca_tol: float = 1e-6
+    rp_pca_n_factors: int = 3
+    rp_pca_gamma: float = 10.0
+    gx_n_factors: int = 3
+    fnw_n_intervals: int = 4
+    fnw_lam: float = 0.05
+    ds_lasso_alpha: float = 0.01
+    pcr_n_factors: int = 3
+    pls_n_factors: int = 3
+    tprf_n_factors: int = 3
+    gbrt_n_estimators: int = 40
+    gbrt_max_depth: int = 2
+    gbrt_learning_rate: float = 0.1
+    pp_n_factors: int = 3
+    paper_rankers: list[str] = Field(
+        default_factory=lambda: [
+            "rff",
+            "rff_ridgeless",
+            "sdf_ridge",
+            "sdf_en",
+            "ipca",
+            "ipca_alpha",
+            "rp_pca",
+            "fnw",
+            "gx3pass",
+            "ds_lasso",
+            "fm",
+            "pcr",
+            "pls",
+            "tprf",
+            "gbrt",
+            "pp",
+        ]
+    )
     n_hmm_states: int = 3
     garch_p: int = 1
     garch_q: int = 1
@@ -489,13 +531,69 @@ class TrainConfig(StrictConfigModel):
             "n_hmm_states",
             "garch_p",
             "garch_q",
+            "ipca_n_factors",
+            "ipca_max_iter",
+            "pcr_n_factors",
+            "pls_n_factors",
+            "tprf_n_factors",
+            "gbrt_n_estimators",
+            "gbrt_max_depth",
+            "pp_n_factors",
         ):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be positive")
-        for name in ("ridge_alpha", "elasticnet_l1", "qlike_floor", "psd_eigen_tol"):
+        for name in (
+            "ridge_alpha",
+            "elasticnet_l1",
+            "qlike_floor",
+            "psd_eigen_tol",
+            "rff_z",
+            "sdf_ridge_z",
+            "sdf_en_l2",
+            "sdf_en_l1",
+            "fnw_lam",
+            "ds_lasso_alpha",
+            "gbrt_learning_rate",
+        ):
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
+        for name in ("rp_pca_n_factors", "gx_n_factors", "fnw_n_intervals"):
+            if getattr(self, name) < 1:
+                raise ValueError(f"{name} must be positive")
+        if self.fnw_n_intervals < 2:
+            raise ValueError("fnw_n_intervals must be >= 2")
+        if not np.isfinite(self.rp_pca_gamma) or self.rp_pca_gamma < -1.0:
+            raise ValueError("rp_pca_gamma must be finite and >= -1")
+        if not np.isfinite(self.gbrt_learning_rate) or self.gbrt_learning_rate <= 0:
+            raise ValueError("gbrt_learning_rate must be finite and positive")
+        allowed = {
+            "rff",
+            "rff_ridgeless",
+            "sdf_ridge",
+            "sdf_en",
+            "ipca",
+            "ipca_alpha",
+            "rp_pca",
+            "fnw",
+            "gx3pass",
+            "ds_lasso",
+            "fm",
+            "pcr",
+            "pls",
+            "tprf",
+            "gbrt",
+            "pp",
+        }
+        unknown = [name for name in self.paper_rankers if name not in allowed]
+        if unknown:
+            raise ValueError(f"unknown paper_rankers {unknown!r}")
+        if self.rff_n_features < 2 or self.rff_n_features % 2 != 0:
+            raise ValueError("rff_n_features must be an even integer >= 2")
+        if not np.isfinite(self.rff_gamma) or self.rff_gamma <= 0:
+            raise ValueError("rff_gamma must be finite and positive")
+        if not np.isfinite(self.ipca_tol) or self.ipca_tol <= 0:
+            raise ValueError("ipca_tol must be finite and positive")
         if not 0 <= self.elasticnet_l1 <= 1:
             raise ValueError("elasticnet_l1 must be in [0, 1]")
         if self.qlike_floor <= 0 or self.psd_eigen_tol <= 0:

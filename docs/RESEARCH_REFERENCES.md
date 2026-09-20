@@ -4,7 +4,17 @@ Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC
 
 ## Cross-sectional asset pricing / ML
 
-- Gu, Kelly, Xiu (2020). Empirical Asset Pricing via Machine Learning. *Review of Financial Studies*.
+- Fama, MacBeth (1973). Risk, Return, and Equilibrium: Empirical Tests. *Journal of Political Economy*. Date-level CS slopes averaged; catalog `fm`.
+- Gu, Kelly, Xiu (2020). Empirical Asset Pricing via Machine Learning. *Review of Financial Studies*. NBER w25398. PCR `pcr`, PLS `pls`, Huber GBRT `gbrt`. Neural nets not implemented (ADR-007). Linear autoencoder ≡ IPCA.
+- Kelly, Pruitt (2015). The Three-Pass Regression Filter: A New Approach to Forecasting Using Many Predictors. *Journal of Econometrics* 186(2). Automatic-proxy 3PRF Tables 1–2; catalog `tprf`. PLS is the no-intercept special case.
+- Kelly, Malamud, Pedersen (2023). Principal Portfolios. *Journal of Finance* 78(1). Open access DOI [10.1111/jofi.13199](https://doi.org/10.1111/jofi.13199). NBER w27388. \(\Pi=E[R_{t+1}S_t']\); catalog `pp`.
+- Kelly, Malamud, Zhou (2024). The Virtue of Complexity in Return Prediction. *Journal of Finance* 79(1). Open access DOI [10.1111/jofi.13298](https://doi.org/10.1111/jofi.13298). NBER w30217. RFF (Rahimi–Recht) + ridge \(\hat\beta(z)=(zI+T^{-1}S'S)^{-1}T^{-1}S'R\); catalog `rff`. Adaptations in MATH_SPEC.
+- Kozak, Nagel, Santosh (2020). Shrinking the Cross-Section. *Journal of Financial Economics*. NBER w24070. SDF ridge \(b=(\Sigma+zI)^{-1}\mu\) (`sdf_ridge`) and HJ-distance elastic net eq. 28 (`sdf_en`).
+- Kelly, Pruitt, Su (2019). Characteristics Are Covariances: A Unified Model of Risk and Return. *Journal of Financial Economics*. NBER w24540. IPCA ALS, \(\Gamma'\Gamma=I_K\); catalog `ipca`. Nested unrestricted \(\Gamma_\alpha\): `ipca_alpha`.
+- Lettau, Pelger (2020). Factors That Fit the Time Series and Cross-Section of Stock Returns. *Review of Financial Studies* 33(5). NBER w24858. RP-PCA \(S=(1/T)X'X+\gamma\bar X\bar X'\); catalog `rp_pca`.
+- Giglio, Xiu (2021). Asset Pricing with Omitted Factors. *Journal of Political Economy*. NBER w23527. Three-pass PCA / CS / TS estimator; catalog `gx3pass`.
+- Freyberger, Neuhierl, Weber (2020). Dissecting Characteristics Nonparametrically. *Review of Financial Studies* 33(5). NBER w23227. Adaptive group LASSO on quadratic splines of rank-transformed characteristics; catalog `fnw`.
+- Feng, Giglio, Xiu (2020). Taming the Factor Zoo: A Test of New Factors. *Journal of Finance*. Post-double-selection LASSO then OLS; catalog `ds_lasso`.
 - Learning-to-rank (LambdaRank, XE-NDCG) as used in LightGBM.
 - Factor-neutral portfolio construction (standard industry practice; Grinold–Kahn).
 

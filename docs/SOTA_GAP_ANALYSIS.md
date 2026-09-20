@@ -1,5 +1,44 @@
 # SOTA gap analysis — Day Wave 21 (2026-09-16)
 
+## Day Wave 145 — FM, PCR/PLS, 3PRF, GBRT, principal portfolios — 2026-09-19
+
+- Causal public-feature challengers add `fm` (Fama–MacBeth 1973), `pcr`
+  / `pls` / `gbrt` (Gu–Kelly–Xiu RFS 2020 / NBER w25398; Huber GBRT,
+  no NN), `tprf` (Kelly–Pruitt JoE 2015 automatic-proxy 3PRF), and `pp`
+  (Kelly–Malamud–Pedersen JoF 2023 / NBER w27388 truncated SVD of
+  \(\Pi=E[RS']\)). `fnw` empty selection and `sdf_en` zero loadings no
+  longer emit constant scores. `bench_ranking` still pairwise-DM vs
+  ridge. `forecast_asof` stamps Spearman only. `blend_weight` 0. No
+  Sharpe in metadata. SYNTHETIC 16×120 public card: IPCA mean date IC
+  0.400 (t=15.1) vs ridge 0.375 (t=9.5); Fama–MacBeth 0.395; RFF
+  negative. Not a live P&L claim.
+
+## Day Wave 144 — RP-PCA, FNW, 3-pass, DS-LASSO, KNS-EN, IPCA-\(\alpha\) — 2026-09-19
+
+- Public-feature causal challengers now include `rff` / `rff_ridgeless`,
+  `sdf_ridge` / `sdf_en`, `ipca` / `ipca_alpha`, `rp_pca` (Lettau–Pelger
+  RFS 2020, NBER w24858), `fnw` (Freyberger–Neuhierl–Weber RFS 2020,
+  NBER w23227), `gx3pass` (Giglio–Xiu JPE 2021, NBER w23527), and
+  `ds_lasso` (Feng–Giglio–Xiu JoF 2020). `bench_ranking` walk-forward
+  scores each on `PUBLIC_FEATURES` and pairwise-DM vs ridge. `forecast_asof`
+  stamps Spearman vs ridge when a `ranker_<name>.joblib` exists and **does
+  not blend**. `blend_weight` stays 0. No Sharpe in metadata.
+- Completes VoC ridgeless \(z=0\), KNS eq. 28 ISTA, nested IPCA
+  \(\Gamma_\alpha\). Deviations in MATH_SPEC. Not a live P&L claim.
+
+## Day Wave 143 — VoC RFF, KNS SDF ridge, IPCA ALS rankers — 2026-09-19
+
+- Kelly–Malamud–Zhou JoF 2024 (DOI 10.1111/jofi.13298, OA HTML), Kozak–Nagel–Santosh
+  JFE 2020 (NBER w24070), and Kelly–Pruitt–Su JFE 2019 (NBER w24540) are
+  implemented as causal ranking challengers `rff` / `sdf_ridge` / `ipca`.
+  MATH_SPEC records stacked-panel \(T\), public CS features, and no
+  \(\Gamma_\alpha\) IPCA. Catalog names only — `forecast_asof` still loads
+  ridge. `blend_weight` stays 0. No Sharpe in model metadata.
+- Dual ridge when \(P>T\); KNS extra shrinkage is \((\Sigma+zI)^{-1}\mu\);
+  IPCA ALS with \(\Gamma'\Gamma=I_K\). Unit tests recover a trig signal,
+  PC shrinkage factors \(d_j/(d_j+z)\), and a planted IPCA expected return.
+  This is a paper-engine wiring claim, not a live P&L claim.
+
 ## Day Wave 142 — robinhood+ challenger card, leakage stamps, Jackknife+ units — 2026-09-19
 
 - Causal SYNTHETIC ridge-only vs robinhood+ (blend_weight 1) on the same

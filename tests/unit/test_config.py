@@ -171,6 +171,10 @@ def test_train_config_rejects_invalid_hyperparameters() -> None:
         {"ridge_alpha": float("nan")},
         {"elasticnet_l1": 1.1},
         {"qlike_floor": 0.0},
+        {"rff_n_features": 5},
+        {"ipca_n_factors": 0},
+        {"tprf_n_factors": 0},
+        {"gbrt_learning_rate": 0.0},
     ):
         with pytest.raises(ValueError):
             TrainConfig.model_validate(payload)

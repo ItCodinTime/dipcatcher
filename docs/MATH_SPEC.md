@@ -997,3 +997,184 @@ moments over \(m=1,\ldots,M\) paths. Only horizons \(h\le\) `pred_len`
 are emitted. Bars with `event_time` (and `available_time` when present)
 after the decision clock are excluded. This is a research-lab path
 forecast, not a live P&L claim.
+
+## Kelly–Malamud–Zhou random Fourier ridge (`rff`)
+
+JoF 2024 equation (20) (NBER w30217 eq. 21) maps standardized public
+cross-sectional features \(G\) to paired random Fourier features
+
+\[
+S_i = \bigl[\sin(\gamma\omega_i'G),\;\cos(\gamma\omega_i'G)\bigr]',
+\quad \omega_i\sim\mathrm{i.i.d.}\,N(0,I),\;\gamma=2.
+\]
+
+\(P\) is even (`train.rff_n_features`). Columns of \(S\) are standardized
+on the training sample (NBER footnote 36); the JoF display omits
+\(P^{-1/2}\) because that scale is absorbed by column standardization
+and \(z\). Ridge uses the paper's parameterization, not sklearn
+`alpha`:
+
+\[
+\hat\beta(z)=\bigl(zI+T^{-1}S'S\bigr)^{-1}T^{-1}S'R.
+\]
+
+When \(P>T\), the dual \(\beta=S'(SS'+zTI)^{-1}y\) is used. \(z=0\) is
+ridgeless (minimum-norm interpolator). **Deviation:** the paper is
+time-series market timing on 15 macro predictors; Dipcatcher stacks the
+cross-sectional panel and treats \(T\) as the number of finite
+stock-date rows. Scores are \(\hat y=\bar R+S_{\mathrm{oos}}'\hat\beta\).
+No Sharpe in metadata. Walk-forward is the existing purged date folds.
+
+## Kozak–Nagel–Santosh SDF ridge (`sdf_ridge`)
+
+Managed portfolios \(F_t=n_t^{-1}Z_t'r_t\) from lagged public CS
+features and the ranking label. KNS (22):
+
+\[
+\hat b=(\Sigma+zI)^{-1}\mu,\qquad \mu=\bar F,\;\Sigma=\widehat{\mathrm{Cov}}(F).
+\]
+
+In PC space the shrinkage factor on OLS is \(d_j/(d_j+z)\), which is
+stronger for small eigenvalues — that *is* the extra shrinkage, not a
+second hyperparameter. Stock scores are \(Z\hat b\). Dates are required.
+**Deviation:** KNS estimate a monthly SDF on characteristic-managed
+factors; here \(r_t\) is the ranking target (e.g. 5-day excess), not a
+tradable monthly excess return.
+
+## Kelly–Pruitt–Su IPCA (`ipca`)
+
+Restricted IPCA (\(\Gamma_\alpha=0\)):
+
+\[
+r_{t+1}=Z_t\Gamma f_{t+1}+\varepsilon_{t+1},\qquad \Gamma'\Gamma=I_K.
+\]
+
+ALS alternates FOC (6) \(f_{t+1}=(\Gamma'Z_t'Z_t\Gamma)^{-1}\Gamma'Z_t'r_{t+1}\)
+and FOC (7) \(\mathrm{vec}(\Gamma)=( \sum_t f_t f_t'\otimes Z_t'Z_t)^{-1}\sum_t (f_t\otimes Z_t')r_{t+1}\)
+until \(\max|\Delta\Gamma|<10^{-6}\) (default). Identification: thin QR,
+diagonal descending \(\mathrm{Cov}(f)\), non-negative mean \(f\).
+Initialization: leading eigenvectors of \(\sum_t x_t x_t'\) with
+\(x_t=Z_t'r_{t+1}\). Restricted predictor is \(Z\Gamma\mu_f\). Catalog
+`ipca_alpha` is a nested unrestricted step: \(\Gamma_\alpha\) from the
+pooled residual \(r-Z\Gamma f\) projected onto \(Z\) after ALS;
+predictor \(Z(\Gamma_\alpha+\Gamma\mu_f)\). Default \(K=3\). Dates are
+required. **Deviation:** instruments are the public CS-z columns, not
+the paper's 36 firm characteristics split into level and deviation; the
+unrestricted step is one-shot nested, not full joint ALS for
+\((\Gamma_\alpha,\Gamma_\beta)\). No bootstrap pricing test. Research
+diagnostic, not a live SDF claim.
+
+## Kozak–Nagel–Santosh SDF elastic net (`sdf_en`)
+
+KNS (28) minimizes the HJ-distance plus \(\ell_2\) and \(\ell_1\):
+
+\[
+\hat b=\arg\min_b\,(\mu-\Sigma b)'\Sigma^{-1}(\mu-\Sigma b)+\gamma_2\|b\|_2^2+\gamma_1\|b\|_1.
+\]
+
+Implemented as ISTA on the equivalent smooth gradient \(2\Sigma b-2\mu+2\gamma_2 b\)
+with soft-thresholding. **Deviation:** fixed \(\gamma_1,\gamma_2\)
+(`sdf_en_l1`, `sdf_en_l2`), not LARS-EN with Sharpe-prior \(\kappa\).
+If ISTA returns the zero vector (typical when \(\gamma_1\) dwarfs
+\(\|\mu\|\)), the ranker retries at \(\gamma_1=0\) rather than emit a
+constant score.
+
+## Lettau–Pelger RP-PCA (`rp_pca`)
+
+On the \(T\times L\) managed-portfolio matrix \(X\),
+
+\[
+S_{\mathrm{RP}}=\tfrac1T X'X+\gamma\bar X\bar X',\qquad \gamma=-1\text{ is covariance PCA}.
+\]
+
+Default \(\gamma=10\) (over-weight means). Loadings \(\Lambda\) are the
+leading \(K\) eigenvectors; scores \(Z\Lambda\mu_f\). **Deviation:**
+applied to characteristic-managed portfolios of public CS features, not
+the paper's characteristic-sorted test assets. No Sharpe of the factors
+is stored.
+
+## Giglio–Xiu three-pass (`gx3pass`)
+
+Pass 1: PCA of managed-portfolio returns. Pass 2: \(\lambda_{\mathrm{PCA}}=V_K'\mu\).
+Pass 3: each managed column on the PCs yields \(\eta_j\); characteristic
+premium \(\eta_j'\lambda_{\mathrm{PCA}}\). Scores \(Z\hat\gamma\).
+**Deviation:** test assets are the \(L\) managed portfolios, not a large
+equity-portfolio panel. Weak-factor caveats of PCA remain.
+
+## Freyberger–Neuhierl–Weber adaptive group LASSO (`fnw`)
+
+Date-level rank transform of each characteristic to \((0,1)\). Quadratic
+spline basis (FNW 4): \(1,c,c^2,\max(c-t_l,0)^2\) with equally spaced
+knots. Two-step adaptive group LASSO (5)–(7) then OLS on selected spline
+groups. **Deviation:** one global intercept (not \(p_1=1\) inside every
+group); \(\lambda\) is configured (`fnw_lam`), not Yuan–Lin BIC. If the
+adaptive step selects no characteristic, OLS is run on every spline group
+rather than scoring a constant intercept.
+
+## Feng–Giglio–Xiu / BCH double selection (`ds_lasso`)
+
+LASSO of \(y\) on \(Z\), then LASSO of each selected column on the rest;
+OLS on the union. **Deviation:** stock-level ranking label, not a
+Fama–MacBeth test of a new traded factor. Post-selection OLS is the
+prediction map.
+
+## Fama–MacBeth (`fm`)
+
+For each date \(t\) with enough names,
+
+\[
+r_{i,t}=a_t+Z_{i,t}\lambda_t+e_{i,t},\qquad
+\hat\lambda=\frac1T\sum_t\hat\lambda_t.
+\]
+
+Scores are \(Z\hat\lambda\) (the intercept does not rank). **Deviation:**
+one pooled window per walk-forward fold, not overlapping monthly FM with
+Newey–West on \(\lambda_t\). Public CS-z columns, not the original FM
+market-beta specification.
+
+## Gu–Kelly–Xiu PCR (`pcr`) and PLS (`pls`)
+
+NBER w25398 / RFS 2020. Column-standardize \(Z\). PCR takes the leading
+\(K\) right singular vectors \(\Omega_K\) of \(Z\) and OLS of \(y\) on
+\(Z\Omega_K\). PLS is sklearn SIMPLS (de Jong 1993), the GKX
+implementation; Kelly–Pruitt (2015) show PLS is 3PRF without second-pass
+intercepts. Default \(K=3\). **Deviation:** \(K\) is configured
+(`pcr_n_factors`, `pls_n_factors`), not validation-tuned; Huber loss is
+not used on these two linear reducers. Neural nets stay blocked (ADR-007).
+
+## Kelly–Pruitt three-pass regression filter (`tprf`)
+
+JoE 2015 Table 1 with Table 2 automatic proxies. Predictors are
+column-standardized. Proxy 1 is the target \(y\); proxy \(k\) is the
+residual of the \((k-1)\)-proxy 3PRF. Pass 1: each characteristic on the
+proxies (with intercept). Pass 2: each row's characteristic vector on
+\(\hat\Phi\) (with intercept). Pass 3: \(y\) on \(\hat F\). OOS uses
+frozen \(\hat\Phi\) and \(\hat\beta\). **Deviation:** the paper's \(T\times N\)
+is calendar time by many predictors; here rows are stacked stock-dates and
+\(N\) is the public CS width (same stacked-\(T\) adaptation as VoC).
+
+## Gu–Kelly–Xiu GBRT (`gbrt`)
+
+Shallow Huber gradient-boosted trees (GKX Algorithm 4 / GBRT+H):
+`max_depth=2`, shrinkage \(\nu=\) `gbrt_learning_rate`, \(B=\)
+`gbrt_n_estimators`, subsample 0.8. **Deviation:** hyperparameters are
+configured, not validation-path tuned; this is not the paper's 94-characteristic
+monthly CRSP panel. Random forests are omitted (same tree class). Neural
+nets are not implemented (ADR-007). Linear GKX autoencoder remains IPCA.
+
+## Kelly–Malamud–Pedersen principal portfolios (`pp`)
+
+JoF 2023 / NBER w27388. Own-signal \(S=Z\hat\beta_{\mathrm{OLS}}\).
+Unbalanced-panel estimator
+
+\[
+\hat\Pi=\mathrm{average}_t\, r_t S_t'
+\]
+
+over names present on that date (\(r_t\) is the already-aligned ranking
+label). Rank-\(K\) SVD \(\hat\Pi_K=U_K\Lambda_K V_K'\). Date-\(t\) scores
+are \(\hat\Pi_K S_t\) in name order; names unseen in training keep the
+own-signal. **Deviation:** \(S\) is the pooled OLS fitted value, not a
+single characteristic such as momentum; PEPs/PAPs (symmetric vs
+antisymmetric split) are not stored as separate book weights. This does
+not size the book.
