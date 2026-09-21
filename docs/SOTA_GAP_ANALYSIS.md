@@ -1,5 +1,65 @@
 # SOTA gap analysis — Day Wave 21 (2026-09-16)
 
+## Day Wave 149 — small-N CS rankers, skip/residual momentum, T-ridge — 2026-09-20
+
+- 54 names × 39 collinear CS-z made pooled `Ridge(α=1)` OLS and OLS
+  Fama–MacBeth nearly unidentified (\(N\approx p+2\)). Champion ridge
+  now date-demeans \(y\) and uses \(\alpha T\) when dates are passed.
+  New challengers: `fm_ridge` (per-date ridge FM), `classic` (a priori
+  signed public characteristics), `combo_ic` (Rapach train-IC weights).
+- `features.v4` adds skip-momentum (20d excluding last week), CAPM
+  residual 20d momentum, and rank-space reversal / overnight. Public
+  card is 43 columns.
+- 55-name 5-day v4 race (54 names, 1134 OOS dates, HAC 20): ridge IC
+  −0.002 (t=−0.10). Best `combo_ic` 0.039 (t=1.93), principal
+  portfolios 0.036 (t=1.75), joint IPCA-α 0.031 (t=1.59). Pairwise DM
+  vs ridge does not reject at 5% (`combo_ic` p=0.056). White RC p=0.21;
+  SPA consistent p=0.25; StepM rejects none. `classic` is ~0 — daily
+  5-day idio on 54 Yahoo names does not carry the monthly factor zoo.
+  Champion remains public ridge. `blend_weight` 0. Not a live P&L claim.
+
+## Day Wave 148 — Gram LASSO, scale-stable DS, wide tape — 2026-09-20
+
+- sklearn L1 challengers (`alasso`, `ds_lasso`) use Gram-precomputed
+  coordinate descent. Naive \(n\)-path CD could not finish adaptive
+  LASSO on the 55-name 5d tape (process killed mid-fit after combo) or
+  the 420-name tape. `p≈39`, expanding \(n\sim10^5\)–\(10^6\).
+- `ds_lasso` column-standardizes before selection / OLS. Pooled OLS on
+  mixed-scale CS columns produced \(|\hat\beta|\sim10^{-13}\) and date IC
+  identical to the null engines (`sdf_en` / `rp_pca` / `gx3pass`).
+  PCR / alasso were already standardized.
+- 55-name Yahoo session-close tape, `features.v3` gold (MAD fallback;
+  54 names, 2629 dates, 117k rows, 39 public features, 5-day idio
+  label, 1134 OOS dates, HAC 20): ridge mean date IC −0.011 (t=−0.61).
+  Point-best GX 3-pass 0.029 (t=1.53), RP-PCA 0.028 (t=1.50), SDF
+  0.026 (t=1.36). Pairwise DM vs ridge does not reject at 5% (GX
+  p=0.057, RP-PCA p=0.057, SDF p=0.067). White RC p=0.13; SPA
+  consistent p=0.23; StepM rejects none. `alasso` finished in 6s
+  (Gram path). Wave 146’s +0.012 ridge IC was `features.v2` (exploded
+  CS-z). Champion remains public ridge. `blend_weight` 0. Not a live
+  P&L claim.
+- Wide Yahoo tape (424 names / 1.13M bars, current-constituent
+  survivorship, research-only) v3 gold rebuilt (1.05M rows). 5d horse
+  race in flight.
+
+## Day Wave 146 — joint IPCA-\(\alpha\), combo, adaptive LASSO, file-tape IC — 2026-09-20
+
+- Unrestricted IPCA is joint ALS on \(F_{\mathrm{aug},t}=(1,f_t)'\)
+  (Kelly–Pruitt–Su), not the nested residual \(\Gamma_\alpha\) of Wave
+  144. Catalog adds `combo` (Rapach–Strauss–Zhou equal-weight univariate
+  OLS) and `alasso` (Zou 2006 adaptive LASSO). Walk-forward row masks use
+  integer-nanosecond membership so a 129k-row expanding horse race can
+  finish.
+- Causal public-feature walk-forward on the Yahoo session-close tape
+  (54 names, 2633 dates, 1134 OOS IC dates, `PUBLIC_FEATURES` only):
+  ridge mean date IC 0.012 (t=1.51); RP-PCA 0.020 (t=2.42); GX 3-pass
+  0.020 (t=2.40); SDF ridge 0.019 (t=2.27); joint IPCA-\(\alpha\) 0.007;
+  RFF 0.005. Pairwise DM on −IC vs ridge does not reject equal accuracy
+  (RP-PCA p=0.14, GX p=0.15, SDF p=0.10; HAC 15 lags). SYNTHETIC IPCA
+  was a DGP artifact. `blend_weight` 0. `forecast_asof` still loads
+  ridge. No Sharpe in metadata. Overlay Sharpe stays in
+  `hedge_lab_analytics` and is not live P&L.
+
 ## Day Wave 145 — FM, PCR/PLS, 3PRF, GBRT, principal portfolios — 2026-09-19
 
 - Causal public-feature challengers add `fm` (Fama–MacBeth 1973), `pcr`

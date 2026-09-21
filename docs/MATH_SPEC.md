@@ -1055,14 +1055,24 @@ until \(\max|\Delta\Gamma|<10^{-6}\) (default). Identification: thin QR,
 diagonal descending \(\mathrm{Cov}(f)\), non-negative mean \(f\).
 Initialization: leading eigenvectors of \(\sum_t x_t x_t'\) with
 \(x_t=Z_t'r_{t+1}\). Restricted predictor is \(Z\Gamma\mu_f\). Catalog
-`ipca_alpha` is a nested unrestricted step: \(\Gamma_\alpha\) from the
-pooled residual \(r-Z\Gamma f\) projected onto \(Z\) after ALS;
-predictor \(Z(\Gamma_\alpha+\Gamma\mu_f)\). Default \(K=3\). Dates are
-required. **Deviation:** instruments are the public CS-z columns, not
-the paper's 36 firm characteristics split into level and deviation; the
-unrestricted step is one-shot nested, not full joint ALS for
-\((\Gamma_\alpha,\Gamma_\beta)\). No bootstrap pricing test. Research
-diagnostic, not a live SDF claim.
+Unrestricted IPCA (`ipca_alpha`) jointly estimates \((\Gamma_\alpha,\Gamma)\)
+with augmented factors \(F_{\mathrm{aug},t}=(1,f_t)'\):
+
+\[
+r_{t+1}=Z_t\Gamma_\alpha+Z_t\Gamma f_{t+1}+\varepsilon_{t+1},\qquad
+\mathrm{vec}(\Gamma_{\mathrm{aug}})=\Bigl(\sum_t F_{\mathrm{aug},t}F_{\mathrm{aug},t}'\otimes Z_t'Z_t\Bigr)^{-1}\sum_t\bigl(F_{\mathrm{aug},t}\otimes Z_t'\bigr)r_{t+1}.
+\]
+
+ALS warm-starts from the restricted solution, then alternates
+\(f_t=(\Gamma'Z_t'Z_t\Gamma)^{-1}\Gamma'Z_t'(r_t-Z_t\Gamma_\alpha)\) with the
+packed \(\Gamma_{\mathrm{aug}}=[\Gamma_\alpha\mid\Gamma]\) FOC until
+\(\max|\Delta\Gamma|,|\Delta\Gamma_\alpha|<10^{-6}\). Identification
+(QR, descending \(\mathrm{Cov}(f)\), non-negative mean \(f\)) is applied
+to \(\Gamma\) only. Predictor \(Z(\Gamma_\alpha+\Gamma\mu_f)\). Default
+\(K=3\). Dates are required. **Deviation:** instruments are the public
+CS-z columns, not the paper's 36 firm characteristics split into level
+and deviation. No bootstrap pricing test. Research diagnostic, not a
+live SDF claim.
 
 ## Kozak–Nagel–Santosh SDF elastic net (`sdf_en`)
 
@@ -1113,10 +1123,13 @@ rather than scoring a constant intercept.
 
 ## Feng–Giglio–Xiu / BCH double selection (`ds_lasso`)
 
-LASSO of \(y\) on \(Z\), then LASSO of each selected column on the rest;
-OLS on the union. **Deviation:** stock-level ranking label, not a
+Columns are standardized (same as PCR / alasso). LASSO of \(y\) on \(Z\),
+then LASSO of each selected column on the rest; OLS on the union.
+sklearn coordinate descent uses the Gram matrix (\(p\times p\)), not the
+naive \(n\)-path. **Deviation:** stock-level ranking label, not a
 Fama–MacBeth test of a new traded factor. Post-selection OLS is the
-prediction map.
+prediction map. Unstandardized pooled OLS on mixed-scale CS columns
+produced \(|\hat\beta|\sim10^{-13}\) (a constant score) on the 5-day tape.
 
 ## Fama–MacBeth (`fm`)
 
@@ -1178,3 +1191,121 @@ own-signal. **Deviation:** \(S\) is the pooled OLS fitted value, not a
 single characteristic such as momentum; PEPs/PAPs (symmetric vs
 antisymmetric split) are not stored as separate book weights. This does
 not size the book.
+
+## Rapach–Strauss–Zhou combination (`combo`)
+
+Equal-weight average of \(L\) univariate OLS forecasts
+\(\hat r^{(j)}=a_j+Z_{\cdot j}b_j\). **Deviation:** Rapach et al. combine
+equity-premium time-series models; here each “model” is a public CS
+characteristic. Intercepts do not change cross-sectional rank.
+
+## Zou adaptive LASSO (`alasso`)
+
+Columns are standardized. First-stage OLS weights
+\(w_j=|\hat\beta_j^{\mathrm{OLS}}|^\gamma/\max_k|\hat\beta_k^{\mathrm{OLS}}|^\gamma\)
+(\(\gamma=1\)), floored at \(10^{-3}\) so a near-zero slope cannot divide
+its column by \(10^{-8}\) and stall coordinate descent. LASSO on
+\(Z_{\cdot j}/w_j\), then \(\hat\beta_j=\hat\theta_j/w_j\). The L1 step
+uses Gram-precomputed coordinate descent (same \(p\times p\) path as
+`ds_lasso`); the naive \(n\)-path could not finish an expanding 5-day
+horse race. **Deviation:**
+\(\lambda=\)`alasso_alpha`\(\cdot\sigma_y\) (target-sd units, see below), not
+BIC/CV; one pooled window per fold, not Zou’s oracle-rate asymptotics as
+a live claim.
+
+## \(\ell_1\) penalties in target-sd units (Wave 147)
+
+`ds_lasso_alpha`, `alasso_alpha`, and `fnw_lam` are quoted in units of the
+regressand’s standard deviation: the absolute penalty passed to the
+solver is \(\alpha\,\hat\sigma_y\) (for the FGX treatment LASSOs of
+\(Z_{\cdot j}\) on \(Z_{\cdot -j}\), \(\alpha\,\hat\sigma_{Z_j}\)). A fixed
+absolute \(\alpha=0.01\) is mild on a unit-variance test target and
+zeroes every coefficient on a 5-day idiosyncratic return with
+\(\sigma_y\approx0.03\), which silently turned `fnw` and `ds_lasso` into
+their OLS fallbacks on the file tape. The knobs did not change; their
+units did.
+
+## Public bar-characteristic zoo (Wave 147)
+
+`PUBLIC_FEATURES` is 43 columns, all functions of OHLCV, sector, and
+membership at or before \(t\): CS-z of returns / momentum (5, 20, 60,
+126, 12-1, 20-skip-5, residual 20), reversal and \(z\) vs MA20,
+overnight vs intraday returns (1 and 20 sessions), MAX / MIN 20,
+realized skew / kurtosis 20, volatility (20, 60, EWMA, Parkinson,
+Garman–Klass, vol-of-vol, downside, 20/60 ratio), trailing 60-session
+OLS beta and idiosyncratic vol vs the benchmark, liquidity
+(Amihud 20 / 60, ADV, dollar volume, relative volume, turnover proxy,
+volume vol, ADV 20/60 ratio, log price), plus rank-space `cs_pct`
+reversal and overnight. Long-lookback columns
+(`mom_126`, `mom_12_1`, `high_52w_prox`) take the cross-sectional
+neutral value 0 when unavailable (GKX median-fill); every other null
+drops the row.
+
+Robust cross-sectional \(z\) is \((x-\mathrm{med})/(1.4826\,\mathrm{MAD})\).
+When more than half the cross-section shares one value MAD is exactly 0;
+the previous \(10^{-12}\) floor produced \(|z|\sim10^{11}\)
+(`cs_z_high_52w_prox`, `cs_z_ret_overnight` on the 55-name tape) and
+destroyed every OLS-based ranker. The scale now falls back to the group
+standard deviation, then to “no dispersion → \(z=0\)”. Feature set
+version `features.v4`.
+
+Walk-forward purging for an \(h\)-bar label uses `horizon_bars=h`, and
+date-IC HAC lags are `overlap_aware_hac_lags(n_dates, h)`, so a 5-day
+label is not scored as if it were 1-day.
+
+## Pooled ridge in date units (Wave 149)
+
+sklearn `Ridge` minimises un-normalised RSS \(+\alpha\|b\|^2\). On a
+stacked tape \(n\sim10^5\), \(\alpha=1\) is OLS. When dates are passed,
+\(y\) is date-demeaned and \(\alpha_{\mathrm{used}}=\alpha T\) so the
+pooled Gram is \(X'X+T\alpha I\), the sum of date-level `Ridge(α)`
+problems. Unit tests that omit dates keep \(\alpha\) unchanged.
+
+## Ridge Fama–MacBeth (`fm_ridge`)
+
+Per-date CS ridge (intercept dropped from the score), then
+\(\hat\lambda=\mathrm{mean}_t\hat\lambda_t\). OLS FM skips a date unless
+\(N_t\ge p+2\); ridge runs at \(N_t\ge 8\). This is the identified
+small-\(N\) cousin of `fm`.
+
+## Classic signed characteristics (`classic`)
+
+Fixed signs, no estimated slopes: \(+\) reversal, skip-momentum,
+residual momentum, 12-1, 52-week-high proximity, Amihud; \(-\) MAX,
+idio vol. If feature names are omitted, equal weight (unit tests). If
+names are passed and none match, the ranker raises. Not OOS-tuned.
+
+## Short-horizon daily CS (`reversal`, `classic_st`, `ridge_st`, `fm_st`, `combo_ic_st`)
+
+A priori daily/weekly subset, not the monthly zoo. `reversal` is
+Jegadeesh \(+\mathrm{cs\_z\_reversal\_1}\) only. `classic_st` signs:
+\(+\mathrm{cs\_z\_reversal\_1}\), \(-\mathrm{cs\_z\_ret\_5}\) (Lehmann
+weekly reversal), \(+\mathrm{cs\_z\_mom\_skip\_5\_20}\),
+\(+\mathrm{cs\_z\_idio\_mom\_20}\), \(-\mathrm{cs\_z\_max\_ret\_20}\),
+\(-\mathrm{cs\_z\_idio\_vol\_60}\). `ridge_st` / `fm_st` / `combo_ic_st`
+estimate slopes on `SHORT_HORIZON_FEATURES` (12 daily/weekly columns).
+Signs and the column mask are frozen before OOS.
+
+## IC-weighted combination (`combo_ic`)
+
+Rapach univariate OLS forecasts weighted by \(\max(\overline{\mathrm{IC}}_j,0)\)
+computed on the **train** dates of the fold. If every train IC is
+negative, equal weight. Not a holdout IC weight.
+
+## Discounted MSFE combination (`combo_msfe`)
+
+Rapach–Strauss–Zhou discounted MSFE weights on univariate CS OLS.
+Within each train fold, the last 25% of dates are a nested holdout
+(in-sample MSE if the fold is too short). Univariate OLS is fit on the
+inner train; date-level MSE on the nested holdout is discounted with
+\(\theta=0.99\). Combination weights are \(w_j \propto 1/\mathrm{MSFE}_j\).
+Slopes used at predict-time are refit on the full train fold. Not OOS-tuned.
+
+## Rolling daily-CS walk-forward (hedge_lab)
+
+`configs/hedge_lab.yaml` uses `validation.scheme: rolling` with
+`train_bars: 252`. Daily reversal is short-memory; expanding 10-year
+pooled fits on 54 names mixed decaying premia into champion ridge.
+Wide tape inherits the same window. Champion remains public ridge until
+pairwise DM of \(-\mathrm{IC}\) plus White RC / SPA / StepM promote a
+challenger. `blend_weight` 0.

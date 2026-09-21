@@ -179,8 +179,9 @@ def fit_ipca_als(
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], int, NDArray[np.float64]]:
     """ALS for IPCA FOCs (6)–(7). Returns Gamma, {f_t}, iterations, Gamma_alpha.
 
-    Restricted model sets Gamma_alpha = 0. Unrestricted is a one-step residual
-    projection onto Z after restricted ALS (nested alpha).
+    Restricted model sets Gamma_alpha = 0. Unrestricted jointly estimates
+    (Gamma_alpha, Gamma) with F_aug,t = (1, f_t)', which is Kelly–Pruitt–Su
+    unrestricted IPCA, not a one-shot residual projection.
     """
     if n_factors < 1:
         raise ValueError("IPCA n_factors must be positive")
@@ -203,7 +204,8 @@ def fit_ipca_als(
         managed_rows.append(x_t)
     if len(panels) < 2:
         raise ValueError("IPCA needs at least two dates with enough names")
-    managed = np.stack(managed_rows, axis=0)
+    managed = np.stack(managed_rows, axis=0)  # X_t = Z_t' r_t, shape (T, n_char)
+    w_all = np.stack([w_t for _, _, w_t in panels], axis=0)  # W_t = Z_t' Z_t, (T, n_char, n_char)
     gram = managed.T @ managed
     evals, evecs = np.linalg.eigh(gram)
     k = min(int(n_factors), n_char, len(panels))
@@ -211,25 +213,8 @@ def fit_ipca_als(
     gamma, _ = _identify_ipca(gamma, np.zeros((len(panels), k)))
     n_iter = 0
     for n_iter in range(1, max_iter + 1):
-        factors = np.zeros((len(panels), k), dtype=float)
-        eye_k = np.eye(k)
-        for t, (z_t, r_t, w_t) in enumerate(panels):
-            gwg = gamma.T @ w_t @ gamma
-            rhs = gamma.T @ (z_t.T @ r_t)
-            try:
-                factors[t] = np.linalg.solve(gwg + 1e-12 * eye_k, rhs)
-            except np.linalg.LinAlgError:
-                factors[t] = np.linalg.lstsq(gwg, rhs, rcond=None)[0]
-        lhs = np.zeros((n_char * k, n_char * k), dtype=float)
-        rhs_vec = np.zeros(n_char * k, dtype=float)
-        for t, (z_t, r_t, w_t) in enumerate(panels):
-            f_t = factors[t]
-            lhs += np.kron(np.outer(f_t, f_t), w_t)
-            rhs_vec += np.kron(f_t, z_t.T @ r_t)
-        try:
-            vec_g = np.linalg.solve(lhs + 1e-10 * np.eye(n_char * k), rhs_vec)
-        except np.linalg.LinAlgError:
-            vec_g = np.linalg.lstsq(lhs, rhs_vec, rcond=None)[0]
+        factors = _ipca_factor_step(gamma, w_all, managed)
+        vec_g = _ipca_gamma_step(factors, w_all, managed)
         gamma_new = np.asarray(vec_g.reshape((n_char, k), order="F"), dtype=float)
         gamma_new, factors = _identify_ipca(gamma_new, factors)
         delta = np.max(np.abs(gamma_new - gamma))
@@ -237,15 +222,71 @@ def fit_ipca_als(
         if delta < tol:
             break
     gamma_alpha = np.zeros(n_char, dtype=float)
-    if unrestricted:
-        gram_a = np.zeros((n_char, n_char), dtype=float)
-        rhs_a = np.zeros(n_char, dtype=float)
-        for t, (z_t, r_t, w_t) in enumerate(panels):
-            fitted = z_t @ (gamma @ factors[t])
-            gram_a += w_t
-            rhs_a += z_t.T @ (r_t - fitted)
-        gamma_alpha = np.linalg.lstsq(gram_a + 1e-10 * np.eye(n_char), rhs_a, rcond=None)[0]
+    if not unrestricted:
+        return gamma, factors, n_iter, gamma_alpha
+    n_aug = k + 1
+    for n_iter in range(1, max_iter + 1):
+        # Z_t' (r_t - Z_t Gamma_alpha) = X_t - W_t Gamma_alpha, batched over dates.
+        managed_resid = managed - w_all @ gamma_alpha
+        factors = _ipca_factor_step(gamma, w_all, managed_resid)
+        f_aug = np.concatenate([np.ones((factors.shape[0], 1)), factors], axis=1)
+        vec_g = _ipca_gamma_step(f_aug, w_all, managed)
+        packed = np.asarray(vec_g.reshape((n_char, n_aug), order="F"), dtype=float)
+        gamma_alpha_new = packed[:, 0]
+        gamma_new = packed[:, 1:]
+        gamma_new, factors = _identify_ipca(gamma_new, factors)
+        delta = max(
+            float(np.max(np.abs(gamma_new - gamma))),
+            float(np.max(np.abs(gamma_alpha_new - gamma_alpha))),
+        )
+        gamma = gamma_new
+        gamma_alpha = gamma_alpha_new
+        if delta < tol:
+            break
     return gamma, factors, n_iter, gamma_alpha
+
+
+def _ipca_factor_step(
+    gamma: NDArray[np.float64],
+    w_all: NDArray[np.float64],
+    managed: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """FOC (6) for every date at once: f_t = (Gamma' W_t Gamma)^{-1} Gamma' X_t."""
+    k = gamma.shape[1]
+    # Batched BLAS: (W_t Gamma) then Gamma' (.) for every date; no 3-operand einsum.
+    gwg = np.matmul(gamma.T, np.matmul(w_all, gamma))  # (T, k, k)
+    rhs = managed @ gamma  # (T, k) == Gamma' X_t
+    eye_k = np.eye(k)
+    try:
+        return np.asarray(np.linalg.solve(gwg + 1e-12 * eye_k, rhs[..., None])[..., 0], dtype=float)
+    except np.linalg.LinAlgError:
+        out = np.zeros((w_all.shape[0], k), dtype=float)
+        for t in range(w_all.shape[0]):
+            out[t] = np.linalg.lstsq(gwg[t], rhs[t], rcond=None)[0]
+        return out
+
+
+def _ipca_gamma_step(
+    factors: NDArray[np.float64],
+    w_all: NDArray[np.float64],
+    managed: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """FOC (7): vec(Gamma) = (sum_t f_t f_t' kron W_t)^{-1} sum_t (f_t kron X_t).
+
+    One GEMM over the stacked dates gives the same sum as the per-date
+    ``np.kron`` loop, in column-major (Fortran) vec order.
+    """
+    n_dates, n_char, _ = w_all.shape
+    k = factors.shape[1]
+    ff = (factors[:, :, None] * factors[:, None, :]).reshape(n_dates, k * k)  # (T, k*k)
+    lhs4 = (ff.T @ w_all.reshape(n_dates, n_char * n_char)).reshape(k, k, n_char, n_char)
+    # lhs[(i,a),(j,b)] = sum_t f_ti f_tj W_t[a,b]  ==  kron(f f', W) in Fortran vec order.
+    lhs = lhs4.transpose(0, 2, 1, 3).reshape(n_char * k, n_char * k)
+    rhs_vec = (factors.T @ managed).reshape(n_char * k)  # rhs[(i,a)] = sum_t f_ti X_t[a]
+    try:
+        return np.asarray(np.linalg.solve(lhs + 1e-10 * np.eye(n_char * k), rhs_vec), dtype=float)
+    except np.linalg.LinAlgError:
+        return np.asarray(np.linalg.lstsq(lhs, rhs_vec, rcond=None)[0], dtype=float)
 
 
 class RandomFourierRanker(JoblibMixin):
@@ -362,7 +403,7 @@ class SDFRidgeRanker(JoblibMixin):
 
 
 class IPCARanker(JoblibMixin):
-    """Instrumented PCA ALS (Kelly–Pruitt–Su 2019). Scores are Z Gamma mu_f."""
+    """Instrumented PCA ALS (Kelly–Pruitt–Su 2019). Scores are Z (Gamma_alpha + Gamma mu_f)."""
 
     def __init__(
         self,

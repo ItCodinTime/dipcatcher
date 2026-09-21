@@ -26,6 +26,68 @@ def test_features_not_use_future_returns() -> None:
     assert bad.height == 0
 
 
+def test_public_feature_zoo_is_pit_and_finite() -> None:
+    """Wave 147: every public column exists, is finite where present, and has no oracle."""
+    from quant_fund.features.engine import CROSS_SECTIONAL_COLUMNS
+    from quant_fund.models.ranking import (
+        NEUTRAL_FILL_FEATURES,
+        ORACLE_COLUMNS,
+        PUBLIC_FEATURES,
+        PUBLIC_FEATURES_CORE,
+        PUBLIC_FEATURES_LONG,
+    )
+
+    p = SyntheticMarketProvider(n_assets=12, n_days=140, seed=11)
+    bars = adjust_prices(p.get_bars(), p.get_corporate_actions())
+    master = p.get_security_master()
+    bars = bars.join(
+        master.select(["security_id", "sector", "industry", "exchange"]),
+        on="security_id",
+        how="left",
+    )
+    feats = build_features(bars, AppConfig())
+    assert len(PUBLIC_FEATURES) >= 25
+    assert set(PUBLIC_FEATURES) == set(PUBLIC_FEATURES_CORE) | set(PUBLIC_FEATURES_LONG)
+    assert set(NEUTRAL_FILL_FEATURES) == set(PUBLIC_FEATURES_LONG)
+    assert not set(PUBLIC_FEATURES) & set(ORACLE_COLUMNS)
+    assert "planted_signal" in CROSS_SECTIONAL_COLUMNS
+    missing = [c for c in PUBLIC_FEATURES if c not in feats.columns]
+    assert missing == []
+    # Core columns need <= 60 sessions: the tail of a 140-day panel is populated.
+    tail = feats.sort("event_time").filter(
+        pl.col("event_time") >= feats["event_time"].unique().sort()[-20]
+    )
+    for col in PUBLIC_FEATURES_CORE:
+        values = tail[col].drop_nulls().to_numpy().astype(float)
+        assert values.size > 0, col
+        assert np.isfinite(values).all(), col
+    # Long-lookback columns are honestly null on a short panel, never NaN.
+    for col in PUBLIC_FEATURES_LONG:
+        values = feats[col].drop_nulls().to_numpy().astype(float)
+        assert np.isfinite(values).all(), col
+    # Market-relative columns exist and use only trailing bars.
+    assert {"beta_60", "idio_vol_60", "idio_mom_20", "mom_skip_5_20"} <= set(feats.columns)
+    assert feats.filter(pl.col("max_source_available_time") > pl.col("decision_time")).height == 0
+
+
+def test_design_frame_neutral_fills_long_lookback_only() -> None:
+    from quant_fund.pipeline.dataset import design_frame
+
+    frame = pl.DataFrame(
+        {
+            "event_time": [1, 2, 3, 4],
+            "security_id": ["A", "B", "A", "B"],
+            "future_idio_return_5": [0.1, None, 0.2, 0.3],
+            "cs_z_mom_20": [0.5, 0.4, None, 0.1],
+            "cs_z_mom_12_1": [None, 0.2, 0.3, None],
+        }
+    )
+    out = design_frame(frame, "future_idio_return_5", ["cs_z_mom_20", "cs_z_mom_12_1"])
+    # Row 2 has a null label, row 3 has a null core feature: both dropped.
+    assert out["security_id"].to_list() == ["A", "B"]
+    assert out["cs_z_mom_12_1"].to_list() == [0.0, 0.0]
+
+
 def test_future_max_drawdown_is_path_drawdown_not_origin_to_minimum() -> None:
     from datetime import datetime
 

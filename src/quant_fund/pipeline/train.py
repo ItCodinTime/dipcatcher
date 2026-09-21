@@ -35,17 +35,28 @@ from quant_fund.models.cs_papers import (
     ID_FIT_RANKERS,
     ID_PREDICT_RANKERS,
     PAPER_RANKER_NAMES,
+    AdaptiveLassoRanker,
+    ClassicRanker,
+    CombinationRanker,
     DoubleSelectionRanker,
     FamaMacBethRanker,
+    FamaMacBethRidgeRanker,
     FNWRanker,
     GBRTRanker,
     GXThreePassRanker,
+    ICWeightedCombinationRanker,
+    MSFECombinationRanker,
     PCRRanker,
     PLSRanker,
     PrincipalPortfolioRanker,
     RPPCARanker,
+    ClassicShortRanker,
+    ReversalRanker,
     SDFElasticNetRanker,
     ThreePassFilterRanker,
+    make_combo_ic_st,
+    make_fm_st,
+    make_ridge_st,
 )
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
@@ -78,7 +89,7 @@ from quant_fund.models.volatility import (
     RollingVol,
     TreeVol,
 )
-from quant_fund.pipeline.dataset import design_matrix, panel
+from quant_fund.pipeline.dataset import design_frame, design_matrix, panel
 from quant_fund.registry.mlflow_store import (
     configure_tracking,
     log_run,
@@ -86,7 +97,7 @@ from quant_fund.registry.mlflow_store import (
 from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.seeds import set_global_seed
 from quant_fund.validation.purging import purge_mask
-from quant_fund.validation.walk_forward import Fold, walk_forward
+from quant_fund.validation.walk_forward import Fold, timestamp_ns, walk_forward
 
 RANKING_MODEL_NAMES = {
     "composite",
@@ -129,7 +140,11 @@ def _chronological_split(
     train_end = max(0, cut - int(horizon_bars) - int(embargo_bars))
     train_dates = set(unique[:train_end])
     test_dates = set(unique[cut:])
-    return np.isin(values, list(train_dates)), np.isin(values, list(test_dates))
+    date_ns = timestamp_ns(values)
+    return (
+        np.isin(date_ns, timestamp_ns(list(train_dates))),
+        np.isin(date_ns, timestamp_ns(list(test_dates))),
+    )
 
 
 def _walk_forward_splits(
@@ -191,10 +206,11 @@ def _walk_forward_splits(
             train_end = max(0, cut - int(horizon_bars) - embargo)
             train_times = unique[:train_end]
         folds = [Fold(train_times=train_times, val_times=[], test_times=test_times)]
+    date_ns = timestamp_ns(values)
     return [
         (
-            np.isin(values, np.asarray(fold.train_times, dtype=object)),
-            np.isin(values, np.asarray(fold.test_times, dtype=object)),
+            np.isin(date_ns, timestamp_ns(fold.train_times)),
+            np.isin(date_ns, timestamp_ns(fold.test_times)),
         )
         for fold in folds
         if fold.train_times and fold.test_times
@@ -202,9 +218,10 @@ def _walk_forward_splits(
 
 
 def _split_fold(dates, x, y, fold):
-    tr = np.isin(dates, np.array(fold.train_times, dtype=object))
-    va = np.isin(dates, np.array(fold.val_times, dtype=object))
-    te = np.isin(dates, np.array(fold.test_times, dtype=object))
+    date_ns = timestamp_ns(dates)
+    tr = np.isin(date_ns, timestamp_ns(fold.train_times))
+    va = np.isin(date_ns, timestamp_ns(fold.val_times))
+    te = np.isin(date_ns, timestamp_ns(fold.test_times))
     return tr, va, te
 
 
@@ -222,7 +239,7 @@ def _aligned_label_end_times(frame: Any, label: str, features: list[str]) -> np.
         return None
     # Match design_matrix's selected columns and null filtering exactly.  The
     # endpoint is non-null whenever a forward label is usable.
-    sub = frame.select(["event_time", "security_id", label, *features, endpoint]).drop_nulls()
+    sub = design_frame(frame, label, features, extra_columns=[endpoint])
     return sub[endpoint].to_numpy()
 
 
@@ -499,7 +516,7 @@ def train_ranking(
         if not tr.any() or not te.any():
             continue
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], ids[tr])
+        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], ids[tr], features=feats)
         evaluation_scores.append(_predict_ranker(model, model_name, x[te], dates[te], ids[te]))
         evaluation_targets.append(y[te])
         evaluation_dates.append(dates[te])
@@ -567,22 +584,34 @@ def _make_ranker(name: str, config: AppConfig) -> Any:
         "tprf": ThreePassFilterRanker(t.tprf_n_factors),
         "gbrt": GBRTRanker(t.gbrt_n_estimators, t.gbrt_max_depth, t.gbrt_learning_rate, t.random_seed),
         "pp": PrincipalPortfolioRanker(t.pp_n_factors),
+        "combo": CombinationRanker(),
+        "alasso": AdaptiveLassoRanker(t.alasso_alpha),
+        "classic": ClassicRanker(),
+        "fm_ridge": FamaMacBethRidgeRanker(t.fm_ridge_alpha),
+        "combo_ic": ICWeightedCombinationRanker(),
+        "reversal": ReversalRanker(),
+        "classic_st": ClassicShortRanker(),
+        "ridge_st": make_ridge_st(t.ridge_alpha),
+        "fm_st": make_fm_st(t.fm_ridge_alpha),
+        "combo_ic_st": make_combo_ic_st(),
+        "combo_msfe": MSFECombinationRanker(),
     }
     if name not in catalog:
         raise ValueError(f"unknown ranking model {name!r}")
     return catalog[name]
 
 
-def _fit_ranker(model: Any, name: str, x, y, dates, ids=None) -> None:
+def _fit_ranker(model: Any, name: str, x, y, dates, ids=None, features=None) -> None:
+    extra = {} if features is None else {"features": features}
     if name in {"lambdarank", "xendcg"}:
         order = np.argsort(dates, kind="mergesort")
-        model.fit(x[order], y[order], group=group_sizes(dates[order]))
+        model.fit(x[order], y[order], group=group_sizes(dates[order]), **extra)
     elif name in ID_FIT_RANKERS:
-        model.fit(x, y, dates=dates, ids=ids)
+        model.fit(x, y, dates=dates, ids=ids, **extra)
     elif name in DATED_FIT_RANKERS:
-        model.fit(x, y, dates=dates)
+        model.fit(x, y, dates=dates, **extra)
     else:
-        model.fit(x, y)
+        model.fit(x, y, **extra)
 
 
 def _predict_ranker(model: Any, name: str, x, dates, ids=None) -> np.ndarray:

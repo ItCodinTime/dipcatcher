@@ -21,7 +21,7 @@ from quant_fund.data.universe import (
 from quant_fund.features.engine import build_features
 from quant_fund.features.metadata import FEATURE_SET_VERSION
 from quant_fund.labels.engine import build_labels
-from quant_fund.models.ranking import available_features
+from quant_fund.models.ranking import NEUTRAL_FILL_FEATURES, available_features
 from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.hashing import hash_file
 
@@ -201,6 +201,32 @@ def panel(
     return out
 
 
+def design_frame(
+    frame: pl.DataFrame,
+    label: str,
+    feats: list[str],
+    extra_columns: list[str] | tuple[str, ...] = (),
+) -> pl.DataFrame:
+    """Rows usable for training: keys, label, features (+ extras), no nulls.
+
+    Long-lookback public characteristics listed in ``NEUTRAL_FILL_FEATURES``
+    are filled with their cross-sectional neutral value (0 for a robust
+    z-score) instead of dropping the row, following Gu–Kelly–Xiu (2020).
+    Every other null still drops the row. Callers that need row alignment
+    with ``design_matrix`` must build their frame through this helper.
+    """
+    columns = ["event_time", "security_id", label, *feats, *extra_columns]
+    sub = frame.select(columns)
+    fills = [
+        pl.col(name).fill_null(NEUTRAL_FILL_FEATURES[name]).alias(name)
+        for name in feats
+        if name in NEUTRAL_FILL_FEATURES
+    ]
+    if fills:
+        sub = sub.with_columns(fills)
+    return sub.drop_nulls()
+
+
 def design_matrix(
     frame: pl.DataFrame,
     label: str,
@@ -223,7 +249,7 @@ def design_matrix(
         ]
     if not feats:
         raise ValueError("design_matrix found no usable feature columns")
-    sub = frame.select(["event_time", "security_id", label, *feats]).drop_nulls()
+    sub = design_frame(frame, label, feats)
     # Empty after drop_nulls is legitimate (early asof / all-null labels); return
     # zero-row arrays so callers can skip rather than inventing rows.
     x = sub.select(feats).to_numpy().astype(float)

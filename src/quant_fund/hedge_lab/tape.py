@@ -74,25 +74,135 @@ HEDGE_LAB_US: tuple[tuple[str, str], ...] = (
 )
 
 
+# Wide US common-stock cross-section (Wave 147): ~400 current large/mid caps by
+# GICS-style sector. SPY stays the benchmark row. This is a *current*
+# constituent list applied to history, so it is survivorship-biased and the
+# sector map is a static current classification, not a PIT vintage. Bond,
+# commodity, and sector ETFs are excluded: an equity-characteristic
+# cross-section should not rank TLT against NVDA.
+HEDGE_LAB_US_WIDE_SECTORS: dict[str, tuple[str, ...]] = {
+    "Information Technology": (
+        "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "ACN",
+        "INTC", "QCOM", "TXN", "IBM", "INTU", "NOW", "AMAT", "MU", "LRCX", "ADI",
+        "KLAC", "PANW", "SNPS", "CDNS", "ANET", "MSI", "ADSK", "FTNT", "NXPI", "MCHP",
+        "APH", "TEL", "HPQ", "IT", "KEYS", "CDW", "GLW", "HPE", "WDC", "STX",
+        "TER", "SWKS", "MPWR", "FSLR", "ENPH", "ON", "AKAM", "FFIV", "CTSH", "GDDY",
+        "TYL", "PTC", "FICO", "VRSN", "ZBRA", "JBL", "NTAP", "EPAM", "GEN", "TRMB",
+    ),
+    "Communication Services": (
+        "GOOGL", "META", "NFLX", "DIS", "CMCSA", "T", "VZ", "TMUS", "CHTR", "EA",
+        "TTWO", "OMC", "IPG", "LYV", "FOX", "MTCH",
+    ),
+    "Consumer Discretionary": (
+        "AMZN", "TSLA", "HD", "MCD", "NKE", "LOW", "SBUX", "BKNG", "TJX", "CMG",
+        "ORLY", "AZO", "MAR", "HLT", "GM", "F", "ROST", "YUM", "DHI", "LEN",
+        "EBAY", "EXPE", "RCL", "CCL", "NCLH", "LVS", "MGM", "WYNN", "TSCO", "ULTA",
+        "BBY", "DPZ", "DRI", "KMX", "APTV", "GPC", "POOL", "LULU", "RL", "TPR",
+        "HAS", "NVR", "PHM", "BWA", "GRMN", "DECK", "LKQ", "MHK",
+    ),
+    "Consumer Staples": (
+        "PG", "KO", "PEP", "COST", "WMT", "PM", "MO", "MDLZ", "CL", "KMB",
+        "GIS", "KHC", "HSY", "STZ", "SYY", "KR", "ADM", "TGT", "DG", "DLTR",
+        "EL", "CHD", "CLX", "MKC", "HRL", "CAG", "CPB", "SJM", "TSN", "TAP",
+        "MNST", "KDP",
+    ),
+    "Health Care": (
+        "JNJ", "UNH", "LLY", "PFE", "MRK", "ABBV", "TMO", "ABT", "DHR", "AMGN",
+        "BMY", "GILD", "ISRG", "MDT", "SYK", "CVS", "CI", "ELV", "HUM", "ZTS",
+        "BSX", "VRTX", "REGN", "BDX", "EW", "HCA", "MCK", "CAH", "COR", "A",
+        "IQV", "IDXX", "RMD", "MTD", "DXCM", "ALGN", "BIIB", "ILMN", "ZBH", "BAX",
+        "HOLX", "STE", "WAT", "COO", "TECH", "CNC", "MOH", "UHS", "DVA", "INCY",
+        "LH", "DGX", "PODD", "WST", "CRL", "HSIC",
+    ),
+    "Financials": (
+        "JPM", "BAC", "GS", "WFC", "MS", "C", "BLK", "SCHW", "AXP", "SPGI",
+        "MMC", "PGR", "CB", "MCO", "ICE", "CME", "AON", "USB", "PNC", "TFC",
+        "COF", "MET", "AIG", "PRU", "TRV", "ALL", "AFL", "MSCI", "AJG", "BK",
+        "STT", "SYF", "FITB", "MTB", "HBAN", "RF", "CFG", "KEY", "NTRS", "TROW",
+        "BEN", "IVZ", "NDAQ", "CBOE", "MKTX", "RJF", "WRB", "CINF", "L", "GL",
+        "HIG", "PFG", "AMP", "BRO", "FDS", "ERIE",
+    ),
+    "Industrials": (
+        "CAT", "BA", "GE", "HON", "UNP", "UPS", "RTX", "LMT", "DE", "ETN",
+        "GD", "NOC", "CSX", "NSC", "FDX", "WM", "ITW", "EMR", "PH", "MMM",
+        "TT", "CTAS", "PCAR", "GWW", "JCI", "CMI", "ROK", "FAST", "PAYX", "VRSK",
+        "AME", "ODFL", "URI", "RSG", "CPRT", "DOV", "XYL", "LHX", "TDG", "WAB",
+        "SWK", "MAS", "TXT", "EFX", "LDOS", "J", "NDSN", "HUBB", "PNR", "CHRW",
+        "EXPD", "JBHT", "ALLE", "SNA", "AOS", "ROL", "DAL", "UAL", "LUV", "AAL",
+        "PWR", "BR", "IEX", "GNRC",
+    ),
+    "Energy": (
+        "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "VLO", "OXY", "WMB",
+        "KMI", "OKE", "HAL", "DVN", "FANG", "APA", "TRGP", "CTRA", "EQT",
+    ),
+    "Materials": (
+        "LIN", "APD", "SHW", "ECL", "FCX", "NEM", "NUE", "DD", "PPG", "VMC",
+        "MLM", "IFF", "ALB", "CF", "MOS", "EMN", "CE", "IP", "PKG", "AVY",
+        "BALL", "STLD",
+    ),
+    "Real Estate": (
+        "PLD", "AMT", "EQIX", "CCI", "PSA", "SPG", "O", "WELL", "DLR", "AVB",
+        "EQR", "VTR", "SBAC", "ARE", "MAA", "ESS", "EXR", "KIM", "REG", "UDR",
+        "CPT", "HST", "FRT", "BXP", "IRM", "WY", "CBRE",
+    ),
+    "Utilities": (
+        "NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "XEL", "PEG", "ED",
+        "WEC", "EIX", "ETR", "ES", "DTE", "PPL", "FE", "AEE", "CMS", "CNP",
+        "ATO", "NI", "LNT", "PNW", "AWK", "NRG", "AES", "VST",
+    ),
+}
+
+
+def wide_universe() -> tuple[tuple[tuple[str, str], ...], dict[str, str]]:
+    """(security_id, yahoo_symbol) pairs plus a static sector map. SPY first."""
+    names: list[tuple[str, str]] = [("SPY", "SPY")]
+    sectors: dict[str, str] = {"SPY": "Benchmark"}
+    seen = {"SPY"}
+    for sector, tickers in HEDGE_LAB_US_WIDE_SECTORS.items():
+        for ticker in tickers:
+            if ticker in seen:
+                continue
+            seen.add(ticker)
+            names.append((ticker, ticker))
+            sectors[ticker] = sector
+    return tuple(names), sectors
+
+
 def fetch_hedge_lab_tape(
     root: Path | None = None,
     *,
     start: datetime | None = None,
     end: datetime | None = None,
+    wide: bool = False,
 ) -> dict[str, Any]:
-    """Download the lab universe into ``data/file_us/raw``. Disk budget gated."""
-    dest = Path(root) if root is not None else lab_root() / "data" / "file_us" / "raw"
+    """Download the lab universe into ``data/file_us/raw``. Disk budget gated.
+
+    ``wide=True`` writes the ~400-stock cross-section (with a static sector map)
+    into ``data/file_us_wide/raw`` instead, leaving the 55-name tape intact.
+    """
+    if root is not None:
+        dest = Path(root)
+    elif wide:
+        dest = lab_root() / "data" / "file_us_wide" / "raw"
+    else:
+        dest = lab_root() / "data" / "file_us" / "raw"
     dest.mkdir(parents=True, exist_ok=True)
-    assert_disk_budget(extra_bytes=512 * 1024**2)
+    assert_disk_budget(extra_bytes=(4 if wide else 1) * 512 * 1024**2)
+    if wide:
+        names, sectors = wide_universe()
+    else:
+        names, sectors = HEDGE_LAB_US, None
     tape = download_yahoo_universe(
         dest,
-        HEDGE_LAB_US,
+        names,
         start=start or datetime(2016, 1, 4, tzinfo=UTC),
         end=end or datetime.now(tz=UTC),
         pause_s=0.12,
+        sectors=sectors,
     )
-    tape["lab_universe"] = "HEDGE_LAB_US"
-    tape["n_requested"] = int(len(HEDGE_LAB_US))
+    tape["lab_universe"] = "HEDGE_LAB_US_WIDE" if wide else "HEDGE_LAB_US"
+    tape["n_requested"] = int(len(names))
+    tape["survivorship"] = "current_constituents_applied_to_history"
     tape["champion_alias"] = False
     tape["sip_vintage"] = False
     return tape

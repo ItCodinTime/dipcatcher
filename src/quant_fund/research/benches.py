@@ -98,7 +98,7 @@ from quant_fund.portfolio.interval_risk import (
     interval_refs,
 )
 from quant_fund.validation.cpcv import combinatorial_purged_cv
-from quant_fund.validation.walk_forward import walk_forward
+from quant_fund.validation.walk_forward import timestamp_ns, walk_forward
 
 
 def _holdout(n: int, frac: float = 0.3) -> tuple[slice, slice]:
@@ -371,29 +371,58 @@ def oos_rank_scores(
     y: NDArray[np.float64],
     dates: NDArray[Any],
     ids: NDArray[Any] | None = None,
+    *,
+    horizon_bars: int = 1,
+    feature_names: list[str] | None = None,
 ) -> NDArray[np.float64]:
+    """Purged walk-forward OOS scores. ``horizon_bars`` is the label horizon.
+
+    Expanding vs rolling follows ``config.validation.scheme``. A 5- or 20-bar
+    forward label reaches ``horizon_bars`` sessions past its decision date, so
+    purging must use that horizon, not 1.
+    """
     times = sorted(set(dates.tolist()))
     folds = walk_forward(
-        times, config.validation, horizon_bars=1, embargo_bars=config.embargo_bars()
+        times,
+        config.validation,
+        horizon_bars=int(horizon_bars),
+        embargo_bars=config.embargo_bars(),
     )
     pred = np.full(len(y), np.nan, dtype=float)
+    date_ns = timestamp_ns(dates)
     if not folds:
         cut = max(len(times) - 40, len(times) // 2)
-        tr = np.isin(dates, times[:cut])
-        te = np.isin(dates, times[cut:])
+        tr = np.isin(date_ns, timestamp_ns(times[:cut]))
+        te = np.isin(date_ns, timestamp_ns(times[cut:]))
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], None if ids is None else ids[tr])
+        _fit_ranker(
+            model,
+            model_name,
+            x[tr],
+            y[tr],
+            dates[tr],
+            None if ids is None else ids[tr],
+            features=feature_names,
+        )
         pred[te] = _predict_ranker(
             model, model_name, x[te], dates[te], None if ids is None else ids[te]
         )
         return pred
     for fold in folds:
-        tr = np.isin(dates, np.array(fold.train_times, dtype=object))
-        te = np.isin(dates, np.array(fold.test_times, dtype=object))
+        tr = np.isin(date_ns, timestamp_ns(fold.train_times))
+        te = np.isin(date_ns, timestamp_ns(fold.test_times))
         if not tr.any() or not te.any():
             continue
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr], None if ids is None else ids[tr])
+        _fit_ranker(
+            model,
+            model_name,
+            x[tr],
+            y[tr],
+            dates[tr],
+            None if ids is None else ids[tr],
+            features=feature_names,
+        )
         pred[te] = _predict_ranker(
             model, model_name, x[te], dates[te], None if ids is None else ids[te]
         )
@@ -410,6 +439,10 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
     ]
     n_names = frame["security_id"].n_unique() if "security_id" in frame.columns else 8
     n_buckets = 5 if n_names < 20 else 10
+    horizon = _label_horizon(label, default=1)
+    n_dates_all = frame["event_time"].n_unique() if "event_time" in frame.columns else 0
+    # Overlapping h-bar labels make the date IC series serially dependent.
+    hac = overlap_aware_hac_lags(int(n_dates_all), int(horizon)) if n_dates_all else None
     for name, fset, wanted, raw_col in specs:
         if raw_col is not None:
             col = raw_col if raw_col in frame.columns else "planted_signal"
@@ -423,12 +456,14 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
             feats = available_features(frame.columns, wanted)
             if not feats:
                 continue
-            x, y, dates, _, _ = design_matrix(frame, label, feats)
-            scores = oos_rank_scores("ridge", config, x, y, dates)
+            x, y, dates, used, _ = design_matrix(frame, label, feats)
+            scores = oos_rank_scores(
+                "ridge", config, x, y, dates, horizon_bars=horizon, feature_names=used
+            )
         mask = np.isfinite(scores) & np.isfinite(y)
-        ic = date_ic_series(scores[mask], y[mask], dates[mask], min_names=5)
+        ic = date_ic_series(scores[mask], y[mask], dates[mask], min_names=5, hac_lags=hac)
         dec = decile_portfolios(
-            scores[mask], y[mask], dates[mask], n_buckets=n_buckets, min_names=5
+            scores[mask], y[mask], dates[mask], n_buckets=n_buckets, min_names=5, hac_lags=hac
         )
         rows.append(
             {
@@ -464,20 +499,30 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
                 row_name = f"{model_name}_public"
                 try:
                     scores = oos_rank_scores(
-                        model_name, config, x_pub, y_pub, dates_pub, ids_pub
+                        model_name,
+                        config,
+                        x_pub,
+                        y_pub,
+                        dates_pub,
+                        ids_pub,
+                        horizon_bars=horizon,
+                        feature_names=public_feats,
                     )
                 except (ValueError, np.linalg.LinAlgError):
                     continue
                 mask = np.isfinite(scores) & np.isfinite(y_pub)
                 if int(mask.sum()) < 5:
                     continue
-                ic = date_ic_series(scores[mask], y_pub[mask], dates_pub[mask], min_names=5)
+                ic = date_ic_series(
+                    scores[mask], y_pub[mask], dates_pub[mask], min_names=5, hac_lags=hac
+                )
                 dec = decile_portfolios(
                     scores[mask],
                     y_pub[mask],
                     dates_pub[mask],
                     n_buckets=n_buckets,
                     min_names=5,
+                    hac_lags=hac,
                 )
                 rows.append(
                     {

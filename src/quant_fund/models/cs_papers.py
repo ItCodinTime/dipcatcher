@@ -10,6 +10,16 @@ Fama–MacBeth (JPE 1973): date-level CS slopes, averaged.
 Gu–Kelly–Xiu (RFS 2020 / NBER w25398): PCR, PLS, GBRT (trees; no NN).
 Kelly–Pruitt (JoE 2015): automatic-proxy three-pass regression filter.
 Kelly–Malamud–Pedersen (JoF 2023 / NBER w27388): principal portfolios.
+Rapach–Strauss–Zhou (RFS 2010): equal-weight combination of univariate CS OLS,
+an IC-weighted variant (non-negative train date-IC weights), and discounted
+nested-MSFE weights (``combo_msfe``).
+Zou (JASA 2006): adaptive LASSO on public characteristics.
+Fama–MacBeth with per-date ridge (small-N CS; OLS FM needs N>p+2).
+A priori signed classic characteristics (Jegadeesh, JT skip, residual momentum,
+Bali MAX, Ang idio-vol, Amihud, George–Hwang 52w). Daily short-horizon subset
+(``classic_st`` / ``ridge_st`` / ``fm_st`` / ``combo_ic_st``): Jegadeesh daily
+reversal, Lehmann weekly reversal, JT skip, residual momentum, Bali MAX,
+Ang ivol. Single-characteristic Jegadeesh baseline: ``reversal``.
 
 Kozak–Nagel–Santosh elastic-net SDF (eq. 28) and unrestricted IPCA live in
 asset_pricing.py. None of these size the book. Metadata must not carry Sharpe.
@@ -23,14 +33,14 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
 
 from quant_fund.models.asset_pricing import (
     characteristic_managed_portfolios,
     date_groups,
 )
 from quant_fund.models.base import JoblibMixin, ModelMeta
-from quant_fund.models.ranking import _finite
+from quant_fund.models.ranking import RidgeRanker, _finite
 
 PAPER_RANKER_NAMES = (
     "rff",
@@ -49,6 +59,17 @@ PAPER_RANKER_NAMES = (
     "tprf",
     "gbrt",
     "pp",
+    "combo",
+    "alasso",
+    "classic",
+    "fm_ridge",
+    "combo_ic",
+    "reversal",
+    "classic_st",
+    "ridge_st",
+    "fm_st",
+    "combo_ic_st",
+    "combo_msfe",
 )
 
 DATED_FIT_RANKERS = frozenset(
@@ -61,7 +82,17 @@ DATED_FIT_RANKERS = frozenset(
         "gx3pass",
         "fnw",
         "fm",
+        "fm_ridge",
         "pp",
+        "combo_ic",
+        "classic",
+        "ridge",
+        "reversal",
+        "classic_st",
+        "ridge_st",
+        "fm_st",
+        "combo_ic_st",
+        "combo_msfe",
     }
 )
 DATED_PREDICT_RANKERS = frozenset({"fnw", "pp"})
@@ -209,6 +240,49 @@ def quadratic_spline_basis(unit: NDArray[np.float64], n_intervals: int) -> NDArr
     return np.column_stack(cols)
 
 
+def _target_scaled_penalty(penalty: float, target: NDArray[np.float64]) -> float:
+    """An l1 penalty quoted in target-standard-deviation units, made absolute.
+
+    sklearn ``Lasso`` and the in-house group LASSO penalize in the units of
+    ``y``. A fixed absolute ``alpha`` that is mild on a unit-variance test
+    target zeroes every coefficient on a 5-day return with sd 0.03. Scaling
+    by ``sd(y)`` keeps one config knob meaningful across labels.
+    """
+    scale = float(np.std(np.asarray(target, dtype=float)))
+    if not np.isfinite(scale) or scale <= 0.0:
+        return float(penalty)
+    return float(penalty) * scale
+
+
+def _l1_fit(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    alpha: float,
+    *,
+    max_iter: int = 4000,
+    tol: float = 1e-4,
+) -> tuple[float, NDArray[np.float64]]:
+    """sklearn LASSO with Gram precompute.
+
+    Naive coordinate descent is ``O(n p n_iter)``. Expanding horse-race
+    windows have ``p≈40`` and ``n`` in the 1e5–1e6 range, so the n-path
+    stalls (adaptive LASSO could not finish a 5-day tape). The Gram is
+    ``p×p``; one ``X'X`` multiply then cheap CD. Coefficients match the
+    naive path up to solver tolerance.
+    """
+    model = Lasso(
+        alpha=float(alpha),
+        max_iter=int(max_iter),
+        tol=float(tol),
+        precompute=True,
+        copy_X=True,
+        selection="cyclic",
+        fit_intercept=True,
+    )
+    model.fit(x, y)
+    return float(model.intercept_), np.asarray(model.coef_, dtype=float)
+
+
 def _group_lasso(
     design: NDArray[np.float64],
     y: NDArray[np.float64],
@@ -263,6 +337,9 @@ def fnw_adaptive_group_lasso(
     width = pieces[0].shape[1]
     for j in range(n_char):
         groups.append(np.arange(j * width, (j + 1) * width, dtype=np.intp))
+    # ``lam`` is in units of the target's standard deviation so the same knob
+    # means the same shrinkage on a 1-day and a 20-day return label.
+    lam = _target_scaled_penalty(lam, y)
     first = _group_lasso(design, y, groups, lam)
     weights = np.zeros(n_char, dtype=float)
     for j, idx in enumerate(groups):
@@ -476,30 +553,43 @@ class DoubleSelectionRanker(JoblibMixin):
         self.coef: NDArray[np.float64] | None = None
         self.intercept: float = 0.0
         self.selected: list[int] = []
+        self.mean_: NDArray[np.float64] | None = None
+        self.scale_: NDArray[np.float64] | None = None
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> DoubleSelectionRanker:
         xx, yy, _ = _finite(x, y)
         if xx.shape[0] == 0:
             raise ValueError("double-selection fit has no finite rows")
-        n_char = xx.shape[1]
+        xs, mean, scale = _column_standardize(xx)
+        self.mean_ = mean
+        self.scale_ = scale
+        n_char = xs.shape[1]
         selected: set[int] = set()
         if self.alpha == 0.0:
             selected = set(range(n_char))
         else:
-            first = Lasso(alpha=self.alpha, max_iter=8000).fit(xx, yy)
-            selected = {i for i, c in enumerate(first.coef_) if abs(float(c)) > 1e-12}
+            # Penalties are quoted in units of the regressand's sd (label for the
+            # outcome LASSO, characteristic j for each treatment LASSO). Columns
+            # are standardized first: sklearn L1 is not scale-invariant, and a
+            # single mixed-scale CS column makes post-selection OLS a constant.
+            _, first_coef = _l1_fit(xs, yy, _target_scaled_penalty(self.alpha, yy))
+            selected = {i for i, c in enumerate(first_coef) if abs(float(c)) > 1e-12}
             for j in list(selected):
                 others = [k for k in range(n_char) if k != j]
                 if not others:
                     continue
-                second = Lasso(alpha=self.alpha, max_iter=8000).fit(xx[:, others], xx[:, j])
-                for loc, coef in enumerate(second.coef_):
+                _, second_coef = _l1_fit(
+                    xs[:, others],
+                    xs[:, j],
+                    _target_scaled_penalty(self.alpha, xs[:, j]),
+                )
+                for loc, coef in enumerate(second_coef):
                     if abs(float(coef)) > 1e-12:
                         selected.add(others[loc])
         if not selected:
             selected = set(range(n_char))
         cols = sorted(selected)
-        fit = LinearRegression(fit_intercept=True).fit(xx[:, cols], yy)
+        fit = LinearRegression(fit_intercept=True).fit(xs[:, cols], yy)
         self.intercept = float(fit.intercept_)
         self.coef = np.zeros(n_char, dtype=float)
         for loc, j in enumerate(cols):
@@ -508,10 +598,11 @@ class DoubleSelectionRanker(JoblibMixin):
         return self
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
-        if self.coef is None:
+        if self.coef is None or self.mean_ is None or self.scale_ is None:
             raise ValueError("DoubleSelectionRanker is not fitted")
         x = np.where(np.isfinite(x), x, 0.0)
-        return self.intercept + x @ self.coef
+        xs = (x - self.mean_) / self.scale_
+        return self.intercept + xs @ self.coef
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(
@@ -567,6 +658,33 @@ def fama_macbeth_slopes(
             slopes.append(beta)
     if not slopes:
         raise ValueError("Fama–MacBeth needs at least one date with enough names")
+    return np.mean(np.stack(slopes, axis=0), axis=0)
+
+
+def fama_macbeth_ridge_slopes(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    dates: NDArray[Any],
+    alpha: float = 1.0,
+    min_names: int = 8,
+) -> NDArray[np.float64]:
+    """Date-level CS ridge, then average λ. Identified when N ≈ p (OLS FM is not)."""
+    groups = date_groups(dates)
+    n_char = x.shape[1]
+    slopes: list[NDArray[np.float64]] = []
+    ridge = Ridge(alpha=float(alpha), fit_intercept=True)
+    for idx in groups:
+        z_t = x[idx]
+        r_t = y[idx]
+        finite = np.isfinite(z_t).all(axis=1) & np.isfinite(r_t)
+        if int(finite.sum()) < int(min_names):
+            continue
+        ridge.fit(z_t[finite], r_t[finite])
+        beta = np.asarray(ridge.coef_, dtype=float)
+        if beta.shape[0] == n_char and np.all(np.isfinite(beta)):
+            slopes.append(beta)
+    if not slopes:
+        raise ValueError("ridge Fama–MacBeth needs at least one date with enough names")
     return np.mean(np.stack(slopes, axis=0), axis=0)
 
 
@@ -718,6 +836,50 @@ class FamaMacBethRanker(JoblibMixin):
             name="fm",
             version="v1",
             extra={"n_dates": self.n_dates, "paper": "Fama, MacBeth, JPE 1973"},
+        )
+
+
+class FamaMacBethRidgeRanker(JoblibMixin):
+    """Per-date ridge CS slopes, averaged. The 54-name OLS FM object is unidentified."""
+
+    def __init__(self, alpha: float = 1.0) -> None:
+        if not np.isfinite(alpha) or alpha < 0:
+            raise ValueError("fm_ridge alpha must be finite and non-negative")
+        self.alpha = float(alpha)
+        self.lambda_bar: NDArray[np.float64] | None = None
+        self.n_dates: int = 0
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> FamaMacBethRidgeRanker:
+        dates = kwargs.get("dates")
+        if dates is None:
+            raise ValueError("ridge Fama–MacBeth requires per-row dates")
+        xx, yy, mask = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("ridge Fama–MacBeth fit has no finite rows")
+        self.lambda_bar = fama_macbeth_ridge_slopes(
+            xx, yy, np.asarray(dates)[mask], alpha=self.alpha
+        )
+        self.n_dates = len(date_groups(np.asarray(dates)[mask]))
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.lambda_bar is None:
+            raise ValueError("FamaMacBethRidgeRanker is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        return x @ self.lambda_bar
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="fm_ridge",
+            version="v1",
+            extra={
+                "alpha": self.alpha,
+                "n_dates": self.n_dates,
+                "paper": "Fama, MacBeth, JPE 1973; date-level ridge",
+            },
         )
 
 
@@ -956,4 +1118,471 @@ class PrincipalPortfolioRanker(JoblibMixin):
                 "n_names": len(self.names),
                 "paper": "Kelly, Malamud, Pedersen, JoF 2023 / NBER w27388",
             },
+        )
+
+
+class CombinationRanker(JoblibMixin):
+    """Rapach–Strauss–Zhou equal-weight combination of univariate CS OLS."""
+
+    def __init__(self) -> None:
+        self.intercepts: NDArray[np.float64] | None = None
+        self.slopes: NDArray[np.float64] | None = None
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> CombinationRanker:
+        xx, yy, _ = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("combination fit has no finite rows")
+        intercepts = np.zeros(xx.shape[1], dtype=float)
+        slopes = np.zeros(xx.shape[1], dtype=float)
+        for j in range(xx.shape[1]):
+            intercepts[j], beta = _ols_intercept(xx[:, [j]], yy)
+            slopes[j] = float(beta[0]) if beta.size else 0.0
+        self.intercepts = intercepts
+        self.slopes = slopes
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.intercepts is None or self.slopes is None:
+            raise ValueError("CombinationRanker is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        stacked = self.intercepts + x * self.slopes
+        return np.mean(stacked, axis=1)
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="combo",
+            version="v1",
+            extra={"paper": "Rapach, Strauss, Zhou, RFS 2010"},
+        )
+
+
+CLASSIC_SIGNS: dict[str, float] = {
+    "cs_z_reversal_1": 1.0,
+    "cs_z_mom_skip_5_20": 1.0,
+    "cs_z_idio_mom_20": 1.0,
+    "cs_z_mom_12_1": 1.0,
+    "cs_z_high_52w_prox": 1.0,
+    "cs_z_max_ret_20": -1.0,
+    "cs_z_idio_vol_60": -1.0,
+    "cs_z_amihud": 1.0,
+}
+
+
+class ClassicRanker(JoblibMixin):
+    """A priori signed public characteristics. No estimated slopes, no OOS peek."""
+
+    def __init__(
+        self,
+        signs: dict[str, float] | None = None,
+        name: str = "classic",
+        paper: str = (
+            "Jegadeesh 1990; Jegadeesh–Titman skip; Blitz residual mom; "
+            "Bali MAX; Ang ivol; Amihud; George–Hwang"
+        ),
+    ) -> None:
+        self.signs = dict(signs) if signs is not None else dict(CLASSIC_SIGNS)
+        self._name = str(name)
+        self._paper = str(paper)
+        self.weights: NDArray[np.float64] | None = None
+        self.n_active: int = 0
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> ClassicRanker:
+        xx, _, _ = _finite(x, y)
+        n_char = int(xx.shape[1]) if xx.size else int(np.asarray(x).shape[1])
+        names = kwargs.get("features")
+        if names is None or len(list(names)) != n_char:
+            weights = np.ones(n_char, dtype=float)
+        else:
+            weights = np.array([float(self.signs.get(str(n), 0.0)) for n in names], dtype=float)
+            if float(np.max(np.abs(weights))) < 1e-15:
+                raise ValueError(f"{self._name} matched no signed characteristics")
+        self.weights = weights
+        self.n_active = int(np.sum(np.abs(weights) > 0.0))
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.weights is None:
+            raise ValueError(f"{self._name} is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        return x @ self.weights
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name=self._name,
+            version="v1",
+            extra={"n_active": self.n_active, "paper": self._paper},
+        )
+
+
+def _mean_date_ic(
+    x_col: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]
+) -> float:
+    ics: list[float] = []
+    for idx in date_groups(dates):
+        a = x_col[idx]
+        b = y[idx]
+        finite = np.isfinite(a) & np.isfinite(b)
+        if int(finite.sum()) < 5:
+            continue
+        if float(np.std(a[finite])) < 1e-12 or float(np.std(b[finite])) < 1e-12:
+            continue
+        ics.append(float(np.corrcoef(a[finite], b[finite])[0, 1]))
+    return float(np.mean(ics)) if ics else 0.0
+
+
+class ICWeightedCombinationRanker(JoblibMixin):
+    """Rapach combination with non-negative train date-IC weights (not OOS-tuned)."""
+
+    def __init__(self) -> None:
+        self.intercepts: NDArray[np.float64] | None = None
+        self.slopes: NDArray[np.float64] | None = None
+        self.weights: NDArray[np.float64] | None = None
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> ICWeightedCombinationRanker:
+        dates = kwargs.get("dates")
+        if dates is None:
+            raise ValueError("IC-weighted combination requires per-row dates")
+        xx, yy, mask = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("IC-weighted combination fit has no finite rows")
+        d = np.asarray(dates)[mask]
+        intercepts = np.zeros(xx.shape[1], dtype=float)
+        slopes = np.zeros(xx.shape[1], dtype=float)
+        ics = np.zeros(xx.shape[1], dtype=float)
+        for j in range(xx.shape[1]):
+            intercepts[j], beta = _ols_intercept(xx[:, [j]], yy)
+            slopes[j] = float(beta[0]) if beta.size else 0.0
+            ics[j] = _mean_date_ic(xx[:, j], yy, d)
+        w = np.maximum(ics, 0.0)
+        if float(np.sum(w)) <= 0.0:
+            w = np.ones_like(w)
+        self.intercepts = intercepts
+        self.slopes = slopes
+        self.weights = w / float(np.sum(w))
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.intercepts is None or self.slopes is None or self.weights is None:
+            raise ValueError("ICWeightedCombinationRanker is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        stacked = self.intercepts + x * self.slopes
+        return stacked @ self.weights
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="combo_ic",
+            version="v1",
+            extra={"paper": "Rapach, Strauss, Zhou, RFS 2010 IC-weighted combination"},
+        )
+
+
+# Daily CS core (Jegadeesh / Lehmann / JT skip / residual mom / MAX / ivol).
+# Rank-space duplicates of the same characteristic are omitted so z and pct
+# do not double-count. Signs are a priori, not OOS-tuned.
+SHORT_HORIZON_FEATURES: tuple[str, ...] = (
+    "cs_z_reversal_1",
+    "cs_z_ret_5",
+    "cs_z_mom_5",
+    "cs_z_ret_overnight",
+    "cs_z_ret_open_close",
+    "cs_z_mom_skip_5_20",
+    "cs_z_idio_mom_20",
+    "cs_z_max_ret_20",
+    "cs_z_idio_vol_60",
+    "cs_z_skew_20",
+    "cs_z_ret_overnight_20",
+    "cs_z_ret_intraday_20",
+)
+CLASSIC_ST_SIGNS: dict[str, float] = {
+    "cs_z_reversal_1": 1.0,
+    "cs_z_ret_5": -1.0,
+    "cs_z_mom_skip_5_20": 1.0,
+    "cs_z_idio_mom_20": 1.0,
+    "cs_z_max_ret_20": -1.0,
+    "cs_z_idio_vol_60": -1.0,
+}
+MSFE_DISCOUNT = 0.99
+MSFE_HOLDOUT_FRAC = 0.25
+MSFE_MIN_TRAIN_DATES = 8
+MSFE_MIN_HOLDOUT_DATES = 4
+
+
+def _subset_design(
+    x: NDArray[np.float64],
+    names: list[str] | tuple[str, ...] | None,
+    wanted: tuple[str, ...],
+) -> tuple[NDArray[np.float64], NDArray[np.intp], list[str] | None]:
+    """Slice columns to the a priori daily-CS subset. Full design if none match."""
+    x = np.asarray(x, dtype=float)
+    n_char = int(x.shape[1]) if x.ndim == 2 else 0
+    if names is None or n_char == 0 or len(list(names)) != n_char:
+        idx = np.arange(n_char, dtype=np.intp)
+        return x, idx, None
+    wanted_set = set(wanted)
+    idx = np.asarray([i for i, name in enumerate(names) if str(name) in wanted_set], dtype=np.intp)
+    if idx.size == 0:
+        idx = np.arange(n_char, dtype=np.intp)
+        return x, idx, [str(n) for n in names]
+    return x[:, idx], idx, [str(names[int(i)]) for i in idx]
+
+
+class ColumnSubsetRanker(JoblibMixin):
+    """Fit/predict an inner ranker on ``SHORT_HORIZON_FEATURES`` only."""
+
+    def __init__(self, inner: Any, columns: tuple[str, ...], name: str) -> None:
+        self.inner = inner
+        self.columns = columns
+        self._name = str(name)
+        self._idx: NDArray[np.intp] | None = None
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> ColumnSubsetRanker:
+        xs, idx, subnames = _subset_design(x, kwargs.get("features"), self.columns)
+        self._idx = idx
+        kw = dict(kwargs)
+        if subnames is not None:
+            kw["features"] = subnames
+        self.inner.fit(xs, y, **kw)
+        return self
+
+    def predict(self, x: NDArray[np.float64], **kwargs: Any) -> NDArray[np.float64]:
+        if self._idx is None:
+            raise ValueError(f"{self._name} is not fitted")
+        x = np.asarray(x, dtype=float)
+        xs = x[:, self._idx]
+        if kwargs:
+            return np.asarray(self.inner.predict(xs, **kwargs), dtype=float)
+        return np.asarray(self.inner.predict(xs), dtype=float)
+
+    def metadata(self) -> ModelMeta:
+        meta = self.inner.metadata()
+        extra = dict(meta.extra or {})
+        extra["subset"] = list(self.columns)
+        extra["n_subset"] = int(self._idx.size) if self._idx is not None else 0
+        return ModelMeta(
+            family=meta.family,
+            name=self._name,
+            version=meta.version,
+            extra=extra,
+        )
+
+
+class ReversalRanker(ClassicRanker):
+    """Jegadeesh (1990) daily reversal only."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            signs={"cs_z_reversal_1": 1.0},
+            name="reversal",
+            paper="Jegadeesh, Journal of Finance 1990",
+        )
+
+
+class ClassicShortRanker(ClassicRanker):
+    """A priori daily/weekly CS signs. Monthly zoo characteristics stay at 0."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            signs=CLASSIC_ST_SIGNS,
+            name="classic_st",
+            paper="Jegadeesh 1990; Lehmann 1990; Jegadeesh–Titman skip; Blitz residual mom; Bali MAX; Ang ivol",
+        )
+
+
+def _nested_date_cut(n_dates: int) -> tuple[int, int] | None:
+    """Train/holdout date counts for nested MSFE. None → in-sample MSE fallback."""
+    n = int(n_dates)
+    if n < MSFE_MIN_TRAIN_DATES + MSFE_MIN_HOLDOUT_DATES:
+        return None
+    n_hold = min(max(MSFE_MIN_HOLDOUT_DATES, int(round(n * MSFE_HOLDOUT_FRAC))), n // 4)
+    n_train = n - n_hold
+    if n_train < MSFE_MIN_TRAIN_DATES or n_hold < MSFE_MIN_HOLDOUT_DATES:
+        return None
+    return n_train, n_hold
+
+
+def _discounted_date_mse(
+    pred: NDArray[np.float64],
+    y: NDArray[np.float64],
+    dates: NDArray[Any],
+    theta: float,
+) -> float:
+    groups = date_groups(dates)
+    n = len(groups)
+    acc = 0.0
+    wsum = 0.0
+    for i, idx in enumerate(groups):
+        err = np.asarray(pred, dtype=float)[idx] - np.asarray(y, dtype=float)[idx]
+        finite = np.isfinite(err)
+        if not finite.any():
+            continue
+        mse = float(np.mean(np.square(err[finite])))
+        weight = float(theta) ** (n - 1 - i)
+        acc += weight * mse
+        wsum += weight
+    if wsum <= 0.0 or not np.isfinite(acc):
+        return float("inf")
+    return acc / wsum
+
+
+class MSFECombinationRanker(JoblibMixin):
+    """Rapach discounted-MSFE combination of univariate CS OLS (train-nested)."""
+
+    def __init__(self, theta: float = MSFE_DISCOUNT) -> None:
+        if not np.isfinite(theta) or theta <= 0.0 or theta > 1.0:
+            raise ValueError("combo_msfe discount theta must be in (0, 1]")
+        self.theta = float(theta)
+        self.intercepts: NDArray[np.float64] | None = None
+        self.slopes: NDArray[np.float64] | None = None
+        self.weights: NDArray[np.float64] | None = None
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> MSFECombinationRanker:
+        dates = kwargs.get("dates")
+        if dates is None:
+            raise ValueError("MSFE combination requires per-row dates")
+        xx, yy, mask = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("MSFE combination fit has no finite rows")
+        d = np.asarray(dates)[mask]
+        groups = date_groups(d)
+        n_dates = len(groups)
+        n_char = int(xx.shape[1])
+        cut = _nested_date_cut(n_dates)
+        intercepts = np.zeros(n_char, dtype=float)
+        slopes = np.zeros(n_char, dtype=float)
+        msfe = np.full(n_char, np.inf, dtype=float)
+        if cut is None:
+            train_x, train_y, train_d = xx, yy, d
+            hold_x = hold_y = hold_d = None
+        else:
+            n_train, _ = cut
+            train_idx = np.concatenate(groups[:n_train])
+            hold_idx = np.concatenate(groups[n_train:])
+            train_x, train_y, train_d = xx[train_idx], yy[train_idx], d[train_idx]
+            hold_x, hold_y, hold_d = xx[hold_idx], yy[hold_idx], d[hold_idx]
+        for j in range(n_char):
+            intercepts[j], beta = _ols_intercept(xx[:, [j]], yy)
+            slopes[j] = float(beta[0]) if beta.size else 0.0
+            inner_int, inner_beta = _ols_intercept(train_x[:, [j]], train_y)
+            inner_slope = float(inner_beta[0]) if inner_beta.size else 0.0
+            if hold_x is None:
+                pred = inner_int + inner_slope * train_x[:, j]
+                msfe[j] = _discounted_date_mse(pred, train_y, train_d, self.theta)
+            else:
+                pred = inner_int + inner_slope * hold_x[:, j]
+                msfe[j] = _discounted_date_mse(pred, hold_y, hold_d, self.theta)
+        finite_msfe = np.where(np.isfinite(msfe) & (msfe > 0.0), msfe, np.nan)
+        if not np.isfinite(finite_msfe).any():
+            w = np.ones(n_char, dtype=float)
+        else:
+            inv = 1.0 / np.where(np.isfinite(finite_msfe), finite_msfe, np.inf)
+            if float(np.sum(inv)) <= 0.0:
+                w = np.ones(n_char, dtype=float)
+            else:
+                w = inv
+        self.intercepts = intercepts
+        self.slopes = slopes
+        self.weights = w / float(np.sum(w))
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.intercepts is None or self.slopes is None or self.weights is None:
+            raise ValueError("MSFECombinationRanker is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        stacked = self.intercepts + x * self.slopes
+        return stacked @ self.weights
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="combo_msfe",
+            version="v1",
+            extra={
+                "theta": self.theta,
+                "paper": "Rapach, Strauss, Zhou, RFS 2010 discounted MSFE combination",
+            },
+        )
+
+
+def make_ridge_st(alpha: float) -> ColumnSubsetRanker:
+    return ColumnSubsetRanker(RidgeRanker(alpha), SHORT_HORIZON_FEATURES, "ridge_st")
+
+
+def make_fm_st(alpha: float) -> ColumnSubsetRanker:
+    return ColumnSubsetRanker(FamaMacBethRidgeRanker(alpha), SHORT_HORIZON_FEATURES, "fm_st")
+
+
+def make_combo_ic_st() -> ColumnSubsetRanker:
+    return ColumnSubsetRanker(ICWeightedCombinationRanker(), SHORT_HORIZON_FEATURES, "combo_ic_st")
+
+
+class AdaptiveLassoRanker(JoblibMixin):
+    """Zou (2006) adaptive LASSO: OLS weights, then L1 on reweighted columns.
+
+    Columns are standardized first and the OLS weights are normalized so the
+    largest weight is 1 (floor ``1e-3``). Zou's weights are only defined up
+    to the scale absorbed by ``lambda``; without the normalization a
+    near-zero OLS slope divides its column by ~1e-8 and coordinate descent
+    stalls on the ill-conditioned design. The L1 step uses Gram-precomputed
+    coordinate descent so expanding ``n\\gg p`` windows finish. ``alpha`` is
+    quoted in units of the target's standard deviation on the standardized,
+    unit-max-weight design.
+    """
+
+    def __init__(self, alpha: float = 0.01, power: float = 1.0) -> None:
+        if not np.isfinite(alpha) or alpha < 0:
+            raise ValueError("adaptive LASSO alpha must be finite and non-negative")
+        if not np.isfinite(power) or power <= 0:
+            raise ValueError("adaptive LASSO power must be finite and positive")
+        self.alpha = float(alpha)
+        self.power = float(power)
+        self.coef: NDArray[np.float64] | None = None
+        self.intercept: float = 0.0
+        self.mean_: NDArray[np.float64] | None = None
+        self.scale_: NDArray[np.float64] | None = None
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> AdaptiveLassoRanker:
+        xx, yy, _ = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("adaptive LASSO fit has no finite rows")
+        self.mean_ = np.mean(xx, axis=0)
+        scale = np.std(xx, axis=0)
+        self.scale_ = np.where(scale > 0, scale, 1.0)
+        xs = (xx - self.mean_) / self.scale_
+        first = LinearRegression(fit_intercept=True).fit(xs, yy)
+        raw_w = np.power(np.abs(np.asarray(first.coef_, dtype=float)), self.power)
+        top = float(np.max(raw_w)) if raw_w.size else 0.0
+        if not np.isfinite(top) or top <= 0:
+            weights = np.ones_like(raw_w)
+        else:
+            weights = np.maximum(raw_w / top, 1e-3)
+        scaled = xs / weights
+        if self.alpha == 0.0:
+            fit = LinearRegression(fit_intercept=True).fit(scaled, yy)
+            self.intercept = float(fit.intercept_)
+            raw = np.asarray(fit.coef_, dtype=float)
+        else:
+            alpha = _target_scaled_penalty(self.alpha, yy)
+            self.intercept, raw = _l1_fit(scaled, yy, alpha)
+        self.coef = raw / weights
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.coef is None or self.mean_ is None or self.scale_ is None:
+            raise ValueError("AdaptiveLassoRanker is not fitted")
+        x = np.where(np.isfinite(x), x, 0.0)
+        return self.intercept + ((x - self.mean_) / self.scale_) @ self.coef
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="alasso",
+            version="v1",
+            extra={"alpha": self.alpha, "power": self.power, "paper": "Zou, JASA 2006 adaptive LASSO"},
         )

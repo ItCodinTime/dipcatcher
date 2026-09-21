@@ -142,6 +142,8 @@ def _master_row(
     *,
     exchange: str,
     currency: str,
+    sector: str = "Unknown",
+    industry: str = "Unknown",
 ) -> dict[str, object]:
     return {
         "security_id": security_id,
@@ -149,8 +151,8 @@ def _master_row(
         "name": security_id,
         "exchange": exchange,
         "currency": currency,
-        "sector": "Unknown",
-        "industry": "Unknown",
+        "sector": sector,
+        "industry": industry,
         "security_type": "common_stock",
         "valid_from": first_ts,
         "valid_to": None,
@@ -166,14 +168,22 @@ def write_file_lake(
     root: Path,
     *,
     exchange: str = "XNAS",
+    sectors: dict[str, str] | None = None,
 ) -> dict[str, Path]:
-    """Write bars + security_master parquet. Empty corporate_actions on purpose."""
+    """Write bars + security_master parquet. Empty corporate_actions on purpose.
+
+    ``sectors`` is a static current-classification map (GICS-style sector per
+    ``security_id``). It is applied to the whole history, so it is not a
+    point-in-time classification vintage; names outside the map stay
+    ``Unknown``.
+    """
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     if bars.is_empty():
         raise ValueError("refusing to write an empty file tape")
     ingested = datetime.now(tz=UTC)
     master_rows = []
+    sector_map = sectors or {}
     for sid in bars["security_id"].unique().sort().to_list():
         name_bars = bars.filter(pl.col("security_id") == sid)
         first_raw = name_bars["event_time"].min()
@@ -181,6 +191,7 @@ def write_file_lake(
             continue
         currency = str(name_bars["currency"][0]) if "currency" in name_bars.columns else "USD"
         exch = "XLON" if currency == "GBP" else exchange
+        sector = str(sector_map.get(str(sid), "Unknown"))
         master_rows.append(
             _master_row(
                 str(sid),
@@ -188,6 +199,8 @@ def write_file_lake(
                 ingested,
                 exchange=exch,
                 currency=currency,
+                sector=sector,
+                industry=sector,
             )
         )
     master = pl.DataFrame(master_rows)

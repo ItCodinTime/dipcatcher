@@ -485,24 +485,37 @@ class TrainConfig(StrictConfigModel):
     gbrt_max_depth: int = 2
     gbrt_learning_rate: float = 0.1
     pp_n_factors: int = 3
+    alasso_alpha: float = 0.01
+    fm_ridge_alpha: float = 1.0
     paper_rankers: list[str] = Field(
         default_factory=lambda: [
-            "rff",
-            "rff_ridgeless",
-            "sdf_ridge",
-            "sdf_en",
-            "ipca",
-            "ipca_alpha",
-            "rp_pca",
-            "fnw",
-            "gx3pass",
-            "ds_lasso",
+            "reversal",
+            "classic_st",
+            "classic",
+            "ridge_st",
+            "fm_st",
+            "combo_ic_st",
+            "combo_ic",
+            "combo_msfe",
+            "combo",
+            "fm_ridge",
             "fm",
             "pcr",
             "pls",
+            "ds_lasso",
+            "alasso",
+            "gx3pass",
+            "rp_pca",
+            "sdf_ridge",
+            "sdf_en",
             "tprf",
-            "gbrt",
             "pp",
+            "rff",
+            "rff_ridgeless",
+            "ipca",
+            "ipca_alpha",
+            "gbrt",
+            "fnw",
         ]
     )
     n_hmm_states: int = 3
@@ -554,6 +567,8 @@ class TrainConfig(StrictConfigModel):
             "fnw_lam",
             "ds_lasso_alpha",
             "gbrt_learning_rate",
+            "alasso_alpha",
+            "fm_ridge_alpha",
         ):
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
@@ -584,6 +599,17 @@ class TrainConfig(StrictConfigModel):
             "tprf",
             "gbrt",
             "pp",
+            "combo",
+            "alasso",
+            "classic",
+            "fm_ridge",
+            "combo_ic",
+            "reversal",
+            "classic_st",
+            "ridge_st",
+            "fm_st",
+            "combo_ic_st",
+            "combo_msfe",
         }
         unknown = [name for name in self.paper_rankers if name not in allowed]
         if unknown:

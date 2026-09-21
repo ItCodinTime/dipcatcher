@@ -51,6 +51,8 @@ def fetch_yahoo_chart(
     start: datetime,
     end: datetime,
     timeout: float = 30.0,
+    retries: int = 3,
+    backoff_s: float = 2.0,
 ) -> dict:
     url = CHART_URL.format(
         symbol=symbol,
@@ -58,8 +60,18 @@ def fetch_yahoo_chart(
         end=int(end.timestamp()),
     )
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — public chart JSON
-        payload = json.loads(resp.read().decode("utf-8"))
+    attempt = 0
+    while True:
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — public chart JSON
+                payload = json.loads(resp.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as exc:
+            # Yahoo throttles bursts with 429; back off instead of dropping the name.
+            if exc.code not in (429, 503) or attempt >= retries:
+                raise
+            attempt += 1
+            time.sleep(backoff_s * attempt)
     if not isinstance(payload, dict):
         raise ValueError("yahoo chart payload is not an object")
     return payload
@@ -132,6 +144,7 @@ def download_yahoo_universe(
     start: datetime | None = None,
     end: datetime | None = None,
     pause_s: float = 0.15,
+    sectors: dict[str, str] | None = None,
 ) -> dict[str, object]:
     start_ts = start or datetime(2019, 1, 2, tzinfo=UTC)
     end_ts = end or datetime.now(tz=UTC)
@@ -165,7 +178,7 @@ def download_yahoo_universe(
             "sip_vintage": False,
         }
     bars = pl.concat(frames, how="diagonal_relaxed").sort(["event_time", "security_id"])
-    paths = write_file_lake(bars, root)
+    paths = write_file_lake(bars, root, sectors=sectors)
     return {
         "status": "ok",
         "n_names": int(bars["security_id"].n_unique()),
@@ -177,6 +190,7 @@ def download_yahoo_universe(
         "pit_convention": "session_close_equals_available",
         "vendor_adjusted": True,
         "sip_vintage": False,
+        "sector_map": "static_current_classification" if sectors else "none",
         "champion_alias": False,
         "research_only": True,
     }

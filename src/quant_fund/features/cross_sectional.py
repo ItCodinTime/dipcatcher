@@ -43,11 +43,7 @@ def apply_cross_sectional(
         q_hi = source.quantile(hi).over("event_time")
         clipped_base = source.clip(q_lo, q_hi)
         clipped = pl.when(eligible).then(clipped_base).otherwise(None)
-        med = clipped_base.median().over("event_time")
-        mad = (clipped_base - med).abs().median().over("event_time")
-        robust_z = (
-            pl.when(eligible).then((clipped_base - med) / (1.4826 * mad + 1e-12)).otherwise(None)
-        )
+        robust_z = _robust_z(clipped_base, eligible, ["event_time"])
         rank = source.rank("average").over("event_time")
         n = source.count().over("event_time")
         pct = pl.when(eligible).then((rank - 0.5) / n).otherwise(None)
@@ -57,12 +53,30 @@ def apply_cross_sectional(
             pct.alias(f"cs_pct_{col}"),
         )
         if sector is not None and sector in out.columns:
-            med_s = clipped_base.median().over(["event_time", sector])
-            mad_s = (clipped_base - med_s).abs().median().over(["event_time", sector])
             out = out.with_columns(
-                pl.when(eligible)
-                .then((clipped_base - med_s) / (1.4826 * mad_s + 1e-12))
-                .otherwise(None)
-                .alias(f"cs_z_sector_{col}")
+                _robust_z(clipped_base, eligible, ["event_time", sector]).alias(
+                    f"cs_z_sector_{col}"
+                )
             )
     return out
+
+
+_SCALE_FLOOR = 1e-12
+
+
+def _robust_z(value: pl.Expr, eligible: pl.Expr, keys: list[str]) -> pl.Expr:
+    """Median / MAD z-score with a standard-deviation fallback when MAD is 0.
+
+    More than half of a small cross-section can share one value (names at
+    their 52-week high, a zero-volume day), which makes MAD exactly 0 and
+    ``(x - med) / (1.4826 * MAD + 1e-12)`` explode to ~1e10 for every other
+    name. Rousseeuw–Croux style fallback: use the group standard deviation
+    when MAD is degenerate, and 0 (no dispersion, no information) when both
+    are degenerate. Everything is within-group, so PIT is unchanged.
+    """
+    med = value.median().over(keys)
+    mad = (value - med).abs().median().over(keys)
+    sd = value.std().over(keys)
+    scale = pl.when(mad > _SCALE_FLOOR).then(1.4826 * mad).otherwise(sd)
+    z = pl.when(scale > _SCALE_FLOOR).then((value - med) / scale).otherwise(0.0)
+    return pl.when(eligible).then(z).otherwise(None)

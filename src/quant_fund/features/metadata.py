@@ -18,4 +18,7 @@ class FeatureMetadata(BaseModel):
     family: str = "generic"
 
 
-FEATURE_SET_VERSION = "features.v1"
+# v4 (Wave 149): v3 plus skip-momentum (20d excluding last week), residual
+# momentum (mom_20 minus beta * benchmark mom_20), and rank-space reversal /
+# overnight columns on the public card.
+FEATURE_SET_VERSION = "features.v4"

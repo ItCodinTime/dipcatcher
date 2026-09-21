@@ -9,15 +9,23 @@ from quant_fund.config.models import TrainConfig
 from quant_fund.models.asset_pricing import IPCARanker
 from quant_fund.models.cs_papers import (
     PAPER_RANKER_NAMES,
+    AdaptiveLassoRanker,
+    ClassicRanker,
+    ClassicShortRanker,
+    CombinationRanker,
     DoubleSelectionRanker,
     FamaMacBethRanker,
+    FamaMacBethRidgeRanker,
     FNWRanker,
     GBRTRanker,
     GXThreePassRanker,
+    ICWeightedCombinationRanker,
+    MSFECombinationRanker,
     PCRRanker,
     PLSRanker,
     PrincipalPortfolioRanker,
     RPPCARanker,
+    ReversalRanker,
     SDFElasticNetRanker,
     ThreePassFilterRanker,
     gx_three_pass_premia,
@@ -112,6 +120,24 @@ def test_double_selection_keeps_planted_column() -> None:
     assert "sharpe" not in ranker.metadata().extra
 
 
+def test_double_selection_survives_mixed_column_scale() -> None:
+    """sklearn L1 is not scale-invariant; FGX columns are standardized first.
+
+    A 1e8 noise column used to make post-selection OLS a constant
+    (max |coef| ~ 1e-13 on the 5-day file tape).
+    """
+    rng = np.random.default_rng(5)
+    x = rng.normal(size=(200, 6))
+    y = 1.4 * x[:, 2] - 0.8 * x[:, 0] + 0.05 * rng.normal(size=200)
+    x[:, 1] *= 1e8
+    x[:, 4] *= 1e-8
+    ranker = DoubleSelectionRanker(alpha=0.02)
+    pred = ranker.fit(x, y).predict(x)
+    assert 2 in ranker.selected
+    assert 0 in ranker.selected
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.7
+
+
 def test_ipca_unrestricted_differs_when_alpha_present() -> None:
     rng = np.random.default_rng(6)
     n_dates, n_names, n_char, k = 24, 18, 5, 2
@@ -134,6 +160,8 @@ def test_ipca_unrestricted_differs_when_alpha_present() -> None:
     assert unres.metadata().name == "ipca_alpha"
     assert float(np.linalg.norm(rest.gamma_alpha)) == pytest.approx(0.0, abs=1e-12)
     assert float(np.linalg.norm(unres.gamma_alpha)) > 1e-3
+    assert float(np.corrcoef(unres.predict(x), y)[0, 1]) > float(np.corrcoef(rest.predict(x), y)[0, 1])
+    assert float(np.corrcoef(unres.gamma_alpha, alpha)[0, 1]) > 0.5
 
 
 def test_catalog_includes_all_paper_rankers() -> None:
@@ -164,6 +192,8 @@ def test_train_config_rejects_unknown_paper_ranker() -> None:
         TrainConfig.model_validate({"tprf_n_factors": 0})
     with pytest.raises(ValueError, match="gbrt_learning_rate"):
         TrainConfig.model_validate({"gbrt_learning_rate": 0.0})
+    with pytest.raises(ValueError, match="alasso_alpha"):
+        TrainConfig.model_validate({"alasso_alpha": -0.01})
 
 
 def test_fnw_high_lambda_is_not_constant() -> None:
@@ -250,3 +280,107 @@ def test_principal_portfolios_uses_cross_predictability() -> None:
     assert float(np.corrcoef(pred, y)[0, 1]) > float(np.corrcoef(own, y)[0, 1])
     assert float(np.linalg.norm(ranker.pi_k - np.diag(np.diag(ranker.pi_k)))) > 1e-8
     assert ranker.metadata().name == "pp"
+
+
+def test_combo_and_alasso_recover_linear_signal() -> None:
+    rng = np.random.default_rng(17)
+    x = rng.normal(size=(300, 5))
+    y = 0.9 * x[:, 0] - 0.4 * x[:, 2] + 0.05 * rng.normal(size=300)
+    combo = CombinationRanker().fit(x, y).predict(x)
+    alasso = AdaptiveLassoRanker(alpha=0.01).fit(x, y).predict(x)
+    assert float(np.corrcoef(combo, y)[0, 1]) > 0.5
+    assert float(np.corrcoef(alasso, y)[0, 1]) > 0.7
+    assert "sharpe" not in CombinationRanker().metadata().extra
+    assert AdaptiveLassoRanker().metadata().name == "alasso"
+
+
+def test_classic_uses_a_priori_signs() -> None:
+    rng = np.random.default_rng(18)
+    names = ["cs_z_reversal_1", "cs_z_max_ret_20", "noise"]
+    x = rng.normal(size=(80, 3))
+    y = x[:, 0] - x[:, 1] + 0.05 * rng.normal(size=80)
+    pred = ClassicRanker().fit(x, y, features=names).predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.7
+    assert ClassicRanker().metadata().name == "classic"
+
+
+def test_fm_ridge_fits_when_ols_fm_cannot() -> None:
+    rng = np.random.default_rng(19)
+    n_dates, n_names, n_char = 16, 10, 9
+    x = rng.normal(size=(n_dates * n_names, n_char))
+    dates = np.repeat(np.arange(n_dates), n_names)
+    y = 0.4 * x[:, 0] - 0.3 * x[:, 1] + 0.05 * rng.normal(size=x.shape[0])
+    with pytest.raises(ValueError, match="enough names"):
+        FamaMacBethRanker().fit(x, y, dates=dates)
+    pred = FamaMacBethRidgeRanker(alpha=1.0).fit(x, y, dates=dates).predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.4
+    assert FamaMacBethRidgeRanker().metadata().name == "fm_ridge"
+
+
+def test_combo_ic_uses_nonnegative_train_ic_weights() -> None:
+    rng = np.random.default_rng(20)
+    n_dates, n_names = 20, 12
+    x = rng.normal(size=(n_dates * n_names, 3))
+    dates = np.repeat(np.arange(n_dates), n_names)
+    y = 0.8 * x[:, 0] + 0.05 * rng.normal(size=x.shape[0])
+    ranker = ICWeightedCombinationRanker().fit(x, y, dates=dates)
+    assert ranker.weights is not None
+    assert float(np.min(ranker.weights)) >= -1e-15
+    assert float(np.sum(ranker.weights)) == pytest.approx(1.0)
+    assert ranker.weights[0] == pytest.approx(float(np.max(ranker.weights)))
+    pred = ranker.predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.5
+    assert ranker.metadata().name == "combo_ic"
+
+
+def test_classic_st_uses_daily_cs_signs() -> None:
+    rng = np.random.default_rng(21)
+    names = ["cs_z_reversal_1", "cs_z_ret_5", "cs_z_mom_skip_5_20", "noise"]
+    x = rng.normal(size=(100, 4))
+    y = x[:, 0] - x[:, 1] + x[:, 2] + 0.05 * rng.normal(size=100)
+    pred = ClassicShortRanker().fit(x, y, features=names).predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.7
+    assert ClassicShortRanker().metadata().name == "classic_st"
+    rev = ReversalRanker().fit(x, y, features=names).predict(x)
+    assert float(np.corrcoef(rev, x[:, 0])[0, 1]) > 0.99
+
+
+def test_combo_msfe_upweights_low_error_univariate() -> None:
+    rng = np.random.default_rng(22)
+    n_dates, n_names = 40, 12
+    x = rng.normal(size=(n_dates * n_names, 3))
+    dates = np.repeat(np.arange(n_dates), n_names)
+    y = 0.9 * x[:, 0] + 0.05 * rng.normal(size=x.shape[0])
+    ranker = MSFECombinationRanker(theta=0.99).fit(x, y, dates=dates)
+    assert ranker.weights is not None
+    assert float(np.sum(ranker.weights)) == pytest.approx(1.0)
+    assert ranker.weights[0] == pytest.approx(float(np.max(ranker.weights)))
+    pred = ranker.predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.5
+    assert ranker.metadata().name == "combo_msfe"
+
+
+def test_ridge_st_masks_to_short_horizon_columns() -> None:
+    from quant_fund.models.cs_papers import SHORT_HORIZON_FEATURES, make_ridge_st
+
+    rng = np.random.default_rng(23)
+    names = ["cs_z_reversal_1", "cs_z_amihud", "noise"]
+    n_dates, n_names = 24, 10
+    x = rng.normal(size=(n_dates * n_names, 3))
+    dates = np.repeat(np.arange(n_dates), n_names)
+    y = 0.8 * x[:, 0] + 0.05 * rng.normal(size=x.shape[0])
+    ranker = make_ridge_st(0.3).fit(x, y, dates=dates, features=names)
+    assert ranker._idx is not None
+    assert list(ranker._idx) == [0]
+    pred = ranker.predict(x)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.5
+    assert ranker.metadata().name == "ridge_st"
+    assert "cs_z_reversal_1" in SHORT_HORIZON_FEATURES
+
+
+def test_hedge_lab_uses_rolling_daily_cs_window() -> None:
+    cfg = load_config("configs/hedge_lab.yaml")
+    assert cfg.validation.scheme == "rolling"
+    assert cfg.validation.train_bars == 252
+    wide = load_config("configs/hedge_lab_wide.yaml")
+    assert wide.validation.scheme == "rolling"

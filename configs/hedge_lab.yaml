@@ -20,6 +20,7 @@ universe:
   top_n_adv: 50
   min_history_bars: 60
 validation:
+  scheme: rolling
   train_bars: 252
   val_bars: 63
   test_bars: 63

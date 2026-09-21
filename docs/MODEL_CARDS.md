@@ -31,7 +31,7 @@ evidence.
 
 | Family | Baseline | ML |
 |---|---|---|
-| Ranking | composite, ridge, ElasticNet | XGB/LGBM, LambdaRank, XE-NDCG, RFF / ridgeless (Kelly–Malamud–Zhou), SDF ridge / EN (Kozak–Nagel–Santosh), IPCA / IPCA-\(\alpha\) (Kelly–Pruitt–Su), RP-PCA (Lettau–Pelger), FNW group LASSO, Giglio–Xiu 3-pass, FGX double-selection, Fama–MacBeth, GKX PCR/PLS/GBRT, Kelly–Pruitt 3PRF, Kelly–Malamud–Pedersen principal portfolios |
+| Ranking | composite, ridge, ElasticNet | XGB/LGBM, LambdaRank, XE-NDCG, RFF / ridgeless (Kelly–Malamud–Zhou), SDF ridge / EN (Kozak–Nagel–Santosh), IPCA / joint IPCA-\(\alpha\) (Kelly–Pruitt–Su), RP-PCA (Lettau–Pelger), FNW group LASSO, Giglio–Xiu 3-pass, FGX double-selection, Fama–MacBeth / ridge-FM, GKX PCR/PLS/GBRT, Kelly–Pruitt 3PRF, Kelly–Malamud–Pedersen principal portfolios, Rapach combination / IC-weighted combo, Zou adaptive LASSO, a priori classic signs |
 | K-line foundation | robinhood+ NumPy hierarchical BSQ + Markov decoder | optional Kronos torch weights (`[nn]`) |
 | Alpha | historical mean, ridge residual | trees |
 | Distribution | empirical, Gaussian, linear QR | XGB/LGBM quantile |

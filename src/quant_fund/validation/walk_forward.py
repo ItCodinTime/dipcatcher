@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
+
+import numpy as np
+from numpy.typing import NDArray
 
 from quant_fund.config.models import ValidationConfig
 from quant_fund.validation.purging import purge_mask
@@ -19,6 +24,43 @@ class Fold:
 def session_index(times: list[datetime]) -> dict[datetime, int]:
     uniq = sorted(set(times))
     return {t: i for i, t in enumerate(uniq)}
+
+
+def timestamp_ns(values: Any) -> NDArray[np.int64]:
+    """UTC epoch nanoseconds. Naive datetimes are wall-clock, matching datetime64."""
+    arr = np.asanyarray(values)
+    if arr.size == 0:
+        return np.zeros(0, dtype=np.int64)
+    if np.issubdtype(arr.dtype, np.datetime64):
+        return np.asarray(arr.astype("datetime64[ns]").view(np.int64), dtype=np.int64)
+    out = np.empty(arr.size, dtype=np.int64)
+    for i, value in enumerate(arr.ravel()):
+        out[i] = _one_timestamp_ns(value)
+    return out
+
+
+def _one_timestamp_ns(value: Any) -> int:
+    if isinstance(value, np.datetime64):
+        return int(value.astype("datetime64[ns]").astype(np.int64, copy=False))
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            value = value.astimezone(UTC).replace(tzinfo=None)
+        return int(np.datetime64(value, "ns").astype(np.int64, copy=False))
+    return int(np.datetime64(value, "ns").astype(np.int64, copy=False))
+
+
+def row_mask_for_times(dates: Any, times: Sequence[Any]) -> NDArray[np.bool_]:
+    """Boolean mask of rows whose timestamp is in ``times``.
+
+    Integer-nanosecond membership, not object-dtype ``np.isin``. The object
+    path is too slow for a 100k-row expanding walk-forward.
+    """
+    date_arr = np.asanyarray(dates)
+    if date_arr.size == 0:
+        return np.zeros(0, dtype=bool)
+    if not times:
+        return np.zeros(date_arr.shape[0], dtype=bool)
+    return np.isin(timestamp_ns(date_arr), timestamp_ns(times))
 
 
 def walk_forward(

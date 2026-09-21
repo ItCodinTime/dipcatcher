@@ -137,8 +137,15 @@ def membership_asof(
     when: datetime,
     config: UniverseConfig,
     actions: pl.DataFrame | None = None,
+    *,
+    presorted: bool = False,
 ) -> pl.DataFrame:
-    """Eligible names using only bars and listing events observable at ``when``."""
+    """Eligible names using only bars and listing events observable at ``when``.
+
+    ``presorted=True`` promises ``bars`` is already sorted by
+    ``(security_id, event_time)``; ``build_membership_panel`` sorts once so
+    thousands of as-of snapshots do not each re-sort a million-row tape.
+    """
     hist = _visible_bars(bars, when)
     if hist.is_empty():
         return hist.clear()
@@ -148,13 +155,23 @@ def membership_asof(
         hist = hist.filter(~pl.col("security_id").is_in(sorted(dropped)))
         if hist.is_empty():
             return hist.clear()
-    enriched = trailing_adv(hist, lookback=20)
+    # The as-of snapshot only needs each name's last trailing-ADV row plus its
+    # full observable history length. Rolling the whole visible history for
+    # every decision timestamp is O(T x N) and does not scale to a wide tape;
+    # the last ``lookback`` bars per name give the identical last-row ADV.
+    lookback = 20
+    counts = hist.group_by("security_id").agg(pl.len().alias("n_bars"))
+    ordered = hist if presorted else hist.sort(["security_id", "event_time"])
+    tail = ordered.group_by("security_id", maintain_order=True).tail(lookback)
+    enriched = trailing_adv(tail, lookback=lookback)
     last = (
         enriched.sort("event_time")
         .group_by("security_id")
-        .agg(
-            pl.all().last(),
-            pl.len().alias("n_bars"),
+        .agg(pl.all().last())
+        .join(counts, on="security_id", how="left")
+        .with_columns(
+            pl.col("n_bars").alias("history_len_tmp"),
+            (pl.col("n_bars") - 1).alias("bars_seen"),
         )
     )
     snap = snapshot_asof(master, when)
@@ -206,8 +223,10 @@ def build_membership_panel(
     config: UniverseConfig,
     actions: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
+    # Filtering preserves row order, so one global sort serves every as-of.
+    ordered = bars.sort(["security_id", "event_time"]) if not bars.is_empty() else bars
     frames = [
-        membership_asof(bars, master, t, config, actions=actions).with_columns(
+        membership_asof(ordered, master, t, config, actions=actions, presorted=True).with_columns(
             pl.lit(t).alias("asof")
         )
         for t in timestamps

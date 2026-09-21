@@ -4,13 +4,22 @@ Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC
 
 ## Cross-sectional asset pricing / ML
 
-- Fama, MacBeth (1973). Risk, Return, and Equilibrium: Empirical Tests. *Journal of Political Economy*. Date-level CS slopes averaged; catalog `fm`.
+- Fama, MacBeth (1973). Risk, Return, and Equilibrium: Empirical Tests. *Journal of Political Economy*. Date-level CS slopes averaged; catalog `fm`. Ridge per-date slopes: `fm_ridge`.
+- Jegadeesh (1990). Evidence of Predictable Behavior of Security Returns. *Journal of Finance*. Short-term reversal; `classic` sign on `cs_z_reversal_1`.
+- Jegadeesh, Titman (1993). Returns to Buying Winners and Selling Losers. *Journal of Finance*. Skip-week 20-session momentum; `cs_z_mom_skip_5_20`.
+- Blitz, Huij, Martens (2011). Residual Momentum. *Journal of Empirical Finance*. CAPM residual 20-session momentum; `cs_z_idio_mom_20`.
+- Bali, Cakici, Whitelaw (2011). Maxing Out: Stocks as Lotteries. *Journal of Financial Economics*. MAX; `classic` short `cs_z_max_ret_20`.
+- Ang, Hodrick, Xing, Zhang (2006). The Cross-Section of Volatility and Expected Returns. *Journal of Finance*. Idiosyncratic vol; `classic` short `cs_z_idio_vol_60`.
+- Amihud (2002). Illiquidity and Stock Returns. *Journal of Financial Markets*. `classic` long `cs_z_amihud`.
+- George, Hwang (2004). The 52-Week High and Momentum Investing. *Journal of Finance*. `classic` long `cs_z_high_52w_prox`.
 - Gu, Kelly, Xiu (2020). Empirical Asset Pricing via Machine Learning. *Review of Financial Studies*. NBER w25398. PCR `pcr`, PLS `pls`, Huber GBRT `gbrt`. Neural nets not implemented (ADR-007). Linear autoencoder ≡ IPCA.
 - Kelly, Pruitt (2015). The Three-Pass Regression Filter: A New Approach to Forecasting Using Many Predictors. *Journal of Econometrics* 186(2). Automatic-proxy 3PRF Tables 1–2; catalog `tprf`. PLS is the no-intercept special case.
 - Kelly, Malamud, Pedersen (2023). Principal Portfolios. *Journal of Finance* 78(1). Open access DOI [10.1111/jofi.13199](https://doi.org/10.1111/jofi.13199). NBER w27388. \(\Pi=E[R_{t+1}S_t']\); catalog `pp`.
 - Kelly, Malamud, Zhou (2024). The Virtue of Complexity in Return Prediction. *Journal of Finance* 79(1). Open access DOI [10.1111/jofi.13298](https://doi.org/10.1111/jofi.13298). NBER w30217. RFF (Rahimi–Recht) + ridge \(\hat\beta(z)=(zI+T^{-1}S'S)^{-1}T^{-1}S'R\); catalog `rff`. Adaptations in MATH_SPEC.
 - Kozak, Nagel, Santosh (2020). Shrinking the Cross-Section. *Journal of Financial Economics*. NBER w24070. SDF ridge \(b=(\Sigma+zI)^{-1}\mu\) (`sdf_ridge`) and HJ-distance elastic net eq. 28 (`sdf_en`).
-- Kelly, Pruitt, Su (2019). Characteristics Are Covariances: A Unified Model of Risk and Return. *Journal of Financial Economics*. NBER w24540. IPCA ALS, \(\Gamma'\Gamma=I_K\); catalog `ipca`. Nested unrestricted \(\Gamma_\alpha\): `ipca_alpha`.
+- Kelly, Pruitt, Su (2019). Characteristics Are Covariances: A Unified Model of Risk and Return. *Journal of Financial Economics*. NBER w24540. IPCA ALS, \(\Gamma'\Gamma=I_K\); catalog `ipca`. Joint unrestricted \(F_{\mathrm{aug},t}=(1,f_t)'\): `ipca_alpha`.
+- Rapach, Strauss, Zhou (2010). Out-of-Sample Equity Premium Prediction: Combination Forecasts and Links to the Real Economy. *Review of Financial Studies*. Equal-weight univariate OLS; catalog `combo`. Non-negative train date-IC weights: `combo_ic`.
+- Zou (2006). The Adaptive Lasso and Its Oracle Properties. *Journal of the American Statistical Association*. Catalog `alasso`.
 - Lettau, Pelger (2020). Factors That Fit the Time Series and Cross-Section of Stock Returns. *Review of Financial Studies* 33(5). NBER w24858. RP-PCA \(S=(1/T)X'X+\gamma\bar X\bar X'\); catalog `rp_pca`.
 - Giglio, Xiu (2021). Asset Pricing with Omitted Factors. *Journal of Political Economy*. NBER w23527. Three-pass PCA / CS / TS estimator; catalog `gx3pass`.
 - Freyberger, Neuhierl, Weber (2020). Dissecting Characteristics Nonparametrically. *Review of Financial Studies* 33(5). NBER w23227. Adaptive group LASSO on quadratic splines of rank-transformed characteristics; catalog `fnw`.
