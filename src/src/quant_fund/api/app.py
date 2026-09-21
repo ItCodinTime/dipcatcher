@@ -19,7 +19,12 @@ from quant_fund import __firm__, __version__
 from quant_fund.config import load_config
 from quant_fund.metrics.analytics import validate_analytics_export
 from quant_fund.pipeline.doctor import doctor
-from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
+from quant_fund.pipeline.forecast import (
+    RealizedGarchMarketForecast,
+    build_causal_weight_panel,
+    forecast_asof,
+    optimize_asof,
+)
 
 app = FastAPI(title=f"{__firm__} Dipcatcher", version=__version__)
 
@@ -328,9 +333,15 @@ def readiness(config_path: str = "configs/research.yaml") -> JSONResponse:
 def models() -> dict[str, Any]:
     import importlib.util
 
+    from quant_fund.models.covariance import (
+        IMPLEMENTED_COVARIANCE_SPECS,
+        IMPLEMENTED_OPTIMIZER_COVARIANCE_SPECS,
+        UNSPECIFIED_COVARIANCE_SPECS,
+    )
+
     availability = {
         name: importlib.util.find_spec(name) is not None
-        for name in ("xgboost", "lightgbm", "arch", "hmmlearn", "cvxpy")
+        for name in ("xgboost", "lightgbm", "arch", "hmmlearn", "cvxpy", "torch")
     }
     return {
         "ranking": [
@@ -344,9 +355,23 @@ def models() -> dict[str, Any]:
         ],
         "distribution": ["empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"],
         "volatility": ["rolling", "ewma", "garch", "har", "xgboost", "lightgbm"],
-        "covariance": ["sample", "ewma", "ledoit_wolf", "factor", "dcc"],
+        "covariance": list(IMPLEMENTED_COVARIANCE_SPECS),
+        "covariance_unspecified": list(UNSPECIFIED_COVARIANCE_SPECS),
+        "optimizer_covariance": list(IMPLEMENTED_OPTIMIZER_COVARIANCE_SPECS),
         "regime": ["single_state", "threshold", "hmm"],
         "backend_availability": availability,
+        "robinhood_plus": {
+            "core_engine": True,
+            "backend": "numpy",
+            "claim": "local causal research engine; execution and live-PnL claims are unsupported",
+        },
+        "kline_foundation": {
+            "robinhood_plus": {
+                "core_engine": True,
+                "backend": "numpy",
+                "claim": "local causal research engine; execution and live-PnL claims are unsupported",
+            }
+        },
         "catalog_claim": "implemented_or_optional_backend; availability is environment-specific",
     }
 
@@ -411,12 +436,13 @@ def regime() -> dict[str, Any]:
 
 @app.get("/risk/portfolio")
 def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]:
-    """Return as-of covariance risk for the persisted target portfolio."""
+    """Return causal, as-of covariance risk for the persisted target portfolio."""
     import numpy as np
     import polars as pl
 
-    from quant_fund.models.covariance import ledoit_wolf_cov, repair_psd
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
     from quant_fund.pipeline.dataset import panel
+    from quant_fund.pipeline.forecast import estimate_optimizer_covariance_asof
     from quant_fund.portfolio.optimizer import component_risk
 
     cfg = _load_cfg(config_path)
@@ -456,14 +482,16 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
         raise HTTPException(422, "target-weight artifact has non-finite weights")
     if weights.select(["event_time", "security_id"]).is_duplicated().any():
         raise HTTPException(422, "target-weight artifact contains duplicate identity rows")
-    asof = weights["event_time"].max()
-    # Build the weight vector from the latest as-of slice only: a multi-date
-    # panel would duplicate security ids and misalign against the covariance.
+    asof_value = weights["event_time"].max()
+    if not isinstance(asof_value, datetime):
+        raise HTTPException(422, "target-weight artifact event_time must contain datetime values")
+    asof = asof_value
     weights = weights.filter(pl.col("event_time") == asof)
     ids = [str(value) for value in weights["security_id"].to_list()]
     w = np.asarray(weights["target_weight"].to_list(), dtype=float)
-    frame = panel(cfg).filter(pl.col("event_time") <= asof)
-    if "ret_1" not in frame.columns:
+    frame = panel(cfg)
+    history = frame.filter(pl.col("event_time") <= asof)
+    if "ret_1" not in history.columns:
         return _stamp_research_honesty(
             {
                 "status": "UNMEASURED",
@@ -473,7 +501,11 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
                 "claim": "research_only",
             }
         )
-    wide = frame.select(["event_time", "security_id", "ret_1"]).pivot(
+    try:
+        history = filter_trailing_returns_asof(history, asof)
+    except Exception as exc:
+        raise HTTPException(422, str(exc)) from exc
+    wide = history.select(["event_time", "security_id", "ret_1"]).pivot(
         on="security_id", index="event_time", values="ret_1"
     )
     cols = [sid for sid in ids if sid in wide.columns]
@@ -487,43 +519,79 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
                 "claim": "research_only",
             }
         )
-    mat = wide.select(cols).to_numpy().astype(float)
-    mat = mat[np.isfinite(mat).all(axis=1)]
-    if mat.shape[0] < 2:
+    try:
+        estimate = estimate_optimizer_covariance_asof(cfg, frame, asof, ids, history)
+    except Exception as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if estimate.unmeasured_reason is not None:
         return _stamp_research_honesty(
             {
                 "status": "UNMEASURED",
-                "reason": "insufficient finite return observations for covariance",
+                "reason": "insufficient finite return observations for covariance"
+                if estimate.unmeasured_reason == "insufficient_finite_rows"
+                else "point-in-time return history is unavailable",
                 "asof": str(asof),
                 "source": str(weights_path),
                 "claim": "research_only",
             }
         )
-    sigma, _ = repair_psd(ledoit_wolf_cov(mat), cfg.train.psd_eigen_tol)
-    col_idx = [ids.index(sid) for sid in cols]
-    mcr, cr, predicted_vol = component_risk(w[col_idx], sigma)
-    return _stamp_research_honesty(
-        {
-            "status": "MEASURED",
-            "asof": str(asof),
-            "observations": int(mat.shape[0]),
-            "securities": len(cols),
-            "predicted_volatility": predicted_vol,
-            "gross": float(np.abs(w).sum()),
-            "net": float(w.sum()),
-            "components": [
+    ids = estimate.security_ids
+    # The estimator's security order is also the covariance order.  Keep the
+    # corresponding portfolio weights aligned before calculating contributions.
+    original_ids = [str(value) for value in weights["security_id"].to_list()]
+    original_w = dict(zip(original_ids, w, strict=True))
+    w_aligned = np.asarray([original_w[sid] for sid in ids], dtype=float)
+    mcr, cr, predicted_vol = component_risk(w_aligned, estimate.sigma)
+    payload: dict[str, Any] = {
+        "status": "MEASURED",
+        "asof": str(asof),
+        "observations": int(estimate.n_obs),
+        "securities": len(ids),
+        "predicted_volatility": predicted_vol,
+        "gross": float(np.abs(w).sum()),
+        "net": float(w.sum()),
+        "covariance_estimator": estimate.estimator,
+        "covariance_object": estimate.covariance_object,
+        "covariance_spec": estimate.spec,
+        "market_risk_overlay": estimate.market_overlay,
+        "components": [
+            {
+                "security_id": sid,
+                "weight": float(w_aligned[i]),
+                "marginal_risk": float(mcr[i]),
+                "risk_contribution": float(cr[i]),
+            }
+            for i, sid in enumerate(ids)
+        ],
+        "source": str(weights_path),
+        "claim": "research_only",
+    }
+    if estimate.estimator in {"dcc_gaussian", "dcc_student_t", "adcc", "ccc", "agdcc", "agdcc_full", "ewma"}:
+        payload["covariance_horizon"] = 1
+    overlay = estimate.overlay
+    if overlay is not None:
+        payload.update(
+            {
+                "garch_market_sigma": float(overlay.sigma),
+                "garch_market_variance": float(overlay.variance),
+                "garch_cumulative_variance": float(overlay.cumulative_variance),
+                "garch_horizon": int(overlay.horizon),
+                "garch_n_obs": int(overlay.n_obs),
+                "garch_series_scope": overlay.series_scope,
+                "garch_fit_status": overlay.fit_status,
+            }
+        )
+        if estimate.market_overlay == "realized_garch" and isinstance(
+            overlay, RealizedGarchMarketForecast
+        ):
+            payload.update(
                 {
-                    "security_id": sid,
-                    "weight": float(w[i]),
-                    "marginal_risk": float(mcr[j]),
-                    "risk_contribution": float(cr[j]),
+                    "realized_measure": overlay.realized_measure,
+                    "intraday_realized_variance": overlay.intraday_realized_variance,
+                    "garch_variance_family": overlay.variance_family,
                 }
-                for j, (sid, i) in enumerate(zip(cols, col_idx, strict=True))
-            ],
-            "source": str(weights_path),
-            "claim": "research_only",
-        }
-    )
+            )
+    return _stamp_research_honesty(payload)
 
 
 @app.get("/portfolio/target")
@@ -725,7 +793,7 @@ def drift(config_path: str = "configs/research.yaml") -> dict[str, Any]:
 
 
 @app.get("/doctor")
-def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, str]:
+def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, object]:
     return doctor(str(resolve_allowed_config_path(config_path)))
 
 

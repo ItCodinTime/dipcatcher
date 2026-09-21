@@ -27,8 +27,13 @@ from quant_fund.metrics.analytics import (
 )
 from quant_fund.metrics.returns import max_drawdown, sharpe_ratio
 from quant_fund.monitoring.kill_switch import KillSwitch
+from quant_fund.pipeline.forecast import market_risk_overlay_asof
 from quant_fund.portfolio.risk_gate import check_order
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
+from quant_fund.schemas.forecast import (
+    MARKET_RISK_OVERLAY_GARCH,
+    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+)
 from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
 
 
@@ -152,6 +157,14 @@ def run_backtest(
     Target computed from close t is executed at next open (unless close auction enabled).
     """
     _validate_target_weight_panel(weights)
+    # Keep OHLC available to the causal market overlay.  Do not require it
+    # unconditionally: return-only GARCH remains valid without ranges, while a
+    # present realized-GARCH artifact will fail closed in forecast.py.
+    overlay_ohlc = [
+        pl.col(name)
+        for name in ("high_split_adjusted", "low_split_adjusted", "high", "low")
+        if name in bars.columns
+    ]
     px = bars.select(
         "security_id",
         "event_time",
@@ -164,6 +177,7 @@ def run_backtest(
         else (pl.col("close") * pl.col("volume")).alias("adv"),
         pl.col("vol_20") if "vol_20" in bars.columns else pl.lit(0.02).alias("vol_20"),
         "source",
+        *overlay_ohlc,
     )
     dates = sorted(px["event_time"].unique().to_list())
     book = Book(cash=initial_nav)
@@ -179,6 +193,8 @@ def run_backtest(
     reject_count = 0
     cash_reject_count = 0
     halt_count = 0
+    garch_overlay_dates = 0
+    realized_garch_overlay_dates = 0
     order_seq = 0
 
     use_next_open = (
@@ -188,6 +204,14 @@ def run_backtest(
 
     for i, dt in enumerate(dates[:-1] if use_next_open else dates):
         exec_dt = dates[i + 1] if use_next_open else dt
+        # Resolve the market overlay at the signal origin, never at execution
+        # time.  The resolver applies its own strict PIT filtering and keeps
+        # realized-GARCH fail-closed semantics when its artifact is present.
+        market_vol, overlay_source = market_risk_overlay_asof(config, bars, dt)
+        if overlay_source == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+            realized_garch_overlay_dates += 1
+        elif overlay_source == MARKET_RISK_OVERLAY_GARCH:
+            garch_overlay_dates += 1
         day_px = px.filter(pl.col("event_time") == exec_dt)
         day_rows = day_px.iter_rows(named=True)
         exec_mark: dict[str, float] = {}
@@ -233,7 +257,9 @@ def run_backtest(
             }
         )
         if stale_held:
-            details = ", ".join(f"{sid}={age if age is not None else 'unknown'}" for sid, age in stale_held.items())
+            details = ", ".join(
+                f"{sid}={age if age is not None else 'unknown'}" for sid, age in stale_held.items()
+            )
             raise StaleValuationError(
                 "held position valuation is stale beyond the configured limit: " + details
             )
@@ -298,6 +324,7 @@ def run_backtest(
                     net_after=net_after,
                     participation=participation,
                     predicted_vol=vols.get(sid, 0.02),
+                    market_predicted_vol=market_vol,
                     config=config,
                 )
             except RiskGateRejected:
@@ -382,6 +409,8 @@ def run_backtest(
                 "risk_gate_rejects": reject_count,
                 "cash_rejects": cash_reject_count,
                 "kill_switch_halts": halt_count,
+                "garch_risk_overlay_dates": garch_overlay_dates,
+                "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
             },
         )
         metrics: dict[str, float | str | int | bool | dict] = {
@@ -397,6 +426,8 @@ def run_backtest(
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,
+            "garch_risk_overlay_dates": garch_overlay_dates,
+            "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
             "analytics": diag,
             "analytics_export": analytics_export,
             "research_only": True,
@@ -412,6 +443,8 @@ def run_backtest(
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,
+            "garch_risk_overlay_dates": garch_overlay_dates,
+            "realized_garch_risk_overlay_dates": realized_garch_overlay_dates,
             "research_only": True,
             "live_pnl_claim": False,
         }
@@ -421,7 +454,20 @@ def run_backtest(
     metrics["data_source"] = note
     return BacktestResult(
         equity=eq,
-        fills=pl.DataFrame(fill_rows) if fill_rows else pl.DataFrame(),
+        fills=pl.DataFrame(fill_rows)
+        if fill_rows
+        else pl.DataFrame(
+            schema={
+                "fill_time": pl.Datetime,
+                "signal_time": pl.Datetime,
+                "security_id": pl.String,
+                "quantity": pl.Float64,
+                "price": pl.Float64,
+                "fee": pl.Float64,
+                "spread_cost": pl.Float64,
+                "impact_cost": pl.Float64,
+            }
+        ),
         metrics=metrics,
         frictionless=config.costs.frictionless,
         source_note=note,

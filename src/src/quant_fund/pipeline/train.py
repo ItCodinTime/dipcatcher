@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -1083,11 +1083,11 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
             session_index=session_index,
         )
         metrics: dict[str, Any] = {
-            "qlike": float(scored["qlike"]),
-            "qlike_overlapping_dates": float(scored["qlike_overlapping"]),
-            "n_origins_nonoverlapping": int(scored["n_origins_nonoverlapping"]),
-            "n_origins_overlapping": int(scored["n_origins_overlapping"]),
-            "origin_stride": int(scored["horizon_bars"]),
+            "qlike": float(cast(Any, scored["qlike"])),
+            "qlike_overlapping_dates": float(cast(Any, scored["qlike_overlapping"])),
+            "n_origins_nonoverlapping": int(cast(Any, scored["n_origins_nonoverlapping"])),
+            "n_origins_overlapping": int(cast(Any, scored["n_origins_overlapping"])),
+            "origin_stride": int(cast(Any, scored["horizon_bars"])),
             "scoring_scope": GARCH_DATE_LEVEL_SCOPE,
         }
         if model_name == "realized_garch":
@@ -1316,18 +1316,18 @@ def garch_name_walk_forward(
         session_index=session_index,
     )
     metrics: dict[str, Any] = {
-        "qlike": float(scored["qlike"]),
-        "qlike_overlapping_dates": float(scored["qlike_overlapping"]),
-        "n_origins_nonoverlapping": int(scored["n_origins_nonoverlapping"]),
-        "n_origins_overlapping": int(scored["n_origins_overlapping"]),
-        "n_names": int(scored["n_names"]),
-        "origin_stride": int(scored["horizon_bars"]),
+        "qlike": float(cast(Any, scored["qlike"])),
+        "qlike_overlapping_dates": float(cast(Any, scored["qlike_overlapping"])),
+        "n_origins_nonoverlapping": int(cast(Any, scored["n_origins_nonoverlapping"])),
+        "n_origins_overlapping": int(cast(Any, scored["n_origins_overlapping"])),
+        "n_names": int(cast(Any, scored["n_names"])),
+        "origin_stride": int(cast(Any, scored["horizon_bars"])),
         "scoring_scope": GARCH_SECURITY_LEVEL_SCOPE,
     }
     if density_by_key:
         origin_keys = sorted(density_by_key)
         density_metrics = name_level_one_step_density_summary(
-            [key[0] for key in origin_keys],
+            np.asarray([key[0] for key in origin_keys], dtype=object),
             np.asarray([key[1] for key in origin_keys], dtype=object),
             np.asarray([density_by_key[key]["log_score"] for key in origin_keys], dtype=float),
             np.asarray([density_by_key[key]["crps"] for key in origin_keys], dtype=float),

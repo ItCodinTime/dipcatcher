@@ -9,6 +9,7 @@ import polars as pl
 
 from quant_fund.config.models import AppConfig
 from quant_fund.data.point_in_time import validate_feature_frame
+from quant_fund.data.universe import attach_membership_flag, restrict_to_membership
 from quant_fund.features.cross_sectional import apply_cross_sectional
 from quant_fund.features.metadata import FEATURE_SET_VERSION, FeatureMetadata
 
@@ -130,6 +131,8 @@ def add_market_features(df: pl.DataFrame, benchmark_id: str) -> pl.DataFrame:
     eligible = (
         pl.col("available_time") <= pl.col("event_time") if has_availability else pl.lit(True)
     )
+    if "_in_universe" in df.columns:
+        eligible = eligible & pl.col("_in_universe")
     mkt_columns = [
         "event_time",
         pl.col("ret_1").alias("mkt_ret_1"),
@@ -217,8 +220,13 @@ def build_features(
     config: AppConfig,
     *,
     decision_time: datetime | None = None,
+    membership: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     df = compute_base_features(bars, config)
+    if membership is not None:
+        # Keep all observed history for rolling features, but make the PIT
+        # universe an eligibility gate for cross-sectional transforms.
+        df = attach_membership_flag(df, membership)
     df = add_market_features(df, config.data.benchmark_id)
     names = [
         c
@@ -254,4 +262,6 @@ def build_features(
     # decision timestamp, so mixed as-of panels cannot silently leak later data.
     as_of = decision_time or cast(datetime, df["event_time"].min())
     validate_feature_frame(df, as_of)
+    if membership is not None:
+        df = restrict_to_membership(df, membership)
     return df

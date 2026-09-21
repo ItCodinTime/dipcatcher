@@ -1510,10 +1510,13 @@ def _named_ewma_optimizer_estimate(
     prefix = f"optimizer_covariance_failed:{OPTIMIZER_COVARIANCE_EWMA}"
     if len(cols) < 2:
         raise ValueError(f"{prefix}:fewer_than_two_securities")
-    if finite_rows < EWMA_MIN_OBS:
+    # Portfolio one-step EWMA needs a meaningful trailing window, while the
+    # low-level RiskMetrics helper remains usable for its small-sample tests.
+    min_rows = max(20, EWMA_MIN_OBS)
+    if finite_rows < min_rows:
         raise ValueError(f"{prefix}:insufficient_finite_rows:{finite_rows}")
     try:
-        dcc_trailing_complete_window(mat, min_rows=EWMA_MIN_OBS)
+        dcc_trailing_complete_window(mat, min_rows=min_rows)
     except ValueError as exc:
         raise ValueError(f"{prefix}:{exc}") from exc
     try:
@@ -1921,7 +1924,7 @@ def _robinhood_plus_asof(
         top_p=cfg.top_p,
         max_context=cfg.max_context,
         seed=config.train.random_seed,
-        decoder=cfg.decoder.value,
+        decoder=cfg.decoder.value if hasattr(cfg.decoder, "value") else cfg.decoder,
         security_ids=security_ids,
         quantile_levels=tuple(float(q) for q in config.quantiles.levels),
         horizons=tuple(int(h) for h in config.horizons.bars),

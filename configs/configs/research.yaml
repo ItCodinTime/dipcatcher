@@ -1,6 +1,14 @@
 inherit: base.yaml
 runtime:
   mode: research
+universe:
+  min_price: 5.0
+  min_adv: 100000.0
+  min_history_bars: 60
+  top_n_adv: 50
+features:
+  winsor_p: 0.01
+  ewma_lambda: 0.94
 data:
   source: synthetic
   synthetic_n_assets: 36
@@ -8,6 +16,21 @@ data:
   synthetic_seed: 7
   synthetic_oracle_beta: 0.015
   synthetic_oracle_phi: 0.70
+robinhood_plus:
+  enabled: true
+  backend: numpy
+  blend_weight: 0.0
+  lookback: 64
+  pred_len: 5
+  sample_count: 8
+  s1_bits: 5
+  s2_bits: 5
+  allow_network: false
+  clip: 5.0
+  temperature: 1.0
+  top_p: 0.9
+  max_context: 512
+  decoder: markov
 train:
   ranking_target: future_idio_return_1
   ridge_alpha: 0.3

@@ -427,6 +427,27 @@ LEDGER_BROKER_STATE_REQUIRED = (
 )
 LEDGER_CHAMPION_STATE_REQUIRED = ("slot", "cash", "shares", "allow_capital")
 
+
+def _valid_iso_cursor(value: Any) -> bool:
+    """Return whether a persisted resume cursor is a non-empty ISO datetime."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+def _finite_number(value: Any) -> bool:
+    """Accept JSON numbers, but reject booleans, strings, NaN, and infinity."""
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(float(value))
+    )
+
+
 LEDGER_CASH_REQUIRED = (
     "asof",
     "slot",
@@ -627,6 +648,27 @@ def validate_ledger_schema(
                 or any(character not in "0123456789abcdef" for character in fingerprint)
             ):
                 errors.append("broker_state_resume_fingerprint_invalid")
+            state_step = state.get("step")
+            if isinstance(state_step, bool) or not isinstance(state_step, int) or state_step < 0:
+                errors.append("broker_state_step_invalid")
+            for cursor_key in ("last_decision", "last_exec"):
+                cursor = state.get(cursor_key)
+                if cursor is not None and not _valid_iso_cursor(cursor):
+                    errors.append(f"broker_state_{cursor_key}_invalid")
+            mark_ages = state.get("mark_ages")
+            if mark_ages is not None:
+                if not isinstance(mark_ages, dict):
+                    errors.append("broker_state_mark_ages_not_object")
+                else:
+                    for security_id, age in mark_ages.items():
+                        if (
+                            not isinstance(security_id, str)
+                            or isinstance(age, bool)
+                            or not isinstance(age, int)
+                            or age < 0
+                        ):
+                            errors.append("broker_state_mark_ages_invalid")
+                            break
             champ = state.get("champion")
             if not isinstance(champ, dict):
                 errors.append("broker_state_champion_not_object")
@@ -634,6 +676,22 @@ def validate_ledger_schema(
                 for key in LEDGER_CHAMPION_STATE_REQUIRED:
                     if key not in champ:
                         errors.append(f"broker_state_champion_missing:{key}")
+                slot = champ.get("slot")
+                if not isinstance(slot, str) or not slot.strip():
+                    errors.append("broker_state_champion_slot_invalid")
+                cash = champ.get("cash")
+                if not _finite_number(cash):
+                    errors.append("broker_state_champion_cash_invalid")
+                shares = champ.get("shares")
+                if not isinstance(shares, dict):
+                    errors.append("broker_state_champion_shares_not_object")
+                else:
+                    for security_id, quantity in shares.items():
+                        if not isinstance(security_id, str) or not _finite_number(quantity):
+                            errors.append("broker_state_champion_shares_invalid")
+                            break
+                if not isinstance(champ.get("allow_capital"), bool):
+                    errors.append("broker_state_champion_allow_capital_invalid")
                 for count_key in ("n_orders", "n_fills"):
                     count = champ.get(count_key)
                     if isinstance(count, bool) or not isinstance(count, int) or count < 0:

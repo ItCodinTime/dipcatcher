@@ -6,8 +6,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .constants import KLINE_COLS
-
 
 def indices_to_bits(indices: np.ndarray, n_bits: int) -> np.ndarray:
     """Encode non-negative integer indices as a final-axis MSB-first bit array."""
@@ -70,9 +68,13 @@ class HierarchicalBSQTokenizer:
         # a lossy packed code; retaining both levels makes the decoder stable.
         s1 = np.rint((z + 6.0) / 12.0 * (2**self.s1_bits - 1)).astype(np.int64)
         s2 = np.rint((z + 6.0) / 12.0 * (2**self.s2_bits - 1)).astype(np.int64)
-        return TokenBatch(indices_to_bits(s1, self.s1_bits), indices_to_bits(s2, self.s2_bits), mean, std)
+        return TokenBatch(
+            indices_to_bits(s1, self.s1_bits), indices_to_bits(s2, self.s2_bits), mean, std
+        )
 
-    def decode(self, s1: np.ndarray, s2: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
+    def decode(
+        self, s1: np.ndarray, s2: np.ndarray, mean: np.ndarray, std: np.ndarray
+    ) -> np.ndarray:
         a = bits_to_indices(s1) / max(2**self.s1_bits - 1, 1)
         b = bits_to_indices(s2) / max(2**self.s2_bits - 1, 1)
         z = ((a + b) * 0.5) * 12.0 - 6.0

@@ -188,9 +188,15 @@ class JackknifePlus(JoblibMixin):
         scores = self.scores_
         if loc is None or scores is None:
             raise RuntimeError("jackknife+ model has incomplete fitted state")
+        # Both the fitted location and the conformal score are expressed in
+        # the residual units used by ``fit``.  When a scale is supplied at
+        # prediction time (for example, returns / volatility), convert the
+        # complete LOO interval back to return units; scaling only the score
+        # would leave the location dimensionless and can destroy coverage.
+        loc_scaled = loc[None, :] * sc[:, None]
         half = scores[None, :] * sc[:, None]
-        qlo = mid[:, None] + loc[None, :] - half
-        qhi = mid[:, None] + loc[None, :] + half
+        qlo = mid[:, None] + loc_scaled - half
+        qhi = mid[:, None] + loc_scaled + half
         return _jackknife_plus_quantiles(qlo, qhi, self.alpha)
 
     def metadata(self) -> ModelMeta:

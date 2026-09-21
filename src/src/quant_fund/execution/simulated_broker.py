@@ -142,6 +142,7 @@ class SimulatedBroker:
         nav: float | None = None,
         adv_dollars: float = 1.0,
         sigma: float = 0.02,
+        market_predicted_vol: float | None = None,
         price_age_bars: int | None = None,
         model_age_hours: float | None = None,
     ) -> OrderRecord:
@@ -172,6 +173,13 @@ class SimulatedBroker:
             or float(adv_dollars) <= 0
             or not np.isfinite(float(sigma))
             or float(sigma) < 0
+            or (
+                market_predicted_vol is not None
+                and (
+                    not np.isfinite(float(market_predicted_vol))
+                    or float(market_predicted_vol) < 0
+                )
+            )
         ):
             rec = OrderRecord(
                 order=order.model_copy(update={"status": OrderStatus.REJECTED}),
@@ -246,6 +254,7 @@ class SimulatedBroker:
                 participation=participation,
                 predicted_vol=float(sigma),
                 config=self.config,
+                market_predicted_vol=market_predicted_vol,
                 price_age_bars=price_age_bars,
                 model_age_hours=model_age_hours,
             )

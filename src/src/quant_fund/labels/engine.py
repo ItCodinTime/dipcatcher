@@ -5,6 +5,7 @@ from __future__ import annotations
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.universe import attach_membership_flag, restrict_to_membership
 
 PX = "close_total_return"
 
@@ -12,13 +13,22 @@ PX = "close_total_return"
 _LABEL_REQUIRED = ("security_id", "event_time", PX)
 
 
-def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
+def build_labels(
+    bars: pl.DataFrame,
+    config: AppConfig,
+    *,
+    membership: pl.DataFrame | None = None,
+) -> pl.DataFrame:
     if bars.height == 0:
         raise ValueError("bars must be non-empty for build_labels")
     missing = [c for c in _LABEL_REQUIRED if c not in bars.columns]
     if missing:
         raise ValueError(f"bars missing required OHLCV columns: {missing}")
     df = bars.sort(["security_id", "event_time"])
+    if membership is not None:
+        # Forward paths use the complete history, while cross-sectional label
+        # aggregates and persisted rows are restricted to PIT members.
+        df = attach_membership_flag(df, membership)
     mkt_id = config.data.benchmark_id
     # Compute benchmark forwards on the benchmark's own observed calendar before
     # joining them to securities.  Shifting after a panel join would make a
@@ -47,7 +57,11 @@ def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
         df = df.with_columns(
             (
                 pl.col(f"future_return_{h}")
-                - pl.col(f"future_return_{h}").mean().over("event_time")
+                - (
+                    pl.when(pl.col("_in_universe")).then(pl.col(f"future_return_{h}")).otherwise(None)
+                    if membership is not None
+                    else pl.col(f"future_return_{h}")
+                ).mean().over("event_time")
             ).alias(f"future_idio_return_{h}")
         )
         # Realized volatility is the square root of forward squared log returns.
@@ -93,4 +107,7 @@ def build_labels(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
             )
         )
     drop = [c for c in df.columns if c.startswith("_")]
-    return df.drop(drop)
+    df = df.drop(drop)
+    if membership is not None:
+        df = restrict_to_membership(df, membership)
+    return df

@@ -8,9 +8,9 @@ research and unit tests.
 from __future__ import annotations
 
 import hashlib
-import math
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol
 
 import numpy as np
 import pandas as pd
@@ -79,7 +79,12 @@ def validate_ohlcv_frame(frame: pd.DataFrame) -> pd.DataFrame:
         result[name] = pd.to_numeric(result[name], errors="raise")
         if not np.isfinite(result[name].to_numpy(dtype=float)).all():
             raise ValueError(f"Kronos {name} values must be finite")
-    if (result["open"] <= 0).any() or (result["high"] <= 0).any() or (result["low"] <= 0).any() or (result["close"] <= 0).any():
+    if (
+        (result["open"] <= 0).any()
+        or (result["high"] <= 0).any()
+        or (result["low"] <= 0).any()
+        or (result["close"] <= 0).any()
+    ):
         raise ValueError("Kronos prices must be strictly positive")
     if (result["high"] < result[["open", "close"]].max(axis=1)).any():
         raise ValueError("Kronos high must cover open and close")
@@ -167,9 +172,21 @@ class KronosAdapter:
         predicted = validate_ohlcv_frame(output.reset_index(drop=True))
         last_close = float(history["close"].iloc[-1])
         path_returns = predicted["close"].to_numpy(dtype=float) / last_close - 1.0
-        if not np.isfinite(path_returns).all():
+        low_returns = predicted["low"].to_numpy(dtype=float) / last_close - 1.0
+        high_returns = predicted["high"].to_numpy(dtype=float) / last_close - 1.0
+        if not (
+            np.isfinite(path_returns).all()
+            and np.isfinite(low_returns).all()
+            and np.isfinite(high_returns).all()
+        ):
             raise ValueError("Kronos predicted returns must be finite")
-        q05, q50, q95 = (float(np.quantile(path_returns, q)) for q in (0.05, 0.5, 0.95))
+        # A single OHLC forecast path cannot identify an empirical distribution
+        # from close values alone. Use the predicted candle envelope as the
+        # interval support, while retaining close-path statistics for the
+        # central estimate and volatility.
+        q05 = float(np.min(low_returns))
+        q50 = float(np.quantile(path_returns, 0.5))
+        q95 = float(np.max(high_returns))
         volatility = float(np.std(path_returns, ddof=0))
         expected = float(np.mean(path_returns))
         return AssetForecast(
@@ -192,15 +209,24 @@ class KronosAdapter:
 
 
 def load_local_predictor(
-    *, model_path: Path, tokenizer_path: Path, model_sha256: str | None = None, tokenizer_sha256: str | None = None, device: str = "cpu", max_context: int = 512
+    *,
+    model_path: Path,
+    tokenizer_path: Path,
+    model_sha256: str | None = None,
+    tokenizer_sha256: str | None = None,
+    device: str = "cpu",
+    max_context: int = 512,
 ) -> KronosPredictor:
     """Load upstream Kronos strictly from local, pre-downloaded artifacts."""
     model_dir = validate_local_artifact(model_path, model_sha256)
     tokenizer_dir = validate_local_artifact(tokenizer_path, tokenizer_sha256)
     try:
-        from model import Kronos, KronosPredictor as UpstreamPredictor, KronosTokenizer
+        from model import Kronos, KronosTokenizer
+        from model import KronosPredictor as UpstreamPredictor
     except ModuleNotFoundError as exc:
-        raise RuntimeError("Kronos backend is unavailable; install the optional dipcatcher[nn] environment and expose the upstream model package") from exc
+        raise RuntimeError(
+            "Kronos backend is unavailable; install the optional dipcatcher[nn] environment and expose the upstream model package"
+        ) from exc
     tokenizer = KronosTokenizer.from_pretrained(str(tokenizer_dir), local_files_only=True)
     model = Kronos.from_pretrained(str(model_dir), local_files_only=True)
     model.eval()

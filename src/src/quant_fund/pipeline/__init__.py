@@ -29,6 +29,7 @@ from quant_fund.pipeline.forecast import (
     wrappee_cal_fingerprint,
     wrappee_fit_cache_key,
 )
+from quant_fund.pipeline.kronos import forecast_kronos_frame
 from quant_fund.pipeline.train import garch_name_walk_forward, train_family
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "wrappee_cache_size",
     "resolve_wrappee_reselect_cached",
     "doctor",
+    "forecast_kronos_frame",
     "forecast_asof",
     "garch_market_forecast_asof",
     "garch_name_forecasts_asof",

@@ -18,6 +18,11 @@ def apply_cross_sectional(
         if "available_time" in df.columns
         else pl.lit(True)
     )
+    # A PIT universe flag is an additional eligibility gate.  Keep the full
+    # panel available to callers so rolling/history calculations are preserved,
+    # while excluding non-members from every cross-sectional statistic.
+    if "_in_universe" in df.columns:
+        eligible = eligible & pl.col("_in_universe")
     for col in columns:
         g = pl.col(col)
         # Late-arriving observations must not influence the cross-section at

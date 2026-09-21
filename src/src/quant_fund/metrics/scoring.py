@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.special import betaln, erf
@@ -317,7 +319,7 @@ def date_level_equal_weight(dates: Array, values: Array) -> tuple[Array, Array]:
     if not grouped:
         return np.asarray([], dtype=object), np.asarray([], dtype=float)
     try:
-        keys = sorted(grouped)
+        keys = sorted(cast(Any, grouped))
     except TypeError:
         keys = sorted(grouped, key=repr)
     return np.asarray(keys, dtype=object), np.asarray(
@@ -335,7 +337,7 @@ def _validate_horizon(horizon_bars: int) -> int:
 
 
 def nonoverlapping_origin_mask(
-    session_positions: Array, horizon_bars: int
+    session_positions: NDArray[np.integer[Any]], horizon_bars: int
 ) -> NDArray[np.bool_]:
     """Keep origins separated by at least the forecast horizon."""
     horizon = _validate_horizon(horizon_bars)

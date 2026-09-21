@@ -67,12 +67,18 @@ class EWMAVol(JoblibMixin):
         return ModelMeta(family="volatility", name="ewma", version="v1", extra={"lambda": self.lam})
 
 
-_ALLOWED_GARCH_VOLS = {"garch": ("GARCH", 0), "egarch": ("EGARCH", 0), "gjr": ("GARCH", 1)}
+_ALLOWED_GARCH_VOLS = {
+    "garch": ("GARCH", 0),
+    "egarch": ("EGARCH", 0),
+    "gjr": ("GARCH", 1),
+    "aparch": ("APARCH", 1),
+    "figarch": ("FIGARCH", 0),
+}
 _ALLOWED_GARCH_DISTS = {"normal", "t", "skewt"}
 # Explicit provenance labels used by the training/forecast lifecycle.  A date-level
 # fit is shared across the panel; a security-level fit is fit independently per
 # security.  Keep these stable because they are persisted in model metadata.
-GARCH_DATE_LEVEL_SCOPE = "date_level_equal_weight_return_series"
+GARCH_DATE_LEVEL_SCOPE = "date_level_equal_weight_cross_section"
 GARCH_SECURITY_LEVEL_SCOPE = "security_level_return_series"
 _GARCH_SCALE = 100.0
 _GARCH_VARIANCE_FLOOR = 1e-16
@@ -105,13 +111,8 @@ class GARCHVol(JoblibMixin):
         power: float = 2.0,
         series_scope: str = "univariate_return_series",
     ) -> None:
-        if (
-            isinstance(p, bool)
-            or isinstance(q, bool)
-            or not (isinstance(p, int) and p >= 1)
-            or not (isinstance(q, int) and q >= 1)
-        ):
-            raise ValueError("p and q must be positive integers")
+        if isinstance(p, bool) or isinstance(q, bool) or not isinstance(p, int) or not isinstance(q, int):
+            raise ValueError("p and q must be integers")
         if isinstance(dist, bool) or not isinstance(dist, str):
             raise ValueError("dist must be a string")
         if isinstance(vol, bool) or not isinstance(vol, str):
@@ -122,6 +123,10 @@ class GARCHVol(JoblibMixin):
             raise ValueError(f"dist must be one of {sorted(_ALLOWED_GARCH_DISTS)}")
         if vol_key not in _ALLOWED_GARCH_VOLS:
             raise ValueError(f"vol must be one of {sorted(_ALLOWED_GARCH_VOLS)}")
+        if vol_key == "figarch" and (p > 1 or q > 1):
+            raise ValueError("FIGARCH p and q must each be 0 or 1")
+        if vol_key != "figarch" and (p < 1 or q < 1):
+            raise ValueError("p and q must be positive integers")
         if isinstance(min_obs, bool) or not isinstance(min_obs, int) or min_obs < 2:
             raise ValueError("min_obs must be an integer >= 2")
         if mean not in {"Constant", "Zero"}:
@@ -166,6 +171,23 @@ class GARCHVol(JoblibMixin):
             return [float(params[key]) for key in keys if str(key).startswith(prefix)]
         except (AttributeError, KeyError, TypeError, ValueError):
             return []
+
+    def _spec_inadmissible_reason(self, params: Any) -> str | None:
+        """Return a conservative reason when fitted variance parameters are invalid."""
+        if self.vol == "aparch":
+            delta = self._param_values(params, "delta")
+            if not delta or not np.isfinite(delta[0]) or not 0.0 < delta[0] <= 4.0:
+                return "invalid_aparch_delta"
+            alpha = sum(self._param_values(params, "alpha["))
+            beta = sum(self._param_values(params, "beta["))
+            gamma = sum(self._param_values(params, "gamma["))
+            if alpha + beta + 0.5 * gamma >= 1.0:
+                return "nonstationary_persistence"
+        elif self.vol == "figarch":
+            d = self._param_values(params, "d")
+            if not d or not np.isfinite(d[0]) or not 0.0 < d[0] < 1.0:
+                return "invalid_fractional_d"
+        return None
 
     def fit_returns(self, returns: NDArray[np.float64]) -> GARCHVol:
         """Fit directly on a causal decimal-return series."""
@@ -223,6 +245,9 @@ class GARCHVol(JoblibMixin):
             params = result.params
             if not np.isfinite(np.asarray(params, dtype=float)).all():
                 return self._fallback(returns_percent, "nonfinite_parameters")
+            inadmissible = self._spec_inadmissible_reason(params)
+            if inadmissible is not None:
+                return self._fallback(returns_percent, inadmissible)
             alpha = sum(self._param_values(params, "alpha["))
             beta = sum(self._param_values(params, "beta["))
             gamma = sum(self._param_values(params, "gamma["))
@@ -248,8 +273,8 @@ class GARCHVol(JoblibMixin):
         percent-scaled ``arch`` internals.
         """
         returns = np.asarray(self._returns_percent, dtype=float).reshape(-1) / _GARCH_SCALE
-        if returns.size == 0:
-            raise ValueError("GARCHVol must be fitted before in-sample diagnostics")
+        if returns.size == 0 or self.result is None:
+            raise ValueError("GARCHVol requires a successful fit for in-sample diagnostics")
         if self.result is not None:
             sigma = np.asarray(self.result.conditional_volatility, dtype=float).reshape(-1) / _GARCH_SCALE
             if sigma.size != returns.size or not np.isfinite(sigma).all() or np.any(sigma <= 0.0):
@@ -309,11 +334,11 @@ class GARCHVol(JoblibMixin):
                     self.last_sigma * norm.ppf(levels)[None, :] + self._mean_decimal()
                 )
             return out
-        # arch cannot analytically recurse EGARCH beyond one step.  Use a
-        # deterministic simulation in that case rather than returning an
+        # arch cannot analytically recurse EGARCH, APARCH, or FIGARCH beyond
+        # one step. Use deterministic simulation rather than returning an
         # exception or silently substituting a repeated one-step value.
         forecast_method = method
-        if self.vol == "egarch" and horizon > 1 and method == "analytic":
+        if self.vol in {"egarch", "aparch", "figarch"} and horizon > 1 and method == "analytic":
             forecast_method = "simulation"
         random_state = np.random.RandomState(0 if seed is None else seed)
         forecast = self.result.forecast(

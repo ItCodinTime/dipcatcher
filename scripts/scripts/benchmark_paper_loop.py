@@ -30,6 +30,16 @@ INCUMBENT_URLS = {
 }
 
 
+def _validate_benchmark_ledger(root: Path) -> dict[str, object]:
+    """Validate every required ledger artifact before publishing benchmark output."""
+    schema = validate_ledger_schema(root, require_complete=True)
+    return {
+        "ok": bool(schema["ok"]),
+        "errors": list(schema["errors"]),
+        "warnings": list(schema["warnings"]),
+    }
+
+
 def _bars(n_days: int, n_assets: int) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     start = datetime(2024, 1, 1, tzinfo=UTC)
@@ -111,7 +121,7 @@ def main() -> None:
         path = root / f"{name}.parquet"
         artifact_rows[name] = int(pl.read_parquet(path).height) if path.is_file() else 0
     state = load_broker_state(data_root, run_id)
-    schema = validate_ledger_schema(root)
+    schema = _validate_benchmark_ledger(root)
     incumbent_availability = {
         name: importlib.util.find_spec(name.replace("-", "_")) is not None
         for name in ("qlib", "vectorbt", "zipline")
@@ -139,6 +149,7 @@ def main() -> None:
         "broker_state_step": None if state is None else int(state.get("step", -1)),
         "ledger_schema_ok": bool(schema["ok"]),
         "ledger_schema_errors": schema["errors"],
+        "ledger_schema_warnings": schema["warnings"],
         "incumbent_package_availability": incumbent_availability,
         "incumbent_reference_urls": INCUMBENT_URLS,
         "limitations": [

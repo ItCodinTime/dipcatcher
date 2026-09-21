@@ -51,6 +51,8 @@ class GarchVolSpec(str, Enum):
     GARCH = "garch"
     EGARCH = "egarch"
     GJR = "gjr"
+    APARCH = "aparch"
+    FIGARCH = "figarch"
 
 
 class RuntimeConfig(StrictConfigModel):
@@ -281,6 +283,7 @@ class PortfolioConstraints(StrictConfigModel):
 
 
 class OptimizerConfig(StrictConfigModel):
+    covariance: str = "ledoit_wolf"
     lambda_risk: float = 10.0
     lambda_tc: float = 1.0
     # Explicit soft L1 turnover penalty on ||w - w_prev||_1 (in addition to
@@ -293,6 +296,9 @@ class OptimizerConfig(StrictConfigModel):
 
     @model_validator(mode="after")
     def valid_optimizer_bounds(self) -> OptimizerConfig:
+        from quant_fund.models.covariance import require_implemented_optimizer_covariance
+
+        self.covariance = require_implemented_optimizer_covariance(self.covariance)
         for name in ("lambda_risk", "lambda_tc", "lambda_turnover", "lambda_tail", "risk_aversion"):
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
@@ -433,6 +439,11 @@ class RobinhoodPlusConfig(StrictConfigModel):
     allow_network: bool = False
     model_path: str | None = None
     tokenizer_path: str | None = None
+    clip: float = 5.0
+    temperature: float = 1.0
+    top_p: float = 0.9
+    max_context: int = 512
+    decoder: str = "markov"
 
     @model_validator(mode="after")
     def valid_robinhood_plus_settings(self) -> RobinhoodPlusConfig:
@@ -449,6 +460,16 @@ class RobinhoodPlusConfig(StrictConfigModel):
                 raise ValueError(f"robinhood_plus.{name} must be in [1, 8]")
         if self.s1_bits + self.s2_bits > 16:
             raise ValueError("robinhood_plus tokenizer bit budget must be <= 16")
+        if not np.isfinite(self.clip) or self.clip <= 0:
+            raise ValueError("robinhood_plus.clip must be finite and positive")
+        if not np.isfinite(self.temperature) or self.temperature <= 0:
+            raise ValueError("robinhood_plus.temperature must be finite and positive")
+        if not np.isfinite(self.top_p) or not 0 < self.top_p <= 1:
+            raise ValueError("robinhood_plus.top_p must be in (0, 1]")
+        if self.max_context < 1:
+            raise ValueError("robinhood_plus.max_context must be positive")
+        if self.decoder not in {"markov", "transformer"}:
+            raise ValueError("robinhood_plus.decoder must be markov or transformer")
         if self.backend is RobinhoodPlusBackend.TORCH and self.allow_network:
             raise ValueError("robinhood_plus torch backend does not allow network loading")
         return self
@@ -539,11 +560,14 @@ class TrainConfig(StrictConfigModel):
             "lgbm_n_estimators",
             "lgbm_num_leaves",
             "n_hmm_states",
-            "garch_p",
-            "garch_q",
         ):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be positive")
+        if self.garch_vol is GarchVolSpec.FIGARCH:
+            if self.garch_p > 1 or self.garch_q > 1:
+                raise ValueError("FIGARCH p and q must each be 0 or 1")
+        elif self.garch_p < 1 or self.garch_q < 1:
+            raise ValueError("garch_p and garch_q must be positive")
         for name in ("ridge_alpha", "elasticnet_l1", "qlike_floor", "psd_eigen_tol"):
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
