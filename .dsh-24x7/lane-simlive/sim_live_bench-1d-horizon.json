@@ -1,0 +1,516 @@
+{
+  "kind": "sim_live_bench_receipt",
+  "run_id": "bench-1d-horizon",
+  "live_pnl_claim": false,
+  "simulated_only": true,
+  "research_only": true,
+  "bench_only": true,
+  "data_label": "binance_public_data",
+  "git_sha": null,
+  "bars": {
+    "root": "data/raw/sources",
+    "interval": "1d",
+    "symbols": [
+      "BNBUSDT",
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "sha256": {
+      "BNBUSDT": "313b3e6b0bf57e7466cdddcc2140cc09cdeeabda43f088b6b978cdb056213aff",
+      "BTCUSDT": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+      "ETHUSDT": "3a98525bc28b1d88c3ddbe2d3a5d5d395d222310d026c7f4ea742b0c2bfbe089",
+      "SOLUSDT": "30241c88ad9ad82c18c1ad45a064b87ca7cc1e2180c4d9f4bf19837bb12bbcae",
+      "XRPUSDT": "542e6fa82a63a5489dd04f8b369e55d57529f3946a2f9dfc8717ece99ff60c6f"
+    },
+    "tail_bars": null,
+    "eval_tail_bars": null
+  },
+  "strategy": {
+    "champion": {
+      "name": "h3",
+      "spec": "ewma_emp@h3",
+      "policy": {
+        "mode": "long_flat",
+        "kappa": 0.15,
+        "gross_target": 1.0,
+        "name_cap": 0.25,
+        "cost_gate": 0.15,
+        "deadband": 0.01,
+        "band_lo": 0.05,
+        "band_hi": 0.95,
+        "gate_on": "edge",
+        "sizing": "risk",
+        "book_vol_target": null,
+        "tail_gate": null,
+        "persist_bars": 1,
+        "mkt_disp_cut": null,
+        "top_k": null
+      }
+    },
+    "challengers": [
+      {
+        "name": "h5",
+        "spec": "ewma_emp@h5",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": null,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": null
+        }
+      },
+      {
+        "name": "h10",
+        "spec": "ewma_emp@h10",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": null,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": null
+        }
+      },
+      {
+        "name": "h5bvt03",
+        "spec": "ewma_emp@h5",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": 0.03,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": null
+        }
+      },
+      {
+        "name": "vin_h135",
+        "spec": "vincent(ewma_emp+ewma_emp@h3+ewma_emp@h5)",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": null,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": null
+        }
+      },
+      {
+        "name": "vin_h135bvt",
+        "spec": "vincent(ewma_emp+ewma_emp@h3+ewma_emp@h5)",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": 0.03,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": null
+        }
+      },
+      {
+        "name": "tk2",
+        "spec": "ewma_emp",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": null,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": 2
+        }
+      },
+      {
+        "name": "tk3",
+        "spec": "ewma_emp",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": null,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": 3
+        }
+      },
+      {
+        "name": "h5tk3bvt",
+        "spec": "ewma_emp@h5",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.15,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk",
+          "book_vol_target": 0.03,
+          "tail_gate": null,
+          "persist_bars": 1,
+          "mkt_disp_cut": null,
+          "top_k": 3
+        }
+      }
+    ],
+    "taus": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.39999999999999997,
+      0.44999999999999996,
+      0.49999999999999994,
+      0.5499999999999999,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.7999999999999999,
+      0.85,
+      0.9,
+      0.95
+    ],
+    "window": 750,
+    "min_history": null
+  },
+  "forecaster_stats": {
+    "BNBUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "BNBUSDT:ewma_emp@h10": {
+      "emitted": 2162,
+      "failed": 0,
+      "warmup": 69
+    },
+    "BNBUSDT:ewma_emp@h3": {
+      "emitted": 2169,
+      "failed": 0,
+      "warmup": 62
+    },
+    "BNBUSDT:ewma_emp@h5": {
+      "emitted": 2167,
+      "failed": 0,
+      "warmup": 64
+    },
+    "BTCUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "BTCUSDT:ewma_emp@h10": {
+      "emitted": 2162,
+      "failed": 0,
+      "warmup": 69
+    },
+    "BTCUSDT:ewma_emp@h3": {
+      "emitted": 2169,
+      "failed": 0,
+      "warmup": 62
+    },
+    "BTCUSDT:ewma_emp@h5": {
+      "emitted": 2167,
+      "failed": 0,
+      "warmup": 64
+    },
+    "ETHUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "ETHUSDT:ewma_emp@h10": {
+      "emitted": 2162,
+      "failed": 0,
+      "warmup": 69
+    },
+    "ETHUSDT:ewma_emp@h3": {
+      "emitted": 2169,
+      "failed": 0,
+      "warmup": 62
+    },
+    "ETHUSDT:ewma_emp@h5": {
+      "emitted": 2167,
+      "failed": 0,
+      "warmup": 64
+    },
+    "SOLUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "SOLUSDT:ewma_emp@h10": {
+      "emitted": 2162,
+      "failed": 0,
+      "warmup": 69
+    },
+    "SOLUSDT:ewma_emp@h3": {
+      "emitted": 2169,
+      "failed": 0,
+      "warmup": 62
+    },
+    "SOLUSDT:ewma_emp@h5": {
+      "emitted": 2167,
+      "failed": 0,
+      "warmup": 64
+    },
+    "XRPUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "XRPUSDT:ewma_emp@h10": {
+      "emitted": 2162,
+      "failed": 0,
+      "warmup": 69
+    },
+    "XRPUSDT:ewma_emp@h3": {
+      "emitted": 2169,
+      "failed": 0,
+      "warmup": 62
+    },
+    "XRPUSDT:ewma_emp@h5": {
+      "emitted": 2167,
+      "failed": 0,
+      "warmup": 64
+    }
+  },
+  "quantile_cache_digests": {
+    "BNBUSDT:ewma_emp": "83699fba7616f472",
+    "BNBUSDT:ewma_emp@h10": "373ec1e5d4bd6fd6",
+    "BNBUSDT:ewma_emp@h3": "24b559d1a73f8688",
+    "BNBUSDT:ewma_emp@h5": "3be7b207a75d4916",
+    "BTCUSDT:ewma_emp": "b408896838dec059",
+    "BTCUSDT:ewma_emp@h10": "66f70b3a09b5028c",
+    "BTCUSDT:ewma_emp@h3": "cb0eaaa20a935012",
+    "BTCUSDT:ewma_emp@h5": "1976491fc0f9ca38",
+    "ETHUSDT:ewma_emp": "1a214e03cdfc9488",
+    "ETHUSDT:ewma_emp@h10": "f4d170da915f2715",
+    "ETHUSDT:ewma_emp@h3": "368eaaa9e68ef66c",
+    "ETHUSDT:ewma_emp@h5": "0e2cc58f2bf1977a",
+    "SOLUSDT:ewma_emp": "01dcefb48918d542",
+    "SOLUSDT:ewma_emp@h10": "80f6ae29e464079e",
+    "SOLUSDT:ewma_emp@h3": "733754e6d3847f24",
+    "SOLUSDT:ewma_emp@h5": "a6155a98d531f6fb",
+    "XRPUSDT:ewma_emp": "c8c717c4a7b8ee63",
+    "XRPUSDT:ewma_emp@h10": "51a1ead16cb19e0e",
+    "XRPUSDT:ewma_emp@h3": "a43f437177d8e258",
+    "XRPUSDT:ewma_emp@h5": "dc8376cb8c0dec7f"
+  },
+  "loop_metrics": {
+    "status": "bench_only_no_paper_loop"
+  },
+  "champion_equity_stats": {
+    "status": "ok",
+    "n_marks": 2231,
+    "nav_start": 1000000.0,
+    "nav_end": 22878122.041825064,
+    "total_return": 21.878122041825062,
+    "ann_return": 0.6697768146944325,
+    "ann_vol": 0.4184743618689933,
+    "sharpe_simulated": 1.437760801166812,
+    "max_drawdown": -0.3892867166177306,
+    "bars_per_year": 365.25,
+    "n_fills": 2892
+  },
+  "book_stats": {
+    "h3": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 22878122.041825064,
+      "total_return": 21.878122041825062,
+      "ann_return": 0.6697768146944325,
+      "ann_vol": 0.4184743618689933,
+      "sharpe_simulated": 1.437760801166812,
+      "max_drawdown": -0.3892867166177306,
+      "bars_per_year": 365.25,
+      "n_fills": 2892
+    },
+    "h5": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 35860639.83298649,
+      "total_return": 34.860639832986486,
+      "ann_return": 0.7973377775120642,
+      "ann_vol": 0.4170846351542748,
+      "sharpe_simulated": 1.6173107809189753,
+      "max_drawdown": -0.39765388997613815,
+      "bars_per_year": 365.25,
+      "n_fills": 3013
+    },
+    "h10": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 34685718.82186986,
+      "total_return": 33.685718821869855,
+      "ann_return": 0.7875578636622684,
+      "ann_vol": 0.4319933150450397,
+      "sharpe_simulated": 1.562872938910191,
+      "max_drawdown": -0.42463172119619785,
+      "bars_per_year": 365.25,
+      "n_fills": 3493
+    },
+    "h5bvt03": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 4348735.381800517,
+      "total_return": 3.348735381800517,
+      "ann_return": 0.27220467207947796,
+      "ann_vol": 0.1821909304794004,
+      "sharpe_simulated": 1.4122628015124308,
+      "max_drawdown": -0.20607293559718676,
+      "bars_per_year": 365.25,
+      "n_fills": 4054
+    },
+    "vin_h135": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 20211912.337421615,
+      "total_return": 19.211912337421616,
+      "ann_return": 0.6362303413482682,
+      "ann_vol": 0.43312382569790076,
+      "sharpe_simulated": 1.3569612737354464,
+      "max_drawdown": -0.4227703713188782,
+      "bars_per_year": 365.25,
+      "n_fills": 2972
+    },
+    "vin_h135bvt": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 5671619.129082684,
+      "total_return": 4.671619129082685,
+      "ann_return": 0.32876782825160467,
+      "ann_vol": 0.22173934498072415,
+      "sharpe_simulated": 1.3927140988671871,
+      "max_drawdown": -0.2461437890432745,
+      "bars_per_year": 365.25,
+      "n_fills": 3528
+    },
+    "tk2": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 7923468.844147444,
+      "total_return": 6.923468844147444,
+      "ann_return": 0.40356542259594064,
+      "ann_vol": 0.27461420755354504,
+      "sharpe_simulated": 1.369923829295504,
+      "max_drawdown": -0.32808101519086974,
+      "bars_per_year": 365.25,
+      "n_fills": 2142
+    },
+    "tk3": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 16190294.645031266,
+      "total_return": 15.190294645031265,
+      "ann_return": 0.5778398268644784,
+      "ann_vol": 0.32010209471192724,
+      "sharpe_simulated": 1.5830048449235057,
+      "max_drawdown": -0.24653390603702796,
+      "bars_per_year": 365.25,
+      "n_fills": 2333
+    },
+    "h5tk3bvt": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 3033765.152835151,
+      "total_return": 2.033765152835151,
+      "ann_return": 0.19934314595953628,
+      "ann_vol": 0.187477671195344,
+      "sharpe_simulated": 1.062764782581744,
+      "max_drawdown": -0.2909887922833323,
+      "bars_per_year": 365.25,
+      "n_fills": 3572
+    }
+  },
+  "divergence": null,
+  "promotion_dry_run": null,
+  "conventions": [
+    "signal at decision bar t uses only closes <= t (causal)",
+    "fills at next bar open (config.execution.fill)",
+    "forecast horizon = next close-close; fill at next open (disclosed mismatch)",
+    "absent name on a present date = flatten (engine sparse-panel semantics)",
+    "spot book only: no funding, borrow, or perp legs modeled",
+    "close_total_return := close (spot crypto has no corporate actions)"
+  ],
+  "paths": {}
+}

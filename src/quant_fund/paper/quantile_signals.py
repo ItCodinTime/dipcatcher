@@ -283,7 +283,9 @@ class QuantilePolicy:
     book_vol_target: float | None = None  # scale book so Σ|w·disp| <= this
     tail_gate: float | None = None  # longs need q_lo > -tail_gate; shorts q_hi < +tail_gate (return units)
     persist_bars: int = 1  # consecutive gate-passing dates before (re-)entry
+    exit_persist: int = 1  # consecutive gate-FAILING dates before exit (1 = instant)
     mkt_disp_cut: float | None = None  # flat book when median cross-asset disp exceeds this
+    top_k: int | None = None  # keep only the k largest |target| names per date
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -298,6 +300,10 @@ class QuantilePolicy:
                 raise ValueError(f"{name} must be finite and non-negative")
         if int(self.persist_bars) < 1:
             raise ValueError("persist_bars must be >= 1")
+        if int(self.exit_persist) < 1:
+            raise ValueError("exit_persist must be >= 1")
+        if self.top_k is not None and int(self.top_k) < 1:
+            raise ValueError("top_k must be >= 1")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -323,6 +329,7 @@ def weights_from_quantiles(
     policy: QuantilePolicy,
     prev_targets: dict[str, float] | None = None,
     streaks: dict[str, int] | None = None,
+    fail_streaks: dict[str, int] | None = None,
 ) -> dict[str, float]:
     """Map per-name quantile rows to target weights under ``policy``.
 
@@ -362,12 +369,20 @@ def weights_from_quantiles(
             )
         if streaks is not None:
             streaks[sid] = streaks.get(sid, 0) + 1 if passed else 0
+        if fail_streaks is not None:
+            fail_streaks[sid] = 0 if passed else fail_streaks.get(sid, 0) + 1
         prior = float(prev_targets.get(sid, 0.0))
         confirmed = policy.persist_bars <= 1 or abs(prior) > 1e-12 or (
             streaks is not None and streaks.get(sid, 0) >= policy.persist_bars
         )
         if not passed or not confirmed:
-            w = 0.0
+            held = abs(prior) > 1e-12
+            if held and not passed and policy.exit_persist > 1 and (
+                fail_streaks is None or fail_streaks.get(sid, 0) < policy.exit_persist
+            ):
+                w = prior  # slow exit: hold through a single failing bar
+            else:
+                w = 0.0
         else:
             raw_w = policy.kappa * edge if policy.sizing == "edge" else policy.kappa * edge / disp
             w = float(np.clip(raw_w, -policy.name_cap, policy.name_cap))
@@ -387,6 +402,11 @@ def weights_from_quantiles(
     if gross > policy.gross_target > 0.0:
         scale = policy.gross_target / gross
         raw = {sid: w * scale for sid, w in raw.items()}
+    if policy.top_k is not None and len(raw) > policy.top_k:
+        # Cross-sectional concentration: keep the k largest |target| names;
+        # dropped names are omitted -> the engine flattens them on this date.
+        keep = set(sorted(raw, key=lambda s: abs(raw[s]), reverse=True)[: policy.top_k])
+        raw = {sid: w for sid, w in raw.items() if sid in keep}
     out: dict[str, float] = {}
     for sid, w in raw.items():
         prior = float(prev_targets.get(sid, 0.0))
@@ -421,6 +441,15 @@ def compute_quantile_panel(
     emitted/failed/warmup rows.
     """
     spec = spec.strip().lower()
+    horizon = 1
+    if "@h" in spec:
+        # ``spec@hN``: feed overlapping N-bar returns to the forecaster —
+        # mu ~ N·μ_d, disp ~ √N·σ_d, so the edge z-score amplifies real
+        # trends by ~√N (multi-horizon trend estimation, still causal).
+        spec, h = spec.rsplit("@h", 1)
+        horizon = int(h)
+        if horizon < 1:
+            raise ValueError("horizon must be >= 1")
     if spec not in FORECASTERS:
         raise ValueError(f"unknown forecaster spec {spec!r}; have {sorted(FORECASTERS)}")
     fn, spec_min = FORECASTERS[spec]
@@ -432,7 +461,11 @@ def compute_quantile_panel(
     need = max(int(min_history or spec_min), 2)
     for i in range(n - 1):  # last bar has no next bar to forecast
         start = max(0, i + 1 - (window + 1))
-        rets = np.diff(closes[start : i + 1]) / closes[start:i]
+        seg = closes[start : i + 1]
+        if horizon > 1:
+            rets = seg[horizon:] / seg[:-horizon] - 1.0 if seg.size > horizon else np.array([])
+        else:
+            rets = np.diff(seg) / seg[:-1]
         rets = rets[np.isfinite(rets)]
         if rets.size < need:
             stats["warmup"] += 1
@@ -463,6 +496,7 @@ def quantile_panels_to_weights(
     taus = np.asarray(taus, dtype=float)
     prev: dict[str, float] = {}
     streaks: dict[str, int] = {}
+    fail_streaks: dict[str, int] = {}
     out_t: list[Any] = []
     out_s: list[str] = []
     out_w: list[float] = []
@@ -498,13 +532,14 @@ def quantile_panels_to_weights(
             if disps and float(np.median(disps)) > policy.mkt_disp_cut:
                 targets = {sid: 0.0 for sid in q_rows if abs(prev.get(sid, 0.0)) > 1e-12}
                 streaks.clear()
+                fail_streaks.clear()
                 prev = {}
                 for sid, w in targets.items():
                     out_t.append(t_i)
                     out_s.append(sid)
                     out_w.append(w)
                 continue
-        targets = weights_from_quantiles(q_rows, taus, policy, prev, streaks)
+        targets = weights_from_quantiles(q_rows, taus, policy, prev, streaks, fail_streaks)
         # The emitted dict IS the carried book: names dropped from it are
         # flattened by the engine, so the deadband reference resets wholesale.
         prev = dict(targets)

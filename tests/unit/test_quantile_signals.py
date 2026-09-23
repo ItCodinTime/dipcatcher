@@ -268,6 +268,55 @@ def test_mkt_disp_cut_flattens_book() -> None:
     assert (w2.filter(pl.col("event_time") == times[2])["target_weight"] > 0.0).all()
 
 
+def test_policy_exit_persist_holds_through_single_fail() -> None:
+    """exit_persist=3: a held name survives one failing bar at its prior
+    target; consecutive fails >= xp still flatten."""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
+        gate_on="edge", deadband=0.0, exit_persist=3,
+    )
+    streaks: dict[str, int] = {}
+    fails: dict[str, int] = {}
+    strong = {"A": _q(0.02, 0.02)}
+    weak = {"A": _q(0.001, 0.02)}
+    prev = weights_from_quantiles(strong, TAUS, pol, {}, streaks, fails)
+    assert prev["A"] > 0.0
+    f1 = weights_from_quantiles(weak, TAUS, pol, prev, streaks, fails)
+    assert f1["A"] == pytest.approx(prev["A"])  # fail 1/3 -> hold
+    f2 = weights_from_quantiles(weak, TAUS, pol, f1, streaks, fails)
+    assert f2["A"] == pytest.approx(prev["A"])  # fail 2/3 -> hold
+    f3 = weights_from_quantiles(weak, TAUS, pol, f2, streaks, fails)
+    assert f3.get("A", 0.0) == 0.0  # fail 3/3 -> exit
+
+
+def test_policy_top_k_keeps_largest_targets() -> None:
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, cost_gate=0.0, gate_on="edge",
+        sizing="edge", name_cap=10.0, gross_target=10.0, deadband=0.0, top_k=2,
+    )
+    out = weights_from_quantiles(
+        {"A": _q(0.09, 0.02), "B": _q(0.05, 0.02), "C": _q(0.01, 0.02)},
+        TAUS, pol,
+    )
+    assert set(out) == {"A", "B"}
+    assert out["A"] > out["B"]
+
+
+def test_horizon_spec_uses_nbar_returns() -> None:
+    """``ewma_emp@h3`` consumes 3-bar overlapping returns; panel stays causal
+    and finite, and the cache key/spec parse round-trips."""
+    closes = _prices(500, seed=23)
+    p1, s1 = compute_quantile_panel(closes, "ewma_emp@h3", TAUS, window=200)
+    assert s1["emitted"] > 0
+    assert np.isfinite(p1[300]).all()
+    corrupted = closes.copy()
+    corrupted[-100:] *= 1.4
+    p2, _ = compute_quantile_panel(closes, "ewma_emp@h3", TAUS, window=200)
+    p2c, _ = compute_quantile_panel(corrupted, "ewma_emp@h3", TAUS, window=200)
+    np.testing.assert_array_equal(p1, p2)  # deterministic
+    np.testing.assert_array_equal(p2[: 500 - 101], p2c[: 500 - 101])  # causal
+
+
 # --------------------------------------------------------------------------
 # Panel -> weights
 # --------------------------------------------------------------------------

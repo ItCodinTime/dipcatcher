@@ -1669,8 +1669,14 @@ def sim_live(
         None, help="Tail conviction gate (return units): longs need q_lo > -tail_gate"
     ),
     persist: int = typer.Option(1, help="Consecutive gate-passing bars before entry"),
+    exit_persist: int = typer.Option(
+        1, help="Consecutive gate-FAILING bars before exit (1 = instant)"
+    ),
     mkt_disp_cut: float | None = typer.Option(
         None, help="Market vol breaker: flat book when median cross-asset disp exceeds this"
+    ),
+    top_k: int | None = typer.Option(
+        None, help="Keep only the k largest |target| names per date"
     ),
     max_steps: int | None = typer.Option(None, help="Cap decision steps"),
     run_id: str | None = typer.Option(None, help="Paper run_id"),
@@ -1712,7 +1718,9 @@ def sim_live(
         book_vol_target=book_vol_target,
         tail_gate=tail_gate,
         persist_bars=persist,
+        exit_persist=exit_persist,
         mkt_disp_cut=mkt_disp_cut,
+        top_k=top_k,
     )
     slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
     challengers: list[StrategySlot] = []
@@ -1739,7 +1747,9 @@ def sim_live(
                 deadband=kv.get("db", deadband), gate_on=c_gate_on, sizing=c_sizing,
                 book_vol_target=kv.get("bvt"), tail_gate=kv.get("tg"),
                 persist_bars=int(kv.get("pb", persist)),
+                exit_persist=int(kv.get("xp", exit_persist)),
                 mkt_disp_cut=kv.get("cut"),
+                top_k=int(kv["tk"]) if "tk" in kv else top_k,
             ))
         )
     result = run_sim_live(
