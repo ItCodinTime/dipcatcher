@@ -28,6 +28,8 @@ data/metadata/**
 !data/metadata/.gitkeep
 data/file_us/**
 data/file_uk/**
+data/binance_carry/**
+data/binance_carry_core/**
 artifacts/hedge_lab/**
 !artifacts/hedge_lab/.gitkeep
 !artifacts/hedge_lab/*.json
