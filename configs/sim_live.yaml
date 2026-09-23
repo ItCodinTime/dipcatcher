@@ -1,0 +1,26 @@
+inherit: paper.yaml
+# Simulated-live: real collected Binance bars through the paper loop with
+# quantile-signal strategies. Still simulated fills — no live claim.
+data:
+  source: binance_public_data
+runtime:
+  mode: paper
+  allow_live: false
+paper:
+  ledger_subdir: sim_live
+  enable_shadow: true
+# Crypto-realistic taker costs (Binance spot taker ~10bps worst-case; the
+# default 1+5bps stays honest for the liquid majors book).
+costs:
+  commission_bps: 2.0
+  half_spread_bps: 3.0
+  impact_y: 0.1
+  participation_limit: 0.1
+  frictionless: false
+risk_gate:
+  max_order_notional: 5000000.0
+  max_gross: 2.0
+  max_net: 1.0
+  max_name: 0.3
+  max_participation: 0.25
+  stale_price_bars: 3

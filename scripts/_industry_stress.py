@@ -16,15 +16,19 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import resource
 import sys
 import time
 from pathlib import Path
 
+try:
+    import resource  # Unix only
+except ImportError:
+    resource = None  # type: ignore[assignment]
+
 import numpy as np
 import polars as pl
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from quant_fund.backtest.engine import run_backtest  # noqa: E402
@@ -86,6 +90,13 @@ def _hash_result(res) -> dict[str, str]:
 
 
 def _peak_rss_mb() -> float:
+    if resource is None:
+        try:
+            import psutil
+
+            return float(psutil.Process().memory_info().rss)
+        except ImportError:
+            return float("nan")
     # ru_maxrss: bytes on Linux, KiB on macOS — record raw + the platform note.
     return float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 

@@ -1636,5 +1636,123 @@ def monitor(
         raise typer.Exit(1)
 
 
+@app.command("sim-live")
+def sim_live(
+    config: Path = typer.Option(Path("configs/sim_live.yaml")),
+    interval: str = typer.Option("4h", help="Bar interval suffix: 4h | 1d"),
+    symbols: str = typer.Option(
+        "BNBUSDT,BTCUSDT,ETHUSDT,SOLUSDT,XRPUSDT", help="Comma-separated symbols"
+    ),
+    spec: str = typer.Option("fhs", help="Champion forecaster: fhs|evt|garch_t|egarch_l|empirical|ewma_emp"),
+    mode: str = typer.Option("long_flat", help="Champion policy: long_flat|symmetric"),
+    challenger: list[str] = typer.Option(
+        [], "--challenger",
+        help="Book 'name:spec:mode[:entry_bps[:kappa]]' (repeatable; shadows in full runs)",
+    ),
+    gross: float = typer.Option(1.0, help="Book gross cap"),
+    name_cap: float = typer.Option(0.25, help="Per-name |weight| cap"),
+    kappa: float = typer.Option(0.30, help="Size per unit predicted Sharpe"),
+    entry_bps: float = typer.Option(20.0, help="|mu| entry gate in per-bar bps (z units if --gate-on edge)"),
+    gate_on: str = typer.Option("mu", help="Gate metric: 'mu' (bps) | 'edge' (mu/disp z-score)"),
+    deadband: float = typer.Option(0.01, help="Min |Δtarget| before re-emit"),
+    window: int = typer.Option(750, help="Trailing returns window per origin"),
+    tail_bars: int | None = typer.Option(None, help="Use only last N bars per asset"),
+    max_steps: int | None = typer.Option(None, help="Cap decision steps"),
+    run_id: str | None = typer.Option(None, help="Paper run_id"),
+    resume: bool = typer.Option(
+        False, help="Resume book from broker_state.json (new appended bars only)"
+    ),
+    n_jobs: int = typer.Option(-1, help="joblib parallelism for quantile panels"),
+    bench: bool = typer.Option(
+        True, "--bench/--no-bench", help="Bench every slot's book via run_backtest"
+    ),
+    bench_only: bool = typer.Option(
+        False, "--bench-only", help="Skip paper loop; leaderboard of books only (fast)"
+    ),
+    out: Path = typer.Option(Path(".dsh-24x7/lane-simlive"), "--out"),
+) -> None:
+    """Simulated-live PnL: proven quantile forecasters trade the paper loop on real bars."""
+    import json
+    import subprocess
+
+    from quant_fund.paper.quantile_signals import QuantilePolicy
+    from quant_fund.paper.sim_live import StrategySlot, run_sim_live
+
+    cfg = _cfg(config)
+    try:
+        git_sha = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=False
+        ).stdout.strip() or None
+    except Exception:  # noqa: BLE001
+        git_sha = None
+    champion_policy = QuantilePolicy(
+        mode=mode,
+        kappa=kappa,
+        gross_target=gross,
+        name_cap=name_cap,
+        cost_gate=entry_bps / 1e4 if gate_on == "mu" else entry_bps,
+        deadband=deadband,
+        gate_on=gate_on,
+    )
+    slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
+    challengers: list[StrategySlot] = []
+    for raw in challenger:
+        parts = raw.split(":")
+        if len(parts) < 3:
+            raise typer.BadParameter("--challenger must be name:spec:mode[:entry_bps[:kappa]]")
+        cname, cspec, cmode = parts[0], parts[1], parts[2]
+        c_bps = float(parts[3]) if len(parts) > 3 else entry_bps
+        c_kappa = float(parts[4]) if len(parts) > 4 else kappa
+        c_gate_on = parts[5] if len(parts) > 5 else gate_on
+        challengers.append(
+            StrategySlot(name=cname, spec=cspec, policy=QuantilePolicy(
+                mode=cmode, kappa=c_kappa, gross_target=gross,
+                name_cap=name_cap, cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
+                deadband=deadband, gate_on=c_gate_on,
+            ))
+        )
+    result = run_sim_live(
+        bars_root=Path("data/raw/sources"),
+        symbols=[s.strip().upper() for s in symbols.split(",") if s.strip()],
+        interval=interval,
+        config=cfg,
+        champion=slots[0],
+        challengers=challengers,
+        window=window,
+        tail_bars=tail_bars,
+        out_dir=out,
+        run_id=run_id,
+        max_steps=max_steps,
+        git_sha=git_sha,
+        n_jobs=n_jobs,
+        resume=resume,
+        resume_run_id=run_id if resume else None,
+        bench=bench,
+        bench_only=bench_only,
+    )
+    typer.echo(f"DATA_LABEL={result.receipt['data_label']}")
+    typer.echo(f"run_id={result.run_id}")
+    typer.echo(json.dumps(result.receipt["champion_equity_stats"], indent=2, default=str))
+    typer.echo(json.dumps(result.receipt["loop_metrics"], indent=2, default=str))
+    if result.receipt.get("book_stats"):
+        typer.echo("book leaderboard (same bars/costs/gates, simulated):")
+        rows = sorted(
+            result.receipt["book_stats"].items(),
+            key=lambda kv: kv[1].get("total_return", float("-inf")),
+            reverse=True,
+        )
+        for name, st in rows:
+            if st.get("status") == "ok":
+                typer.echo(
+                    f"  {name:<18} ret={st['total_return']:+.4%} "
+                    f"sharpe={st['sharpe_simulated']:+.3f} maxDD={st['max_drawdown']:+.3%} "
+                    f"vol={st['ann_vol']:.3%} fills={st.get('n_fills')}"
+                )
+            else:
+                typer.echo(f"  {name:<18} {st.get('status', 'failed')}")
+    typer.echo(f"receipt: {result.receipt_path}")
+    typer.echo("SIMULATED — no live-PnL claim.")
+
+
 if __name__ == "__main__":
     app()

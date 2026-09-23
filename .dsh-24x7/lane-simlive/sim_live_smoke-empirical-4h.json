@@ -1,0 +1,186 @@
+{
+  "kind": "sim_live_receipt",
+  "run_id": "smoke-empirical-4h",
+  "live_pnl_claim": false,
+  "simulated_only": true,
+  "research_only": true,
+  "data_label": "binance_public_data",
+  "git_sha": "7b1e879",
+  "bars": {
+    "root": "data/raw/sources",
+    "interval": "4h",
+    "symbols": [
+      "BNBUSDT",
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "sha256": {
+      "BNBUSDT": "241023d98ef952df66748f7c298771bbbe63d3f9c242b095c828dd117eac3dc0",
+      "BTCUSDT": "c147cab9cb20c92be2fe97365b13ddcf4454f142670fe1cebdfe312cc1252883",
+      "ETHUSDT": "7a9d8e51ece58d0b09750452c9b4b5cfd982bb4db151782424cd817ebb9ed197",
+      "SOLUSDT": "33267199e2115b25e76504f902b955545324688f0631b66264f836a7bb55246e",
+      "XRPUSDT": "1e10d4d5bf25e1f2e8dc6b6ce9d1d69a10f7f495a09dfdbb0a2eef20f6998c2f"
+    },
+    "tail_bars": 1200
+  },
+  "strategy": {
+    "champion": {
+      "name": "empirical_long_flat",
+      "spec": "empirical",
+      "policy": {
+        "mode": "long_flat",
+        "kappa": 0.3,
+        "gross_target": 1.0,
+        "name_cap": 0.25,
+        "cost_gate": 0.002,
+        "deadband": 0.01,
+        "band_lo": 0.05,
+        "band_hi": 0.95
+      }
+    },
+    "challengers": [],
+    "taus": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.39999999999999997,
+      0.44999999999999996,
+      0.49999999999999994,
+      0.5499999999999999,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.7999999999999999,
+      0.85,
+      0.9,
+      0.95
+    ],
+    "window": 250,
+    "min_history": null
+  },
+  "forecaster_stats": {
+    "BNBUSDT:empirical": {
+      "emitted": 1139,
+      "failed": 0,
+      "warmup": 60
+    },
+    "BTCUSDT:empirical": {
+      "emitted": 1139,
+      "failed": 0,
+      "warmup": 60
+    },
+    "ETHUSDT:empirical": {
+      "emitted": 1139,
+      "failed": 0,
+      "warmup": 60
+    },
+    "SOLUSDT:empirical": {
+      "emitted": 1139,
+      "failed": 0,
+      "warmup": 60
+    },
+    "XRPUSDT:empirical": {
+      "emitted": 1139,
+      "failed": 0,
+      "warmup": 60
+    }
+  },
+  "quantile_cache_digests": {
+    "BNBUSDT:empirical": "c5525ce0747a515a",
+    "BTCUSDT:empirical": "f92d7a3533e8d452",
+    "ETHUSDT:empirical": "771c051207cd3837",
+    "SOLUSDT:empirical": "89c7afab66e10e3b",
+    "XRPUSDT:empirical": "8f8627b732cb3ae5"
+  },
+  "loop_metrics": {
+    "n_steps": 1204,
+    "n_steps_this_run": 1204,
+    "n_fills": 0,
+    "risk_gate_rejects": 0,
+    "kill_switch_halts": 0,
+    "resumed": false
+  },
+  "champion_equity_stats": {
+    "status": "ok",
+    "n_marks": 1204,
+    "nav_start": 1000000.0,
+    "nav_end": 1000000.0,
+    "total_return": 0.0,
+    "ann_return": 0.0,
+    "ann_vol": 0.0,
+    "sharpe_simulated": NaN,
+    "max_drawdown": 0.0,
+    "bars_per_year": 2191.5
+  },
+  "divergence": {
+    "mean_l1": 0.0,
+    "max_l1": 0.0
+  },
+  "promotion_dry_run": {
+    "would_promote_paper": true,
+    "would_promote_live": false,
+    "mean_l1": 0.0,
+    "max_l1": 0.0,
+    "n_steps": 1204,
+    "champion_nav": 1000000.0,
+    "shadow_gross": null,
+    "max_mean_l1": 0.25,
+    "min_steps": 5,
+    "reasons": [],
+    "data_source": "binance_public_data",
+    "live_pnl_claim": false,
+    "research_only": true,
+    "note": "dry_run_only_no_live_capital",
+    "schema_version": 2,
+    "run_id": "smoke-empirical-4h",
+    "rolling_mean_l1": 0.0,
+    "rolling_window": 10,
+    "challenger_metrics": {
+      "window": 10,
+      "challengers": {
+        "shadow": {
+          "n": 1204,
+          "mean_l1": 0.0,
+          "max_l1": 0.0,
+          "rolling_mean_l1": 0.0,
+          "last_l1": 0.0
+        }
+      },
+      "role": "paper_shadow_research_diagnostic",
+      "live_pnl_claim": false,
+      "research_only": true,
+      "closest_challenger": "shadow",
+      "farthest_challenger": "shadow"
+    },
+    "risk_accounting": {
+      "reject_total": 0,
+      "kill_switch_halts": 0,
+      "risk_gate_rejects": 0,
+      "other_rejects": 0
+    },
+    "kill_tripped_mid_run": false,
+    "receipt_sha256": "3ae229d0894ddd9b20df3d0745f9a781fa86646d81cb41254afb46c8c687dda2"
+  },
+  "conventions": [
+    "signal at decision bar t uses only closes <= t (causal)",
+    "fills at next bar open (config.execution.fill)",
+    "forecast horizon = next close-close; fill at next open (disclosed mismatch)",
+    "absent name on a present date = flatten (engine sparse-panel semantics)",
+    "spot book only: no funding, borrow, or perp legs modeled"
+  ],
+  "paths": {
+    "equity": "data/metadata/sim_live/smoke-empirical-4h/equity.parquet",
+    "meta": "data/metadata/sim_live/smoke-empirical-4h/meta.json",
+    "latest": "data/metadata/sim_live/latest_run.json",
+    "analytics_export": "data/metadata/sim_live/smoke-empirical-4h/analytics_export.json",
+    "broker_state": "data/metadata/sim_live/smoke-empirical-4h/broker_state.json",
+    "promotion_dry_run": "data/metadata/sim_live/smoke-empirical-4h/promotion_dry_run.json"
+  }
+}
