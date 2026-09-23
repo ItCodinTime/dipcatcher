@@ -203,6 +203,34 @@ def run_sim_live(
         times = sub["event_time"].to_list()
         per_sid[str(sid)] = (closes, np.asarray(times))
 
+    # Funding-crowding series (optional): BTC 8h funding rates resampled to
+    # the bar grid (sum per bar), then trailing 7-day sum. Keyed by
+    # event_time so the policy's fund_cut breaker stays strictly causal.
+    mkt_series: dict[Any, float] | None = None
+    if any(s.policy.fund_cut is not None for s in slots):
+        fund_path = bars_root / "btcusdt.funding.parquet"
+        if fund_path.is_file():
+            fund = pl.read_parquet(fund_path).sort("event_time")
+            f_times = fund["event_time"].to_list()
+            f_vals = fund["value"].to_numpy().astype(float)
+            ref_times = per_sid.get("BTCUSDT", (None, sorted({t for s in per_sid for t in per_sid[s][1]})))[1]
+            ref_arr = np.asarray(ref_times)
+            # Assign each funding event to the bar containing it; bars with
+            # no events get 0; then rolling 7-bar (daily) / 42-bar (4h) sum.
+            roll_n = 7 if interval == "1d" else 42
+            per_bar = np.zeros(len(ref_arr))
+            idx = np.searchsorted(ref_arr, f_times, side="right") - 1
+            for j, v in zip(idx, f_vals, strict=True):
+                if j >= 0:
+                    per_bar[j] += v
+            # full[i + roll_n - 1] = sum(per_bar[i-roll_n+1 .. i]) — trailing.
+            roll = np.convolve(per_bar, np.ones(roll_n), "full")[
+                roll_n - 1 : roll_n - 1 + len(per_bar)
+            ]
+            mkt_series = {t: float(v) for t, v in zip(ref_arr.tolist(), roll, strict=True)}
+        else:
+            mkt_series = {}
+
     quantile_cache: dict[tuple[str, str], tuple[np.ndarray, dict[str, int]]] = {}
     cache_digests: dict[str, str] = {}
     jobs = [(sid, spec) for sid in per_sid for spec in specs]
@@ -278,7 +306,8 @@ def run_sim_live(
             r[1:] = c[1:] / c[:-1] - 1.0
             realized[sid] = r
         return quantile_panels_to_weights(
-            panels, times, slot.policy, taus, realized=realized
+            panels, times, slot.policy, taus,
+            realized=realized, mkt_series=mkt_series,
         )
 
     champion_w = _panel_for(champion)

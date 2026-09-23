@@ -124,13 +124,27 @@ but lower return; meta=0.5 starves the book), `accel_min` (negative),
 | window | book | Sharpe |
 |---|---|---|
 | 2020-08→2026-09 (5 majors) | champion | 1.79 |
+| 2020-08→2026-09 (5 majors) | **vin3+xp3+BTC-lead+bvt** | **1.97** |
 | last 800d only | champion | 1.03 |
+| last 800d only | vin3+xp3+BTC-lead+bvt | 1.01 |
+| last 500d only | *all variants* | 0.2–0.85 |
 | 2018-05→2026-09 (BTC/ETH/XRP, 8.3y) | champion | ~1.01 |
+| 2018-05→2026-09 (3 majors) | **xp3+BTC-lead+bg** | **1.14** |
 | 998d breadth book (9 majors) | champion | 1.04 |
 
 The edge is real but regime-dependent: ~1.0 Sharpe outside the trending
-2020-24 regime — the +2,629% headline is regime compounding, not a
-universal multiplier.
+2020-24 regime — the +2,900% headline is regime compounding, not a
+universal multiplier. The full stack keeps ~1.1 Sharpe over 8.3y
+bear-inclusive history (vs 1.01 for the plain champion), so the layers
+generalize — but no configuration escapes the chop regime.
+
+**Rejected as regime-fitting**: `leader_edge_min > 0` looked great
+in-sample (SR 2.07 at le=0.10) but folds disagree — le=0 wins 800d,
+le=0.15 wins 500d, le=0.20 wins 1200d. No stable optimum → pure noise
+axis; le=0 kept. `fund_cut` (BTC 7d funding-crowding breaker) is
+Sharpe-negative at every level (p99 cut → SR 1.27): crowded-long
+regimes carry the biggest trends. Same verdict shape as the vol
+breaker — the signal's best days are exactly the scary ones.
 
 ## Per-asset attribution (same policy, single-name books)
 

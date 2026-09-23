@@ -296,6 +296,7 @@ class QuantilePolicy:
     accel_min: float | None = None  # entry needs edge - edge[-1] >= this
     rebal_every: int = 1  # emit targets only every k-th decision date
     breadth_gross: bool = False  # scale gross by fraction of names with edge>0
+    fund_cut: float | None = None  # flat book when mkt_series (funding) > this
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -304,7 +305,7 @@ class QuantilePolicy:
             raise ValueError("gate_on must be 'mu' or 'edge'")
         if self.sizing not in {"edge", "risk"}:
             raise ValueError("sizing must be 'edge' or 'risk'")
-        for name in ("book_vol_target", "tail_gate", "mkt_disp_cut"):
+        for name in ("book_vol_target", "tail_gate", "mkt_disp_cut", "fund_cut"):
             v = getattr(self, name)
             if v is not None and (not np.isfinite(float(v)) or float(v) < 0):
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -554,6 +555,7 @@ def quantile_panels_to_weights(
     policy: QuantilePolicy,
     taus: np.ndarray,
     realized: dict[str, np.ndarray] | None = None,
+    mkt_series: dict[Any, float] | None = None,
 ) -> pl.DataFrame:
     """Apply ``policy`` sequentially per date → target-weight panel.
 
@@ -636,6 +638,7 @@ def quantile_panels_to_weights(
                 if ok and policy.accel_min is not None and sid in prev_edge:
                     ok = (cur_edge.get(sid, 0.0) - prev_edge[sid]) >= policy.accel_min
                 entry_mask[sid] = ok
+        flat_now = False
         if policy.mkt_disp_cut is not None:
             # Market-wide vol breaker: median forecast dispersion across names
             # above the cut -> flatten the whole book for this decision date.
@@ -647,16 +650,28 @@ def quantile_panels_to_weights(
                 if np.isfinite(d):
                     disps.append(d)
             if disps and float(np.median(disps)) > policy.mkt_disp_cut:
-                targets = {sid: 0.0 for sid in q_rows if abs(prev.get(sid, 0.0)) > 1e-12}
-                streaks.clear()
-                fail_streaks.clear()
-                prev = {}
-                prev_edge.update(cur_edge)
-                for sid, w in targets.items():
-                    out_t.append(t_i)
-                    out_s.append(sid)
-                    out_w.append(w)
-                continue
+                flat_now = True
+        if (
+            not flat_now
+            and policy.fund_cut is not None
+            and mkt_series is not None
+            and float(mkt_series.get(t_i, float("-inf"))) > policy.fund_cut
+        ):
+            # Funding-crowding breaker: trailing funding above the cut flags
+            # leveraged-long crowding -> flat the book (same fail-closed
+            # de-risk semantics as the vol breaker; missing values don't gate).
+            flat_now = True
+        if flat_now:
+            targets = {sid: 0.0 for sid in q_rows if abs(prev.get(sid, 0.0)) > 1e-12}
+            streaks.clear()
+            fail_streaks.clear()
+            prev = {}
+            prev_edge.update(cur_edge)
+            for sid, w in targets.items():
+                out_t.append(t_i)
+                out_s.append(sid)
+                out_w.append(w)
+            continue
         targets = weights_from_quantiles(
             q_rows, taus, policy, prev, streaks, fail_streaks, entry_mask
         )

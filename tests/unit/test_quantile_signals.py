@@ -437,6 +437,25 @@ def test_policy_breadth_gross_scales_by_participation() -> None:
     assert sum(abs(w) for w in out2.values()) == pytest.approx(1.0, rel=1e-6)
 
 
+def test_fund_cut_flattens_on_crowding() -> None:
+    """mkt_series above fund_cut -> explicit flat for held names; missing
+    dates do not gate."""
+    times = np.array([T0 + timedelta(hours=4 * i) for i in range(4)])
+    panel = np.vstack([_q(0.02, 0.02)] * 4)
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        deadband=0.0, fund_cut=0.01,
+    )
+    mkt = {times[0]: 0.0, times[1]: 0.0, times[2]: 0.05}  # hot at t2; t3 missing
+    w = quantile_panels_to_weights(
+        {"A": panel}, {"A": times}, pol, TAUS, mkt_series=mkt
+    )
+    d2 = w.filter(pl.col("event_time") == times[2])
+    assert d2.height == 1 and d2["target_weight"][0] == 0.0  # held -> flat
+    d3 = w.filter(pl.col("event_time") == times[3])
+    assert d3["target_weight"][0] > 0.0  # missing series value -> no gate
+
+
 def test_horizon_spec_uses_nbar_returns() -> None:
     """``ewma_emp@h3`` consumes 3-bar overlapping returns; panel stays causal
     and finite, and the cache key/spec parse round-trips."""
