@@ -80,7 +80,9 @@ def make_cfg() -> AppConfig:
     return cfg
 
 
-def run_one(perp, spot, fund, *, enter, exit_, lb, nw, mx, band, scaler_kw=None):
+def run_one(
+    perp, spot, fund, *, enter, exit_, lb, nw, mx, band, scaler_kw=None, rsr=None, rsc=2.0, rsf=0.3
+):
     w = basis_carry_hysteresis_weights(
         perp,
         fund,
@@ -90,6 +92,9 @@ def run_one(perp, spot, fund, *, enter, exit_, lb, nw, mx, band, scaler_kw=None)
         name_weight=nw,
         max_names=mx,
         rebalance_band=band,
+        rate_scale_ref=rsr,
+        rate_scale_cap=rsc,
+        rate_scale_floor=rsf,
     )
     scaler = OverlayAdapter(**scaler_kw) if scaler_kw else None
     res = run_carry_backtest(perp, spot, fund, w, make_cfg(), initial_nav=1e6, scaler=scaler)
@@ -174,7 +179,7 @@ def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag="") -> int:
     champ = dict(enter=0.00015, exit_=0.0, lb=9, nw=0.12, mx=15, band=1.3)
     if tag:
         # expanded 355-coin universe pick (docs/carry_expansion_2026_09.md)
-        champ.update(nw=0.11, mx=60)
+        champ.update(nw=0.11, mx=60, rsr=0.002, rsc=1.5, rsf=1.0)
     out = {}
     for label, (p, s, f) in {
         "dev": (dev_p, dev_s, dev_f),
