@@ -32,6 +32,9 @@ data/binance_carry/**
 data/binance_carry_core/**
 data/binance_carry_extra/**
 data/okx_carry/**
+data/hyperliquid_carry/**
+data/hl_carry_book/**
+data/hl_probe/**
 artifacts/hedge_lab/**
 !artifacts/hedge_lab/.gitkeep
 !artifacts/hedge_lab/*.json

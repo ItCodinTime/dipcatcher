@@ -42,12 +42,16 @@ class OverlayAdapter:
         return {k: v * s for k, v in targets.items()}
 
 
-def load_carry(extra_dir: pathlib.Path | str | None = None):
+def load_carry(
+    extra_dir: pathlib.Path | str | None = None,
+    data_dir: pathlib.Path | str | None = None,
+):
     if extra_dir is not None:
         extra_dir = pathlib.Path(extra_dir)
+    base = pathlib.Path(data_dir) if data_dir is not None else DATA
 
     def _bars(name):
-        frames = [pl.read_parquet(DATA / name)]
+        frames = [pl.read_parquet(base / name)]
         if extra_dir is not None and (extra_dir / name).exists():
             frames.append(pl.read_parquet(extra_dir / name))
         return (
@@ -144,9 +148,14 @@ def main() -> int:
         default=None,
         help="second parquet dir merged into the universe (e.g. data/binance_carry_extra)",
     )
+    ap.add_argument(
+        "--data-dir",
+        default=None,
+        help="base parquet dir replacing DATA (e.g. data/hl_carry_book)",
+    )
     args = ap.parse_args()
 
-    perp, spot, fund = load_carry(args.extra_dir)
+    perp, spot, fund = load_carry(args.extra_dir, args.data_dir)
     print("coins:", fund["security_id"].n_unique(), "fund rows:", fund.height)
     dev_end = SPLIT
     dev_p = perp.filter(pl.col("event_time") < dev_end)
@@ -155,7 +164,7 @@ def main() -> int:
     print("dev bars:", dev_p.height, "dev fund:", dev_f.height)
 
     if args.mode == "champion":
-        tag = "_expanded" if args.extra_dir else ""
+        tag = "_expanded" if (args.extra_dir or args.data_dir) else ""
         return run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag=tag)
     return run_grid(dev_p, dev_s, dev_f)
 
