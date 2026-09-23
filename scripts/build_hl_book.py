@@ -20,6 +20,7 @@ data/hl_carry_book``; run standalone with ``--data-dir data/hl_carry_book``.
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
@@ -41,6 +42,9 @@ def main() -> int:
     perp = pl.read_parquet(HL / "perp_bars.parquet")
     hl_spot = pl.read_parquet(HL / "hl_spot_bars.parquet")
     fund = pl.read_parquet(HL / "funding.parquet")
+    today = datetime.now(tz=UTC).date()
+    perp = perp.filter(pl.col("event_time").dt.date() < today)
+    hl_spot = hl_spot.filter(pl.col("event_time").dt.date() < today)
     bin_spot = _load("spot_bars.parquet")
 
     bin_ids = set(bin_spot["security_id"].unique()) if bin_spot.height else set()
