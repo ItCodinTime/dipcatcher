@@ -10,6 +10,7 @@ Measures (all captured to a JSON receipt):
 
 research-only; no live-PnL claim.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -62,12 +63,8 @@ def _bench_cfg() -> AppConfig:
 def _panel(bars: pl.DataFrame, n_dates_per_asset: int = 20) -> pl.DataFrame:
     """SMA20-gate causal weight panel identical in spirit to the incumbent bench."""
     px = bars.select("security_id", "event_time", "close").sort("security_id", "event_time")
-    px = px.with_columns(
-        pl.col("close").rolling_mean(20).over("security_id").alias("sma20")
-    )
-    px = px.with_columns(
-        (pl.col("close") > pl.col("sma20")).cast(pl.Float64).alias("sig")
-    )
+    px = px.with_columns(pl.col("close").rolling_mean(20).over("security_id").alias("sma20"))
+    px = px.with_columns((pl.col("close") > pl.col("sma20")).cast(pl.Float64).alias("sig"))
     # equal-weight long-only over the active names, 0.9 buffer
     px = px.with_columns(
         (pl.col("sig") * 0.9 / pl.col("sig").sum().over("event_time").clip(1.0)).alias(
@@ -80,7 +77,12 @@ def _panel(bars: pl.DataFrame, n_dates_per_asset: int = 20) -> pl.DataFrame:
 def _hash_result(res) -> dict[str, str]:
     nav_h = hashlib.sha256(res.equity.write_csv().encode()).hexdigest()
     fill_h = hashlib.sha256(res.fills.write_csv().encode()).hexdigest()
-    return {"nav_sha256": nav_h, "fills_sha256": fill_h, "n_nav": res.equity.height, "n_fills": res.fills.height}
+    return {
+        "nav_sha256": nav_h,
+        "fills_sha256": fill_h,
+        "n_nav": res.equity.height,
+        "n_fills": res.fills.height,
+    }
 
 
 def _peak_rss_mb() -> float:
