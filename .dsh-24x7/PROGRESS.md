@@ -550,3 +550,21 @@ h4f fleet complete (5/5, 300 origins, deep 4h). native-protocol fleet at
   ruff clean on engine/zoo/constants; `fast_replay.py` needs `ruff
   format` but is the concurrent agent's uncommitted WIP — flagged, not
   clobbered. mypy clean on the 3 changed source files.
+
+## 2026-09-23 (cont.) — tfmfix4 landed; verified 11-asset daily arena
+
+- TFMFIX4 COMPLETE (remote, ~30min wall on quiet box): all 6 non-deep
+  daily assets (ada/avax/doge/link/ltc/trx) × 300 origins, timesfm-only,
+  contract v2, seed 7 — pulled to local `eval-full/tfmfix4_*.losses.npz`.
+- SPLICE: `splice_timesfm_fix.py` on `.fixed.npz` bases (canonical
+  kronos) → `.dsh-24x7/eval-full/v2-11a/*.tfmv2.npz` — 11 pairs total
+  (5 deep + 6 new), all deterministic-column checks bit-identical.
+- MERGED: `merge_d1_11a_v2.json` — 3300 rows, 14 models, contract
+  v2+spliced. All 4 targets excluded from MCS @0.10 (SPA floor 0.0010
+  each); MCS = {student_t, empirical, garch_t, fhs, ewma_emp, blend};
+  weakest DM pair timesfm-vs-dip_lgbm_q p=0.0338. Canonical kronos
+  0.0238 throughout — the degraded-pairing column in merge_d1_v2aug/
+  mega-arena-d1 (0.0642) is now explicitly disclosed in EVAL_REPORT.
+- EVAL_REPORT: verified daily arena extended from deep-5 to all 11 v4
+  assets; s23 replication recorded; provenance note added for the
+  degraded kronos in the daily v2aug/mega-arena merges.

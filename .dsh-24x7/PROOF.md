@@ -105,7 +105,7 @@ Residual honesty notes: the 11-asset latency median is ~11% behind vectorbt (bes
 
 ## SOTA
 
-`STATUS: PROVEN` (scope: causal next-bar crypto return-distribution forecasting, proper scores, real Binance bars — 11 daily + 5 four-hour asset-intervals, ~300 origins per cell (v4) plus an independent 150-origin replication (v3), four published foundation-model targets, seed-robustness replications)
+`STATUS: PROVEN` (scope: causal next-bar crypto return-distribution forecasting, proper scores, real Binance bars — 11 daily assets × 300 origins under verified contract v2 + canonical pairing (`merge_d1_11a_v2.json`), 5 four-hour assets × 300 (h4f), ~300 origins per cell (v4) plus an independent 150-origin replication (v3), four published foundation-model targets, seed-robustness replications at seeds 7/11/23)
 
 ### Published SOTA targets
 

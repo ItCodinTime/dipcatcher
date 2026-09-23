@@ -133,7 +133,18 @@ Completed and failed attempts at that checkpoint:
 - tfmfix4 wave SPAWNED on codex-remote (6 jobs: ada/avax/doge/link/ltc/trx
   daily × 300 origins, timesfm-only v2, seed 7 — `spawn_tfmfix4.ps1`,
   pids logged in `C:\Users\me\spawn_tfmfix4.out.log`). ~1h runtime.
-- NEXT: when tfmfix4 lands → `splice_timesfm_fix.py` into the 6 `d1fix_*`
-  300-origin bases → merge 11 parts → verified 11-asset daily arena →
-  EVAL_REPORT + PROOF update; P0.7 doc flip if the concurrent lane work
-  converges.
+- v2-11a arena staging (`.dsh-24x7/eval-full/v2-11a/`): 5 deep pairs already
+  spliced — `d1_*_deep.fixed.npz` (canonical kronos) + `tfmfix_d1_*_deep`
+  (v2 timesfm) → `*.tfmv2.npz` verified bitwise. NOTE: the committed
+  `merge_d1_v2aug.json` + `mega-arena/merge_d1.json` carry the DEGRADED
+  Tokenizer-2k kronos (0.0642; canonical = 0.0212) — disclosed in
+  EVAL_REPORT, verdict unaffected (handicap runs against a target).
+- Pre-existing lint noise (not this session's): ruff I001 on tracked
+  compat mirror `tests/tests/unit/test_kronos.py`; B905 zip-strict in
+  untracked lane WIP `_seas_col.py`/`_xbeta_col.py`; `fast_replay.py`
+  needs `ruff format` (concurrent agent's uncommitted WIP — flagged,
+  not clobbered).
+- NEXT: when tfmfix4 lands → pull shards → splice `d1_<a>_1d.fixed.npz`
+  + `tfmfix4_d1_<a>.losses.npz` into `v2-11a/` → merge 11 parts →
+  `merge_d1_11a_v2.json` → EVAL_REPORT + PROOF update; P0.7 doc flip if
+  the concurrent lane work converges.

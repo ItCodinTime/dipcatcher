@@ -112,6 +112,26 @@ dip_regime, dip_stack; 20 models total). Daily deep-5 MCS @0.10 =
 includes dip_stack (3rd, 0.005273) plus 13 other challengers. No single
 challenger separates from the fhs/garch_t leaders — the frontier is a
 statistical tier; every published model is outside it at both horizons.
+*Provenance note:* the daily v2aug/mega-arena shards were spliced onto
+`d1_*` first-pass bases, so their `kronos_small` column retains the
+degraded Tokenizer-2k pairing (pooled 0.0642 vs canonical 0.0212 in the
+flagship `evidence-sota-eval-v4-d1-v2.json`; the 4h v2aug lineage is
+canonical-paired, kronos 0.007057). The handicap runs against a target —
+the exclusion verdict is unchanged either way — but the daily v2aug
+kronos number is not comparable to the canonical receipts and is flagged
+rather than restamped.
+
+**Verified 11-asset daily arena (contract v2, canonical pairing,
+2026-09-23)** — `merge_d1_11a_v2.json` + `eval-full/v2-11a/`: the
+`tfmfix4` fleet supplied the missing 300-origin contract-v2 TimesFM
+columns for the six non-deep assets (ada/avax/doge/link/ltc/trx);
+spliced into `d1_*.fixed.npz` bases (canonical Kronos pairing, verified
+bitwise per pair). 3300 rows, 14 models. MCS @0.10 = {student_t,
+empirical, garch_t, fhs, ewma_emp, blend}; **all four targets excluded**
+(SPA p=0.0010 floor each; weakest DM pair timesfm-vs-dip_lgbm_q
+p=0.0338). Every challenger (0.01562–0.01610) beats every target (best:
+timesfm 0.016485; canonical kronos 0.0238). The verified-contract daily
+arena now covers all 11 v4 assets, not only the deep-5.
 
 **Mega-arena (contract v2, 32 models, 2026-09-23)** —
 `.dsh-24x7/mega-arena/merge_d1.json`, `merge_h4f.json` + `LEADERBOARD_*.md`:
