@@ -226,9 +226,7 @@ class NeuralRanker(RidgeRanker):
         )
 
     def metadata(self) -> ModelMeta:
-        return ModelMeta(
-            family="ranking", name="neural", version="v1", extra={"seed": self.seed}
-        )
+        return ModelMeta(family="ranking", name="neural", version="v1", extra={"seed": self.seed})
 
 
 class EnsembleRanker(JoblibMixin):

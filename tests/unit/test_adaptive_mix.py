@@ -27,9 +27,7 @@ def test_missing_proposal_emits_explicit_zero_exit() -> None:
     )
     dense = dense_targets(bars, sparse)
     assert dense["target_weight"].to_list() == [0.2, 0.0, 0.0]
-    allocation = pl.DataFrame(
-        {"event_time": dates, "first": [0.5] * 3, "second": [0.5] * 3}
-    )
+    allocation = pl.DataFrame({"event_time": dates, "first": [0.5] * 3, "second": [0.5] * 3})
     flat = dense.with_columns(pl.lit(0.0).alias("target_weight"))
     mixed = mix_targets({"first": dense, "second": flat}, allocation)
     assert mixed["target_weight"].to_list() == [0.1, 0.0, 0.0]

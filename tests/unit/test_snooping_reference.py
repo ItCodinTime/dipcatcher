@@ -62,9 +62,7 @@ def test_mcs_range_matches_arch_on_identical_draws(seed: int) -> None:
     reference.bootstrap = _bootstrap(np.arange(n), indices)
     reference.compute()
     actual = model_confidence_set(performance, n_boot=reps, block=block, seed=17)
-    expected = (1.0 + reps * reference.pvalues.reindex(range(5)).Pvalue.to_numpy()) / (
-        reps + 1.0
-    )
+    expected = (1.0 + reps * reference.pvalues.reindex(range(5)).Pvalue.to_numpy()) / (reps + 1.0)
     np.testing.assert_allclose(actual.p_values, expected, atol=1e-12)
     assert list(actual.included) == (expected >= 0.10).tolist()
     assert len(actual.included) == performance.shape[1]

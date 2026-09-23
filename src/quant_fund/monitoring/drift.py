@@ -94,7 +94,10 @@ def model_health_report(
     current_features: Mapping[str, NDArray[np.float64]],
     *,
     artifact_paths: Mapping[str, str | Path] | None = None,
-    calibration_windows: tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]] | None = None,
+    calibration_windows: tuple[
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]
+    ]
+    | None = None,
     calibration_alert_delta: float = 0.05,
     psi_threshold: float = 0.25,
     min_features: int = 1,

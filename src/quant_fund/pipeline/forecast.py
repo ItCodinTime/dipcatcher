@@ -911,7 +911,11 @@ def _load_rl_cached(config: AppConfig):
         raise ValueError("RL artifact is malformed: expected policy and features")
     policy = artifact["policy"]
     features = artifact["features"]
-    if not (hasattr(policy, "scores") or hasattr(policy, "predict")) or not isinstance(features, list) or not features:
+    if (
+        not (hasattr(policy, "scores") or hasattr(policy, "predict"))
+        or not isinstance(features, list)
+        or not features
+    ):
         raise ValueError("RL artifact has an invalid policy or feature contract")
     artifact_name = str(artifact.get("policy_name", path.stem.removeprefix("rl_"))).upper()
     loaded = (policy, [str(feature) for feature in features], f"RL_{artifact_name}")
@@ -936,9 +940,7 @@ def _load_probability_calibrator(
     if not isinstance(calibrator, ProbabilityCalibrator) or not calibrator.fitted:
         raise ValueError("probability calibrator artifact is invalid or unfitted")
     if calibrator.score_feature != "cs_pct_mom_20":
-        raise ValueError(
-            "probability calibrator score identity mismatch: expected cs_pct_mom_20"
-        )
+        raise ValueError("probability calibrator score identity mismatch: expected cs_pct_mom_20")
     expected_label = config.fusion.probability_calibration_label
     if expected_label is not None and calibrator.label != expected_label:
         raise ValueError("probability calibrator label identity mismatch")
@@ -960,6 +962,8 @@ def _load_probability_calibrator(
         if (right - left).days < 0 or (right - left).days > max_age:
             raise ValueError("probability calibrator is stale for forecast asof")
     return calibrator
+
+
 def _paper_challenger_stamp(
     config: AppConfig,
     x: NDArray[np.float64],
