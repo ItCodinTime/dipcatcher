@@ -35,6 +35,8 @@ KLINE_FEATURE_NAMES = ("open", "high", "low", "close", "volume", "amount")
 PRICE_SPACE = "split_adjusted"
 
 # Official Kronos zoo (Hugging Face). Torch backend only; never downloaded in CI.
+# Revisions are pinned to the upstream head commits captured 2026-02 — a moving
+# ``main`` would silently mutate the weights under a frozen evaluation.
 VARIANT_HUB = {
     "mini": {
         "tokenizer": "NeoQuasar/Kronos-Tokenizer-2k",

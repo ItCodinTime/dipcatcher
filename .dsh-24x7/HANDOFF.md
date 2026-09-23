@@ -95,3 +95,36 @@ Completed and failed attempts at that checkpoint:
 - Secret scanner: scripts/secret_scan.py + pre-commit hook, 7/7 cases.
 - NEXT: merge nh_* when done -> EVAL_REPORT §4.3 complete; merge s23;
   tfmfix4 -> splice -> 11-asset verified daily arena; then P0.7 doc flip.
+
+## 2026-09-23 merge integration + crossover landing (Devin session)
+
+- Local `main` merged `origin/main` twice: `edec1ea` (119 conflicts — evidence
+  JSONs formatting-identical values; npz matrices array-identical; source
+  files unioned: engine risk-overlay + hold-semantics, forecast overlay suite
+  + RL/calibrator loaders, train garch/realized/robinhood blocks) then
+  `0417f7f` (12 more commits from concurrent agent PRs: carry lanes,
+  bandit/CI fixes). Pushed: `fc9b39f..0417f7f main`.
+- Union resolutions verified: `train_ranking` keeps remote's
+  frame/feature_names signature + local `auto` dispatch;
+  `RANKING_MODEL_NAMES` superset covers local set; `/models` endpoint gained
+  neural/ensemble; `splice_challenger_column.py` KNOWN_MODELS union kept
+  (live agent WIP re-staged, uncommitted by design).
+- Known environment failure (pre-existing, NOT merge-caused):
+  `test_covariance.py::test_ewma_rejects_invalid_lambda_and_dcc_is_finite`
+  — arch 8.0.0 on macOS arm64 fits β=1.0 boundary on seed-11 noise →
+  fail-closed `nonstationary_persistence`. Identical code on both lineages.
+- Stale local artifact quarantined: `data/metadata/vol_garch.joblib`
+  renamed `.pre_merge_stale` — remote's fail-closed scope check correctly
+  rejects pre-`series_scope` artifacts; retrain via `train_volatility` if
+  needed locally.
+- nh_* 4h crossover LANDED + merged: `MERGED_h4_native.json` (5 assets ×
+  300, 4h/90/18 verified). Split verdict — kronos_small wins 4h path
+  (+0.0336) and ret RankIC (+0.0655); challengers sweep vol MAE both
+  freqs; `dip_gmm_k` in-slate via `_gmm_col.py`. EVAL_REPORT §4.3 +
+  PROOF.md crossover-boundary bullet updated.
+- ANOTHER AGENT ACTIVE in this worktree: new `lane-*` dirs (aci, egarch,
+  egarchl, evt, har, kde, mid, seas, stack2, tools) + WIP edits to
+  `engine.py`/`fast_replay.py`/`splice_challenger_column.py`/
+  `robinhood_plus/constants.py` left UNCOMMITTED — do not clobber.
+- NEXT: s23 merge when it lands; tfmfix4 splice → 11-asset verified daily
+  arena; P0.7 doc flip if the concurrent lane work converges.

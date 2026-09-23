@@ -1,8 +1,9 @@
 # SOTA Evaluation Report — return-distribution forecasting
 
 **Status:** contract-v2 results final for the primary cells and the
-20-model extended arena; §4.3 daily crossover landed (4h in flight);
-seed-11 replication verified under contract v2; seed-23 in flight.
+20-model extended arena; §4.3 native-protocol crossover landed at both
+frequencies (split verdict — daily challenger / 4h Kronos); seed-11
+replication verified under contract v2; seed-23 in flight.
 **Scope (declared):** causal return-distribution forecasting on Binance USDT
 spot bars (daily + 4-hour). Research-only; `live_pnl_claim: false` in every
 receipt. This document is the outsider-auditable artifact; `.dsh-24x7/PROOF.md`
@@ -16,9 +17,11 @@ receipt. This document is the outsider-auditable artifact; `.dsh-24x7/PROOF.md`
 - **H2 (robustness):** H1 survives Hansen SPA, Diebold–Mariano, and the
   Hansen–Lunde–Nason Model Confidence Set at α = 0.10 on balanced
   chronological panels.
-- **H3 (crossover, in flight):** the ordering survives under the Kronos
-  paper's own evaluation protocol (arXiv:2508.02739 App. D): close-path
-  RankIC, H-step return RankIC, realized-volatility MAE/R².
+- **H3 (crossover):** the ordering survives under the Kronos paper's own
+  evaluation protocol (arXiv:2508.02739 App. D): close-path RankIC, H-step
+  return RankIC, realized-volatility MAE/R². **Result: partial** — challengers
+  win daily path RankIC and vol MAE at both frequencies; `kronos_small`
+  wins 4h path and return RankIC (§4.3).
 - **Non-claim:** no live-trading, execution, capacity, or P&L statement.
 
 ## 2. Universe and data
@@ -152,8 +155,28 @@ direction-of-return metric (timesfm +0.0040, kronos +0.0026 vs dip best
 +0.0002). `dip_student_t` vol-R² −5.59 is a real failure (disclosed);
 `dip_ewma_t` path-RankIC is undefined by construction (flat mean path).
 
-**4h — IN FLIGHT** (`nh_*` shards at 150/300 origins, corrected 90/18
-confirmed live; two stale 80/12 receipts on disk will be overwritten).
+**4h — LANDED** (`MERGED_h4_native.json`, 5 deep assets × 300 origins,
+corrected 90/18 verified in every receipt):
+
+| model | path RankIC | ret RankIC | vol MAE |
+|---|---|---|---|
+| **kronos_small** | **0.0336** | **+0.0655** | 0.0029 |
+| timesfm | 0.0161 | +0.0047 | 0.0030 |
+| dip_fhs | 0.0081 | −0.0124 | 0.0021 |
+| dip_lgbm_q | 0.0053 | −0.0044 | **0.0020** |
+| bolt_small | −0.0182 | −0.0416 | 0.0030 |
+| chronos2 | −0.0211 | −0.0452 | 0.0030 |
+
+(15 challengers + 4 targets scored; table shows leads per metric.)
+Reading, honestly: the ordering **flips at 4h** — `kronos_small` wins the
+paper's headline path-shape metric outright (+0.0336 vs best challenger
+`dip_fhs` +0.0081) and dominates return-direction RankIC (+0.0655; every
+challenger ≤ +0.017). Challengers still sweep realized-vol MAE
+(`dip_lgbm_q` 0.0020, `dip_ewma_emp` 0.0020, `dip_empirical` 0.0021 vs
+targets 0.0029–0.0030) and vol R². `dip_student_t` vol-R² −14226 is a
+heavy-tail blowup (disclosed); `dip_ewma_t` path-RankIC undefined by
+construction (flat mean path); `dip_gmm_k` landed in-slate via
+`scripts/_gmm_col.py` splice (−0.0005 path / +0.0174 ret RankIC).
 
 ### 4.4 Robustness (`evidence-sota-robustness.txt`)
 
@@ -234,10 +257,12 @@ config, implementation hashes (`sota_eval_kronos.py`, `inference.py`,
 
 - [x] contract-v2 merged receipts on all cells, challengers retained, all
       targets excluded from MCS @0.10 (v3-d1, v4-d1, h4f all confirmed)
-- [~] native-protocol ordering reproduced or deviation documented —
-      daily LANDED (dip_garch_t wins path RankIC outright; published
-      models keep ret-direction RankIC — split verdict, §4.3); 4h in
-      flight (`nh_*` at 150/300)
+- [x] native-protocol ordering reproduced or deviation documented —
+      LANDED both frequencies, split verdict: daily `dip_garch_t` wins
+      path RankIC outright (+0.0402 #1); 4h `kronos_small` wins path
+      (+0.0336) and return (+0.0655) RankIC — the paper's own model is
+      strongest at its native frequency; challengers sweep vol MAE at
+      both frequencies (§4.3)
 - [x] multi-horizon cells (Phase D): explicitly bounded — see incident 7;
       multi-step evidence lives in the crossover protocol instead
 - [x] scope decision (Phase G): G-bound — Binance USDT crypto

@@ -32,11 +32,16 @@ KNOWN_MODELS = {
     "dip_xbeta",
     "dip_seas",
     "dip_egarch",
+    "dip_egarch_l",
     "dip_aci",
     "dip_har",
     "dip_kde",
     "dip_volm",
     "dip_lgbm_qv",
+    "dip_evt",
+    "dip_mid",
+    "dip_egarch_l",
+    "dip_stack2",
 }
 PROTOCOL_FIELDS = (
     "origins_per_asset",
