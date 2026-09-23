@@ -16,12 +16,15 @@ def _bars() -> tuple[pl.DataFrame, pl.DataFrame]:
         date = start + timedelta(days=i)
         known = date + timedelta(hours=23, minutes=59)
         perp.append(
-            {"security_id": "BTC", "event_time": date, "close": 100 * (1 + b),
-             "available_time": known}
+            {
+                "security_id": "BTC",
+                "event_time": date,
+                "close": 100 * (1 + b),
+                "available_time": known,
+            }
         )
         spot.append(
-            {"security_id": "BTC", "event_time": date, "close": 100.0,
-             "available_time": known}
+            {"security_id": "BTC", "event_time": date, "close": 100.0, "available_time": known}
         )
     return pl.DataFrame(perp), pl.DataFrame(spot)
 

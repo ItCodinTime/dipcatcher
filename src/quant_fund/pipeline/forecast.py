@@ -124,6 +124,7 @@ INTERVAL_ALPHA = 0.10
 
 # Process-local caches for causal panel / multi-asof hot paths
 _RANKER_CACHE: dict[tuple[str, str], object] = {}
+_RL_POLICY_CACHE: dict[tuple[str, float], object] = {}
 _GARCH_SPEC_CACHE: dict[tuple[str, str], GARCHVol] = {}
 _GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
 _GARCH_NAME_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
@@ -352,6 +353,7 @@ def resolve_wrappee_reselect_cached(
 def clear_forecast_caches() -> None:
     """Clear ranker / conformal / wrappee / GARCH process-local caches (panel cache separate)."""
     _RANKER_CACHE.clear()
+    _RL_POLICY_CACHE.clear()
     _GARCH_SPEC_CACHE.clear()
     _GARCH_ASOF_CACHE.clear()
     _GARCH_NAME_ASOF_CACHE.clear()
@@ -903,7 +905,7 @@ def _load_rl_cached(config: AppConfig):
     if path is None:
         return None
     key = (str(path.resolve()), path.stat().st_mtime)
-    cached = _RANKER_CACHE.get(key)
+    cached = _RL_POLICY_CACHE.get(key)
     if cached is not None:
         return cached
     artifact = load_joblib_artifact(path)
@@ -911,14 +913,18 @@ def _load_rl_cached(config: AppConfig):
         raise ValueError("RL artifact is malformed: expected policy and features")
     policy = artifact["policy"]
     features = artifact["features"]
-    if not (hasattr(policy, "scores") or hasattr(policy, "predict")) or not isinstance(features, list) or not features:
+    if (
+        not (hasattr(policy, "scores") or hasattr(policy, "predict"))
+        or not isinstance(features, list)
+        or not features
+    ):
         raise ValueError("RL artifact has an invalid policy or feature contract")
     artifact_name = str(artifact.get("policy_name", path.stem.removeprefix("rl_"))).upper()
     loaded = (policy, [str(feature) for feature in features], f"RL_{artifact_name}")
-    _RANKER_CACHE[key] = loaded
-    if len(_RANKER_CACHE) > 8:
-        oldest = next(iter(_RANKER_CACHE))
-        _RANKER_CACHE.pop(oldest, None)
+    _RL_POLICY_CACHE[key] = loaded
+    if len(_RL_POLICY_CACHE) > 8:
+        oldest = next(iter(_RL_POLICY_CACHE))
+        _RL_POLICY_CACHE.pop(oldest, None)
     return loaded
 
 
@@ -936,9 +942,7 @@ def _load_probability_calibrator(
     if not isinstance(calibrator, ProbabilityCalibrator) or not calibrator.fitted:
         raise ValueError("probability calibrator artifact is invalid or unfitted")
     if calibrator.score_feature != "cs_pct_mom_20":
-        raise ValueError(
-            "probability calibrator score identity mismatch: expected cs_pct_mom_20"
-        )
+        raise ValueError("probability calibrator score identity mismatch: expected cs_pct_mom_20")
     expected_label = config.fusion.probability_calibration_label
     if expected_label is not None and calibrator.label != expected_label:
         raise ValueError("probability calibrator label identity mismatch")
@@ -960,6 +964,8 @@ def _load_probability_calibrator(
         if (right - left).days < 0 or (right - left).days > max_age:
             raise ValueError("probability calibrator is stale for forecast asof")
     return calibrator
+
+
 def _paper_challenger_stamp(
     config: AppConfig,
     x: NDArray[np.float64],

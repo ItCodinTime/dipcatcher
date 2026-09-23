@@ -42,14 +42,20 @@ class OverlayAdapter:
         return {k: v * s for k, v in targets.items()}
 
 
-def load_carry(extra_dir: pathlib.Path | str | None = None):
-    if extra_dir is not None:
-        extra_dir = pathlib.Path(extra_dir)
+def load_carry(
+    extra_dir: pathlib.Path | str | None = None,
+    data_dir: pathlib.Path | str | None = None,
+):
+    extras = (
+        [pathlib.Path(p) for p in str(extra_dir).split(",") if p] if extra_dir is not None else []
+    )
+    base = pathlib.Path(data_dir) if data_dir is not None else DATA
 
     def _bars(name):
-        frames = [pl.read_parquet(DATA / name)]
-        if extra_dir is not None and (extra_dir / name).exists():
-            frames.append(pl.read_parquet(extra_dir / name))
+        frames = [pl.read_parquet(base / name)]
+        for extra in extras:
+            if (extra / name).exists():
+                frames.append(pl.read_parquet(extra / name))
         return (
             pl.concat(frames)
             .unique(["event_time", "security_id"])
@@ -98,6 +104,8 @@ def run_one(
     vlb=None,
     vr=0.04,
     rexp=0.0,
+    ebp=None,
+    lev=None,
 ):
     w = basis_carry_hysteresis_weights(
         perp,
@@ -114,9 +122,13 @@ def run_one(
         vol_lookback=vlb,
         vol_ref=vr,
         rate_exponent=rexp,
+        enter_rate_by_prefix=ebp,
     )
     scaler = OverlayAdapter(**scaler_kw) if scaler_kw else None
-    res = run_carry_backtest(perp, spot, fund, w, make_cfg(), initial_nav=1e6, scaler=scaler)
+    cfg = make_cfg()
+    if lev is not None:
+        cfg.perp.max_leverage = lev
+    res = run_carry_backtest(perp, spot, fund, w, cfg, initial_nav=1e6, scaler=scaler)
     m = res.metrics
     keep = (
         "total_return",
@@ -142,11 +154,16 @@ def main() -> int:
     ap.add_argument(
         "--extra-dir",
         default=None,
-        help="second parquet dir merged into the universe (e.g. data/binance_carry_extra)",
+        help="comma list of parquet dirs merged into the universe (e.g. data/binance_carry_extra,data/hl_carry_book)",
+    )
+    ap.add_argument(
+        "--data-dir",
+        default=None,
+        help="base parquet dir replacing DATA (e.g. data/hl_carry_book)",
     )
     args = ap.parse_args()
 
-    perp, spot, fund = load_carry(args.extra_dir)
+    perp, spot, fund = load_carry(args.extra_dir, args.data_dir)
     print("coins:", fund["security_id"].n_unique(), "fund rows:", fund.height)
     dev_end = SPLIT
     dev_p = perp.filter(pl.col("event_time") < dev_end)
@@ -155,7 +172,7 @@ def main() -> int:
     print("dev bars:", dev_p.height, "dev fund:", dev_f.height)
 
     if args.mode == "champion":
-        tag = "_expanded" if args.extra_dir else ""
+        tag = "_expanded" if (args.extra_dir or args.data_dir) else ""
         return run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag=tag)
     return run_grid(dev_p, dev_s, dev_f)
 
@@ -180,8 +197,9 @@ def eligible_coins(perp: pl.DataFrame, spot: pl.DataFrame, max_gap: int = 3) -> 
         for t in sub["event_time"].to_list():
             have[idx[t]] = True
         nz = np.nonzero(have)[0]
-        # must still be listed at window end; gaps only inside its own span
-        if nz.size == 0 or nz[-1] < last_i:
+        # must still be listed at window end (within max_gap: merged venues end on
+        # different dates); gaps only inside its own span
+        if nz.size == 0 or nz[-1] < last_i - max_gap:
             continue
         span = have[nz[0] : nz[-1] + 1]
         mx = cur = 0
@@ -232,6 +250,11 @@ def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag="") -> int:
 
 
 def run_grid(dev_p, dev_s, dev_f) -> int:
+    keep = eligible_coins(dev_p, dev_s)
+    dev_p = dev_p.filter(pl.col("security_id").is_in(keep))
+    dev_s = dev_s.filter(pl.col("security_id").is_in(keep))
+    dev_f = dev_f.filter(pl.col("security_id").is_in(keep))
+    print("dev eligible coins:", len(keep))
 
     grid = []
     for enter, lb, nw, mx, band in itertools.product(

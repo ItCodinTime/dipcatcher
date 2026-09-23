@@ -30,13 +30,12 @@ def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.Monke
             "manifest_schema": "model_artifact.v1",
         },
     )
-    assert dict((key, value) for _, key, value in calls) == {
-        "artifact_sha256": "a" * 64,
-        "artifact_manifest_valid": "true",
-        "artifact_class": "RidgeRanker",
-        "artifact_manifest_schema": "model_artifact.v1",
-    }
-    assert {run_id for run_id, _, _ in calls} == {"run-id"}
+    assert calls == [
+        ("run-id", "artifact_sha256", "a" * 64),
+        ("run-id", "artifact_manifest_valid", "true"),
+        ("run-id", "artifact_class", "RidgeRanker"),
+        ("run-id", "artifact_manifest_schema", "model_artifact.v1"),
+    ]
 
 
 def test_attach_artifact_identity_rejects_invalid_manifest_before_client(

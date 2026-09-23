@@ -399,6 +399,7 @@ def basis_carry_hysteresis_weights(
     vol_lookback: int | None = None,
     vol_ref: float = 0.04,
     rate_exponent: float = 0.0,
+    enter_rate_by_prefix: dict[str, float] | None = None,
 ) -> pl.DataFrame:
     """Event-driven carry membership book — the low-churn version.
 
@@ -434,6 +435,10 @@ def basis_carry_hysteresis_weights(
     is multiplied by ``N * rate_i**rate_exponent / sum(rate_j**rate_exponent)``
     over the day's book, so the book's gross is unchanged but share follows
     rate^exponent. ``0`` = equal weight (default).
+
+    ``enter_rate_by_prefix`` overrides ``enter_rate`` for sids carrying the
+    given prefix (e.g. ``{"DYDX:": 0.0006}``) — venues with noisier funding
+    prints can demand deeper persistence before membership; exit stays global.
     """
     _validate_bars(bars)
     if funding.height == 0:
@@ -461,6 +466,15 @@ def basis_carry_hysteresis_weights(
     for row in grid.iter_rows(named=True):
         rates_by_time.setdefault(row["event_time"], {})[str(row["security_id"])] = row["rate_ma"]
         px_by_time.setdefault(row["event_time"], {})[str(row["security_id"])] = row["close"]
+
+    _enter_bars: dict[str, float] = {}
+    if enter_rate_by_prefix:
+        known = {str(s) for s in funding["security_id"].unique()}
+        for sid in known:
+            for pref, bar in enter_rate_by_prefix.items():
+                if sid.startswith(pref):
+                    _enter_bars[sid] = bar
+                    break
 
     vols_by_time: dict[datetime, dict[str, float]] = {}
     if vol_lookback is not None:
@@ -499,7 +513,7 @@ def basis_carry_hysteresis_weights(
             (
                 (sid, r)
                 for sid, r in rates.items()
-                if r is not None and r >= enter_rate and sid not in active
+                if r is not None and r >= _enter_bars.get(sid, enter_rate) and sid not in active
             ),
             key=lambda kv: kv[1],
             reverse=True,

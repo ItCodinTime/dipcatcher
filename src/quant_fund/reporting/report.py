@@ -77,10 +77,18 @@ def write_evidence_report(
         "markdown": directory / "evidence_report.md",
     }
     markdown = write_report_text(report)
-    for key, content in (("json", json.dumps(report, indent=2, sort_keys=True) + "\n"), ("markdown", markdown)):
+    for key, content in (
+        ("json", json.dumps(report, indent=2, sort_keys=True) + "\n"),
+        ("markdown", markdown),
+    ):
         destination = paths[key]
         with NamedTemporaryFile(
-            dir=destination.parent, prefix=f".{destination.name}.", suffix=".tmp", mode="w", encoding="utf-8", delete=False
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            mode="w",
+            encoding="utf-8",
+            delete=False,
         ) as temporary:
             temporary.write(content)
             temporary.flush()
@@ -90,7 +98,12 @@ def write_evidence_report(
     digest = hashlib.sha256(paths["json"].read_bytes()).hexdigest()
     sidecar = paths["json"].with_name(f"{paths['json'].name}.sha256")
     with NamedTemporaryFile(
-        dir=sidecar.parent, prefix=f".{sidecar.name}.", suffix=".tmp", mode="w", encoding="ascii", delete=False
+        dir=sidecar.parent,
+        prefix=f".{sidecar.name}.",
+        suffix=".tmp",
+        mode="w",
+        encoding="ascii",
+        delete=False,
     ) as temporary:
         temporary.write(digest + "\n")
         temporary.flush()
@@ -102,7 +115,14 @@ def write_evidence_report(
 
 def write_report_text(report: dict[str, Any]) -> str:
     """Render an evidence report without implying readiness."""
-    lines = ["# Institutional Evidence Report", "", f"- status: {report['status']}", "- research_only: true", "- live_pnl_claim: false", ""]
+    lines = [
+        "# Institutional Evidence Report",
+        "",
+        f"- status: {report['status']}",
+        "- research_only: true",
+        "- live_pnl_claim: false",
+        "",
+    ]
     lines.append("## Warnings")
     warnings = report.get("warnings") or ["none"]
     lines.extend(f"- {warning}" for warning in warnings)

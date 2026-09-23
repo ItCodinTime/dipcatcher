@@ -102,9 +102,7 @@ def _validate_panel_fast(weights: pl.DataFrame) -> None:
         return
     if weights.height == 0:
         return
-    dup = weights.select(
-        pl.struct(["event_time", "security_id"]).is_duplicated().any()
-    ).item()
+    dup = weights.select(pl.struct(["event_time", "security_id"]).is_duplicated().any()).item()
     if dup:
         raise ValueError("duplicate target weights for event_time/security_id")
     w = weights["target_weight"]
@@ -286,9 +284,15 @@ def _csum(v: np.ndarray, f: np.ndarray) -> float:
 
 @njit(cache=True)
 def _order_costs_nb(
-    d: float, px: float, adv_d: float, vol_d: float,
-    frictionless: bool, commission_bps: float, half_spread_bps: float,
-    impact_y: float, bps_per_turnover: float,
+    d: float,
+    px: float,
+    adv_d: float,
+    vol_d: float,
+    frictionless: bool,
+    commission_bps: float,
+    half_spread_bps: float,
+    impact_y: float,
+    bps_per_turnover: float,
 ) -> tuple[float, float, float, float]:
     # Caller validates ``d``/``px`` first — identical ordering to the
     # reference ``total_cost`` (validation precedes the frictionless return).
@@ -305,14 +309,14 @@ def _order_costs_nb(
 
 @njit(cache=True)
 def _replay_kernel(
-    exec_px: np.ndarray,      # (T,A) f64 — exec source (open next_open / close)
-    close_px: np.ndarray,     # (T,A) f64 — decision close + mark fallback
-    ctr: np.ndarray,          # (T,A) f64 — preferred mark
-    adv: np.ndarray,          # (T,A) f64
-    vol: np.ndarray,          # (T,A) f64
-    w_mat: np.ndarray,        # (T,A) f64 — carried target grid already applied
+    exec_px: np.ndarray,  # (T,A) f64 — exec source (open next_open / close)
+    close_px: np.ndarray,  # (T,A) f64 — decision close + mark fallback
+    ctr: np.ndarray,  # (T,A) f64 — preferred mark
+    adv: np.ndarray,  # (T,A) f64
+    vol: np.ndarray,  # (T,A) f64
+    w_mat: np.ndarray,  # (T,A) f64 — carried target grid already applied
     market_vols: np.ndarray,  # (T,)  f64 — value only valid where has_mv
-    has_mv: np.ndarray,       # (T,)  bool
+    has_mv: np.ndarray,  # (T,)  bool
     use_next_open: bool,
     ref_carries: bool,
     commission_bps: float,
@@ -331,23 +335,23 @@ def _replay_kernel(
     max_predicted_vol: float,
     kill_blocks: bool,
     initial_nav: float,
-    navs_out: np.ndarray,     # (T,4) f64
-    navs_t: np.ndarray,       # (T,) i64
-    f_qty: np.ndarray,        # (M,) f64
-    f_px: np.ndarray,         # (M,) f64
-    f_fee: np.ndarray,        # (M,) f64
-    f_spr: np.ndarray,        # (M,) f64
-    f_imp: np.ndarray,        # (M,) f64
-    f_asset: np.ndarray,      # (M,) i64
-    f_et: np.ndarray,         # (M,) i64
-    f_st: np.ndarray,         # (M,) i64
-    f_dec: np.ndarray,        # (M,) f64
-    f_decok: np.ndarray,      # (M,) bool
-    stale_assets: np.ndarray, # (A,) i64
-    stale_ages: np.ndarray,   # (A,) i64
-    stale_ever: np.ndarray,   # (A,) bool
-    term_v: np.ndarray,       # (A,) f64 work buffer
-    term_f: np.ndarray,       # (A,) bool work buffer
+    navs_out: np.ndarray,  # (T,4) f64
+    navs_t: np.ndarray,  # (T,) i64
+    f_qty: np.ndarray,  # (M,) f64
+    f_px: np.ndarray,  # (M,) f64
+    f_fee: np.ndarray,  # (M,) f64
+    f_spr: np.ndarray,  # (M,) f64
+    f_imp: np.ndarray,  # (M,) f64
+    f_asset: np.ndarray,  # (M,) i64
+    f_et: np.ndarray,  # (M,) i64
+    f_st: np.ndarray,  # (M,) i64
+    f_dec: np.ndarray,  # (M,) f64
+    f_decok: np.ndarray,  # (M,) bool
+    stale_assets: np.ndarray,  # (A,) i64
+    stale_ages: np.ndarray,  # (A,) i64
+    stale_ever: np.ndarray,  # (A,) bool
+    term_v: np.ndarray,  # (A,) f64 work buffer
+    term_f: np.ndarray,  # (A,) bool work buffer
 ) -> tuple[int, int, int, int, int, int, float, float, float, int, int]:
     """Returns (status, n_navs, n_fills, rejects, cash_rejects, halts,
     commission_sum, spread_sum, impact_sum, order_seq, nstale).
@@ -417,19 +421,25 @@ def _replay_kernel(
                 nstale += 1
         for j in range(npos):
             a = pos_seq[j]
-            if (
-                abs(shares[a]) > 1e-12
-                and ever_marked[a]
-                and mark_age[a] > stale_price_bars
-            ):
+            if abs(shares[a]) > 1e-12 and ever_marked[a] and mark_age[a] > stale_price_bars:
                 stale_assets[nstale] = a
                 stale_ages[nstale] = mark_age[a]
                 stale_ever[nstale] = True
                 nstale += 1
         if nstale:
-            return (1, n_navs, n_fills, reject_count, cash_reject_count,
-                    halt_count, cost_comm, cost_spr, cost_imp, order_seq,
-                    nstale)
+            return (
+                1,
+                n_navs,
+                n_fills,
+                reject_count,
+                cash_reject_count,
+                halt_count,
+                cost_comm,
+                cost_spr,
+                cost_imp,
+                order_seq,
+                nstale,
+            )
 
         # --- nav at execution marks --------------------------------------
         for a in range(n_assets):
@@ -478,20 +488,43 @@ def _replay_kernel(
             # ``total_cost`` validates before the frictionless early return —
             # a non-finite delta fails closed rather than trading.
             if not np.isfinite(delta) or not np.isfinite(price) or price <= 0:
-                return (2, n_navs, n_fills, reject_count, cash_reject_count,
-                        halt_count, cost_comm, cost_spr, cost_imp, order_seq,
-                        0)
+                return (
+                    2,
+                    n_navs,
+                    n_fills,
+                    reject_count,
+                    cash_reject_count,
+                    halt_count,
+                    cost_comm,
+                    cost_spr,
+                    cost_imp,
+                    order_seq,
+                    0,
+                )
             comm, spr, imp, total = _order_costs_nb(
-                delta, price, adv_eff, vol_eff, frictionless,
-                commission_bps, half_spread_bps, impact_y, bps_per_turnover,
+                delta,
+                price,
+                adv_eff,
+                vol_eff,
+                frictionless,
+                commission_bps,
+                half_spread_bps,
+                impact_y,
+                bps_per_turnover,
             )
             max_qty = participation_limit * (adv_eff / price)
             if abs(delta) > max_qty > 0:
                 delta = np.sign(delta) * max_qty
                 delta_np64 = True
                 comm, spr, imp, total = _order_costs_nb(
-                    delta, price, adv_eff, vol_eff, frictionless,
-                    commission_bps, half_spread_bps, impact_y,
+                    delta,
+                    price,
+                    adv_eff,
+                    vol_eff,
+                    frictionless,
+                    commission_bps,
+                    half_spread_bps,
+                    impact_y,
                     bps_per_turnover,
                 )
 
@@ -616,8 +649,19 @@ def _replay_kernel(
         navs_t[n_navs] = exec_t
         n_navs += 1
 
-    return (0, n_navs, n_fills, reject_count, cash_reject_count,
-            halt_count, cost_comm, cost_spr, cost_imp, order_seq, 0)
+    return (
+        0,
+        n_navs,
+        n_fills,
+        reject_count,
+        cash_reject_count,
+        halt_count,
+        cost_comm,
+        cost_spr,
+        cost_imp,
+        order_seq,
+        0,
+    )
 
 
 def _replay_driver(
@@ -745,9 +789,7 @@ def _replay_driver(
             "held position valuation is stale beyond the configured limit: " + details
         )
     if status == 2:
-        raise ValueError(
-            "quantity must be finite and price must be finite and positive"
-        )
+        raise ValueError("quantity must be finite and price must be finite and positive")
 
     # Row-dict construction straight from the output buffers — the same
     # Python scalars the interpreted path appends (datetimes, floats, strs,
@@ -859,9 +901,7 @@ def run_backtest_fast(
         if piv.height:
             piv_ns = piv["event_time"].cast(pl.Int64).to_numpy()
             piv_ti = np.searchsorted(dates_ns, piv_ns)
-            in_range = (piv_ti < n_dates) & (
-                dates_ns[np.minimum(piv_ti, n_dates - 1)] == piv_ns
-            )
+            in_range = (piv_ti < n_dates) & (dates_ns[np.minimum(piv_ti, n_dates - 1)] == piv_ns)
             for col in piv.columns:
                 if col == "event_time":
                     continue
@@ -902,7 +942,6 @@ def run_backtest_fast(
     costs_cfg = config.costs
     gate = config.risk_gate
     kill = KillSwitch(config.kill_switch)
-
 
     # KillSwitch state is fixed at construction — evaluate once; each blocked
     # order is still counted identically in the loop below.
@@ -1002,16 +1041,10 @@ def run_backtest_fast(
             # Detail order follows the reference's two dict passes over
             # book.shares insertion order: never-marked names first (detail
             # "unknown"), then over-limit names.
-            stale = [
+            stale = [a for a in pos_seq if abs(shares[a]) > 1e-12 and not ever_marked[a]] + [
                 a
                 for a in pos_seq
-                if abs(shares[a]) > 1e-12 and not ever_marked[a]
-            ] + [
-                a
-                for a in pos_seq
-                if abs(shares[a]) > 1e-12
-                and ever_marked[a]
-                and mark_age[a] > gate.stale_price_bars
+                if abs(shares[a]) > 1e-12 and ever_marked[a] and mark_age[a] > gate.stale_price_bars
             ]
             if stale:
                 details = ", ".join(
@@ -1119,7 +1152,15 @@ def run_backtest_fast(
                     mv_bad
                     or any(
                         not math.isfinite(v)
-                        for v in (nav, price, current_w, gross_after, net_after, participation, vol_eff)
+                        for v in (
+                            nav,
+                            price,
+                            current_w,
+                            gross_after,
+                            net_after,
+                            participation,
+                            vol_eff,
+                        )
                     )
                     or nav <= 0.0
                     or price <= 0.0
