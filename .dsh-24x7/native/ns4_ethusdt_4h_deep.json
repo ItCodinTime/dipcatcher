@@ -1,0 +1,50 @@
+{
+  "asset": "ETHUSDT",
+  "bars_sha256": "7a9d8e51ece58d0b09750452c9b4b5cfd982bb4db151782424cd817ebb9ed197",
+  "freq": "4h",
+  "horizon": 18,
+  "live_pnl_claim": false,
+  "lookback": 90,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.016435196642129037,
+      "path_rankic_se": 0.0347952953731032,
+      "ret_rankic": 0.049800997788864314,
+      "vol_mae": 0.0021178703495262716,
+      "vol_r2": 0.05068235183105585
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.006945592455539464,
+      "path_rankic_se": 0.03480592135755812,
+      "ret_rankic": -0.028841653796153287,
+      "vol_mae": 0.002446809485650511,
+      "vol_r2": -0.5244770715474132
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.02011687088961916,
+      "path_rankic_se": 0.03478884884675572,
+      "ret_rankic": -0.026814075711952358,
+      "vol_mae": 0.0021231800070771354,
+      "vol_r2": 0.08871709766019109
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0008408412525466884,
+      "path_rankic_se": 0.03480819743992798,
+      "ret_rankic": -0.00959832887032078,
+      "vol_mae": 0.0021944581512032576,
+      "vol_r2": 0.05918468400961785
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 427.0632107257843,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

@@ -1,0 +1,50 @@
+{
+  "asset": "SOLUSDT",
+  "bars_sha256": "33267199e2115b25e76504f902b955545324688f0631b66264f836a7bb55246e",
+  "freq": "4h",
+  "horizon": 18,
+  "live_pnl_claim": false,
+  "lookback": 90,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.0011960092443797587,
+      "path_rankic_se": 0.035372478357301625,
+      "ret_rankic": 0.005880509783442038,
+      "vol_mae": 0.0024914167486901066,
+      "vol_r2": 0.0750664000263469
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.001206879015949922,
+      "path_rankic_se": 0.035372477126643966,
+      "ret_rankic": -0.05288947654973944,
+      "vol_mae": 0.0028215415888207794,
+      "vol_r2": -0.11701324984309736
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.019465488543800754,
+      "path_rankic_se": 0.035354688172631155,
+      "ret_rankic": 0.04571028566984077,
+      "vol_mae": 0.002370191933052843,
+      "vol_r2": 0.18779716803779567
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.02900768063797873,
+      "path_rankic_se": 0.035332876684633224,
+      "ret_rankic": 0.048967655196168844,
+      "vol_mae": 0.0027486338928578323,
+      "vol_r2": 0.0653881421154795
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 423.96441316604614,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

@@ -1,0 +1,50 @@
+{
+  "asset": "AVAXUSDT",
+  "bars_sha256": "40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359",
+  "freq": "1d",
+  "horizon": 12,
+  "live_pnl_claim": false,
+  "lookback": 40,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.10235957238046403,
+      "path_rankic_se": 0.03472966286411073,
+      "ret_rankic": -0.19488972099689994,
+      "vol_mae": 0.01174801627691664,
+      "vol_r2": 0.07012127218518771
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.06700993338643675,
+      "path_rankic_se": 0.03501580574930386,
+      "ret_rankic": -0.029937221524683606,
+      "vol_mae": 0.012855569964560859,
+      "vol_r2": 0.01928091660761999
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.04129772365062399,
+      "path_rankic_se": 0.03514810686583398,
+      "ret_rankic": -0.1125065834064823,
+      "vol_mae": 0.013075234254264233,
+      "vol_r2": 0.016932539464135643
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.0698174391480059,
+      "path_rankic_se": 0.03499751667595686,
+      "ret_rankic": -0.28476316403515595,
+      "vol_mae": 0.013785251126062388,
+      "vol_r2": -0.01052710539220958
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 450.9539260864258,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

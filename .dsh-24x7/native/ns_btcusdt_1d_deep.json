@@ -1,0 +1,50 @@
+{
+  "asset": "BTCUSDT",
+  "bars_sha256": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+  "freq": "1d",
+  "horizon": 12,
+  "live_pnl_claim": false,
+  "lookback": 40,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.06522144522144524,
+      "path_rankic_se": 0.03657989595647711,
+      "ret_rankic": 0.06256958410649006,
+      "vol_mae": 0.0038329935320701764,
+      "vol_r2": -0.044156631040373595
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.01906759906759906,
+      "path_rankic_se": 0.036756718208538805,
+      "ret_rankic": -0.039250658340648226,
+      "vol_mae": 0.004166994800760506,
+      "vol_r2": -0.08962639410438134
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.02843822843822842,
+      "path_rankic_se": 0.03673652771362024,
+      "ret_rankic": -0.071135457060634,
+      "vol_mae": 0.003997421671392374,
+      "vol_r2": -0.032933034124484006
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.036829836829836836,
+      "path_rankic_se": 0.03671167100945187,
+      "ret_rankic": -0.10217224635829285,
+      "vol_mae": 0.004235574227383487,
+      "vol_r2": -0.02153899375125934
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 427.93415880203247,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

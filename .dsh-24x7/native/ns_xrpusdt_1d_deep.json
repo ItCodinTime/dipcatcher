@@ -1,0 +1,50 @@
+{
+  "asset": "XRPUSDT",
+  "bars_sha256": "542e6fa82a63a5489dd04f8b369e55d57529f3946a2f9dfc8717ece99ff60c6f",
+  "freq": "1d",
+  "horizon": 12,
+  "live_pnl_claim": false,
+  "lookback": 40,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.03201915671458759,
+      "path_rankic_se": 0.0367115357631267,
+      "ret_rankic": -0.020810009000099997,
+      "vol_mae": 0.016215676474321074,
+      "vol_r2": -0.06036250872462867
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.019181156255804313,
+      "path_rankic_se": 0.03674136483890253,
+      "ret_rankic": -0.050133890376559735,
+      "vol_mae": 0.018112396174320533,
+      "vol_r2": -0.5959155214210148
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.11353966075453682,
+      "path_rankic_se": 0.036168818488612406,
+      "ret_rankic": -0.16567072967477414,
+      "vol_mae": 0.01812037085775693,
+      "vol_r2": -0.06808447471702128
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.07288142328221882,
+      "path_rankic_se": 0.03651641557634368,
+      "ret_rankic": -0.35894576606406736,
+      "vol_mae": 0.016435220532736286,
+      "vol_r2": -0.07942752942369369
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 445.65193271636963,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}
