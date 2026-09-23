@@ -46,14 +46,16 @@ def load_carry(
     extra_dir: pathlib.Path | str | None = None,
     data_dir: pathlib.Path | str | None = None,
 ):
-    if extra_dir is not None:
-        extra_dir = pathlib.Path(extra_dir)
+    extras = (
+        [pathlib.Path(p) for p in str(extra_dir).split(",") if p] if extra_dir is not None else []
+    )
     base = pathlib.Path(data_dir) if data_dir is not None else DATA
 
     def _bars(name):
         frames = [pl.read_parquet(base / name)]
-        if extra_dir is not None and (extra_dir / name).exists():
-            frames.append(pl.read_parquet(extra_dir / name))
+        for extra in extras:
+            if (extra / name).exists():
+                frames.append(pl.read_parquet(extra / name))
         return (
             pl.concat(frames)
             .unique(["event_time", "security_id"])
@@ -146,7 +148,7 @@ def main() -> int:
     ap.add_argument(
         "--extra-dir",
         default=None,
-        help="second parquet dir merged into the universe (e.g. data/binance_carry_extra)",
+        help="comma list of parquet dirs merged into the universe (e.g. data/binance_carry_extra,data/hl_carry_book)",
     )
     ap.add_argument(
         "--data-dir",
