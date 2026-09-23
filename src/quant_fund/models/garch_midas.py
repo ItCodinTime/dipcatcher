@@ -132,6 +132,11 @@ def garch_midas_fit(
             ],
         )
         theta_hat = res.x
+    # L-BFGS-B can land ~1e-3 outside bounds at a boundary optimum; the model
+    # contract requires alpha/beta/w2 in-range, so clip the returned values.
+    theta_hat[1] = float(np.clip(theta_hat[1], 0.0, 0.5))
+    theta_hat[2] = float(np.clip(theta_hat[2], 0.0, 0.999))
+    theta_hat[5] = float(np.clip(theta_hat[5], w2_lo, w2_hi))
     out = paths(theta_hat)
     if out is None or not np.isfinite(res.fun):
         raise ValueError("GARCH-MIDAS fit failed")

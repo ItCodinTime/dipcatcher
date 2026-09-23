@@ -14,11 +14,11 @@ from quant_fund.registry.mlflow_store import (
 
 
 def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, dict[str, str]]] = []
+    calls: list[tuple[str, str, str]] = []
 
     class FakeClient:
-        def set_tags(self, run_id: str, tags: dict[str, str]) -> None:
-            calls.append((run_id, tags))
+        def set_tag(self, run_id: str, key: str, value: str) -> None:
+            calls.append((run_id, key, value))
 
     monkeypatch.setattr("quant_fund.registry.mlflow_store.MlflowClient", FakeClient)
     attach_artifact_identity(
@@ -30,21 +30,22 @@ def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.Monke
             "manifest_schema": "model_artifact.v1",
         },
     )
-    assert calls == [
-        (
-            "run-id",
-            {
-                "artifact_sha256": "a" * 64,
-                "artifact_manifest_valid": "true",
-                "artifact_class": "RidgeRanker",
-                "artifact_manifest_schema": "model_artifact.v1",
-            },
-        )
-    ]
+    assert dict((key, value) for _, key, value in calls) == {
+        "artifact_sha256": "a" * 64,
+        "artifact_manifest_valid": "true",
+        "artifact_class": "RidgeRanker",
+        "artifact_manifest_schema": "model_artifact.v1",
+    }
+    assert {run_id for run_id, _, _ in calls} == {"run-id"}
 
 
-def test_attach_artifact_identity_rejects_invalid_manifest_before_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("quant_fund.registry.mlflow_store.MlflowClient", lambda: (_ for _ in ()).throw(AssertionError("client should not be called")))
+def test_attach_artifact_identity_rejects_invalid_manifest_before_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "quant_fund.registry.mlflow_store.MlflowClient",
+        lambda: (_ for _ in ()).throw(AssertionError("client should not be called")),
+    )
     with pytest.raises(ValueError, match="64-character sha256"):
         attach_artifact_identity("run-id", {"artifact_sha256": "bad", "manifest_valid": True})
 
