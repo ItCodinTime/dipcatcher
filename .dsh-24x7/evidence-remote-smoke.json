@@ -1,0 +1,30 @@
+{
+ "kind": "remote_smoke_verification",
+ "leg": "second_platform_windows_clean_install_evidence",
+ "host": "codex-remote (Windows, PowerShell over ssh)",
+ "repo": "D:\\dipcatcher",
+ "remote_head": "ebd3951951025e8bc0876c7726771eccd38d18d9",
+ "remote_head_oneline": "ebd3951 chore: ignore model weights dir; bank out-of-sample score metadata",
+ "remote_vs_local": "ebd3951 is an ancestor of local HEAD 2e891b7 (older commit; acceptable per task)",
+ "remote_worktree": "dirty: 92 porcelain entries (pre-existing; not modified by this verification beyond paper-run artifacts the smoke itself writes)",
+ "python": {
+  "bench_qlib": {"exe": "D:\\bench-qlib\\Scripts\\python.exe", "version": "3.12.14", "quant_fund": "not installed", "missing_deps": ["typer", "rich"]},
+  "evalenv": {"exe": "D:\\evalenv\\Scripts\\python.exe", "version": "3.12.14", "quant_fund": "editable install dipcatcher-1.0.0 -> D:\\dipcatcher\\src (dipcatcher-1.0.0.dist-info + _editable_impl_dipcatcher.pth)", "missing_deps": ["numba"]}
+ },
+ "smokes": {
+  "doctor_evalenv_module": {"cmd": "cd D:/dipcatcher; D:/evalenv/Scripts/python.exe -m quant_fund.cli.main doctor --config configs/research.yaml", "exit": 0, "live_allowed": false, "mode": "research", "detail": "dirs ok, data_manifest ok, research_receipt ok, core_imports ok"},
+  "doctor_evalenv_console_script": {"cmd": "cd D:/dipcatcher; D:/evalenv/Scripts/dipcatcher.exe doctor --config configs/research.yaml", "exit": 0, "live_allowed": false, "detail": "console script works; same output as module route"},
+  "paper_evalenv": {"cmd": "cd D:/dipcatcher; D:/evalenv/Scripts/dipcatcher.exe paper --config configs/paper.yaml --max-steps 2", "exit": 0, "run_id": "paper-587f1c5835", "detail": "DATA_LABEL=SYNTHETIC; 'SYNTHETIC - paper ledger is simulated research/infrastructure only.'; n_steps=2, n_fills=39, risk_gate_rejects=4, kill_switch_halts=0; promotion_dry_run: would_promote_paper=false, would_promote_live=false (reasons: insufficient_steps:2<5, mean_l1_above_threshold:0.6075>0.25, synthetic_evidence_not_live_promotable); research_only=true, live_pnl_claim=false; artifacts under data/metadata/paper/paper-587f1c5835/", "nan_fields": ["execution.realized_vol_ann", "execution.calmar_diagnostic", "var_es.var", "var_es.es", "stress.corr_spike_1sigma_pnl"]},
+  "verify_research_evalenv": {"cmd": "cd D:/dipcatcher; D:/evalenv/Scripts/dipcatcher.exe verify-research", "exit": 0, "detail": "valid=true, claim=research_only, scorecard_families=23, errors=[], receipt data/metadata/research/latest.json run_id=70444b1a3c5d31ff917a5fad575930c661b14966726b25534f990f41e8147f48"}
+ },
+ "honest_negatives": {
+  "bench_qlib_import_quant_fund": {"cmd": "D:/bench-qlib/Scripts/python.exe -c \"import quant_fund\"", "exit": 1, "detail": "ModuleNotFoundError: No module named 'quant_fund' - package not installed in bench-qlib env"},
+  "bench_qlib_doctor_via_pythonpath": {"cmd": "cd D:/dipcatcher; $env:PYTHONPATH='src'; D:/bench-qlib/Scripts/python.exe -m quant_fund.cli.main doctor --config configs/research.yaml", "exit": 1, "detail": "ModuleNotFoundError: No module named 'typer' - bench-qlib has numba/polars/yaml/pydantic/click but lacks CLI deps (typer, rich). Not worked around; no installs performed."},
+  "help_rendering": {"cmd": "dipcatcher.exe --help", "exit": 1, "detail": "UnicodeEncodeError: cp1252 console cannot encode U+2192 in help text - cosmetic Windows codepage issue, not a functional failure"},
+  "paper_first_attempt": {"exit": -1, "detail": "first paper invocation truncated by Select-Object -First 8 closing the pipe early; rerun with file redirect exited 0 - artifact of measurement, not a product failure"}
+ },
+ "remote_files_written": ["data/metadata/paper/paper-55c7e2316f/ (partial; killed run)", "data/metadata/paper/paper-587f1c5835/", "data/metadata/paper/latest_run.json", "%TEMP%/dipcatcher-paper-out.txt", "%TEMP%/dipcatcher-vr-out.txt", "%TEMP%/dipcatcher-vr2.txt"],
+ "no_installs": true,
+ "research_only": true,
+ "live_pnl_claim": false
+}
