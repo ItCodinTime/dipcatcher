@@ -185,10 +185,12 @@ def test_bar_validation_rejects_invalid_market_or_availability_data(fault):
 
 
 def test_timesfm_point_channel_is_never_scored_as_a_quantile():
+    # Contract v2: channels are [q50, q10..q40, point, q60..q90]; index 5 is
+    # the point forecast and must be excluded. q50 (index 0) IS a decile.
     channels = np.array([999.0, 91, 93, 95, 97, 100, 103, 105, 107, 109])
     model = SimpleNamespace(forecast=lambda **_: (np.array([[100.0]]), channels[None, None]))
     actual = evaluator.timesfm_quantiles(model, np.array([99.0, 100.0]))
-    np.testing.assert_allclose(actual, channels[1:] / 100 - 1)
+    np.testing.assert_allclose(actual, np.sort(np.delete(channels, 5)) / 100 - 1)
 
 
 @pytest.mark.parametrize(
