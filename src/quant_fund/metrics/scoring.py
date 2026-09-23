@@ -288,6 +288,113 @@ def mean_log_score_gaussian(y: Array, mu: Array, sigma: Array) -> float:
 GARCH_ONE_STEP_CRPS_TAUS: tuple[float, ...] = tuple(float(x) for x in np.linspace(0.05, 0.95, 19))
 
 
+def crps_gaussian_mixture(y: Array, weights: Array, mu: Array, sigma: Array) -> Array:
+    r"""Elementwise closed-form CRPS for a Gaussian-mixture forecast (research-only).
+
+    Grimit, Gneiting & Berrocal (2006, eq. for normal mixtures; also Jordan,
+    Krüger & Lerch 2019). For :math:`F = \sum_k w_k\,N(\mu_k,\sigma_k^2)`:
+
+    .. math::
+
+        \mathrm{CRPS}(F, y)
+        = \sum_k w_k\,\mathrm{CRPS}\bigl(N(\mu_k,\sigma_k^2), y\bigr)
+          - \tfrac12 \sum_{i,j} w_i w_j\, A(\mu_i-\mu_j,\ \sigma_i^2+\sigma_j^2)
+
+    with :math:`A(m, s^2) = s\bigl[2\varphi(m/s) + (m/s)(2\Phi(m/s)-1)\bigr]`,
+    the expected absolute difference of two independent component draws.
+
+    ``weights``/``mu``/``sigma`` are shared component arrays (1d, length K);
+    ``y`` is 1d. A degenerate mixture (non-finite params, any sigma<=0, any
+    negative weight, or zero weight mass) → NaN for every observation. Weights
+    are renormalized only when their sum is within 1e-6 of 1 — anything larger
+    is a caller bug and fails closed to NaN. Not a live capital claim.
+    """
+    y_arr = _as_1d("y", y)
+    w = _as_1d("weights", weights)
+    mu_arr = _as_1d("mu", mu)
+    sig_arr = _as_1d("sigma", sigma)
+    _require_same_length(("weights", w), ("mu", mu_arr), ("sigma", sig_arr))
+    if y_arr.size == 0:
+        return np.asarray([], dtype=float)
+    wsum = float(w.sum())
+    valid_mix = (
+        w.size > 0
+        and np.all(np.isfinite(w))
+        and np.all(np.isfinite(mu_arr))
+        and np.all(np.isfinite(sig_arr))
+        and np.all(sig_arr > 0.0)
+        and np.all(w >= 0.0)
+        and wsum > 0.0
+        and abs(wsum - 1.0) < 1e-6
+    )
+    out = np.full(y_arr.shape, np.nan, dtype=float)
+    ok = np.isfinite(y_arr)
+    if not valid_mix or not np.any(ok):
+        return out
+    w = w / wsum
+    z = (y_arr[ok, None] - mu_arr[None, :]) / sig_arr[None, :]  # (n, K)
+    phi = np.exp(-0.5 * z * z) / np.sqrt(2.0 * np.pi)
+    Phi = 0.5 * (1.0 + erf(z / np.sqrt(2.0)))
+    # E|X_k - y| for X_k ~ N(mu_k, sigma_k^2) — no 1/sqrt(pi) term; that
+    # constant lives in the pairwise-spread term, not the first moment.
+    single = sig_arr[None, :] * (z * (2.0 * Phi - 1.0) + 2.0 * phi)
+    m_ij = mu_arr[:, None] - mu_arr[None, :]  # (K, K)
+    s_ij = np.sqrt(sig_arr[:, None] ** 2 + sig_arr[None, :] ** 2)
+    d_ij = m_ij / s_ij
+    a_ij = s_ij * (
+        2.0 * np.exp(-0.5 * d_ij * d_ij) / np.sqrt(2.0 * np.pi)
+        + d_ij * erf(d_ij / np.sqrt(2.0))
+    )
+    spread = float((w[:, None] * w[None, :] * a_ij).sum())
+    out[ok] = single @ w - 0.5 * spread
+    return out
+
+
+def gaussian_mixture_quantiles(
+    weights: Array, mu: Array, sigma: Array, taus: Array
+) -> Array:
+    """Quantiles of a Gaussian mixture by bisection on the monotone CDF.
+
+    Returns NaN for a degenerate mixture (same contract as
+    ``crps_gaussian_mixture``). Brackets span min(μ)-12σ to max(μ)+12σ over
+    component scales; 80 iterations land within ~1e-24 of the bracket width.
+    """
+    w = _as_1d("weights", weights)
+    mu_arr = _as_1d("mu", mu)
+    sig_arr = _as_1d("sigma", sigma)
+    tau_arr = _as_1d("taus", taus)
+    _require_same_length(("weights", w), ("mu", mu_arr), ("sigma", sig_arr))
+    wsum = float(w.sum())
+    valid_mix = (
+        w.size > 0
+        and np.all(np.isfinite(w))
+        and np.all(np.isfinite(mu_arr))
+        and np.all(np.isfinite(sig_arr))
+        and np.all(sig_arr > 0.0)
+        and np.all(w >= 0.0)
+        and wsum > 0.0
+        and abs(wsum - 1.0) < 1e-6
+    )
+    out = np.full(tau_arr.shape, np.nan, dtype=float)
+    if not valid_mix or np.any((tau_arr <= 0.0) | (tau_arr >= 1.0)):
+        return out
+    w = w / wsum
+    lo = float((mu_arr - 12.0 * sig_arr).min())
+    hi = float((mu_arr + 12.0 * sig_arr).max())
+    for k, tau in enumerate(tau_arr):
+        a, b = lo, hi
+        for _ in range(80):
+            mid = 0.5 * (a + b)
+            z = (mid - mu_arr) / sig_arr
+            cdf = float((w * (0.5 * (1.0 + erf(z / np.sqrt(2.0))))).sum())
+            if cdf < tau:
+                a = mid
+            else:
+                b = mid
+        out[k] = 0.5 * (a + b)
+    return out
+
+
 def crps_empirical(y: float | Array, sample: Array) -> float:
     r"""Empirical CRPS from an ensemble sample (research-only).
 

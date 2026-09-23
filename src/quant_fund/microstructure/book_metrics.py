@@ -265,17 +265,24 @@ def book_metrics_from_snapshot(snapshot: OrderBookSnapshot) -> dict[str, float]:
 
 
 def _ols_log_y_on_index(values: np.ndarray) -> float:
-    """OLS slope of log(values) on 0..n-1. Fail-closed → NaN if n<2."""
-    if values.size < 2:
+    """OLS slope of log(values) on 0..n-1. Fail-closed → NaN if n<2.
+
+    The predictor is the fixed integer index, so use the closed-form centered
+    dot product instead of ``np.cov``/``np.var``.  This keeps the exact OLS
+    contract while avoiding two allocation-heavy NumPy reductions for every
+    synthetic or vendor snapshot.
+    """
+    n = int(values.size)
+    if n < 2:
         return float("nan")
     if not np.isfinite(values).all() or np.any(values <= 0.0):
         return float("nan")
     y = np.log(values)
-    x = np.arange(values.size, dtype=float)
-    x_var = float(np.var(x))
-    if x_var <= 1e-18:
+    x_centered = np.arange(n, dtype=float) - 0.5 * (n - 1)
+    denominator = (n * (n * n - 1)) / 12.0
+    if denominator <= 1e-18:
         return float("nan")
-    return float(np.cov(x, y, ddof=0)[0, 1] / x_var)
+    return float(np.dot(x_centered, y) / denominator)
 
 
 def _log_size_slope(levels: list[BookLevel]) -> float:

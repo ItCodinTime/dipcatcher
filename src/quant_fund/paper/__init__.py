@@ -16,6 +16,11 @@ from quant_fund.paper.loop import (
     build_scaled_challenger_weights,
     run_paper_loop,
 )
+from quant_fund.paper.recon import (
+    reconcile_broker_states,
+    reconcile_equity,
+    reconcile_fills,
+)
 
 __all__ = [
     "PaperLedger",
@@ -28,6 +33,9 @@ __all__ = [
     "load_broker_state",
     "paper_root",
     "promotion_dry_run",
+    "reconcile_broker_states",
+    "reconcile_equity",
+    "reconcile_fills",
     "run_paper_loop",
     "validate_ledger_schema",
     "validate_promotion_dry_run_receipt",

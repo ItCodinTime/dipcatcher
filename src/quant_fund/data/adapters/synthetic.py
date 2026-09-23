@@ -94,8 +94,8 @@ class SyntheticMarketProvider:
             sid = "SEC_MKT" if j == 0 else f"SEC_{j:04d}"
             sym = "MKT" if j == 0 else f"S{j:04d}"
             for i, d in enumerate(self.days):
-                if j == n - 1 and i >= t - 15:
-                    continue  # delist last name
+                if j == n - 1 and i > t - 15:
+                    continue  # retain the explicit delist event session
                 px = float(prices[i, j])
                 high = px * (1.0 + abs(float(rng.normal(0, 0.004))))
                 low = px * (1.0 - abs(float(rng.normal(0, 0.004))))

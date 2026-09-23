@@ -1309,3 +1309,284 @@ pooled fits on 54 names mixed decaying premia into champion ridge.
 Wide tape inherits the same window. Champion remains public ridge until
 pairwise DM of \(-\mathrm{IC}\) plus White RC / SPA / StepM promote a
 challenger. `blend_weight` 0.
+
+## Sign-flip mirror books
+
+Let \(r\) be the frictionless dollar-neutral long-short of a score. The
+mirror is \(-r\). Sharpe is odd:
+\(\mathrm{SR}(-r)=-\mathrm{SR}(r)\). It is also leverage-invariant
+(\(c\neq 0\), rf = 0): \(\mathrm{SR}(c r)=\mathrm{sign}(c)\,\mathrm{SR}(r)\).
+Modeled spread / commission / impact \(c_t\ge 0\) are even, so both
+books realize \(r-c\) and \(-r-c\). Their Sharpes no longer sum to
+zero; the sum is typically negative. A 5% drawdown halt
+(`dd_limit=0.05`) cannot coexist with \(-150\%\) total return on the
+same path. Nested anti-univariate (lowest train date IC) is the same
+search as best-train IC after the sign flip. `hedge-lab --mirror`
+negates `target_weight`. **Wave 152:** discarded as a book; diagnostic
+only. Not a live P&L claim. `blend_weight` 0.
+
+## Size / vol residual ridge (`ridge_neut`)
+
+Within each decision date, OLS-residualize every non-control public
+column on `cs_z_adv`, `cs_z_log_price`, and `cs_z_vol_20`, then fit
+date-demeaned T-ridge. The transform uses only that date's
+cross-section. A priori neutralization, not OOS-tuned. Challenger only;
+champion remains public ridge.
+
+## quant-models engines
+
+`quant_fund.quant_models` ports
+[davidalmeida90/quant-models](https://github.com/davidalmeida90/quant-models)
+and the README sibling repos as research engines (ADR-033).
+
+Black–Scholes–Merton with yield \(q\):
+
+\[
+d_1=\frac{\ln(S/K)+(r-q+\sigma^2/2)\tau}{\sigma\sqrt{\tau}},\quad
+d_2=d_1-\sigma\sqrt{\tau}
+\]
+
+\[
+C=Se^{-q\tau}N(d_1)-Ke^{-r\tau}N(d_2)
+\]
+
+Implied vol is Brent on that price inside the no-arbitrage bounds.
+Greeks are the raw BSM derivatives; desk scaling is `greeks.SCALE`
+(vega per vol point, theta per calendar day). Time derivatives are
+\(\partial/\partial t=-\partial/\partial\tau\). CRR uses
+\(u=e^{\sigma\sqrt{\Delta t}}\), \(d=1/u\),
+\(p=(e^{(r-q)\Delta t}-d)/(u-d)\); American nodes take
+\(\max(\text{continuation},\text{intrinsic})\). Heston is the
+Albrecher little-trap CF, \(P_1,P_2\) by trapezoid. SVI is Gatheral
+raw \(w(k)=a+b(\rho(k-m)+\sqrt{(k-m)^2+\sigma^2})\); butterfly uses
+the Gatheral–Jacquier \(g(k)\ge 0\). NSS zeros:
+
+\[
+y(\tau)=\beta_0+\beta_1\frac{1-e^{-\tau/\lambda_1}}{\tau/\lambda_1}
++\beta_2\left(\frac{1-e^{-\tau/\lambda_1}}{\tau/\lambda_1}
+-e^{-\tau/\lambda_1}\right)
++\beta_3\left(\frac{1-e^{-\tau/\lambda_2}}{\tau/\lambda_2}
+-e^{-\tau/\lambda_2}\right)
+\]
+
+HRP is Lopez de Prado (2016): single-linkage on
+\(\sqrt{(1-\rho)/2}\), quasi-diagonalize, recursive bisection with
+inverse-variance cluster variance. GEX per contract, dealer sign
+(calls \(+\), puts \(-\), an assumption):
+
+\[
+\mathrm{GEX}=\mathrm{sign}\cdot\gamma\cdot\mathrm{OI}\cdot 100\cdot S^2\cdot 0.01
+\]
+
+Last-hour rule: previous-close net GEX \(<0\) → go *with* the
+open-to-15:30 return; GEX \(>0\) → fade (optional). No overnight, no
+broker. TSMOM: \(\mathrm{sign}(\sum_{t-L}^{t-s} r)\cdot
+\sigma_{\mathrm{target}}/(\sigma\sqrt{252})\). GKX OOS \(R^2\):
+\(1-\sum(y-\hat y)^2/\sum y^2\). Krauss window: trailing-date logistic
+on public features predicting above-median next-day idio. Discrete
+delta-hedge error is gamma × rebalance gap when
+\(\sigma_{\mathrm{realised}}=\sigma_{\mathrm{implied}}\). Not a live
+P&L claim. `blend_weight` 0. Neural vol / deep hedging remain
+ADR-007.
+
+## Lightspeed engines
+
+`quant_fund.lightspeed` ports
+[cosmic-hydra/lightspeed](https://github.com/cosmic-hydra/lightspeed)
+as research engines (ADR-034). No Alpaca.
+
+SMA-seeded EMA on signal close \(C_t\), seed at bar \(n-1\):
+
+\[
+\mathrm{EMA}_n=\mathrm{SMA}_n,\quad
+\mathrm{EMA}_t=\alpha C_t+(1-\alpha)\mathrm{EMA}_{t-1},\quad
+\alpha=\frac{2}{n+1}
+\]
+
+Frozen `tqqq-long-full-v1`: \(n_{\mathrm{fast}}=20\),
+\(n_{\mathrm{slow}}=180\). Gap
+\(( \mathrm{EMA}^{\mathrm{fast}}_t-\mathrm{EMA}^{\mathrm{slow}}_t)/C_t\).
+If `flatten_when_fast_below_slow` and the gap is negative, TQQQ
+weight is 0 and the residual is SGOV. Otherwise the raw risk
+sleeve is \(\mathrm{clip}(\mathrm{vol\_budget}/\hat\sigma^{\mathrm{QQQ}}_t,0,0.98)\)
+with `vol_budget` 10 (saturates at `max_tqqq` in a confirmed
+LONG). Rebalance every 5 sessions; `signal_delay_sessions` 1
+shifts the executable weight: \(w_t\leftarrow w_{t-1}\) for the
+first delay bar, then \(w_t\leftarrow w^{\mathrm{raw}}_{t-d}\).
+
+Frozen nautica / stock-momentum: score
+\(C_t/C_{t-63}-1\) (`mom_blend` 1), eligible only if score \(>0\)
+and \(C_t>\mathrm{SMA}_{200}\). Crash: a held name with
+\(C_t/C_{t-10}-1\le-0.2\) is flattened. Top-1, vol size
+\(\mathrm{clip}(0.6/\hat\sigma_i,0,0.95)\), residual SGOV,
+delay 1, 10 bp.
+
+AFML metalabel (López de Prado 2018): expanding-window logistic
+\(P(\text{side correct}\mid\text{signal})\). Multiplier
+\(\mathbf{1}\{P\ge\tau\}\max(2P-1,0)\in[0,1]\). Reduce-only.
+
+CS challenger `nautica`: a priori \(+1\) on `cs_z_mom_60`. No
+estimated slopes. Champion remains public ridge. `blend_weight` 0.
+Not a live P&L claim.
+
+## Discrete HMM (Jurafsky & Martin SLP3 Appendix A)
+
+`quant_fund.hmm` implements the discrete first-order HMM from
+https://web.stanford.edu/~jurafsky/slp3/A.pdf (Eisner ice-cream
+running example). This is not `hmmlearn`'s Gaussian regime model.
+
+\[
+\alpha_1(j)=\pi_j b_j(o_1),\quad
+\alpha_t(j)=\sum_i \alpha_{t-1}(i)a_{ij}b_j(o_t),\quad
+P(O\mid\lambda)=\sum_i \alpha_T(i)
+\]
+
+\[
+v_t(j)=\max_i v_{t-1}(i)a_{ij}b_j(o_t)
+\]
+
+Backward: \(\beta_T(i)=1\),
+\(\beta_t(i)=\sum_j a_{ij}b_j(o_{t+1})\beta_{t+1}(j)\).
+Baum–Welch re-estimates \(A,B,\pi\) from \(\gamma_t(j)=\alpha_t(j)\beta_t(j)/P(O)\)
+and \(\xi_t(i,j)=\alpha_t(i)a_{ij}b_j(o_{t+1})\beta_{t+1}(j)/P(O)\).
+CLI: `dipcatcher hmm eisner`. Research only.
+
+## Causal risk-controlled gates (ADR-036)
+
+Book-level size $s_t$ applied to return $r_{t+1}$ is a function of
+$\{r_1,\ldots,r_t\}$ only (delay 1). Constant leverage leaves Sharpe
+unchanged when rf $=0$:
+
+\[
+\mathrm{SR}(c\,r)=\mathrm{sign}(c)\,\mathrm{SR}(r),\qquad c\neq 0.
+\]
+
+Vol targeting (Moreira–Muir 2017) is *time-varying* leverage
+$s_t=\mathrm{clip}(\sigma^\star/\hat\sigma_t,0,s_{\max})$. It can change
+Sharpe if expected return does not scale 1:1 with vol. It cannot mint
+Sharpe 5 from IC $\approx 0$. Jointly, $\sigma^\star=0.025$ and
+Sharpe 5 imply excess return $\approx 12.5\%$/year ($\sim 3.4\times$,
+not $10\times$). $10\times$ at 2.5% vol needs Sharpe $\sim 10$.
+
+Fractional Kelly (Thorp), rf $=0$:
+
+\[
+f^\star=\frac{\mu}{\sigma^2},\qquad
+s^{\mathrm{Kelly}}_t=\mathrm{clip}(\kappa f^\star_t,0,1).
+\]
+
+Negative $\mu$ is clipped to 0 (ADR-032). CRC size: calibrate
+Angelopoulos–Bates–Malik–Jordan (2022) on losses vs a 0 bound; $\hat\lambda_t$
+is the smallest expansion with CRC statistic $\le\alpha$. Then
+$s^{\mathrm{CRC}}_t=\min(1,\hat\lambda_t/\widehat{\mathrm{ES}}_t)$.
+ES halt: $s^{\mathrm{ES}}_t=\min(1,\mathrm{ES}^\star/\widehat{\mathrm{ES}}_t)$.
+Crash: trailing $L$-bar wealth change $\le c$ (nautica $-20\%$/10d) $\to 0$.
+StepM size: expanding-window Romano–Wolf (2005) on the book's returns vs 0;
+if column 0 is not rejected, $s_{t+1}=0$. Drawdown halt flattens after
+peak-to-trough $\le -\delta$ and stays cash; remaining-budget mode scales
+by $(\delta-\mathrm{DD}_t)/\delta$.
+
+CS challengers `tsmom` / `vme` / `krauss` are a priori or fold-fit on
+`PUBLIC_FEATURES`. Champion remains public ridge. `blend_weight` 0.
+Not a live P&L claim. Holdout confirmation (`dipcatcher ls confirm`)
+splits already-causal date ICs at 2024-12-31 / 2025-01-02; it does
+not retune and does not move the champion.
+
+Directional (not CS-idio) Moskowitz 12–1 long-only / Antonacci GEM /
+top-k long books live in `hedge_lab.directional`. Delay 1, monthly
+rebalance, costs on turnover. They are not CS rankers.
+
+
+
+## Canon-wave conventions (metrics/models canon 2026-09)
+
+- Loss sign convention: risk functions take *losses* (positive = bad) in
+  `metrics.risk_parametric`/`metrics.extremes`; `metrics.drawdown` takes
+  simple *returns* and computes the drawdown path internally.
+- VaR/ES quantile `alpha` in (0.5, 1) is enforced everywhere; ES is the
+  mean of the tail beyond VaR (`metrics.extremes.gpd_var_es`,
+  `risk_parametric.student_t_var_es` use the analytic tail formulas;
+  Cornish–Fisher ES uses quadrature over the probability axis).
+- Warmup semantics: `features.indicators` and `features.cycles` return
+  NaN-padded outputs so a feature at index t only ever uses data <= t.
+- Hawkes compensator residuals are computed in transformed time
+  (`point_process.hawkes_compensator`); under the fitted model they are
+  Exp(1) — use `hawkes_residuals` + `metrics.serial`/KS checks.
+- `bocpd_gaussian` reports the posterior run-length distribution;
+  `cp_prob[t] = P(r_t = 0)` is the exact changepoint probability, not a
+  thresholded alarm.
+- `eigenvalue_clip` preserves trace while zeroing noise dispersion;
+  `detone_cov` removes the top eigencomponents entirely.
+- `cvar_minimization` solves the Rockafellar–Uryasev LP exactly on the
+  empirical scenario set (HiGHS); reported CVaR is recomputed from the
+  empirical tail at the returned weights.
+- Bandit `update` semantics: EXP3 requires update(arm) to match the arm
+  returned by the immediately preceding select (importance weighting).
+
+- metrics.regression OLS returns residuals + pinv(X'X); HC0-HC4 and
+  Newey-West HAC covariances share the bread-meat-bread form; CUSUM uses
+  standardized recursive residuals with BDE 5% lines (a=0.948*sqrt(m));
+  CUSUMSQ uses the Kolmogorov asymptotic bound 1.36*sqrt(2/m); quantile
+  regression solves the exact LP via HiGHS; 2SLS residuals are computed
+  on ORIGINAL regressors (not fitted), Sargan J = n*R2 of resid on Z.
+- models.factor_models fama_macbeth returns per-period gammas and
+  Shanken-inflated SEs; bai_ng_factors runs on the RAW panel (demeaned,
+  not standardized) since IC penalties assume common sigma_e^2.
+- models.filters: hp_filter solves the exact sparse ridge system;
+  baxter_king/corbae_ouliaris return NaN-free vs burn-in conventions
+  respectively (BK NaN-pads k at both ends, CO uses full-period DFT);
+  hamilton_filter residuals are MA(h-1) by construction.
+- models.realized: bipower_variation is jump-robust IV; TSRV uses
+  K ~ n^(2/3) price grids (price-level noise only); preaveraged_rv uses
+  g=min(x,1-x) with psi1=1, psi2=1/12; lee_mykland thresholds via the
+  Gumbel double-exponential law; bns_jump_test uses the Huang-Tauchen
+  max(1, TPQ/BV^2) normalization.
+- models.var_coint: johansen_test/vecm_fit solve the GENERALIZED
+  eigenproblem |lam*S11 - S10 S00^-1 S01| = 0 via scipy.linalg.eigh
+  (symmetric A, spd B) — never eigvalsh on the nonsymmetric product;
+  Johansen CVs are MHM (1999) 5% asymptotic with a constant shift for
+  det=1; diebold_yilmaz uses generalized (Pesaran-Shin) FEVD so it is
+  ordering-invariant; spread_half_life returns inf for rho >= 1 or <= 0.
+- features.liquidity: FHT and LOT map zero-return frequency to cost
+  via normal quantiles; effective_tick follows Holden's incremental
+  probability weighting (upward-biased on exact grids by design).
+- metrics.distribution: lilliefors uses a seeded parametric bootstrap
+  (exact for estimated-parameter KS); medcouple is the O(n^2) naive form;
+  qn_scale uses c = 1/(sqrt2*Phi^-1(5/8)) = 2.2219.
+- models.decomposition: SSA Hankelizes each rank-1 SVD component;
+  ssa_forecast uses the vertical-eigenvector linear recurrence; emd
+  sifting uses cubic-spline envelopes with endpoint inclusion and stops
+  on monotone residue; hilbert_spectrum reports IMF1 only.
+- metrics.calibration2: murphy_decomposition equals REL-RES+UNC up
+  to within-bin dispersion; winkler_interval_score = width + pinball
+  penalties; variogram_score is Scheuerer-Hamill p=0.5 default.
+- models.mixture: t-mixture ECM uses E[ln u] = psi((nu+d)/2) -
+  ln((nu+delta)/2), NOT ln E[u]; nu bounded to [3,300]; BIC counts nu.
+- models.pairs: gatev SSD on normalized prices; cointegration_screen
+  delegates to engle_granger; ou_optimal_bands is a grid approximation
+  of the Leung-Li stopping problem, research-grade only.
+
+
+## Wave 3 conventions
+
+- `fit_markov_switching_*` return `filtered`, `smoothed` (Kim), transition matrix
+  `P`, and per-state parameters; rows of `P` sum to 1 and `P[i,j] = P(s_t=j | s_{t-1}=i)`.
+- FIGARCH variance uses the truncated BBM lambda recursion with
+  `lambda_1 = d + phi - beta`, `lambda_k = beta*lambda_{k-1} + pi_k - phi*pi_{k-1}`.
+- APARCH news function is `(|e| - gamma*e)^delta`; positive `gamma` = leverage
+  asymmetry (bad news raises vol more).
+- `clark_west_test` expects the forecast-difference series `f_null - f_alt`
+  passed as `preds_alt`; the adjusted loss is `e_null^2 - e_alt^2 + (f_diff)^2`.
+- `fluctuation_test` returns sup of rolling-window DM-type stats; GR(2010)
+  asymptotic two-sided critical values ~3.18 (10%) / ~3.68 (5%).
+- `hsic` uses a seeded permutation null (no parametric approximation);
+  `chatterjee_xi` uses the rank statistic `1 - 3*sum|r_{i+1}-r_i|/(n^2-1)`.
+- `mutual_information_knn` implements KSG estimator 1 with Chebyshev balls and
+  strict `eps` marginal counts; returns `mi` in nats.
+- `basel_zone` uses the fixed green<=4/yellow<=9/red>=10 table only for the
+  canonical 99%/250-day case; otherwise exact binomial-tail cutoffs.
+- `arellano_bond` is one-step difference GMM with block-diagonal per-period
+  instrument matrices (levels y_{t-2},...,y_{t-1-maxlag}); `sargan_J` uses the
+  instrument-covariance weight matrix.
+- `fit_cox_ph` uses Breslow tie handling and reports Harrell's concordance.
+- Lo (1991) R/S band [0.809, 1.862] on `Q/sqrt(n)` rejects short memory.

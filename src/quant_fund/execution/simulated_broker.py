@@ -23,6 +23,28 @@ from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.orders import Fill, Order, OrderSide, OrderStatus
 
 
+def _limit_fill_price(
+    order: Order, bar_open: float, bar_high: float, bar_low: float
+) -> tuple[bool, float]:
+    """(touched, fill_price) for a limit order against a bar.
+
+    Buy limit L: touched when ``bar_low <= L``; fills at ``min(open, L)``
+    (gap-through fills at the open, never worse than the limit). Sell
+    symmetric: touched when ``bar_high >= L``; fills at ``max(open, L)``.
+    """
+    if order.limit_price is None:
+        return False, 0.0
+    limit = float(order.limit_price)
+    o, h, lo = float(bar_open), float(bar_high), float(bar_low)
+    if order.side is OrderSide.BUY:
+        if lo <= limit:
+            return True, min(o, limit)
+        return False, limit
+    if h >= limit:
+        return True, max(o, limit)
+    return False, limit
+
+
 class RejectReason(str, Enum):
     KILL_SWITCH = "kill_switch"
     RISK_GATE = "risk_gate"
@@ -144,14 +166,21 @@ class SimulatedBroker:
         sigma: float = 0.02,
         price_age_bars: int | None = None,
         model_age_hours: float | None = None,
+        decision_price: float | None = None,
         market_predicted_vol: float | None = None,
+        bar_open: float | None = None,
+        bar_high: float | None = None,
+        bar_low: float | None = None,
     ) -> OrderRecord:
         """Validate + optionally fill immediately (marketable paper order).
 
         Shadow / no-capital slots record intent and reject capital moves.
-        ``sigma`` is name-level vol for impact costs. ``market_predicted_vol``
-        is the optional date-level Realized GARCH or GARCH overlay for
-        ``check_order``.
+        ``decision_price`` (signal-bar close) is recorded on the fill and
+        sets ``slippage`` to the adverse-dollar drift against it; signed
+        drift is recoverable downstream from ``decision_price``.
+        Orders carrying ``limit_price`` fill only when the bar's range
+        touches the limit (``bar_open/high/low`` required); otherwise they
+        rest in ``open_orders`` and can be swept later via ``process_bar``.
         """
         if not np.isfinite(float(order.quantity)) or float(order.quantity) <= 0.0:
             rec = OrderRecord(
@@ -178,7 +207,9 @@ class SimulatedBroker:
             or float(sigma) < 0
             or (
                 market_predicted_vol is not None
-                and (not np.isfinite(float(market_predicted_vol)) or float(market_predicted_vol) < 0)
+                and (
+                    not np.isfinite(float(market_predicted_vol)) or float(market_predicted_vol) < 0
+                )
             )
         ):
             rec = OrderRecord(
@@ -211,6 +242,168 @@ class SimulatedBroker:
             self.history.append(rec)
             return rec
 
+        # Limit orders are only executable when the bar's range touched the
+        # limit; without bar context they rest in the book (never fill blind).
+        exec_price = float(price)
+        if order.limit_price is not None:
+            if bar_open is None or bar_high is None or bar_low is None:
+                return self._rest_order(order)
+            touched, limit_fill = _limit_fill_price(order, bar_open, bar_high, bar_low)
+            if not touched:
+                return self._rest_order(order)
+            exec_price = limit_fill
+
+        return self._attempt_fill(
+            order,
+            exec_price=exec_price,
+            nav=nav,
+            adv_dollars=adv_dollars,
+            sigma=sigma,
+            price_age_bars=price_age_bars,
+            model_age_hours=model_age_hours,
+            decision_price=decision_price,
+            market_predicted_vol=market_predicted_vol,
+            keep_residual=order.limit_price is not None,
+        )
+
+    def _rest_order(self, order: Order) -> OrderRecord:
+        """Park a working limit order in the book (no capital movement)."""
+        status = OrderStatus.PARTIAL if order.status is OrderStatus.PARTIAL else OrderStatus.ACKED
+        acked = order.model_copy(update={"status": status})
+        self.open_orders[order.order_id] = acked
+        rec = OrderRecord(order=acked, reject_reason=None, slot=self.slot)
+        self.history.append(rec)
+        return rec
+
+    def cancel_order(self, order_id: str) -> OrderRecord:
+        """Cancel a working order. Fails closed on unknown/filled ids."""
+        order = self.open_orders.pop(order_id, None)
+        if order is None:
+            raise ValueError(f"order {order_id!r} is not working")
+        cancelled = order.model_copy(update={"status": OrderStatus.CANCELLED})
+        rec = OrderRecord(order=cancelled, reject_reason=None, slot=self.slot)
+        self.history.append(rec)
+        return rec
+
+    def amend_order(
+        self,
+        order_id: str,
+        *,
+        quantity: float | None = None,
+        limit_price: float | None = None,
+        expire_time: datetime | None = None,
+    ) -> OrderRecord:
+        """Cancel/replace a working order's qty, limit, or expiry in place.
+
+        Re-validates through the ``Order`` schema (quantity > 0, limit > 0,
+        expire >= order_time). Fails closed on unknown/filled ids.
+        """
+        order = self.open_orders.get(order_id)
+        if order is None:
+            raise ValueError(f"order {order_id!r} is not working")
+        data = order.model_dump()
+        if quantity is not None:
+            data["quantity"] = quantity
+        if limit_price is not None:
+            data["limit_price"] = limit_price
+        if expire_time is not None:
+            data["expire_time"] = expire_time
+        amended = Order.model_validate(data)
+        self.open_orders[order_id] = amended
+        rec = OrderRecord(order=amended, reject_reason=None, slot=self.slot)
+        self.history.append(rec)
+        return rec
+
+    def process_bar(
+        self,
+        security_id: str,
+        *,
+        bar_open: float,
+        bar_high: float,
+        bar_low: float,
+        bar_time: datetime | None = None,
+        adv_dollars: float = 1.0,
+        sigma: float = 0.02,
+        nav: float | None = None,
+    ) -> list[OrderRecord]:
+        """Sweep resting limit orders for ``security_id`` against a new bar.
+
+        Fills pass through the identical kill-switch / risk-gate / cost /
+        cash path as marketable orders. Untouched orders stay resting.
+        ``bar_time`` stamps the fill time and drives ``expire_time`` cancels.
+        A participation-capped fill keeps the residual working (PARTIAL).
+        """
+        for name, value in (("bar_open", bar_open), ("bar_high", bar_high), ("bar_low", bar_low)):
+            v = float(value)
+            if not np.isfinite(v) or v <= 0:
+                raise ValueError(f"{name} must be finite and strictly positive")
+        records: list[OrderRecord] = []
+        if not self.allow_capital:
+            # Shadow slots never move cash; sweeping them would only
+            # manufacture rejects against a zero NAV. Resting intents stay.
+            return records
+        resting = [
+            o
+            for o in self.open_orders.values()
+            if o.security_id == security_id and o.limit_price is not None
+        ]
+        for order in resting:
+            if (
+                bar_time is not None
+                and order.expire_time is not None
+                and bar_time >= order.expire_time
+            ):
+                expired = order.model_copy(update={"status": OrderStatus.CANCELLED})
+                self.open_orders.pop(order.order_id, None)
+                rec = OrderRecord(order=expired, reject_reason="expired", slot=self.slot)
+                self.history.append(rec)
+                records.append(rec)
+                continue
+            try:
+                self.kill.assert_new_orders_allowed()
+            except KillSwitchActive:
+                # Halts block resting fills too — the order stays working.
+                continue
+            touched, exec_price = _limit_fill_price(order, bar_open, bar_high, bar_low)
+            if not touched:
+                continue
+            rec = self._attempt_fill(
+                order,
+                exec_price=exec_price,
+                nav=nav,
+                adv_dollars=adv_dollars,
+                sigma=sigma,
+                keep_residual=True,
+                fill_time=bar_time,
+            )
+            if rec.order.status is OrderStatus.REJECTED:
+                # A triggered order that fails the gate cancels rather than
+                # retrying (and re-recording) on every subsequent bar.
+                self.open_orders.pop(order.order_id, None)
+            records.append(rec)
+        return records
+
+    def _attempt_fill(
+        self,
+        order: Order,
+        *,
+        exec_price: float,
+        nav: float | None = None,
+        adv_dollars: float = 1.0,
+        sigma: float = 0.02,
+        price_age_bars: int | None = None,
+        model_age_hours: float | None = None,
+        decision_price: float | None = None,
+        market_predicted_vol: float | None = None,
+        keep_residual: bool = False,
+        fill_time: datetime | None = None,
+    ) -> OrderRecord:
+        """Participation cap → risk gate → costs → cash → fill bookkeeping.
+
+        ``keep_residual`` re-rests the unfilled remainder of a working
+        (limit) order as PARTIAL; one-shot marketable orders leave it off.
+        """
+        price = exec_price
         requested_signed = float(order.quantity)
         if order.side is OrderSide.SELL:
             requested_signed = -requested_signed
@@ -284,22 +477,41 @@ class SimulatedBroker:
 
         self.cash -= notional + float(costs["total"])
         self.shares[order.security_id] = current_shares + exec_qty
+        drift_slippage = 0.0
+        if decision_price is not None:
+            dec = float(decision_price)
+            if not np.isfinite(dec) or dec <= 0:
+                raise ValueError("decision_price must be finite and strictly positive")
+            # Adverse component only (schema is non-negative); the signed
+            # drift is recoverable from decision_price downstream.
+            signed_drift = (float(price) - dec) * exec_qty
+            drift_slippage = max(0.0, signed_drift)
         fill = Fill(
             fill_id=f"fill-{uuid4().hex[:12]}",
             order_id=order.order_id,
             security_id=order.security_id,
             quantity=abs(exec_qty),
             price=float(price),
-            fill_time=order.order_time,
+            fill_time=fill_time if fill_time is not None else order.order_time,
             fee=float(costs["commission"]),
             spread_cost=float(costs["spread"]),
             impact_cost=float(costs["impact"]),
-            slippage=0.0,
+            slippage=drift_slippage,
             is_partial=abs(exec_qty) + 1e-12 < abs(requested_signed),
+            decision_price=decision_price,
         )
         filled = order.model_copy(update={"status": OrderStatus.FILLED, "quantity": abs(exec_qty)})
         self.fills.append(fill)
-        self.open_orders.pop(order.order_id, None)
+        if fill.is_partial and keep_residual:
+            residual = order.model_copy(
+                update={
+                    "quantity": abs(requested_signed) - abs(exec_qty),
+                    "status": OrderStatus.PARTIAL,
+                }
+            )
+            self.open_orders[order.order_id] = residual
+        else:
+            self.open_orders.pop(order.order_id, None)
         rec = OrderRecord(order=filled, fill=fill, slot=self.slot)
         self.history.append(rec)
         self.mark({order.security_id: float(price)})
@@ -398,6 +610,7 @@ class SimulatedBroker:
             "kill_state": self.kill.state,
             "last_marks": dict(self.last_marks),
             "initial_cash": float(self.initial_cash),
+            "open_orders": [order.model_dump(mode="json") for order in self.open_orders.values()],
         }
 
     @classmethod
@@ -481,6 +694,15 @@ class SimulatedBroker:
                 raise ValueError("broker history/order count mismatch")
             if int(state.get("n_fills", len(broker.fills))) != len(broker.fills):
                 raise ValueError("broker history/fill count mismatch")
+
+        raw_open = state.get("open_orders") or []
+        if not isinstance(raw_open, list):
+            raise ValueError("restored open_orders must be a list")
+        try:
+            restored_orders = [Order.model_validate(item) for item in raw_open]
+        except (TypeError, ValueError) as exc:
+            raise ValueError("restored open_orders are invalid") from exc
+        broker.open_orders = {o.order_id: o for o in restored_orders}
 
         marks = state.get("last_marks") or {}
         broker.mark({str(k): float(v) for k, v in marks.items()})

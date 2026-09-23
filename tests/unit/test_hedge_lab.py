@@ -38,6 +38,7 @@ def test_economic_scoreboard_not_a_research_family_blob() -> None:
     assert np.isfinite(blob["calmar"])
     assert np.isfinite(blob["sortino"])
     assert np.isfinite(blob["information_ratio"])
+    assert np.isfinite(blob["total_return"])
     assert blob["synthetic_not_promotable"] is False
     assert family_blob_forbidden_metrics_absent(blob) is False
 

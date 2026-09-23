@@ -19,8 +19,8 @@ _REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver", "univers
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
-def doctor(config_path: str | None = None) -> dict[str, str]:
-    status: dict[str, str] = {
+def doctor(config_path: str | None = None) -> dict[str, object]:
+    status: dict[str, object] = {
         "firm": __firm__,
         "product": "Dipcatcher",
         "version": __version__,

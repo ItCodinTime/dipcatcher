@@ -1849,3 +1849,102 @@
   - Sergeant: ofi_p_ic↔session_chain (H27↔H29)
   - General: wick_skew_p_ic↔session_chain (H26↔H29) or stamp-only
   - Commander: continue Residual #246–#255 identity batch
+
+## 2026-09-21 — research canon wave (D:\dipcatcher, remote session)
+
+- GREEN: 22 new modules + 19 test files, ~257 new unit tests all passing
+  remotely under .venv (Python 3.12.10).
+- Modules: metrics/{serial, extremes, entropy, fractal, hac,
+  risk_parametric, drawdown}; validation/fdr; models/{fracdiff,
+  state_space, point_process, changepoint, rmt, ensemble, bandits,
+  copula}; labels/barriers; features/{bars, indicators, cycles};
+  portfolio/allocators; execution/impact.
+- Verification: ruff check clean (src+tests, incl. autofix of leftover
+  tests/tests import blocks); ruff format applied to new files; mypy
+  clean on all 22 new modules; targeted pytest green.
+- Honesty preserved: pure numpy/scipy diagnostics, fail-closed
+  ValueErrors, docstring citations, no live-PnL/Sharpe claims.
+- Note: repo-wide `ruff format --check` has ~80 pre-existing unformatted
+  files predating this wave (untouched); new files conform.
+- No commits made; authored in /tmp on controller, synced via scp.
+
+wave-2 canon expansion (remote, D:\dipcatcher):
+- metrics/regression.py: OLS+HC/HAC covariances, DW/BG/BP/White/RESET/GQ,
+  CUSUM/CUSUMSQ, VIF/Cook, Theil-Sen/Huber/quantile reg, 2SLS + Sargan J.
+- models/factor_models.py: Fama-MacBeth+Shanken, FF sorts, PCA+Bai-Ng,
+  residualization, Jensen alpha.
+- models/filters.py: HP (exact sparse), BK, CF asymmetric, Hamilton 2018,
+  Beveridge-Nelson, Corbae-Ouliaris DFT bandpass.
+- models/realized.py: RV/BV/tripower, BNS jump test, Lee-Mykland, TSRV,
+  realized kernel, pre-averaging, semivariance, RV bands.
+- models/var_coint.py: VAR+IC, GIRF/OIRF, GFEVD, Diebold-Yilmaz,
+  Engle-Granger, Johansen (generalized eig), VECM, Granger matrix.
+- features/liquidity.py: Amivest, LOT, FHT, Pastor-Stambaugh, Hasbrouck,
+  Glosten-Harris, Holden effective tick, turnover vol.
+- metrics/distribution.py: SW/AD/CvM/Lilliefors(MC)/K2/Pearson battery,
+  Mardia MVN, medcouple, Qn.
+- models/decomposition.py: SSA+R-forecast, EMD, Hilbert-Huang, median trend.
+- metrics/calibration2.py: Murphy decomp, Winkler IS, Dawid-Sebastiani,
+  Hosmer-Lemeshow, reliability bins, variogram, pinball, spread-skill.
+- models/mixture.py: EM Gaussian/t mixtures (correct E[ln u] ECM), BIC.
+- models/pairs.py: Gatev SSD, EG screen, z-score stats, OU bands, quality.
+- tests: 11 new unit files, 126 tests green remotely.
+- verification: ruff check clean on all wave-2 files; ruff format applied;
+  mypy clean on all 11 modules; no commits.
+
+- Wave 3 (12 modules, ~125 tests, remote-verified on D:\dipcatcher):
+  regime_switch (Hamilton EM + Kim smoother), garch_ext (APARCH QMLE,
+  FIGARCH BBM recursion, Engle-Ng NIC), forecast_eval (HLN, Clark-West,
+  Giacomini-White Wald, ENC, GR fluctuation), bootstrap (Mammen/Rademacher
+  wild, pairs, Buhlmann sieve, Politis-Romano subsampling, circular blocks),
+  panel (LLC, IPS, Fisher-ADF, Hadri, Pesaran CD), dependence (dCor, HSIC
+  permutation, MMD, Chatterjee xi, KSG kNN MI), kernel (exact GP w/
+  marginal-likelihood hyperparameter fit, kernel ridge, kernel PCA),
+  event_study (market model, CAR, Patell, Corrado rank, BMP), var_backtest
+  (Kupiec, Christoffersen ind/CC, TUFF, Basel zones), long_memory (GPH,
+  local Whittle, Whittle ARFIMA, Lo R/S), survival (KM+Greenwood,
+  Nelson-Aalen, Mantel log-rank, Cox PH Breslow+Harrell C), dynamic_panel
+  (Anderson-Hsiao IV, Arellano-Bond one-step GMM + Sargan J + AR2).
+
+
+## Canon wave 4 (12 modules, 108 tests) — DONE
+
+- models/nonlinear_filters.py — EKF, UKF (alpha/beta/kappa sigma points), bootstrap particle filter with N_eff + systematic resampling
+- metrics/es_backtest.py — Acerbi-Szekely Z_2, McNeil-Frey exceedance-residual bootstrap, unconditional/conditional ES backtests
+- models/spectral.py — Welch, Daniell smoothing, Thomson multitaper (DPSS adaptive weights), magnitude-squared coherence
+- metrics/density_forecast.py — PIT, PIT histogram, Berkowitz LR (mu/sigma/AR1), PIT autocorrelation
+- models/nowcasting.py — MIDAS-beta, Almon weights, equal-weight regression seed for optimizer, bridge equations
+- models/panel_coint.py — Kao ADF, Pedroni 7-stat panel/group cointegration
+- models/momentum.py — Jegadeesh-Titman portfolios, 52-week-high, residual momentum, TSMOM vol-scaled positions
+- models/hedging.py — Ederington min-variance h*, hedge effectiveness (variance reduction), basis-risk diagnostics
+- models/ccm.py — Sugihara convergent cross-mapping (library-size convergence) + S-map with theta=0 special case
+- models/diffusion_index.py — Stock-Watson PC factors + h-step-ahead AR-augmented diffusion-index regression
+- models/rough_vol.py — q-moment Hurst regression, Gatheral variance-curve nu estimate, fractional OU sim via fGn Cholesky
+- models/options.py — BSM calls/puts, full greeks, Brent implied vol with arbitrage-bound validation
+
+Gates: 108 tests green; ruff check clean; ruff format applied; mypy clean on all 12 files.
+
+
+## Canon wave 5 (13 modules, 82 tests) — DONE
+
+- models/sabr.py — Hagan (2002) SABR implied vol (vectorized, ATM limit), cubic alpha solve, least-squares fit, two-step rho/nu smile decomposition, shifted SABR
+- models/jump_diffusion.py — Merton (1976) Poisson-weighted BSM series, put parity, exact grid simulation, log-moment analytics, Kou double-exponential sim
+- models/threshold.py — Tong SETAR(2;p;d) CLS fit, Hansen (1999) sup-F bootstrap test, recursive forecast
+- models/trade_sign.py — tick rule, Lee-Ready quote-rule signing, Easley-LdP-O'Hara bulk volume classification, signed-volume aggregation
+- models/market_making.py — Avellaneda-Stoikov reservation price, optimal half-spread, quotes, arrival-intensity calibration, inventory bounds
+- models/information_share.py — Hasbrouck (1995) IS bounds via VECM + Cholesky orderings, Gonzalo-Granger weights
+- models/bayesian.py — conjugate NIG Bayesian OLS (Zellner g-prior default), Student-t predictive, subset-enumerated BMA with PIP
+- models/robust_cov.py — FastMCD (C-steps + reweight), OGK, Stahel-Donoho projection outlyingness
+- models/mfdfa.py — Kantelhardt MF-DFA Fq(s), h(q), tau(q), Legendre singularity spectrum
+- models/wavelets.py — MODWT (Haar/D4/LA8) pyramid, additive MRA, per-scale variance, wavelet correlation
+- models/term_structure.py — Nelson-Siegel/Svensson loading matrices + fits, Diebold-Li two-step + AR(1) forecast
+- models/duration.py — Engle-Russell EACD/WACD QMLE, psi paths, residual whiteness diagnostics, simulation
+- metrics/direction.py — Pesaran-Timmermann directional test, 2x2 confusion, rank-based directional AUC
+
+Gates: 82 tests green; ruff check clean; ruff format applied; mypy clean on all 13 files.
+
+- Wave 6 (estimation canon): 13 modules — models/{sparse,caviar,garch_midas,gas,gmm_est,discrete,arma,smoothers,poet,glasso,functional,seasonal}.py + metrics/vol_eval.py; ~66 unit tests green; ruff/mypy clean. AIC overfit behavior documented in test_arma; Andersen-Bollerslev R2 bound respected in test_vol_eval.
+
+
+- Wave 7 (vol/credit/selection canon): 12 modules — models/{egarch,har,dcc,stoch_vol,count,ordered,qar,dfm,fractional,kmv}.py + metrics/{purged_cv,feature_select}.py; 54 unit tests green; ruff/mypy clean. Notable: ordered.py cutpoint sizing bug caught by prob-sum invariant; dfm stationary-init uses solve_discrete_lyapunov.
+

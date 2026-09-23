@@ -212,7 +212,8 @@ def fit_ipca_als(
     gamma = np.asarray(evecs[:, -k:][:, ::-1], dtype=float)
     gamma, _ = _identify_ipca(gamma, np.zeros((len(panels), k)))
     n_iter = 0
-    for n_iter in range(1, max_iter + 1):
+    for iteration in range(1, max_iter + 1):
+        n_iter = iteration
         factors = _ipca_factor_step(gamma, w_all, managed)
         vec_g = _ipca_gamma_step(factors, w_all, managed)
         gamma_new = np.asarray(vec_g.reshape((n_char, k), order="F"), dtype=float)
@@ -225,7 +226,8 @@ def fit_ipca_als(
     if not unrestricted:
         return gamma, factors, n_iter, gamma_alpha
     n_aug = k + 1
-    for n_iter in range(1, max_iter + 1):
+    for iteration in range(1, max_iter + 1):
+        n_iter = iteration
         # Z_t' (r_t - Z_t Gamma_alpha) = X_t - W_t Gamma_alpha, batched over dates.
         managed_resid = managed - w_all @ gamma_alpha
         factors = _ipca_factor_step(gamma, w_all, managed_resid)

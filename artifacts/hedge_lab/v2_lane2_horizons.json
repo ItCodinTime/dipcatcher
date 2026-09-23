@@ -1,0 +1,579 @@
+{
+  "catalog": "hedge_lab_analytics",
+  "protocol_id": "dipcatcher.sota.v2",
+  "slate_id": "dipcatcher.sota.v2.lanes",
+  "protocol_sha256": "6007e652f2d7974de8fddef3e904be2a25c28e7a68ff8f9b69b8c8e00b538eb2",
+  "slate_sha256": "35123173415cd281f0a4c191f45c0b87d14ddd537229c3d337223857703e5390",
+  "slate_file": "configs/sota_protocol_v2_lanes.yaml",
+  "parent_slate": "configs/sota_protocol_v2.yaml",
+  "lane": 2,
+  "lane_name": "horizon_change",
+  "config": "configs/hedge_lab.yaml",
+  "feature_set": "public",
+  "benchmark": "ridge",
+  "selection_end": "2024-12-31",
+  "holdout_start": "2025-01-02",
+  "scheme": "rolling",
+  "train_bars": 252,
+  "val_bars": 63,
+  "test_bars": 63,
+  "embargo_bars": {
+    "future_idio_return_5": 5,
+    "future_idio_return_20": 20
+  },
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "one_way_cost": 0.001,
+  "data_source": "parquet",
+  "synthetic_not_promotable": false,
+  "research_only": true,
+  "live_pnl_claim": false,
+  "execution_claim": "paper_backtest",
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "labels": [
+    "future_idio_return_5",
+    "future_idio_return_20"
+  ],
+  "engines": [
+    "ridge",
+    "gbrt",
+    "lambdarank",
+    "xgboost"
+  ],
+  "results": {
+    "future_idio_return_5": {
+      "horizon_bars": 5,
+      "embargo_bars": 5,
+      "fingerprint": "f58b960800611efd",
+      "n_dates": 2629,
+      "windows": {
+        "full": {
+          "n_dates": 1134,
+          "hac_lags": 15,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.020896790829027113,
+              "t_ic": -1.1456712648330771,
+              "p_ic": 0.25217312344276266,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.024754271331471,
+              "t_ic": -1.4332209341226858,
+              "p_ic": 0.15207058551091118,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": 0.010174627529595356,
+              "t_ic": 0.8030191340798257,
+              "p_ic": 0.42213209526686113,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": 0.00198775134105752,
+              "t_ic": 0.12688699450255728,
+              "p_ic": 0.8990523546584108,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": 0.2752327377518848,
+                "p_value": 0.783187620452665,
+                "preferred": "ridge",
+                "mean_loss_diff": 0.003857480502443889,
+                "lags": 15
+              },
+              "lambdarank": {
+                "statistic": -2.089032121124975,
+                "p_value": 0.03692752999625375,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.03107141835862247,
+                "lags": 15
+              },
+              "xgboost": {
+                "statistic": -1.4118563972928702,
+                "p_value": 0.15826682148067941,
+                "preferred": "xgboost",
+                "mean_loss_diff": -0.022884542170084635,
+                "lags": 15
+              }
+            },
+            "reality_check_p": 0.059470264867566215,
+            "spa_p_consistent": 0.05147426286856572,
+            "spa_p_lower": 0.05147426286856572,
+            "spa_p_upper": 0.5367316341829086,
+            "stepm_rejected": [],
+            "stepm_adjusted_p": {
+              "gbrt": 0.6196901549225388,
+              "lambdarank": 0.05147426286856572,
+              "xgboost": 0.16541729135432284
+            },
+            "n_boot": 2000,
+            "hac_lags": 15,
+            "promote": false,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        },
+        "selection": {
+          "n_dates": 945,
+          "hac_lags": 14,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.019062566144164496,
+              "t_ic": -0.9249917516999265,
+              "p_ic": 0.3552065887429644,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.018227685705429236,
+              "t_ic": -0.9535627726335578,
+              "p_ic": 0.3405491074718319,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": 0.015201028254713232,
+              "t_ic": 1.0819218595007023,
+              "p_ic": 0.2795635448398981,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": 0.010911888668626673,
+              "t_ic": 0.6321586806225263,
+              "p_ic": 0.5274362630042104,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": -0.05691407992861205,
+                "p_value": 0.9546256823451047,
+                "preferred": "gbrt",
+                "mean_loss_diff": -0.0008348804387352557,
+                "lags": 14
+              },
+              "lambdarank": {
+                "statistic": -2.014708835982366,
+                "p_value": 0.04421831260423207,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.034263594398877724,
+                "lags": 14
+              },
+              "xgboost": {
+                "statistic": -1.6692336143465636,
+                "p_value": 0.09540265385299772,
+                "preferred": "xgboost",
+                "mean_loss_diff": -0.029974454812791165,
+                "lags": 14
+              }
+            },
+            "reality_check_p": 0.07146426786606697,
+            "spa_p_consistent": 0.06996501749125437,
+            "spa_p_lower": 0.06996501749125437,
+            "spa_p_upper": 0.5427286356821589,
+            "stepm_rejected": [],
+            "stepm_adjusted_p": {
+              "gbrt": 0.47126436781609193,
+              "lambdarank": 0.06996501749125437,
+              "xgboost": 0.12343828085957022
+            },
+            "n_boot": 2000,
+            "hac_lags": 14,
+            "promote": false,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        },
+        "holdout": {
+          "n_dates": 189,
+          "hac_lags": 8,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.030067914253340208,
+              "t_ic": -0.8451824637749935,
+              "p_ic": 0.3990833152815652,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.05738719946167982,
+              "t_ic": -1.7020377217959815,
+              "p_ic": 0.09040126871007392,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": -0.014957376095994021,
+              "t_ic": -0.5521318480384116,
+              "p_ic": 0.5815137925914324,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": -0.04263293529678824,
+              "t_ic": -1.467753334695654,
+              "p_ic": 0.14384224974603813,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": 0.6886241842295663,
+                "p_value": 0.4919086967437575,
+                "preferred": "ridge",
+                "mean_loss_diff": 0.02731928520833961,
+                "lags": 8
+              },
+              "lambdarank": {
+                "statistic": -0.6269183645554252,
+                "p_value": 0.5314733222232885,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.015110538157346193,
+                "lags": 8
+              },
+              "xgboost": {
+                "statistic": 0.34869539427817126,
+                "p_value": 0.7277081953350869,
+                "preferred": "ridge",
+                "mean_loss_diff": 0.012565021043448036,
+                "lags": 8
+              }
+            },
+            "reality_check_p": 0.47476261869065467,
+            "spa_p_consistent": 0.3968015992003998,
+            "spa_p_lower": 0.3968015992003998,
+            "spa_p_upper": 0.5132433783108445,
+            "stepm_rejected": [],
+            "stepm_adjusted_p": {
+              "gbrt": 0.7801099450274862,
+              "lambdarank": 0.3968015992003998,
+              "xgboost": 0.7646176911544228
+            },
+            "n_boot": 2000,
+            "hac_lags": 8,
+            "promote": false,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        }
+      }
+    },
+    "future_idio_return_20": {
+      "horizon_bars": 20,
+      "embargo_bars": 20,
+      "fingerprint": "bc9e1522444f784c",
+      "n_dates": 2614,
+      "windows": {
+        "full": {
+          "n_dates": 1134,
+          "hac_lags": 19,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.060242754346645264,
+              "t_ic": -2.2275228679267145,
+              "p_ic": 0.026108163534638816,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.04979123906559737,
+              "t_ic": -1.8997656815994401,
+              "p_ic": 0.0577175986436982,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": -0.008083972643341018,
+              "t_ic": -0.38476434819684857,
+              "p_ic": 0.7004842261625871,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": -0.04195158740189259,
+              "t_ic": -1.7818283677022286,
+              "p_ic": 0.07504499651186655,
+              "n_dates": 1134,
+              "window_start": null,
+              "window_end": null,
+              "hac_lags": 15
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": -0.48434939370602487,
+                "p_value": 0.6282315393255095,
+                "preferred": "gbrt",
+                "mean_loss_diff": -0.010451515281047884,
+                "lags": 19
+              },
+              "lambdarank": {
+                "statistic": -2.489302386878391,
+                "p_value": 0.012942026940244308,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.05215878170330425,
+                "lags": 19
+              },
+              "xgboost": {
+                "statistic": -0.8436034512421074,
+                "p_value": 0.39906910355584385,
+                "preferred": "xgboost",
+                "mean_loss_diff": -0.01829116694475267,
+                "lags": 19
+              }
+            },
+            "reality_check_p": 0.02148925537231384,
+            "spa_p_consistent": 0.02148925537231384,
+            "spa_p_lower": 0.02148925537231384,
+            "spa_p_upper": 0.48825587206396803,
+            "stepm_rejected": [
+              "lambdarank"
+            ],
+            "stepm_adjusted_p": {
+              "gbrt": 0.29985007496251875,
+              "lambdarank": 0.02148925537231384,
+              "xgboost": 0.25837081459270367
+            },
+            "n_boot": 2000,
+            "hac_lags": 19,
+            "promote": true,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        },
+        "selection": {
+          "n_dates": 945,
+          "hac_lags": 19,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.06144166281022854,
+              "t_ic": -2.0905220516284326,
+              "p_ic": 0.0368379176916067,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.03880302207594226,
+              "t_ic": -1.3773081796345152,
+              "p_ic": 0.1687434602081985,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": -0.003115078580235568,
+              "t_ic": -0.13525436055054885,
+              "p_ic": 0.8924396022005847,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": -0.04095776146042587,
+              "t_ic": -1.7076275503580076,
+              "p_ic": 0.08803427153133601,
+              "n_dates": 945,
+              "window_start": null,
+              "window_end": "2024-12-31",
+              "hac_lags": 14
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": -0.9113252274772993,
+                "p_value": 0.3623566880272779,
+                "preferred": "gbrt",
+                "mean_loss_diff": -0.02263864073428629,
+                "lags": 19
+              },
+              "lambdarank": {
+                "statistic": -2.405967385645472,
+                "p_value": 0.016321075085206586,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.05832658422999298,
+                "lags": 19
+              },
+              "xgboost": {
+                "statistic": -0.8800908020526431,
+                "p_value": 0.37903411122773817,
+                "preferred": "xgboost",
+                "mean_loss_diff": -0.02048390134980268,
+                "lags": 19
+              }
+            },
+            "reality_check_p": 0.01699150424787606,
+            "spa_p_consistent": 0.017491254372813594,
+            "spa_p_lower": 0.017491254372813594,
+            "spa_p_upper": 0.496751624187906,
+            "stepm_rejected": [
+              "lambdarank"
+            ],
+            "stepm_adjusted_p": {
+              "gbrt": 0.24587706146926536,
+              "lambdarank": 0.017491254372813594,
+              "xgboost": 0.24587706146926536
+            },
+            "n_boot": 2000,
+            "hac_lags": 19,
+            "promote": true,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        },
+        "holdout": {
+          "n_dates": 189,
+          "hac_lags": 19,
+          "cs_ic": [
+            {
+              "name": "ridge",
+              "mean_ic": -0.05424821202872884,
+              "t_ic": -1.0221021245330515,
+              "p_ic": 0.308045994399422,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "gbrt",
+              "mean_ic": -0.10473232401387295,
+              "t_ic": -2.0542946336734276,
+              "p_ic": 0.04133095605709324,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "lambdarank",
+              "mean_ic": -0.03292844295886825,
+              "t_ic": -0.8072019054595758,
+              "p_ic": 0.4205702245756705,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            },
+            {
+              "name": "xgboost",
+              "mean_ic": -0.04692071710922613,
+              "t_ic": -0.7970455883530227,
+              "p_ic": 0.4264300099611546,
+              "n_dates": 189,
+              "window_start": "2025-01-02",
+              "window_end": null,
+              "hac_lags": 8
+            }
+          ],
+          "gates": {
+            "dm": {
+              "gbrt": {
+                "statistic": 1.8914791514644933,
+                "p_value": 0.06009798141936487,
+                "preferred": "ridge",
+                "mean_loss_diff": 0.05048411198514411,
+                "lags": 19
+              },
+              "lambdarank": {
+                "statistic": -0.6654755138740925,
+                "p_value": 0.5065620219569708,
+                "preferred": "lambdarank",
+                "mean_loss_diff": -0.02131976906986058,
+                "lags": 19
+              },
+              "xgboost": {
+                "statistic": -0.12808193329421383,
+                "p_value": 0.8982210388119675,
+                "preferred": "xgboost",
+                "mean_loss_diff": -0.007327494919502684,
+                "lags": 19
+              }
+            },
+            "reality_check_p": 0.5152423788105946,
+            "spa_p_consistent": 0.4147926036981509,
+            "spa_p_lower": 0.5022488755622189,
+            "spa_p_upper": 0.6281859070464768,
+            "stepm_rejected": [],
+            "stepm_adjusted_p": {
+              "gbrt": 0.992503748125937,
+              "lambdarank": 0.5022488755622189,
+              "xgboost": 0.600199900049975
+            },
+            "n_boot": 2000,
+            "hac_lags": 19,
+            "promote": false,
+            "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+          }
+        }
+      }
+    }
+  },
+  "decision_window": "holdout",
+  "promote": false,
+  "note": "Pre-registered horizon slate. Embargo equals the label horizon. A horizon win still needs the calibration gate before blend_weight could move; the gate is shared across ranker lanes and recorded on the lane-1 receipt. Champion stays public ridge. Not live P&L."
+}

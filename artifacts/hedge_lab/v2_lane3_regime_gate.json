@@ -1,0 +1,263 @@
+{
+  "catalog": "hedge_lab_analytics",
+  "protocol_id": "dipcatcher.sota.v2",
+  "slate_id": "dipcatcher.sota.v2.lanes",
+  "protocol_sha256": "6007e652f2d7974de8fddef3e904be2a25c28e7a68ff8f9b69b8c8e00b538eb2",
+  "slate_sha256": "35123173415cd281f0a4c191f45c0b87d14ddd537229c3d337223857703e5390",
+  "slate_file": "configs/sota_protocol_v2_lanes.yaml",
+  "parent_slate": "configs/sota_protocol_v2.yaml",
+  "lane": 3,
+  "lane_name": "hmm_regime_gate_topk5",
+  "config": "configs/hedge_lab.yaml",
+  "feature_set": "public",
+  "benchmark": "ridge",
+  "selection_end": "2024-12-31",
+  "holdout_start": "2025-01-02",
+  "scheme": "rolling",
+  "train_bars": 252,
+  "val_bars": 63,
+  "test_bars": 63,
+  "embargo_bars": 5,
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "one_way_cost": 0.001,
+  "data_source": "parquet",
+  "synthetic_not_promotable": false,
+  "research_only": true,
+  "live_pnl_claim": false,
+  "execution_claim": "paper_backtest",
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "book": "topk5_12_1",
+  "gate": {
+    "model": "GaussianHMMRegime",
+    "n_states": 3,
+    "seed": 7,
+    "fit_through": "2024-12-31",
+    "features": [
+      "spy_ret_1",
+      "spy_vol20"
+    ],
+    "filter": "forward_only",
+    "multiplier": "1 - P(stress)",
+    "lag_bars": 1,
+    "switch_cost": 0.001
+  },
+  "stress_state": 2,
+  "hmm_labels": {
+    "2": "stress",
+    "1": "risk_off",
+    "0": "neutral"
+  },
+  "hmm_means": [
+    [
+      0.01867808115998543,
+      -0.5120260748951777
+    ],
+    [
+      -0.008604764806297037,
+      4.123849529091616
+    ],
+    [
+      -0.0321906561517353,
+      0.5865864309675971
+    ]
+  ],
+  "multiplier_holdout_mean": 0.7384600686686315,
+  "windows": {
+    "selection": {
+      "n_returns": 2204,
+      "cards": {
+        "hmm_gated_topk5": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.9551275948353698,
+          "flag_high_sharpe": false,
+          "sortino": 1.3816512612831375,
+          "calmar": 0.5718599206975651,
+          "max_drawdown": -0.3320726480729228,
+          "cagr": 0.18989903819281206,
+          "total_return": 3.5752396752777917,
+          "ann_vol": 0.20400401959904566,
+          "n_returns": 2204,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 20.73566084270459,
+          "synthetic_not_promotable": false
+        },
+        "topk5_12_1_ungated": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.9558277690989895,
+          "flag_high_sharpe": false,
+          "sortino": 1.3697570751379933,
+          "calmar": 0.6715752901218072,
+          "max_drawdown": -0.39005180993602284,
+          "cagr": 0.26194915742032054,
+          "total_return": 6.650948836512061,
+          "ann_vol": 0.28667367193490745,
+          "n_returns": 2204,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 10.225110203214035,
+          "synthetic_not_promotable": false
+        },
+        "spy_buy_hold": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.7580221470521844,
+          "flag_high_sharpe": false,
+          "sortino": 1.0534366473301822,
+          "calmar": 0.3723119762451398,
+          "max_drawdown": -0.3410474689324393,
+          "cagr": 0.1269760571516394,
+          "total_return": 1.8447723761560137,
+          "ann_vol": 0.17895323398079585,
+          "n_returns": 2204,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 18.323413574887308,
+          "synthetic_not_promotable": false
+        }
+      }
+    },
+    "holdout": {
+      "n_returns": 429,
+      "cards": {
+        "hmm_gated_topk5": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.6943848694783323,
+          "flag_high_sharpe": false,
+          "sortino": 1.0690100905457982,
+          "calmar": 0.7953027409925607,
+          "max_drawdown": -0.21109292402478674,
+          "cagr": 0.16788278108104726,
+          "total_return": 0.30238446888953807,
+          "ann_vol": 0.2791407889806165,
+          "n_returns": 429,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 8.478085803677473,
+          "synthetic_not_promotable": false
+        },
+        "topk5_12_1_ungated": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 1.3813569740251148,
+          "flag_high_sharpe": false,
+          "sortino": 2.156458484441126,
+          "calmar": 1.7372183856411076,
+          "max_drawdown": -0.30760915462293326,
+          "cagr": 0.534384279002478,
+          "total_return": 1.0726727545046226,
+          "ann_vol": 0.3554827178913547,
+          "n_returns": 429,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 5.067982888243677,
+          "synthetic_not_promotable": false
+        },
+        "spy_buy_hold": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.9827323659775414,
+          "flag_high_sharpe": false,
+          "sortino": 1.4818218753503074,
+          "calmar": 0.8760177931468465,
+          "max_drawdown": -0.18998904129505,
+          "cagr": 0.1664337806773748,
+          "total_return": 0.29963482840371225,
+          "ann_vol": 0.1715074710268759,
+          "n_returns": 429,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 17.0005142281065,
+          "synthetic_not_promotable": false
+        }
+      }
+    },
+    "full": {
+      "n_returns": 2633,
+      "cards": {
+        "hmm_gated_topk5": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.8932236216461057,
+          "flag_high_sharpe": false,
+          "sortino": 1.3124187124919757,
+          "calmar": 0.5609729929201259,
+          "max_drawdown": -0.3320726480729228,
+          "cagr": 0.18628378725637917,
+          "total_return": 4.958721094529019,
+          "ann_vol": 0.21795648974072135,
+          "n_returns": 2633,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 16.60364168100635,
+          "synthetic_not_promotable": false
+        },
+        "topk5_12_1_ungated": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 1.034922009019956,
+          "flag_high_sharpe": false,
+          "sortino": 1.5105650758839293,
+          "calmar": 0.776274663230828,
+          "max_drawdown": -0.39005180993602284,
+          "cagr": 0.3027873374006611,
+          "total_return": 14.857913199547404,
+          "ann_vol": 0.2989337093206408,
+          "n_returns": 2633,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 8.781530768534097,
+          "synthetic_not_promotable": false
+        },
+        "spy_buy_hold": {
+          "catalog": "hedge_lab_analytics",
+          "data_source": "file",
+          "research_only": true,
+          "execution_claim": "paper_backtest",
+          "sharpe": 0.7933908504184785,
+          "flag_high_sharpe": false,
+          "sortino": 1.1152083643427122,
+          "calmar": 0.3908920575212086,
+          "max_drawdown": -0.3410474689324393,
+          "cagr": 0.13331274684340166,
+          "total_return": 2.6971652589331456,
+          "ann_vol": 0.1777311056930694,
+          "n_returns": 2633,
+          "psr_vs_zero": 1.0,
+          "min_trl_days": 17.79130195187176,
+          "synthetic_not_promotable": false
+        }
+      }
+    }
+  },
+  "reality_check": {
+    "statistic": 0.00207823405044003,
+    "p_value": 0.663168415792104,
+    "best_index": 1,
+    "differentials": [
+      "gated_minus_ungated",
+      "gated_minus_spy"
+    ]
+  },
+  "spa": {
+    "p_consistent": 0.6541729135432284,
+    "p_lower": 0.6541729135432284,
+    "p_upper": 0.5112443778110944
+  },
+  "promote": false,
+  "affects_blend_weight": false,
+  "note": "Causal GaussianHMM gate on the frozen top-5 12-1 book. HMM fit through 2024-12-31; forward-filtered state only, multiplier in [0,1], never flips the sign. White RC over the three-model set on the holdout. Book-level claim; blend_weight stays 0. Not live P&L."
+}

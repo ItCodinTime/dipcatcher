@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict
 from quant_fund.backtest.engine import run_backtest
 from quant_fund.config.models import AppConfig
 from quant_fund.data.lake import Lake
+from quant_fund.hedge_lab.mirror import negate_target_weights
 from quant_fund.hedge_lab.resources import (
     assert_disk_budget,
     claim_workspace,
@@ -57,6 +58,7 @@ class HedgeLabProtocol(BaseModel):
     es_limit: float = 0.006
     var_tail_p: float = 0.01
     overlay_lookback: int = 63
+    mirror: bool = False
 
 
 def _lab_artifact_dirs(cfg: AppConfig, source: str) -> list[Path]:
@@ -132,6 +134,29 @@ def _persist_public_feature_gold(config: AppConfig) -> None:
     clear_forecast_caches()
 
 
+def _metric_num(value: object) -> object:
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _backtest_slice(result: Any) -> dict[str, Any]:
+    return {
+        "total_return": _metric_num(result.metrics.get("total_return")),
+        "sharpe": _metric_num(result.metrics.get("sharpe")),
+        "max_drawdown": _metric_num(result.metrics.get("max_drawdown")),
+        "mean_turnover": _metric_num(result.metrics.get("mean_turnover")),
+        "commission": _metric_num(result.metrics.get("commission")),
+        "spread": _metric_num(result.metrics.get("spread")),
+        "impact": _metric_num(result.metrics.get("impact")),
+        "flag_high_sharpe": bool(result.metrics.get("flag_high_sharpe")),
+        "risk_gate_rejects": int(result.metrics.get("risk_gate_rejects") or 0),
+        "n": _metric_num(result.metrics.get("n")),
+        "source_note": result.source_note,
+        "book_risk_overlay": result.metrics.get("book_risk_overlay"),
+    }
+
+
 def run_hedge_lab(
     config: AppConfig,
     protocol: HedgeLabProtocol | None = None,
@@ -204,6 +229,57 @@ def run_hedge_lab(
     boot: dict[str, Any] = {"status": "skipped"}
     if do_boot and rets.size >= 20:
         boot = moving_block_bootstrap_ci(rets, n_boot=boot_n)
+    mirror_blob: dict[str, Any] = {"status": "skipped", "enabled": False}
+    if proto.mirror and not weights.is_empty():
+        overlay_m = None
+        if proto.risk_overlay:
+            overlay_m = BookRiskOverlay(
+                vol_target=proto.vol_target,
+                dd_limit=proto.dd_limit,
+                es_limit=proto.es_limit,
+                tail_p=proto.var_tail_p,
+                lookback=proto.overlay_lookback,
+            )
+        result_m = run_backtest(
+            bars,
+            negate_target_weights(weights),
+            cfg,
+            initial_nav=proto.initial_nav,
+            risk_overlay=overlay_m,
+        )
+        rets_m = _equity_returns(result_m.equity)
+        bench_m = _align_book_and_benchmark(
+            rets_m, _benchmark_returns(bars, result_m.equity, str(cfg.data.benchmark_id))
+        )
+        if bench_m is not None and bench_m.size != rets_m.size:
+            n_m = min(rets_m.size, bench_m.size)
+            rets_m = rets_m[-n_m:]
+            bench_m = bench_m[-n_m:]
+        economic_m = book_economic_scoreboard(
+            rets_m, data_source=source, benchmark_returns=bench_m
+        )
+        boot_m: dict[str, Any] = {"status": "skipped"}
+        if do_boot and rets_m.size >= 20:
+            boot_m = moving_block_bootstrap_ci(rets_m, n_boot=boot_n)
+        if not result_m.equity.is_empty():
+            for art in arts:
+                result_m.equity.write_parquet(art / "equity_mirror.parquet")
+        mirror_blob = {
+            "status": "ok",
+            "enabled": True,
+            "economic": economic_m,
+            "backtest": _backtest_slice(result_m),
+            "bootstrap": boot_m,
+            "n_returns": int(rets_m.size),
+            "sharpe_sum": float(economic["sharpe"]) + float(economic_m["sharpe"]),
+            "costs_even_under_sign_flip": True,
+            "note": (
+                "Sign-flipped target weights on the same fills and cost model. "
+                "Frictionless CS Sharpe flips sign; spread/commission/impact do not. "
+                "A 5% drawdown halt cannot coexist with -150% total return. "
+                "Not a live P&L claim. blend_weight stays 0."
+            ),
+        }
     risk_diag: dict[str, Any] = {"status": "skipped"}
     if rets.size >= 20:
         from quant_fund.risk.pyrisk import BackTesting, ExpectedShortfall, ValueAtRisk
@@ -254,14 +330,9 @@ def run_hedge_lab(
     if do_claim:
         try:
             claimed, ram_claim_stats = claim_workspace()
-            ram_claim_stats["status"] = "ok"
+            ram_claim_stats = {**ram_claim_stats, "status": "ok"}
         except MemoryError as exc:
             ram_claim_stats = {"status": "skipped_memory_error", "reason": str(exc)}
-
-    def _num(value: object) -> object:
-        if isinstance(value, np.generic):
-            return value.item()
-        return value
 
     receipt: dict[str, Any] = {
         "lab_id": proto.lab_id,
@@ -278,22 +349,10 @@ def run_hedge_lab(
         "n_weight_rows": int(weights.height),
         "n_names": int(gold["security_id"].n_unique()) if "security_id" in gold.columns else 0,
         "economic": economic,
+        "mirror": mirror_blob,
         "research_twin": research_twin,
         "market_risk": risk_diag,
-        "backtest": {
-            "total_return": _num(result.metrics.get("total_return")),
-            "sharpe": _num(result.metrics.get("sharpe")),
-            "max_drawdown": _num(result.metrics.get("max_drawdown")),
-            "mean_turnover": _num(result.metrics.get("mean_turnover")),
-            "commission": _num(result.metrics.get("commission")),
-            "spread": _num(result.metrics.get("spread")),
-            "impact": _num(result.metrics.get("impact")),
-            "flag_high_sharpe": bool(result.metrics.get("flag_high_sharpe")),
-            "risk_gate_rejects": int(result.metrics.get("risk_gate_rejects") or 0),
-            "n": _num(result.metrics.get("n")),
-            "source_note": result.source_note,
-            "book_risk_overlay": result.metrics.get("book_risk_overlay"),
-        },
+        "backtest": _backtest_slice(result),
         "bootstrap": boot,
         "resources": {
             "disk": disk,
@@ -305,7 +364,8 @@ def run_hedge_lab(
         "note": (
             "Sharpe/Calmar/Sortino are paper-book diagnostics on a session-close "
             "file tape with next-open fills and modeled costs. Not a live P&L claim. "
-            "Not a research-family blob. blend_weight stays 0."
+            "Not a research-family blob. blend_weight stays 0. "
+            "Sign-flip mirror is an identity check: costs do not change sign."
         ),
     }
     dest = root / "metadata" / "hedge_lab_receipt.json"

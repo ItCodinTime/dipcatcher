@@ -12,6 +12,7 @@ import numpy as np
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.lightspeed.ranker import NauticaRanker
 from quant_fund.metrics.cross_section import date_ic_series
 from quant_fund.metrics.risk import losses_from_returns
 from quant_fund.metrics.scoring import (
@@ -37,6 +38,7 @@ from quant_fund.models.cs_papers import (
     PAPER_RANKER_NAMES,
     AdaptiveLassoRanker,
     ClassicRanker,
+    ClassicShortRanker,
     CombinationRanker,
     DoubleSelectionRanker,
     FamaMacBethRanker,
@@ -45,17 +47,20 @@ from quant_fund.models.cs_papers import (
     GBRTRanker,
     GXThreePassRanker,
     ICWeightedCombinationRanker,
+    KraussRanker,
     MSFECombinationRanker,
     PCRRanker,
     PLSRanker,
     PrincipalPortfolioRanker,
-    RPPCARanker,
-    ClassicShortRanker,
     ReversalRanker,
+    RPPCARanker,
     SDFElasticNetRanker,
     ThreePassFilterRanker,
+    TSMOMRanker,
+    VMERanker,
     make_combo_ic_st,
     make_fm_st,
+    make_ridge_neut,
     make_ridge_st,
 )
 from quant_fund.models.distribution import (
@@ -592,9 +597,14 @@ def _make_ranker(name: str, config: AppConfig) -> Any:
         "reversal": ReversalRanker(),
         "classic_st": ClassicShortRanker(),
         "ridge_st": make_ridge_st(t.ridge_alpha),
+        "ridge_neut": make_ridge_neut(t.ridge_alpha),
         "fm_st": make_fm_st(t.fm_ridge_alpha),
         "combo_ic_st": make_combo_ic_st(),
         "combo_msfe": MSFECombinationRanker(),
+        "nautica": NauticaRanker(),
+        "tsmom": TSMOMRanker(),
+        "vme": VMERanker(),
+        "krauss": KraussRanker(),
     }
     if name not in catalog:
         raise ValueError(f"unknown ranking model {name!r}")

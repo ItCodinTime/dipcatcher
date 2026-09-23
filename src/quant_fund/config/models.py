@@ -492,7 +492,12 @@ class TrainConfig(StrictConfigModel):
             "reversal",
             "classic_st",
             "classic",
+            "nautica",
+            "tsmom",
+            "vme",
+            "krauss",
             "ridge_st",
+            "ridge_neut",
             "fm_st",
             "combo_ic_st",
             "combo_ic",
@@ -607,9 +612,14 @@ class TrainConfig(StrictConfigModel):
             "reversal",
             "classic_st",
             "ridge_st",
+            "ridge_neut",
             "fm_st",
             "combo_ic_st",
             "combo_msfe",
+            "nautica",
+            "tsmom",
+            "vme",
+            "krauss",
         }
         unknown = [name for name in self.paper_rankers if name not in allowed]
         if unknown:
@@ -791,6 +801,43 @@ class KillSwitchConfig(StrictConfigModel):
     allow_auto_flatten: bool = False
 
 
+class PerpConfig(StrictConfigModel):
+    """Perpetual-futures carry backtest settings (``run_carry_backtest``)."""
+
+    periods_per_year_override: float | None = None
+    bar_seconds_hint: float | None = None
+    funding_enabled: bool = True
+    # Stress multiplier applied to observed funding rates (1.0 = use as-is).
+    funding_spike_multiplier: float = 1.0
+    max_leverage: float = 3.0
+    liquidation_on_wick: bool = True
+    maint_margin_ratio: float = 0.05
+    liquidation_fee_bps: float = 50.0
+    fill_delay_bars: int = 0
+
+    @model_validator(mode="after")
+    def valid_perp_settings(self) -> PerpConfig:
+        if self.periods_per_year_override is not None and (
+            not np.isfinite(self.periods_per_year_override) or self.periods_per_year_override <= 0
+        ):
+            raise ValueError("perp.periods_per_year_override must be finite and positive")
+        if self.bar_seconds_hint is not None and (
+            not np.isfinite(self.bar_seconds_hint) or self.bar_seconds_hint <= 0
+        ):
+            raise ValueError("perp.bar_seconds_hint must be finite and positive")
+        for name in ("funding_spike_multiplier", "liquidation_fee_bps"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value < 0:
+                raise ValueError(f"perp.{name} must be finite and non-negative")
+        if not np.isfinite(self.max_leverage) or self.max_leverage <= 0:
+            raise ValueError("perp.max_leverage must be finite and positive")
+        if not np.isfinite(self.maint_margin_ratio) or not 0.0 < self.maint_margin_ratio < 1.0:
+            raise ValueError("perp.maint_margin_ratio must be finite and in (0, 1)")
+        if self.fill_delay_bars < 0:
+            raise ValueError("perp.fill_delay_bars must be non-negative")
+        return self
+
+
 class NorthsetConfig(StrictConfigModel):
     """Order-book + candlestick research slice (ADR-021)."""
 
@@ -953,6 +1000,7 @@ class AppConfig(StrictConfigModel):
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     kill_switch: KillSwitchConfig = Field(default_factory=KillSwitchConfig)
     paper: PaperConfig = Field(default_factory=PaperConfig)
+    perp: PerpConfig = Field(default_factory=PerpConfig)
     northset: NorthsetConfig = Field(default_factory=NorthsetConfig)
     robinhood_plus: RobinhoodPlusConfig = Field(default_factory=RobinhoodPlusConfig)
     inherit: str | None = None

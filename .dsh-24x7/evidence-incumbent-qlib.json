@@ -1,0 +1,90 @@
+{
+  "correctness": {
+    "common_dates": 997,
+    "dipcatcher_total_fees": 131846.29515885914,
+    "fills_dipcatcher": 1587,
+    "nav_final_dipcatcher": 1500764.656389184,
+    "nav_final_qlib": 1498592.6595926313,
+    "nav_max_abs_diff": 0.1783271913882345,
+    "nav_max_rel_diff": 1.0290734787086966e-07,
+    "qlib_order_days": 670,
+    "qlib_total_cost": 131833.36603253402
+  },
+  "disclaimer": "Single matched workload vs qlib 0.9.x on real Binance daily bars. Correctness is NAV parity; latency is single-process wall time. Not a claim of superiority across all product dimensions.",
+  "environment": {
+    "platform": "win32",
+    "python": "3.12.14"
+  },
+  "incumbent": {
+    "name": "qlib",
+    "repo": "https://github.com/microsoft/qlib",
+    "url": "https://github.com/microsoft/qlib",
+    "version": "0.9.7"
+  },
+  "known_semantic_differences": [
+    "qlib quotes are float32 (.bin format); dipcatcher uses float64 parquet prices. Residual NAV divergence is f32 price quantization (~1e-7 rel, ~$0.18 worst day on ~$1.5M).",
+    "qlib order generation sells-down before buys within a step and clips buy amounts to cash+cost; dipcatcher rejects a whole order that would overdraw. Workload keeps a 0.9 weight-sum buffer so neither policy binds.",
+    "qlib default order generators renormalize weights to sum=1 and floor amounts to integer units; a custom OrderGenerator (MatchedOrderGen) applies dipcatcher's exact sizing target_units = w * NAV / open.",
+    "limit_threshold=None does NOT disable qlib's price-limit halt: it falls back to C.limit_threshold (0.095 for region=cn) and silently drops orders on >9.5% daily moves. limit_threshold=1e9 disables it. Without this, NAV diverged ~14% on this workload."
+  ],
+  "latency": {
+    "dipcatcher_ms_all": [
+      325.37,
+      327.52,
+      351.13,
+      319.05,
+      337.57,
+      321.11,
+      354.99,
+      374.63,
+      345.6,
+      322.29
+    ],
+    "dipcatcher_ms_median": 332.5420000037411,
+    "qlib_ms_all": [
+      16527.9,
+      17516.73,
+      16390.94,
+      16970.2,
+      16921.11,
+      17151.75,
+      15947.11,
+      16555.05,
+      15643.24,
+      15816.97
+    ],
+    "qlib_ms_median": 16541.47880000528,
+    "reps": 10
+  },
+  "live_pnl_claim": false,
+  "research_only": true,
+  "schema": "incumbent_bench.v1",
+  "workload": {
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "bar_files_sha256": {
+      "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+      "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+      "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb"
+    },
+    "bars_per_asset": 999,
+    "commission_bps": 10.0,
+    "fills": "decision close t -> exec open t+1 (qlib shift=1 + deal_price=$open)",
+    "init_nav": 1000000.0,
+    "qlib_settings": {
+      "deal_price": "$open",
+      "limit_threshold": 1000000000.0,
+      "min_cost": 0.0,
+      "risk_degree": 1.0,
+      "trade_unit": null,
+      "volume_threshold": null
+    },
+    "script_sha256": "5e826ee55b18f0c90f655aa9186dbe4965870ad49ca750643abab9263f132dc0",
+    "spread_impact_borrow": 0.0,
+    "strategy": "causal SMA20 gate, equal-weight 0.9/3 per gated name",
+    "weight_scale": 1.0
+  }
+}

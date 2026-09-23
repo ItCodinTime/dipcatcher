@@ -169,6 +169,29 @@ def allocate_float64_workspace(n_rows: int, n_cols: int) -> object:
     raise MemoryError("could not allocate hedge-lab workspace") from last_error
 
 
+def cap_blas_threads(fraction: float = 0.6) -> int:
+    """Cap BLAS/OpenMP threads at ``fraction`` of logical CPUs (default 60%)."""
+    if not 0.0 < float(fraction) <= 1.0:
+        raise ValueError("fraction must be in (0, 1]")
+    n_cpu = int(os.cpu_count() or 1)
+    n = max(1, int(n_cpu * float(fraction)))
+    for key in (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        os.environ[key] = str(n)
+    try:
+        import torch
+
+        torch.set_num_threads(n)
+    except Exception:
+        pass
+    return n
+
+
 def ensure_dirs(paths: Iterable[Path]) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)

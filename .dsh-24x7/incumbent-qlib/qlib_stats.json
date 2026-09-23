@@ -1,0 +1,66 @@
+{
+  "dipcatcher_runtime_s": 6.404081800021231,
+  "environment": {
+    "platform": "win32",
+    "python": "3.12.14"
+  },
+  "incumbent": {
+    "name": "qlib",
+    "url": "https://github.com/microsoft/qlib"
+  },
+  "known_semantic_differences": [
+    "qlib executes integer unit amounts (deal_amount granularity), dipcatcher allows fractional crypto quantities \u2014 NAV diverges by rounding residue.",
+    "qlib fills at the trade-step open (deal_price='open'); signal shift=1 maps decision-at-close-t to trade-at-t+1 open."
+  ],
+  "live_pnl_claim": false,
+  "parity": {
+    "common_steps": 980,
+    "dipcatcher_fills": 2098,
+    "dipcatcher_steps": 998,
+    "dipcatcher_total_fees": 103187.20053611795,
+    "nav_final_dipcatcher": 1638261.5191609957,
+    "nav_final_qlib": 1239186.239459227,
+    "nav_max_abs_diff": 554116.5084077865,
+    "nav_max_rel_diff": 0.2682100414770501,
+    "qlib_steps": 980
+  },
+  "qlib_stats": {
+    "columns": [
+      "account",
+      "return",
+      "total_turnover",
+      "turnover",
+      "total_cost",
+      "cost",
+      "value",
+      "cash",
+      "bench"
+    ],
+    "final_value": 1239186.239459227,
+    "mean_cash_fraction": 0.65893562739799,
+    "n_steps": 980,
+    "nav_column": "account",
+    "run_seconds": 10.138855800003512,
+    "total_cost_usd": 44447.809002685506
+  },
+  "research_only": true,
+  "schema": "incumbent_bench_qlib.v2",
+  "workload": {
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "bar_files_sha256": {
+      "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+      "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+      "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb"
+    },
+    "bars_per_asset": 999,
+    "commission_bps": 10.0,
+    "fills": "decision close t -> exec open t+1 (qlib shift=1 + deal_price=open)",
+    "init_nav": 1000000.0,
+    "script_sha256": "94b5352cd50eda209d62318c7c871e4e729a8d66a2f28cebdd473f80cbfebda2",
+    "strategy": "causal SMA20 gate, equal-weight per gated name"
+  }
+}

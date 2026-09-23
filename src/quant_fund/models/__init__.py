@@ -1,3 +1,8 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from quant_fund.lightspeed.ranker import NauticaRanker
+
 from quant_fund.models.asset_pricing import IPCARanker, RandomFourierRanker, SDFRidgeRanker
 from quant_fund.models.base import ForecastModel, ModelMeta
 from quant_fund.models.cs_papers import (
@@ -12,6 +17,7 @@ from quant_fund.models.cs_papers import (
     GBRTRanker,
     GXThreePassRanker,
     ICWeightedCombinationRanker,
+    KraussRanker,
     MSFECombinationRanker,
     PCRRanker,
     PLSRanker,
@@ -20,6 +26,8 @@ from quant_fund.models.cs_papers import (
     RPPCARanker,
     SDFElasticNetRanker,
     ThreePassFilterRanker,
+    TSMOMRanker,
+    VMERanker,
 )
 from quant_fund.models.ranking import CompositeRanker, ElasticNetRanker, RidgeRanker
 from quant_fund.models.robinhood_plus import (
@@ -48,7 +56,9 @@ __all__ = [
     "GXThreePassRanker",
     "ICWeightedCombinationRanker",
     "IPCARanker",
+    "KraussRanker",
     "MSFECombinationRanker",
+    "NauticaRanker",
     "MODEL_VERSION",
     "ModelMeta",
     "PCRRanker",
@@ -63,4 +73,20 @@ __all__ = [
     "SDFElasticNetRanker",
     "SDFRidgeRanker",
     "ThreePassFilterRanker",
+    "TSMOMRanker",
+    "VMERanker",
 ]
+
+
+def __getattr__(name: str):
+    """Load the Lightspeed adapter lazily to avoid a package cycle.
+
+    ``lightspeed.ranker`` subclasses ``ClassicRanker`` from ``cs_papers``.
+    Importing it eagerly here makes ``import quant_fund.lightspeed`` recurse
+    through this package while ``cs_papers`` is still initializing.
+    """
+    if name == "NauticaRanker":
+        from quant_fund.lightspeed.ranker import NauticaRanker
+
+        return NauticaRanker
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

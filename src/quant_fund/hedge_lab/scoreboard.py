@@ -25,6 +25,7 @@ from quant_fund.metrics.returns import (
     max_drawdown,
     sharpe_ratio,
     sortino_ratio,
+    wealth_index,
 )
 
 Array = NDArray[np.float64]
@@ -57,6 +58,9 @@ def book_economic_scoreboard(
         "calmar": float(calmar_ratio(r, periods_per_year=periods_per_year)),
         "max_drawdown": float(max_drawdown(r)) if n else 0.0,
         "cagr": float(cagr(r, periods_per_year)) if n else float("nan"),
+        "total_return": (
+            float(wealth_index(r)[-1] - 1.0) if n and np.all(np.isfinite(r)) else float("nan")
+        ),
         "ann_vol": float(annualized_vol(r, periods_per_year)) if n else float("nan"),
         "n_returns": n,
         "psr_vs_zero": float(psr),

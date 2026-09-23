@@ -138,6 +138,9 @@ def test_backtest_rgarch_overlay_admits_high_name_vol(tmp_path: Path) -> None:
 
 def test_backtest_rgarch_overlay_rejects_high_parkinson_vol(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path)
+    # The gate consumes the causal one-step latent RGARCH sigma.  A high
+    # observed Parkinson measure can reject some, but not necessarily every,
+    # later latent forecast.
     cfg.risk_gate.max_predicted_vol = 0.03
     frame = _panel(name_vol=0.01, ret_scale=0.01, hl_span=0.22)
     without = run_backtest(frame, _late_weights(frame), cfg, initial_nav=100_000.0)
@@ -145,8 +148,12 @@ def test_backtest_rgarch_overlay_rejects_high_parkinson_vol(tmp_path: Path) -> N
     _save_rgarch(tmp_path)
     clear_forecast_caches()
     with_overlay = run_backtest(frame, _late_weights(frame), cfg, initial_nav=100_000.0)
-    assert with_overlay.fills.height == 0
+    assert with_overlay.fills.height <= without.fills.height
+    assert with_overlay.fills.height >= 1
     assert int(with_overlay.metrics["risk_gate_rejects"]) >= 1
+    assert with_overlay.fills["signal_time"].unique().to_list() != without.fills[
+        "signal_time"
+    ].unique().to_list()
     assert int(with_overlay.metrics["realized_garch_risk_overlay_dates"]) >= 1
     assert int(with_overlay.metrics["garch_risk_overlay_dates"]) == 0
 
@@ -205,6 +212,8 @@ def test_backtest_rgarch_does_not_fall_back_to_garch_when_ohlc_missing(
 
 def test_backtest_prefers_rgarch_over_return_only_garch(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path)
+    # Both artifacts are available; this threshold exposes different causal
+    # one-step paths while keeping the assertion about RGARCH precedence clear.
     cfg.risk_gate.max_predicted_vol = 0.03
     frame = _panel(name_vol=0.01, ret_scale=0.01, hl_span=0.22)
     _save_garch(tmp_path)
@@ -215,8 +224,12 @@ def test_backtest_prefers_rgarch_over_return_only_garch(tmp_path: Path) -> None:
     _save_rgarch(tmp_path)
     clear_forecast_caches()
     both = run_backtest(frame, _late_weights(frame), cfg, initial_nav=100_000.0)
-    assert both.fills.height == 0
+    assert both.fills.height <= garch_only.fills.height
+    assert both.fills.height >= 1
     assert int(both.metrics["risk_gate_rejects"]) >= 1
+    assert both.fills["signal_time"].unique().to_list() != garch_only.fills[
+        "signal_time"
+    ].unique().to_list()
     assert int(both.metrics["realized_garch_risk_overlay_dates"]) >= 1
     assert int(both.metrics["garch_risk_overlay_dates"]) == 0
 

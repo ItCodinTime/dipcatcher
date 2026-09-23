@@ -1,0 +1,363 @@
+{
+  "artifact_sha256": {
+    "bolt_small": "ce58a20c3e1a493fab7773a52af20cb1c9d2a39686715e3d8f9bb0a406a0af36",
+    "kronos_small": "ec0ef7fc2c84ae572119d71a4d251c466c58a419d7fa6068d8f2cf1713ede50b",
+    "kronos_small_tokenizer": "fbe595b16f2ea8a29635cd6734c1b9d646463900c1baad41be1af4f92e116f35"
+  },
+  "bars_sha256": {
+    "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6"
+  },
+  "challengers": [
+    "dip_gauss",
+    "dip_student_t",
+    "dip_ewma_t",
+    "dip_empirical",
+    "dip_empirical_long",
+    "dip_garch_t",
+    "dip_fhs",
+    "dip_blend"
+  ],
+  "config": {
+    "garch_window": 750,
+    "lookback": 400,
+    "n_boot": 50,
+    "origins_per_asset": 30,
+    "samples_per_origin": 3,
+    "seed": 7,
+    "target_specs": {
+      "bolt_small": {
+        "kind": "bolt",
+        "model_dir": "data\\models\\chronos-bolt-small"
+      },
+      "kronos_small": {
+        "kind": "kronos",
+        "model_dir": "data\\models\\Kronos-small"
+      }
+    },
+    "targets": [
+      "kronos_small",
+      "bolt_small"
+    ],
+    "taus": [
+      0.05,
+      0.5,
+      0.95
+    ],
+    "window": 250
+  },
+  "created_at": "2026-09-21T16:11:56.409508+00:00",
+  "diebold_mariano": {
+    "bolt_small": {
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.0015274414598201345,
+        "n": 30,
+        "p_value": 0.0027709779300061207,
+        "preferred": "dip_blend",
+        "statistic": 3.2703183874822064
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.0015353628928360332,
+        "n": 30,
+        "p_value": 0.002444861431095761,
+        "preferred": "dip_empirical",
+        "statistic": 3.318857013206356
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.0015501316929476235,
+        "n": 30,
+        "p_value": 0.001035245999805303,
+        "preferred": "dip_empirical_long",
+        "statistic": 3.646381027341933
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0007594365389655113,
+        "n": 30,
+        "p_value": 0.07554954730911606,
+        "preferred": "dip_ewma_t",
+        "statistic": 1.8431542903836533
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.0013717779638200242,
+        "n": 30,
+        "p_value": 0.0035435278144486755,
+        "preferred": "dip_fhs",
+        "statistic": 3.174272713006923
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0013342504694867441,
+        "n": 30,
+        "p_value": 0.0033444643798872607,
+        "preferred": "dip_garch_t",
+        "statistic": 3.196941687073859
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.0011095748168026291,
+        "n": 30,
+        "p_value": 0.017504300902460745,
+        "preferred": "dip_gauss",
+        "statistic": 2.519802425653586
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.001511918409151166,
+        "n": 30,
+        "p_value": 0.0032868121999406947,
+        "preferred": "dip_student_t",
+        "statistic": 3.203748531661371
+      },
+      "kronos_small": {
+        "mean_loss_diff_target_minus_challenger": -0.010822186355513602,
+        "n": 30,
+        "p_value": 0.0024383956409008184,
+        "preferred": "bolt_small",
+        "statistic": -3.319881059660229
+      }
+    },
+    "kronos_small": {
+      "bolt_small": {
+        "mean_loss_diff_target_minus_challenger": 0.010822186355513602,
+        "n": 30,
+        "p_value": 0.0024383956409008184,
+        "preferred": "bolt_small",
+        "statistic": 3.319881059660229
+      },
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.012349627815333742,
+        "n": 30,
+        "p_value": 0.0007892770350844716,
+        "preferred": "dip_blend",
+        "statistic": 3.748065468940021
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.012357549248349637,
+        "n": 30,
+        "p_value": 0.0007898235963795611,
+        "preferred": "dip_empirical",
+        "statistic": 3.7478068744698314
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.01237231804846123,
+        "n": 30,
+        "p_value": 0.0008075795390958545,
+        "preferred": "dip_empirical_long",
+        "statistic": 3.7394996024910134
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.011581622894479119,
+        "n": 30,
+        "p_value": 0.0010620570953024744,
+        "preferred": "dip_ewma_t",
+        "statistic": 3.636759615633138
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.012193964319333627,
+        "n": 30,
+        "p_value": 0.0008136933226237463,
+        "preferred": "dip_fhs",
+        "statistic": 3.736680405665756
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.012156436825000349,
+        "n": 30,
+        "p_value": 0.0008155060843958795,
+        "preferred": "dip_garch_t",
+        "statistic": 3.7358484730604276
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.011931761172316232,
+        "n": 30,
+        "p_value": 0.0010963900006058095,
+        "preferred": "dip_gauss",
+        "statistic": 3.6247781722349712
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.01233410476466477,
+        "n": 30,
+        "p_value": 0.0007940082782990278,
+        "preferred": "dip_student_t",
+        "statistic": 3.7458327430814684
+      }
+    }
+  },
+  "disclaimer": "Causal walk-forward evaluation on public Binance klines with proper scores only. Not a live-trading or deployability claim.",
+  "elapsed_seconds": 52.8,
+  "live_pnl_claim": false,
+  "mcs_included": {
+    "bolt_small": false,
+    "dip_blend": true,
+    "dip_empirical": true,
+    "dip_empirical_long": true,
+    "dip_ewma_t": false,
+    "dip_fhs": true,
+    "dip_garch_t": true,
+    "dip_gauss": false,
+    "dip_student_t": true,
+    "kronos_small": false
+  },
+  "mcs_p_values": {
+    "bolt_small": 0.0196078431372549,
+    "dip_blend": 0.17647058823529413,
+    "dip_empirical": 0.17647058823529413,
+    "dip_empirical_long": 0.17647058823529413,
+    "dip_ewma_t": 0.0196078431372549,
+    "dip_fhs": 0.17647058823529413,
+    "dip_garch_t": 0.17647058823529413,
+    "dip_gauss": 0.058823529411764705,
+    "dip_student_t": 0.17647058823529413,
+    "kronos_small": 0.0196078431372549
+  },
+  "mean_crps_per_asset": {
+    "BTCUSDT": {
+      "bolt_small": 0.011725973370775886,
+      "dip_blend": 0.010198531910955754,
+      "dip_empirical": 0.010190610477939852,
+      "dip_empirical_long": 0.010175841677828262,
+      "dip_ewma_t": 0.010966536831810376,
+      "dip_fhs": 0.010354195406955863,
+      "dip_garch_t": 0.010391722901289145,
+      "dip_gauss": 0.010616398553973255,
+      "dip_student_t": 0.01021405496162472,
+      "kronos_small": 0.022548159726289492
+    }
+  },
+  "mean_crps_pooled": {
+    "bolt_small": 0.011725973370775886,
+    "dip_blend": 0.010198531910955754,
+    "dip_empirical": 0.010190610477939852,
+    "dip_empirical_long": 0.010175841677828262,
+    "dip_ewma_t": 0.010966536831810376,
+    "dip_fhs": 0.010354195406955863,
+    "dip_garch_t": 0.010391722901289145,
+    "dip_gauss": 0.010616398553973255,
+    "dip_student_t": 0.01021405496162472,
+    "kronos_small": 0.022548159726289492
+  },
+  "mean_pinball_per_asset": {
+    "BTCUSDT": {
+      "bolt_small": {
+        "0.05": 0.001820452085033697,
+        "0.5": 0.007810802956952603,
+        "0.95": 0.003301411917908038
+      },
+      "dip_blend": {
+        "0.05": 0.0018269820727621845,
+        "0.5": 0.0067587202823046,
+        "0.95": 0.0029540146478883303
+      },
+      "dip_empirical": {
+        "0.05": 0.0018059970809739861,
+        "0.5": 0.006752413221163352,
+        "0.95": 0.002908572346065551
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0018292461609270042,
+        "0.5": 0.00672341374883964,
+        "0.95": 0.0029140632193589634
+      },
+      "dip_ewma_t": {
+        "0.05": 0.002463493800081326,
+        "0.5": 0.006724805799104074,
+        "0.95": 0.0031307464454534842
+      },
+      "dip_fhs": {
+        "0.05": 0.001890066752810154,
+        "0.5": 0.0067311951241776765,
+        "0.95": 0.003218655404964197
+      },
+      "dip_garch_t": {
+        "0.05": 0.001969760732343769,
+        "0.5": 0.006716121304455212,
+        "0.95": 0.0032202720084321557
+      },
+      "dip_gauss": {
+        "0.05": 0.002069533062178,
+        "0.5": 0.006749065080378956,
+        "0.95": 0.0029199108081417666
+      },
+      "dip_student_t": {
+        "0.05": 0.0018823496719892435,
+        "0.5": 0.006772700880205937,
+        "0.95": 0.0029953591635152347
+      },
+      "kronos_small": {
+        "0.05": 0.0026467574710727407,
+        "0.5": 0.014144097671489548,
+        "0.95": 0.013645013371925339
+      }
+    }
+  },
+  "mean_pinball_pooled": {
+    "bolt_small": {
+      "0.05": 0.001820452085033697,
+      "0.5": 0.007810802956952603,
+      "0.95": 0.003301411917908038
+    },
+    "dip_blend": {
+      "0.05": 0.0018269820727621845,
+      "0.5": 0.0067587202823046,
+      "0.95": 0.0029540146478883303
+    },
+    "dip_empirical": {
+      "0.05": 0.0018059970809739861,
+      "0.5": 0.006752413221163352,
+      "0.95": 0.002908572346065551
+    },
+    "dip_empirical_long": {
+      "0.05": 0.0018292461609270042,
+      "0.5": 0.00672341374883964,
+      "0.95": 0.0029140632193589634
+    },
+    "dip_ewma_t": {
+      "0.05": 0.002463493800081326,
+      "0.5": 0.006724805799104074,
+      "0.95": 0.0031307464454534842
+    },
+    "dip_fhs": {
+      "0.05": 0.001890066752810154,
+      "0.5": 0.0067311951241776765,
+      "0.95": 0.003218655404964197
+    },
+    "dip_garch_t": {
+      "0.05": 0.001969760732343769,
+      "0.5": 0.006716121304455212,
+      "0.95": 0.0032202720084321557
+    },
+    "dip_gauss": {
+      "0.05": 0.002069533062178,
+      "0.5": 0.006749065080378956,
+      "0.95": 0.0029199108081417666
+    },
+    "dip_student_t": {
+      "0.05": 0.0018823496719892435,
+      "0.5": 0.006772700880205937,
+      "0.95": 0.0029953591635152347
+    },
+    "kronos_small": {
+      "0.05": 0.0026467574710727407,
+      "0.5": 0.014144097671489548,
+      "0.95": 0.013645013371925339
+    }
+  },
+  "n_complete": 30,
+  "n_dropped_incomplete": 0,
+  "n_rows": 30,
+  "n_scored_per_asset": {
+    "BTCUSDT": 30
+  },
+  "quantile_completion": "trapezoid on dense grid; exponential tails outside native quantile grid",
+  "research_only": true,
+  "schema": "sota_eval.v3",
+  "spa": {
+    "bolt_small": {
+      "p_consistent": 0.0196078431372549,
+      "p_lower": 0.0196078431372549,
+      "p_upper": 0.6274509803921569,
+      "statistic": 3.090537675745299
+    },
+    "kronos_small": {
+      "p_consistent": 0.0196078431372549,
+      "p_lower": 0.0196078431372549,
+      "p_upper": 0.45098039215686275,
+      "statistic": 3.5782184233564207
+    }
+  }
+}

@@ -16,6 +16,8 @@ risk_gate:
   stale_price_bars: 10
 robinhood_plus:
   blend_weight: 0.0
+train:
+  ranking_target: future_idio_return_1
 universe:
   top_n_adv: 50
   min_history_bars: 60

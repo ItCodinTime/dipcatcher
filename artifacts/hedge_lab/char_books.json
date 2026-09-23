@@ -1,0 +1,242 @@
+{
+  "protocol_id": "dipcatcher.sota.v2",
+  "holdout_start": "2025-01-02",
+  "promote": false,
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "live_pnl_claim": false,
+  "books": [
+    "low_vol_60",
+    "low_beta_60",
+    "high_52w",
+    "idio_mom_20",
+    "reversal_1",
+    "combo_lowvol_52w",
+    "faber_spy",
+    "above_sma_200"
+  ],
+  "cards": {
+    "low_vol_60": {
+      "full": {
+        "sharpe": 0.3290851277113568,
+        "cagr": 0.02681726515264371,
+        "max_drawdown": -0.2123029586558468,
+        "total_return": 0.3183772375445797,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": 0.2811956807311852,
+        "cagr": 0.022223751710388706,
+        "max_drawdown": -0.2123029586558468,
+        "total_return": 0.2118572233885725,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": 0.5753776491998018,
+        "cagr": 0.05073305001324324,
+        "max_drawdown": -0.09277597740987942,
+        "total_return": 0.0878981550798188,
+        "n_returns": 429
+      }
+    },
+    "low_beta_60": {
+      "full": {
+        "sharpe": 0.2638000615946504,
+        "cagr": 0.021939775387514127,
+        "max_drawdown": -0.2026719254290884,
+        "total_return": 0.2544173496774087,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": 0.24776809921355314,
+        "cagr": 0.01999733360802125,
+        "max_drawdown": -0.2026719254290884,
+        "total_return": 0.18897664194474206,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": 0.33892797156870513,
+        "cagr": 0.03197302302178251,
+        "max_drawdown": -0.11798539469095415,
+        "total_return": 0.0550395234221146,
+        "n_returns": 429
+      }
+    },
+    "high_52w": {
+      "full": {
+        "sharpe": 0.43897245980571303,
+        "cagr": 0.05321596015107577,
+        "max_drawdown": -0.20348718011846156,
+        "total_return": 0.7186287162455214,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": 0.5217155401316125,
+        "cagr": 0.06580776544362088,
+        "max_drawdown": -0.20348718011846156,
+        "total_return": 0.7457036817740228,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": 0.002138058517252848,
+        "cagr": -0.009139830774255953,
+        "max_drawdown": -0.16090964877742753,
+        "total_return": -0.015509485264410983,
+        "n_returns": 429
+      }
+    },
+    "idio_mom_20": {
+      "full": {
+        "sharpe": 0.8210911222726505,
+        "cagr": 0.16699467343228536,
+        "max_drawdown": -0.33354700292708395,
+        "total_return": 4.0176125871926445,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": 0.8028893296063837,
+        "cagr": 0.16129141135289649,
+        "max_drawdown": -0.33354700292708395,
+        "total_return": 2.6959000423841712,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": 0.9102864951632328,
+        "cagr": 0.19672627878533233,
+        "max_drawdown": -0.20358093758315887,
+        "total_return": 0.35761587966427966,
+        "n_returns": 429
+      }
+    },
+    "reversal_1": {
+      "full": {
+        "sharpe": -0.6759647091093856,
+        "cagr": -0.16423307968612832,
+        "max_drawdown": -0.8471789955935434,
+        "total_return": -0.8464594939430571,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": -0.6891170676212078,
+        "cagr": -0.1666293067913559,
+        "max_drawdown": -0.8122506013152233,
+        "total_return": -0.7967817412714928,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": -0.6080927929330894,
+        "cagr": -0.15181901165512035,
+        "max_drawdown": -0.2541074252468519,
+        "total_return": -0.24445516353888253,
+        "n_returns": 429
+      }
+    },
+    "combo_lowvol_52w": {
+      "full": {
+        "sharpe": 0.42923942616206473,
+        "cagr": 0.04131728999199291,
+        "max_drawdown": -0.18431419675667315,
+        "total_return": 0.5263196541083568,
+        "n_returns": 2632
+      },
+      "selection": {
+        "sharpe": 0.45953722949937337,
+        "cagr": 0.04510905225468087,
+        "max_drawdown": -0.18431419675667315,
+        "total_return": 0.47065907136358787,
+        "n_returns": 2203
+      },
+      "holdout": {
+        "sharpe": 0.26410072891135683,
+        "cagr": 0.022061467536835577,
+        "max_drawdown": -0.1118491866591581,
+        "total_return": 0.03784737321421705,
+        "n_returns": 429
+      }
+    },
+    "faber_spy": {
+      "full": {
+        "sharpe": 0.714926757181329,
+        "cagr": 0.07861997775681795,
+        "max_drawdown": -0.20870160490518286,
+        "total_return": 1.2050743288201975,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.6776254185098091,
+        "cagr": 0.07406534323649772,
+        "max_drawdown": -0.20870160490518286,
+        "total_return": 0.8680802014392277,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.9068254092853318,
+        "cagr": 0.10232583700208919,
+        "max_drawdown": -0.10377026295551695,
+        "total_return": 0.1803959632575418,
+        "n_returns": 429
+      }
+    },
+    "above_sma_200": {
+      "full": {
+        "sharpe": 0.7515635504117354,
+        "cagr": 0.10920975449781367,
+        "max_drawdown": -0.3153380721998853,
+        "total_return": 1.9533948094929605,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.7186967065186681,
+        "cagr": 0.1043342065323245,
+        "max_drawdown": -0.3153380721998853,
+        "total_return": 1.3820921398108914,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.928343381664218,
+        "cagr": 0.13459946054775496,
+        "max_drawdown": -0.19961582550320156,
+        "total_return": 0.23983231384467896,
+        "n_returns": 429
+      }
+    },
+    "spy": {
+      "full": {
+        "sharpe": 0.7933908504184785,
+        "cagr": 0.13331274684340166,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 2.6971652589331456,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.7580221470521844,
+        "cagr": 0.1269760571516394,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 1.8447723761560137,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.9827323659775414,
+        "cagr": 0.1664337806773748,
+        "max_drawdown": -0.18998904129505,
+        "total_return": 0.29963482840371225,
+        "n_returns": 429
+      }
+    }
+  },
+  "holdout_vs_spy": {
+    "names": [
+      "low_vol_60",
+      "low_beta_60",
+      "high_52w",
+      "idio_mom_20",
+      "reversal_1",
+      "combo_lowvol_52w",
+      "faber_spy",
+      "above_sma_200"
+    ],
+    "reality_check_p": 0.8221778221778222,
+    "spa_p_consistent": 0.7522477522477522
+  },
+  "note": "Low-vol, low-beta, 52-week high, residual momentum, reversal, Faber 10-month SPY timing, and a 200-day above-SMA book. Scores are lagged one date. Holdout was not used to pick a column. promote stays false. blend_weight stays 0."
+}

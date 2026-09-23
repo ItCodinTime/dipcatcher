@@ -1,0 +1,70 @@
+{
+  "correctness": {
+    "common_dates": 997,
+    "dipcatcher_total_fees": 24897.56667967681,
+    "fills_dipcatcher": 2099,
+    "nav_final_dipcatcher": 1206300.831031762,
+    "nav_final_qlib": 1214294.2950328463,
+    "nav_max_abs_diff": 65749.09714929713,
+    "nav_max_rel_diff": 0.055661566068846806,
+    "qlib_order_days": 664,
+    "qlib_total_cost": 0.027840037027930434
+  },
+  "disclaimer": "Single matched workload vs qlib 0.9.x on real Binance daily bars. Correctness is NAV parity; latency is single-process wall time. Not a claim of superiority across all product dimensions.",
+  "environment": {
+    "platform": "win32",
+    "python": "3.12.14"
+  },
+  "incumbent": {
+    "name": "qlib",
+    "repo": "https://github.com/microsoft/qlib",
+    "url": "https://github.com/microsoft/qlib",
+    "version": "0.9.7"
+  },
+  "known_semantic_differences": [
+    "qlib order generation sells-down before buys within a step and clips buy amounts to cash+cost; dipcatcher rejects a whole order that would overdraw. Workload keeps a 0.9 weight-sum buffer so neither policy binds.",
+    "qlib position accounting is adjusted-price based ($factor=1.0 written to keep raw prices); dipcatcher accounts raw fills."
+  ],
+  "latency": {
+    "dipcatcher_ms_all": [
+      2978.7
+    ],
+    "dipcatcher_ms_median": 2978.703000000678,
+    "qlib_ms_all": [
+      10946.11
+    ],
+    "qlib_ms_median": 10946.107199997641,
+    "reps": 1
+  },
+  "live_pnl_claim": false,
+  "research_only": true,
+  "schema": "incumbent_bench.v1",
+  "workload": {
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "bar_files_sha256": {
+      "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+      "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+      "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb"
+    },
+    "bars_per_asset": 999,
+    "commission_bps": 10.0,
+    "fills": "decision close t -> exec open t+1 (qlib shift=1 + deal_price=$open)",
+    "init_nav": 1000000.0,
+    "qlib_settings": {
+      "deal_price": "$open",
+      "limit_threshold": null,
+      "min_cost": 0.0,
+      "risk_degree": 1.0,
+      "trade_unit": null,
+      "volume_threshold": null
+    },
+    "script_sha256": "5f1cbc7da1348c863669fd96819b9836da6006bd753d7624180d3da20c8399b6",
+    "spread_impact_borrow": 0.0,
+    "strategy": "causal SMA20 gate, equal-weight 0.9/3 per gated name",
+    "weight_scale": 0.3
+  }
+}

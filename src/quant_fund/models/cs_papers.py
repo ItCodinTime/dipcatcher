@@ -16,10 +16,16 @@ nested-MSFE weights (``combo_msfe``).
 Zou (JASA 2006): adaptive LASSO on public characteristics.
 Fama–MacBeth with per-date ridge (small-N CS; OLS FM needs N>p+2).
 A priori signed classic characteristics (Jegadeesh, JT skip, residual momentum,
-Bali MAX, Ang idio-vol, Amihud, George–Hwang 52w). Daily short-horizon subset
-(``classic_st`` / ``ridge_st`` / ``fm_st`` / ``combo_ic_st``): Jegadeesh daily
-reversal, Lehmann weekly reversal, JT skip, residual momentum, Bali MAX,
-Ang ivol. Single-characteristic Jegadeesh baseline: ``reversal``.
+Bali MAX, Ang idio-vol, Amihud, George–Hwang 52w). ``nautica`` is a priori
+``cs_z_mom_60`` (Lightspeed 63d book analog; challenger only). ``tsmom`` is
+Moskowitz–Ooi–Pedersen 12–1 as a CS score (``cs_z_mom_12_1``). ``vme`` is the
+AMP (2013) public-OHLCV proxy: 12–1 plus George–Hwang 52w (no B/M).
+``krauss`` is Krauss–Do–Huck (2017) linear logistic P(y > date-median) on
+the same purged walk-forward as ridge (not the original DNN). Daily
+short-horizon subset (``classic_st`` / ``ridge_st`` / ``fm_st`` /
+``combo_ic_st``): Jegadeesh daily reversal, Lehmann weekly reversal, JT skip,
+residual momentum, Bali MAX, Ang ivol. Single-characteristic Jegadeesh
+baseline: ``reversal``.
 
 Kozak–Nagel–Santosh elastic-net SDF (eq. 28) and unrestricted IPCA live in
 asset_pricing.py. None of these size the book. Metadata must not carry Sharpe.
@@ -33,7 +39,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import Lasso, LinearRegression, Ridge
+from sklearn.linear_model import Lasso, LinearRegression, LogisticRegression, Ridge
 
 from quant_fund.models.asset_pricing import (
     characteristic_managed_portfolios,
@@ -67,9 +73,14 @@ PAPER_RANKER_NAMES = (
     "reversal",
     "classic_st",
     "ridge_st",
+    "ridge_neut",
     "fm_st",
     "combo_ic_st",
     "combo_msfe",
+    "nautica",
+    "tsmom",
+    "vme",
+    "krauss",
 )
 
 DATED_FIT_RANKERS = frozenset(
@@ -90,12 +101,17 @@ DATED_FIT_RANKERS = frozenset(
         "reversal",
         "classic_st",
         "ridge_st",
+        "ridge_neut",
         "fm_st",
         "combo_ic_st",
         "combo_msfe",
+        "nautica",
+        "tsmom",
+        "vme",
+        "krauss",
     }
 )
-DATED_PREDICT_RANKERS = frozenset({"fnw", "pp"})
+DATED_PREDICT_RANKERS = frozenset({"fnw", "pp", "ridge_neut"})
 ID_FIT_RANKERS = frozenset({"pp"})
 ID_PREDICT_RANKERS = frozenset({"pp"})
 
@@ -1393,6 +1409,89 @@ class ClassicShortRanker(ClassicRanker):
         )
 
 
+class TSMOMRanker(ClassicRanker):
+    """Moskowitz–Ooi–Pedersen 12–1 as a CS score. Public ``cs_z_mom_12_1`` only."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            signs={"cs_z_mom_12_1": 1.0},
+            name="tsmom",
+            paper="Moskowitz, Ooi, Pedersen, JFE 2012 TSMOM; CS analog on cs_z_mom_12_1",
+        )
+
+
+class VMERanker(ClassicRanker):
+    """Asness–Moskowitz–Pedersen public-OHLCV proxy: 12–1 + George–Hwang 52w.
+
+    No book-to-market (not on the public card). Not a live claim.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            signs={"cs_z_mom_12_1": 1.0, "cs_z_high_52w_prox": 1.0},
+            name="vme",
+            paper="Asness, Moskowitz, Pedersen, JF 2013 VME; George–Hwang 2004 52w; no B/M",
+        )
+
+
+class KraussRanker(JoblibMixin):
+    """Krauss–Do–Huck (2017) linear baseline: logistic P(y > date-median).
+
+    Same purged walk-forward as ridge. DNN/RF from the paper stay behind
+    ADR-007. Trees already live as ``gbrt``. Challenger only.
+    """
+
+    def __init__(self, C: float = 1.0) -> None:
+        if not np.isfinite(C) or C <= 0.0:
+            raise ValueError("krauss C must be finite and positive")
+        self.C = float(C)
+        self._clf: LogisticRegression | None = None
+        self._constant: float | None = None
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> KraussRanker:
+        dates = kwargs.get("dates")
+        if dates is None:
+            raise ValueError("krauss requires per-row dates")
+        xx, yy, mask = _finite(x, y)
+        if xx.shape[0] == 0:
+            raise ValueError("krauss fit has no finite rows")
+        d = np.asarray(dates)[mask]
+        labels = np.zeros(yy.size, dtype=int)
+        for idx in date_groups(d):
+            block = yy[idx]
+            med = float(np.nanmedian(block))
+            labels[idx] = (block > med).astype(int)
+        if len(np.unique(labels)) < 2:
+            self._constant = 0.5
+            self._clf = None
+            return self
+        clf = LogisticRegression(C=self.C, max_iter=250, solver="lbfgs")
+        clf.fit(xx, labels)
+        self._clf = clf
+        self._constant = None
+        return self
+
+    def predict(self, x: NDArray[np.float64], **kwargs: Any) -> NDArray[np.float64]:
+        del kwargs
+        x = np.where(np.isfinite(x), x, 0.0)
+        if self._constant is not None:
+            return np.full(x.shape[0], float(self._constant), dtype=float)
+        if self._clf is None:
+            raise ValueError("krauss is not fitted")
+        return np.asarray(self._clf.predict_proba(x)[:, 1], dtype=float)
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="krauss",
+            version="v1",
+            extra={
+                "paper": "Krauss, Do, Huck, EJOR 2017 linear logistic; DNN behind ADR-007",
+                "C": self.C,
+            },
+        )
+
+
 def _nested_date_cut(n_dates: int) -> tuple[int, int] | None:
     """Train/holdout date counts for nested MSFE. None → in-sample MSE fallback."""
     n = int(n_dates)
@@ -1475,6 +1574,7 @@ class MSFECombinationRanker(JoblibMixin):
                 pred = inner_int + inner_slope * train_x[:, j]
                 msfe[j] = _discounted_date_mse(pred, train_y, train_d, self.theta)
             else:
+                assert hold_y is not None and hold_d is not None
                 pred = inner_int + inner_slope * hold_x[:, j]
                 msfe[j] = _discounted_date_mse(pred, hold_y, hold_d, self.theta)
         finite_msfe = np.where(np.isfinite(msfe) & (msfe > 0.0), msfe, np.nan)
@@ -1520,6 +1620,87 @@ def make_fm_st(alpha: float) -> ColumnSubsetRanker:
 
 def make_combo_ic_st() -> ColumnSubsetRanker:
     return ColumnSubsetRanker(ICWeightedCombinationRanker(), SHORT_HORIZON_FEATURES, "combo_ic_st")
+
+
+SIZE_VOL_CONTROLS: tuple[str, ...] = (
+    "cs_z_adv",
+    "cs_z_log_price",
+    "cs_z_vol_20",
+)
+
+
+def cs_residualize_on_controls(
+    x: NDArray[np.float64],
+    dates: NDArray[Any],
+    names: list[str] | tuple[str, ...] | None,
+    controls: tuple[str, ...] = SIZE_VOL_CONTROLS,
+) -> NDArray[np.float64]:
+    """Within-date OLS residual of each non-control column on size / price / vol.
+
+    Transform is PIT (only that date's cross-section). No OOS-tuned signs.
+    """
+    x = np.asarray(x, dtype=float).copy()
+    if names is None or dates is None or x.ndim != 2:
+        return x
+    name_list = [str(n) for n in names]
+    if len(name_list) != int(x.shape[1]):
+        return x
+    ctrl = [i for i, name in enumerate(name_list) if name in set(controls)]
+    tgt = [i for i in range(x.shape[1]) if i not in set(ctrl)]
+    if not ctrl or not tgt:
+        return x
+    for idx in date_groups(np.asarray(dates)):
+        block = x[idx]
+        control = block[:, ctrl]
+        good = np.isfinite(control).all(axis=1)
+        if int(good.sum()) < len(ctrl) + 4:
+            continue
+        design = np.column_stack([np.ones(int(good.sum())), control[good]])
+        rows = idx[good]
+        for j in tgt:
+            yj = block[good, j]
+            ok = np.isfinite(yj)
+            if int(ok.sum()) < design.shape[1] + 2:
+                continue
+            coef = np.linalg.lstsq(design[ok], yj[ok], rcond=None)[0]
+            x[rows, j] = yj - design @ coef
+    return x
+
+
+class ResidualRidgeRanker(JoblibMixin):
+    """Public ridge on size / price / vol-residualized characteristics."""
+
+    def __init__(self, alpha: float = 1.0) -> None:
+        self.inner = RidgeRanker(alpha)
+        self._features: list[str] | None = None
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> ResidualRidgeRanker:
+        dates = kwargs.get("dates")
+        if dates is None:
+            raise ValueError("ridge_neut requires per-row dates")
+        names = kwargs.get("features")
+        self._features = None if names is None else [str(n) for n in names]
+        xr = cs_residualize_on_controls(x, dates, self._features)
+        self.inner.fit(xr, y, **kwargs)
+        return self
+
+    def predict(self, x: NDArray[np.float64], dates: NDArray[Any] | None = None) -> NDArray[np.float64]:
+        if dates is None:
+            raise ValueError("ridge_neut predict requires per-row dates")
+        xr = cs_residualize_on_controls(x, dates, self._features)
+        return np.asarray(self.inner.predict(xr), dtype=float)
+
+    def metadata(self) -> ModelMeta:
+        extra = dict(self.inner.metadata().extra or {})
+        extra["controls"] = list(SIZE_VOL_CONTROLS)
+        extra["paper"] = "within-date residualize on size/price/vol, then T-ridge"
+        return ModelMeta(family="ranking", name="ridge_neut", version="v1", extra=extra)
+
+
+def make_ridge_neut(alpha: float) -> ResidualRidgeRanker:
+    return ResidualRidgeRanker(alpha)
 
 
 class AdaptiveLassoRanker(JoblibMixin):

@@ -1,0 +1,146 @@
+# dipcatcher.sota.v2 lanes 2-5 — frozen companion slate. Hash before fitting.
+#
+# Companion to configs/sota_protocol_v2.yaml (lane: ml_trees), which registered
+# lane 1 (gbrt / lambdarank / xgboost vs public ridge, DM + RC + SPA + StepM).
+# This file covers lanes 2-5 only; the parent file is not edited. Every lane
+# receipt cites this file's sha256 AND the parent's sha256 of file bytes.
+# Adding a lane after a result is a new protocol, not a footnote.
+#
+# Tape: Yahoo/Stooq session-close file tape. Not SIP. Paper/backtest only;
+# not a live P&L claim. blend_weight stays 0 unless a ranker challenger
+# clears every declared gate on the frozen holdout.
+
+slate_id: dipcatcher.sota.v2.lanes
+protocol_id: dipcatcher.sota.v2
+parent_slate: configs/sota_protocol_v2.yaml
+frozen: true
+
+evaluation:
+  tape: file_us
+  config: configs/hedge_lab.yaml
+  wide_config: configs/hedge_lab_wide.yaml
+  wide_tape: file_us_wide
+  feature_set: public          # PUBLIC_FEATURES only; oracle columns dropped
+  benchmark: ridge
+  selection_end: "2024-12-31"
+  holdout_start: "2025-01-02"  # frozen holdout; scored once per lane
+  scheme: rolling
+  train_bars: 252
+  val_bars: 63
+  test_bars: 63
+  one_way_cost: 0.001
+  # Same compute budget as the published paper-tape race so cached OOS score
+  # vectors (keyed by panel+validation fingerprint) stay valid and comparable.
+  eval_knobs:
+    gbrt_n_estimators: 25
+    ipca_max_iter: 15
+    rff_n_features: 64
+  gates:
+    alpha: 0.05
+    n_boot: 2000
+    seed: 7
+    tests:
+      - diebold_mariano_neg_ic_vs_ridge
+      - white_reality_check
+      - hansen_spa_consistent
+      - romano_wolf_stepm
+    calibration: required      # Jackknife+ floor; CQR/ACI Kupiec + PIT-KS recorded
+  lane1_receipt: artifacts/hedge_lab/ml_lane.json
+
+lanes:
+  - lane: 2
+    name: horizon_change
+    labels: [future_idio_return_5, future_idio_return_20]
+    embargo_equals_horizon: true   # embargo = 5 and 20 respectively
+    challengers: [gbrt, lambdarank, xgboost]
+    decision_window: holdout
+    receipt: artifacts/hedge_lab/v2_lane2_horizons.json
+    note: >
+      Same public features, same purge, embargo set to the label horizon.
+      Pre-registered alternative horizons; not a ranker retune.
+
+  - lane: 3
+    name: hmm_regime_gate_topk5
+    book: topk5_12_1               # frozen top-5 12-1 momentum book (delay 1, 10bp)
+    gate:
+      model: GaussianHMMRegime
+      n_states: 3
+      seed: 7
+      fit_through: "2024-12-31"    # parameters frozen at selection end
+      features: [spy_ret_1, spy_vol20]
+      filter: forward_only         # predict_proba forward filter; never smoothed
+      multiplier: "1 - P(stress)"  # in [0,1]; scales the book, never flips sign
+      lag_bars: 1                  # gate at t uses filtered state through t-1
+      switch_cost: 0.001           # one-way cost on |delta multiplier|
+    comparators: [topk5_12_1_ungated, spy_buy_hold]
+    test: white_reality_check      # over the 3-model set on the holdout
+    decision_window: holdout
+    receipt: artifacts/hedge_lab/v2_lane3_regime_gate.json
+    note: >
+      Book-level overlay test, not a ranker promotion. May scale to zero;
+      may not flip the sign of the frozen book.
+
+  - lane: 4
+    name: offline_rl_book_choice
+    requires: lane1_receipt
+    actions: [cash, spy, topk5_12_1]
+    method: contextual_bandit_fqe
+    # Ridge Q per action fit on state->next-bar net reward; policy = argmax_a
+    # restricted to the three logged actions (it cannot invent a fourth).
+    # Q predictions are clipped to each action's observed train reward range
+    # (conservative support constraint, IQL-style pessimism).
+    reward: next_bar_net_return_after_10bp_switch_cost
+    state:
+      lag_bars: 1                  # every component uses data through t-1
+      columns:
+        - spy_ret_1
+        - spy_vol20
+        - topk5_vol20
+        - topk5_dd
+        - spy_dd
+        - cs_mom_12_1_mean
+        - cs_vol20_mean
+        - cs_mom_12_1_std
+    train_through: "2024-12-31"
+    score_window: holdout          # frozen policy scored once
+    comparators: [spy_buy_hold, topk5_12_1_ungated]
+    test: white_reality_check      # over the 3-model set on the holdout
+    adr_amendment: docs/decisions/007-no-nn-until-baselines.md
+    receipt: artifacts/hedge_lab/v2_lane4_offline_rl.json
+    note: >
+      Conservative offline RL over three book actions. May replace the paper
+      research overlay only if the frozen holdout beats both SPY and the
+      ungated top-5 inside the reality check. Never moves blend_weight.
+
+  - lane: 5
+    name: pit_universe_rebuild
+    requires: lane1_receipt
+    tape: file_us_wide
+    universe: silver/universe.parquet  # ADV-ranked membership with entry/exit
+    label: future_idio_return_1
+    horizon_bars: 1
+    embargo_bars: 5
+    engine: best_tree_from_lane1   # highest selection-window mean IC of the trio
+    benchmark: ridge               # refit on the wide panel as benchmark only
+    decision_window: holdout
+    receipt: artifacts/hedge_lab/v2_lane5_pit_universe.json
+    note: >
+      Membership is point-in-time within the vendor pool (dead names stay on
+      tape until they die); the pool itself is still vendor-surviving, which
+      understates the effect. One tree, chosen from lane 1 selection-window
+      IC before the holdout is scored. Promotion suite runs exactly once on
+      this panel.
+
+promotion:
+  ranker_lanes: [1, 2, 5]
+  rule: >
+    A ranker challenger may move blend_weight only if it clears every sealed
+    gate: DM of -IC vs ridge prefers the challenger at p<0.05, White RC
+    p<0.05, Hansen SPA consistent p<0.05, Romano-Wolf StepM rejects it, and
+    the calibration gate passes on a non-synthetic tape. Lanes 3 and 4 are
+    book-level overlays: they never move blend_weight. Lane 4 replaces the
+    paper research overlay only when its frozen holdout beats both SPY and
+    the ungated top-5 inside the reality check.
+  blend_weight: 0.0
+  champion: ridge
+  live_pnl_claim: false

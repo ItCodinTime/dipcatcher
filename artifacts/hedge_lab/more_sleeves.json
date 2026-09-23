@@ -1,0 +1,249 @@
+{
+  "protocol_id": "dipcatcher.sota.v2",
+  "holdout_start": "2025-01-02",
+  "promote": false,
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "live_pnl_claim": false,
+  "stock_names": [
+    "AAPL",
+    "AMD",
+    "AMZN",
+    "AVGO",
+    "BA",
+    "BAC",
+    "CAT",
+    "COST",
+    "CRM",
+    "CVX",
+    "DIS",
+    "GE",
+    "GOOGL",
+    "GS",
+    "HD",
+    "INTC",
+    "JNJ",
+    "JPM",
+    "KO",
+    "LLY",
+    "MA",
+    "META",
+    "MSFT",
+    "NFLX",
+    "NVDA",
+    "ORCL",
+    "PEP",
+    "PFE",
+    "PG",
+    "QCOM",
+    "T",
+    "TSLA",
+    "UNH",
+    "V",
+    "WFC",
+    "WMT",
+    "XOM"
+  ],
+  "etf_names": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "EEM",
+    "EFA",
+    "TLT",
+    "IEF",
+    "GLD",
+    "SLV",
+    "XLE",
+    "XLF",
+    "XLK",
+    "XLI",
+    "XLP",
+    "XLU",
+    "XLV",
+    "HYG",
+    "LQD"
+  ],
+  "ucb_arms": [
+    "spy",
+    "stock_top3",
+    "etf_dual_top1"
+  ],
+  "ucb_frozen_arm": "stock_top3",
+  "cards": {
+    "spy": {
+      "full": {
+        "sharpe": 0.7933908504184785,
+        "cagr": 0.13331274684340166,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 2.6971652589331456,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.7580221470521844,
+        "cagr": 0.1269760571516394,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 1.8447723761560137,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.9827323659775414,
+        "cagr": 0.1664337806773748,
+        "max_drawdown": -0.18998904129505,
+        "total_return": 0.29963482840371225,
+        "n_returns": 429
+      }
+    },
+    "stock_top1": {
+      "full": {
+        "sharpe": 1.1332559606950618,
+        "cagr": 0.5760827495921257,
+        "max_drawdown": -0.6612898900550819,
+        "total_return": 114.98106601265559,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 1.2248789586990099,
+        "cagr": 0.622350540390229,
+        "max_drawdown": -0.6612898900550819,
+        "total_return": 67.85447925587556,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.7994645488389377,
+        "cagr": 0.3583836875278541,
+        "max_drawdown": -0.4190435941885392,
+        "total_return": 0.684437487089969,
+        "n_returns": 429
+      }
+    },
+    "stock_top3": {
+      "full": {
+        "sharpe": 0.9553349857091218,
+        "cagr": 0.31859732550139297,
+        "max_drawdown": -0.4717184287804087,
+        "total_return": 16.987952695734155,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.9290639167763148,
+        "cagr": 0.2882058893737933,
+        "max_drawdown": -0.4717184287804087,
+        "total_return": 8.160828509696998,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.0913675262667466,
+        "cagr": 0.48641297223543045,
+        "max_drawdown": -0.34858742368898954,
+        "total_return": 0.9635726917814655,
+        "n_returns": 429
+      }
+    },
+    "stock_top10": {
+      "full": {
+        "sharpe": 0.9264337202127308,
+        "cagr": 0.2159270087657088,
+        "max_drawdown": -0.35658639298067574,
+        "total_return": 6.711673907253539,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.8704518428476583,
+        "cagr": 0.19513704345900407,
+        "max_drawdown": -0.35658639298067574,
+        "total_return": 3.7544220197099625,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.184297860060229,
+        "cagr": 0.32857647831418313,
+        "max_drawdown": -0.2773059661134458,
+        "total_return": 0.6220002926294632,
+        "n_returns": 429
+      }
+    },
+    "etf_dual_top1": {
+      "full": {
+        "sharpe": 0.778498026670412,
+        "cagr": 0.1717458132626346,
+        "max_drawdown": -0.3151084648424751,
+        "total_return": 4.2384147378707056,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.6281557639285015,
+        "cagr": 0.12756565466458425,
+        "max_drawdown": -0.3151084648424751,
+        "total_return": 1.857815440961347,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.4617198311681379,
+        "cagr": 0.42753526444401024,
+        "max_drawdown": -0.19209514099718183,
+        "total_return": 0.8330136588906318,
+        "n_returns": 429
+      }
+    },
+    "etf_dual_top3": {
+      "full": {
+        "sharpe": 0.780733476466736,
+        "cagr": 0.13936308359855132,
+        "max_drawdown": -0.2891632231053254,
+        "total_return": 2.9086741168571324,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.6419472806050324,
+        "cagr": 0.11053891853341513,
+        "max_drawdown": -0.2891632231053254,
+        "total_return": 1.5017269705403105,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.539529490500251,
+        "cagr": 0.29967397421004205,
+        "max_drawdown": -0.12072432219724316,
+        "total_return": 0.5623903658891141,
+        "n_returns": 429
+      }
+    },
+    "ucb_freeze": {
+      "full": {
+        "sharpe": -0.08643249907451131,
+        "cagr": -0.0683729641564258,
+        "max_drawdown": -0.8265342517651968,
+        "total_return": -0.5228789336505193,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": -0.4979608573667801,
+        "cagr": -0.14935393883801462,
+        "max_drawdown": -0.8059748594365189,
+        "total_return": -0.757013800229312,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.0913675262667466,
+        "cagr": 0.48641297223543045,
+        "max_drawdown": -0.34858742368898954,
+        "total_return": 0.9635726917814655,
+        "n_returns": 429
+      }
+    }
+  },
+  "holdout_vs_spy": {
+    "names": [
+      "stock_top1",
+      "stock_top3",
+      "stock_top10",
+      "etf_dual_top1",
+      "etf_dual_top3",
+      "ucb_freeze"
+    ],
+    "reality_check_p": 0.2677322677322677,
+    "spa_p_consistent": 0.2757242757242757
+  },
+  "note": "k grid and ETF dual momentum were declared before this run. UCB1 learns only before the holdout, then holds one arm. promote stays false. blend_weight stays 0."
+}

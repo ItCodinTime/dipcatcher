@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from quant_fund.config import load_config
 from quant_fund.config.models import TrainConfig
 from quant_fund.models.asset_pricing import IPCARanker
 from quant_fund.models.cs_papers import (
@@ -24,7 +25,6 @@ from quant_fund.models.cs_papers import (
     PCRRanker,
     PLSRanker,
     PrincipalPortfolioRanker,
-    RPPCARanker,
     ReversalRanker,
     SDFElasticNetRanker,
     ThreePassFilterRanker,
@@ -33,8 +33,12 @@ from quant_fund.models.cs_papers import (
     rp_pca_loadings,
     sdf_elastic_net_loadings,
 )
-from quant_fund.pipeline.train import RANKING_MODEL_NAMES, _fit_ranker, _make_ranker, _predict_ranker
-from quant_fund.config import load_config
+from quant_fund.pipeline.train import (
+    RANKING_MODEL_NAMES,
+    _fit_ranker,
+    _make_ranker,
+    _predict_ranker,
+)
 
 
 def test_rp_pca_gamma_minus_one_is_uncentered_covariance() -> None:
@@ -181,6 +185,40 @@ def test_catalog_includes_all_paper_rankers() -> None:
         assert np.all(np.isfinite(out))
         assert float(np.std(out)) > 0.0
         assert "sharpe" not in (model.metadata().extra or {})
+
+
+def test_tsmom_vme_krauss_signs_and_logistic() -> None:
+    from quant_fund.models.cs_papers import KraussRanker, TSMOMRanker, VMERanker
+
+    names = ["cs_z_mom_12_1", "cs_z_high_52w_prox", "cs_z_reversal_1"]
+    x = np.array(
+        [
+            [1.0, 2.0, -1.0],
+            [0.5, -0.5, 0.0],
+            [-1.0, 0.0, 1.0],
+        ],
+        dtype=float,
+    )
+    y = np.array([0.1, 0.0, -0.1])
+    tsmom = TSMOMRanker().fit(x, y, features=names)
+    assert tsmom.predict(x) == pytest.approx(x[:, 0])
+    vme = VMERanker().fit(x, y, features=names)
+    assert vme.predict(x) == pytest.approx(x[:, 0] + x[:, 1])
+    rng = np.random.default_rng(4)
+    n_dates, n_names = 16, 12
+    xx = rng.normal(size=(n_dates * n_names, 3))
+    dates = np.repeat(np.arange(n_dates), n_names)
+    yy = 0.8 * xx[:, 0] + 0.05 * rng.normal(size=xx.shape[0])
+    krauss = KraussRanker().fit(xx, yy, dates=dates)
+    pred = krauss.predict(xx)
+    assert pred.shape == (xx.shape[0],)
+    assert np.all((pred >= 0.0) & (pred <= 1.0))
+    assert float(np.corrcoef(pred, yy)[0, 1]) > 0.2
+    assert krauss.metadata().name == "krauss"
+    assert "sharpe" not in (krauss.metadata().extra or {})
+    cfg = load_config("configs/research.yaml")
+    assert "tsmom" in RANKING_MODEL_NAMES
+    assert _make_ranker("vme", cfg).metadata().name == "vme"
 
 
 def test_train_config_rejects_unknown_paper_ranker() -> None:
@@ -378,7 +416,29 @@ def test_ridge_st_masks_to_short_horizon_columns() -> None:
     assert "cs_z_reversal_1" in SHORT_HORIZON_FEATURES
 
 
+def test_ridge_neut_residualizes_size_before_ridge() -> None:
+    from quant_fund.models.cs_papers import ResidualRidgeRanker
+
+    rng = np.random.default_rng(24)
+    n_dates, n_names = 24, 12
+    size = rng.normal(size=(n_dates * n_names, 1))
+    signal = rng.normal(size=(n_dates * n_names, 1))
+    x = np.concatenate([signal, size, 0.8 * size + 0.2 * rng.normal(size=size.shape)], axis=1)
+    dates = np.repeat(np.arange(n_dates), n_names)
+    y = 0.7 * signal[:, 0] + 0.05 * rng.normal(size=x.shape[0])
+    names = ["cs_z_reversal_1", "cs_z_adv", "cs_z_vol_20"]
+    pred = ResidualRidgeRanker(0.3).fit(x, y, dates=dates, features=names).predict(x, dates=dates)
+    assert float(np.corrcoef(pred, y)[0, 1]) > 0.5
+    assert ResidualRidgeRanker().metadata().name == "ridge_neut"
+
+
 def test_hedge_lab_uses_rolling_daily_cs_window() -> None:
+    cfg = load_config("configs/hedge_lab.yaml")
+    assert cfg.validation.scheme == "rolling"
+    assert cfg.validation.train_bars == 252
+    assert cfg.train.ranking_target == "future_idio_return_1"
+    wide = load_config("configs/hedge_lab_wide.yaml")
+    assert wide.validation.scheme == "rolling"
     cfg = load_config("configs/hedge_lab.yaml")
     assert cfg.validation.scheme == "rolling"
     assert cfg.validation.train_bars == 252

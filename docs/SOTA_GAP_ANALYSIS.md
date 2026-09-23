@@ -1,5 +1,225 @@
 # SOTA gap analysis — Day Wave 21 (2026-09-16)
 
+## Day Wave 165 — holdout must clear too — 2026-09-22
+
+- A ranker `promote` flag now requires the same name to clear the CS
+  rule on the selection window and on the frozen holdout. Book overlays
+  no longer flip on a reality-check p-value alone: every holdout excess
+  mean must be positive, and SPA must clear as well. `blend_weight`
+  stays 0. The stored 20-day LambdaRank flag is restamped false because
+  its mean IC is negative.
+
+## Day Wave 164 — promotion requires positive IC on the same name — 2026-09-22
+
+- `quant_fund.hedge_lab.promotion.clears_cs_promotion` is the CS gate.
+  The same challenger must have mean IC > 0, win pairwise DM of −IC
+  versus ridge, and sit in the StepM rejection set, with White RC and
+  SPA also below 5%. A less-negative IC does not clear. Overlapping
+  labels use Hansen–Hodrick lags. Kronos `blend_weight` also stays 0
+  when its IC is not positive. No champion alias is written.
+
+## Day Wave 163 — characteristic long-only and Faber timing — 2026-09-22
+
+- Lagged low-vol, low-beta, 52-week high, residual momentum, 1-day
+  reversal, Faber 10-month SPY timing, and a 200-day above-SMA book.
+  Holdout versus SPY: White RC p 0.82, SPA p 0.75. Not a promotion.
+  `blend_weight` 0. Artifact: `artifacts/hedge_lab/char_books.json`.
+- Full sample: residual momentum Sharpe +0.82, ~4×, DD −33%. Faber
+  Sharpe +0.71, DD −21%. Low-vol Sharpe +0.33, DD −21%. Reversal
+  Sharpe −0.68, DD −85%. None beat SPY’s full-sample Sharpe +0.79
+  with a holdout reality check. Holdout residual momentum +0.91 versus
+  SPY +0.98.
+- Champion stays public ridge.
+
+## Day Wave 162 — stock k-grid, ETF dual momentum, UCB freeze — 2026-09-22
+
+- Pre-registered set versus SPY on the 2025–26 holdout: White RC p 0.27,
+  SPA p 0.28. Not a promotion. `blend_weight` 0.
+  Artifact: `artifacts/hedge_lab/more_sleeves.json`.
+- Full sample: stock top-1 Sharpe +1.13, CAGR 58%, ~115×, DD −66%.
+  Holdout Sharpe +0.80, which loses to SPY +0.98. ETF dual top-1 / top-3
+  full-sample Sharpe +0.78, in line with SPY +0.79. Their higher holdout
+  Sharpes (+1.46 / +1.54) are inside a set the reality check does not
+  clear. UCB1 froze `stock_top3` after a training path of Sharpe −0.09
+  and DD −83%.
+- Champion stays public ridge.
+
+## Day Wave 161 — HMM gate, linear sleeve, XLK lead — 2026-09-22
+
+- Pre-registered books on the 55-name tape, fit only before 2025-01-02.
+  Holdout versus SPY: White RC p 0.089, SPA p 0.124. Not a promotion.
+  `blend_weight` 0. Artifact: `artifacts/hedge_lab/sleeve_lane.json`.
+- Holdout Sharpe: top-5 12–1 **+1.38** (DD −31%); linear sleeve +1.28
+  (it picked the top-5 book on 2543 of 2634 days); HMM-gated top-5
+  **+0.25** (the selection state did not persist); XLK-lead +0.29;
+  SPY +0.98.
+- Champion stays public ridge.
+
+## Day Wave 160 — v2 tree lane vs ridge — 2026-09-22
+
+- `configs/sota_protocol_v2.yaml` (`dipcatcher.sota.v2`) was hashed
+  before the fit (`protocol_sha256`
+  `6007e652f2d7974de8fddef3e904be2a25c28e7a68ff8f9b69b8c8e00b538eb2`).
+  Engines: ridge, gbrt, lambdarank, xgboost. v1 protocol file was not
+  edited. 54 names, rolling 252, delay 1, 10 bp, `future_idio_return_1`.
+- IC: ridge −0.0023 (t −0.25); gbrt +0.0053 (t 0.65); lambdarank
+  +0.0021 (t 0.34); xgboost −0.0063 (t −0.77). DM p-values 0.40, 0.58,
+  0.67. RC p 0.39, SPA p 0.40, StepM []. **promote false.** 10 bp CS
+  LS Sharpe: ridge −1.81, gbrt −2.00, lambdarank −1.92, xgboost −3.19.
+- Same engines, pre-registered horizons, one shot.
+  `future_idio_return_5`: lambdarank IC +0.010 (t 0.80), DM p 0.037,
+  SPA p 0.048, RC p 0.059, StepM rejects lambdarank. RC misses 5%.
+  **promote false.** 10 bp Sharpe −0.34.
+  `future_idio_return_20`: lambdarank IC **−0.008** (t −0.37) beats
+  ridge IC −0.060 (t −2.09) on DM p 0.009, RC p 0.018, SPA p 0.019,
+  StepM. The receipt flag `promote` is true because the gate is
+  relative to ridge. Absolute IC is still negative. 10 bp CS LS
+  Sharpe −1.40, max DD −99%. Overlapping 20-day labels make the HAC
+  t-stat optimistic. **Champion was not moved. `blend_weight` stays 0.**
+- Artifacts: `ml_lane.json`, `ml_lane_h5.json`, `ml_lane_h20.json`.
+
+## Day Wave 159 — trend/crash and vol Pareto; wide tape — 2026-09-21
+
+- 200-day SMA + −20%/10d crash on `topk5_12_1` did **not** cut the
+  drawdown (55-name DD −38% vs −39%) and cut Sharpe 1.03 → 0.92.
+- Vol-target sweep of the same 55-name top-5 book, delay 1, 10 bp:
+  raw Sharpe 1.03 / CAGR 30% / ~16× / DD −39%; 20% vol Sharpe 0.99 /
+  CAGR 21% / ~7× / DD −30%; 10% vol Sharpe 0.98 / CAGR 11% / ~2.9× /
+  DD −16%. Sharpe stays ~1 as leverage falls. `hit_sharpe5` false.
+- Wide 421-name labels (survivorship-biased, not a PIT vintage):
+  top-5 12–1 Sharpe 1.01, CAGR 35%, ~23×, DD −41%, and that
+  drawdown is in the 2025–26 holdout. Not better skill.
+- Champion stays public ridge. `blend_weight` 0.
+  Artifacts: `target_hunt.json`, `target_hunt_wide.json`.
+
+## Day Wave 158 — directional TSMOM / top-k long (not CS-idio) — 2026-09-21
+
+- The CS-idio long-short was the wrong object for 10×: it shorts
+  losers on a bull tape and pays 10 bp two ways. Directional
+  total-return books, delay 1, monthly rebalance, 10 bp:
+  `topk5_12_1` Sharpe **+1.04**, CAGR **30%**, total **+1491%** (~16×),
+  DD **−39%**; holdout Sharpe **+1.38**. Beats SPY buy-hold Sharpe
+  **+0.79**, total **+270%**, DD **−34%**. `dir_riskparity` Sharpe
+  **+1.03**, DD **−23%**, ~4×. Vol-target 2.5% mix: Sharpe **+0.98**,
+  DD **−4.6%**, CAGR **2.6%**. `hit_sharpe5` still false. TQQQ 3×
+  ~39× / DD **−61%**. Champion stays public ridge. `blend_weight` 0.
+- CLI: `dipcatcher ls hunt`. Artifact: `artifacts/hedge_lab/target_hunt.json`.
+
+## Day Wave 157 — tsmom holdout confirmation — 2026-09-21
+
+- Pre-declared confirmation of Wave 156 `tsmom` vs public ridge on the
+  frozen Lightspeed cut (`SELECTION_END=2024-12-31`,
+  `HOLDOUT_START=2025-01-02`). CLI: `dipcatcher ls confirm`.
+  54 names, delay 1, 10 bp, rolling 252. Artifact:
+  `artifacts/hedge_lab/holdout_confirm.json`.
+- **Selection** (n=945, through 2024-12-31): ridge IC −0.0020 (t −0.20);
+  tsmom +0.0283 (t 2.49); nautica +0.0147 (t 1.34). DM tsmom p=0.013;
+  RC p=0.027; SPA p=0.014; StepM rejects `tsmom`. That window would
+  have cleared the four gates. Wave 156 already used the full OOS IC,
+  so this is not a license to promote after the fact.
+- **Holdout** (n=189, from 2025-01-02): ridge IC −0.0038 (t −0.22);
+  tsmom +0.0105 (t 0.54 p 0.59); nautica −0.0050 (t −0.23). DM tsmom
+  p=0.60; RC p=0.44; SPA p=0.41; StepM []. **Did not persist.**
+  10 bp CS LS holdout: tsmom Sharpe +0.56 DD −11%; nautica +0.61 DD
+  −8.4%; ridge −2.67. Risk-stack tsmom Sharpe +0.26 DD −1.4%.
+- Champion stays public ridge. `blend_weight` 0. Not a live P&L claim.
+
+## Day Wave 156 — causal risk gates + tsmom/vme/krauss — 2026-09-21
+
+- `quant_fund.risk.gates`: delay-1 vol target, DD halt / remaining
+  budget, ES cap, fractional Kelly (negative μ → 0), CRC size,
+  nautica crash analog, expanding-window StepM allow/deny.
+  `BookRiskOverlay` takes `min` with Kelly and CRC (lookback 63).
+  Sharpe is scale-invariant for constant leverage; vol targeting
+  cannot mint Sharpe 5 from IC≈0. ADR-036.
+- CS challengers `tsmom` (MOP 12–1), `vme` (AMP 2013 public proxy:
+  12–1 + George–Hwang 52w, no B/M), `krauss` (Krauss–Do–Huck 2017
+  linear logistic on the same purged WF as ridge). CLI:
+  `dipcatcher ls hunt|book|race|confirm`.
+- 55-name file_us v4 1d race (54 names after dropping SPY, 1134 OOS
+  dates, rolling 252, delay 1, 10 bp): ridge IC −0.00232 (t −0.25);
+  nautica +0.0114 (t 1.14); **tsmom +0.0254 (t 2.53)**; vme +0.0142
+  (t 1.38); krauss +0.0036 (t 0.40). Pairwise DM of −IC vs ridge:
+  tsmom p=0.014 (preferred tsmom); others p>0.17. White RC p=0.057;
+  SPA consistent p=0.028; StepM rejects `tsmom` only. **Not promoted**
+  (RC misses 5%). Champion stays public ridge. `blend_weight` 0.
+- DD-safe CS LS: tsmom StepM-gated Sharpe +0.541, DD −1.94%, CAGR
+  0.63%. Hunt riskstack: `ew_close_riskstack` Sharpe +0.994, DD
+  −3.54%, CAGR 2.23%; `combo_voltgt` Sharpe +0.808, DD −3.42%, CAGR
+  2.75%. hit_sharpe5=false. TQQQ 3× Sharpe +0.978, DD −61%. Not a
+  live P&L claim. No Alpaca.
+
+## Day Wave 155 — SLP3 Appendix A discrete HMM — 2026-09-21
+
+- Implemented Jurafsky & Martin SLP3 Appendix A
+  (https://web.stanford.edu/~jurafsky/slp3/A.pdf) as `quant_fund.hmm`:
+  forward, backward, Viterbi, Baum–Welch. Eisner ice-cream numbers
+  match Fig. A.5 / A.8 (`3 1 3` → P(O) 0.028562, path H C H).
+  CLI: `dipcatcher hmm eisner`. Discrete; does not replace
+  `GaussianHMMRegime` (hmmlearn, continuous).
+
+## Day Wave 154 — Lightspeed engines — 2026-09-21
+
+- Ported [cosmic-hydra/lightspeed](https://github.com/cosmic-hydra/lightspeed)
+  (Artificial Hedge private book) into `quant_fund.lightspeed`:
+  frozen TQQQ 20/180 SMA-seeded EMA rotation, nautica /
+  stock-momentum top-1 63d + 200 SMA + crash −20%/10d, AFML
+  metalabel reduce-only gate. CLI: `dipcatcher ls`. ADR-034.
+- CS challenger `nautica` is a priori `cs_z_mom_60`. Champion
+  stays public ridge. `blend_weight` 0. No Alpaca ALL-LIVE.
+  Lightspeed Yahoo dollar paths are not Dipcatcher P&L.
+- `dipcatcher ls book` on the 55-name v4 1d tape (2026-09-21):
+  ridge IC −0.002 t −0.25; nautica +0.011 t 1.14; DM p 0.35;
+  RC 0.22 SPA 0.23 StepM []. Not promoted. 10bp CS LS: ridge
+  Sharpe −1.81, nautica +0.10 (lower turnover, not a gate win).
+  Frozen concentrated momentum / reconstructed 3× TQQQ are
+  reported with the Lightspeed IS/holdout cut; they are not
+  the CS champion. Momentum holdout is only 82 days (Sharpe
+  3.04 vs SPY 3.00). TQQQ holdout Sharpe 0.65 loses to SPY
+  0.98. `blend_weight` stays 0.
+
+## Day Wave 153 — quant-models engines — 2026-09-21
+
+- Ported [davidalmeida90/quant-models](https://github.com/davidalmeida90/quant-models)
+  and the README sibling repos into `quant_fund.quant_models`: BSM +
+  implied vol, first/higher-order greeks (FD-validated), CRR European /
+  American, Heston little-trap CF, GBM + discrete delta-hedge error,
+  raw SVI, NSS, HRP / HCAA / ERC / long-only MVO, GEX + last-hour
+  *decision* (no IBKR), TSMOM, Krauss linear window, GKX \(R^2\) vs
+  zero, Blume beta. CLI: `dipcatcher qm`. ADR-033.
+- Not a CS-ranker champion. Neural vol / deep hedging stay behind
+  ADR-007. `blend_weight` 0. Not a live P&L claim.
+
+## Day Wave 152 — discard sign-flip book; 1-day public CS — 2026-09-21
+
+- The Wave 151 sign-flip / anti-book is discarded as a trading strategy.
+  Costs are even under a score flip; random high-turnover Sharpe ≈ −6.7
+  both ways. It is kept only as a diagnostic identity (ADR-032).
+- Path is the public-feature CS rankers on the 55-name tape. Live
+  `ranking_target` is explicit `future_idio_return_1`. Rolling 252-bar
+  window. New challenger `ridge_neut`: within-date residualize public
+  characteristics on size / price / vol, then T-ridge. Champion remains
+  public ridge. `blend_weight` 0. Not a live P&L claim.
+
+## Day Wave 151 — sign-flip mirror books — 2026-09-21
+
+- Identity, not a free lunch: frictionless CS long-short Sharpe is odd
+  under score sign-flip and leverage-invariant (rf = 0). Spread /
+  commission / impact are even, so both the book and the mirror pay
+  them. A 5% drawdown halt cannot coexist with −150% total return.
+  Nested anti-univariate (worst train IC) is best-train IC after the
+  flip. `dipcatcher hedge-lab --mirror` backtests negated
+  `target_weight`.
+- 54-name Yahoo 1-day idio, rolling 252, dollar-neutral top/bottom 20%,
+  117635 rows. Frictionless Sharpes sum to 0 by construction. Best
+  frictionless mirror is `classic_st` at +0.87 (+47% total, DD −36%).
+  After 10 bp one-way turnover both sides of every card are negative;
+  random scores go to Sharpe −6.7 *both* ways (costs, not alpha).
+  Nested `anti_univ` OOS Sharpe +0.61 frictionless — the train loser
+  did not stay a loser. No card has Sharpe > 5, max DD 5%, and +150%
+  together. Champion remains public ridge. `blend_weight` 0. Not a
+  live P&L claim.
+
 ## Day Wave 149 — small-N CS rankers, skip/residual momentum, T-ridge — 2026-09-20
 
 - 54 names × 39 collinear CS-z made pooled `Ridge(α=1)` OLS and OLS

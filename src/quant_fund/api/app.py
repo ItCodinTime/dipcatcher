@@ -371,9 +371,14 @@ def models() -> dict[str, Any]:
             "reversal",
             "classic_st",
             "ridge_st",
+            "ridge_neut",
             "fm_st",
             "combo_ic_st",
             "combo_msfe",
+            "krauss",
+            "tsmom",
+            "vme",
+            "nautica",
         ],
         "distribution": ["empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"],
         "volatility": ["rolling", "ewma", "garch", "har", "xgboost", "lightgbm"],
@@ -846,7 +851,7 @@ def drift(config_path: str = "configs/research.yaml") -> dict[str, Any]:
 
 
 @app.get("/doctor")
-def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, str]:
+def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, Any]:
     return doctor(str(resolve_allowed_config_path(config_path)))
 
 

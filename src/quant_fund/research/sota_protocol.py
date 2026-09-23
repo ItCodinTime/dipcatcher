@@ -19,7 +19,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -114,7 +114,9 @@ def _holdout_asofs(times: list[datetime], *, last_year: bool) -> list[datetime]:
     return held or times
 
 
-def _future_ohlc(frame: pl.DataFrame, security_id: str, asof: datetime, pred_len: int) -> np.ndarray:
+def _future_ohlc(
+    frame: pl.DataFrame, security_id: str, asof: datetime, pred_len: int
+) -> np.ndarray:
     future = (
         frame.filter((pl.col("security_id") == security_id) & (pl.col("event_time") > asof))
         .sort("event_time")
@@ -232,7 +234,8 @@ def calibration_gate(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     cqr_p = cqr.get("kupiec_p") if isinstance(cqr, dict) else None
     aci_p = aci.get("kupiec_p") if isinstance(aci, dict) else None
     pit_p = distribution.get("pit_ks_p") if isinstance(distribution, dict) else None
-    pit_uniform = _finite(pit_p) and float(pit_p) >= 0.05
+    pit_value = float(cast(Any, pit_p)) if _finite(pit_p) else float("nan")
+    pit_uniform = pit_value >= 0.05
     recorded = (
         _finite(jackknife.get("coverage") if jackknife else None)
         and _finite(cqr_p)
@@ -265,6 +268,15 @@ def _finite(value: object) -> bool:
     return bool(np.isfinite(number))
 
 
+def _finite_float(value: object) -> float:
+    """float(value) narrowed to finite, else NaN. NaN makes later comparisons False."""
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return float("nan")
+    return number if np.isfinite(number) else float("nan")
+
+
 def promotion_decision(
     *,
     data_source: str,
@@ -275,13 +287,16 @@ def promotion_decision(
     synthetic = data_source.upper() == "SYNTHETIC" or data_source.lower() == "synthetic"
     ridge_ic = g1.get("ridge", {}).get("mean_ic") if isinstance(g1.get("ridge"), dict) else None
     mini = g1.get("kronos_mini") if isinstance(g1.get("kronos_mini"), dict) else {}
-    mini_ic = mini.get("mean_ic")
+    mini_ic = mini.get("mean_ic") if isinstance(mini, dict) else None
     dm = mini.get("diebold_mariano_crps") if isinstance(mini, dict) else None
     preferred = dm.get("preferred") if isinstance(dm, dict) else None
-    ic_win = (
-        _finite(ridge_ic)
-        and _finite(mini_ic)
-        and float(mini_ic) > float(ridge_ic)  # type: ignore[arg-type]
+    ridge_ic_f = _finite_float(ridge_ic)
+    mini_ic_f = _finite_float(mini_ic)
+    ic_win = bool(
+        np.isfinite(ridge_ic_f)
+        and np.isfinite(mini_ic_f)
+        and mini_ic_f > 0.0
+        and mini_ic_f > ridge_ic_f
     )
     dm_not_ridge = preferred == ENGINE_NAME
     calib_ok = bool(calibration.get("pass"))
@@ -301,7 +316,7 @@ def promotion_decision(
                 "kronos-mini may size alpha (blend_weight=1) after public-ridge IC win, "
                 "DM, and calibration"
                 if move
-                else "blend_weight stays 0; missing IC win, DM, calibration, or file tape"
+                else "blend_weight stays 0; missing positive IC, DM, calibration, or file tape"
             )
         ),
     }

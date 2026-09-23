@@ -1,0 +1,24 @@
+command: inline Python receipt verification
+purpose: verify immutable receipt structure and disclose non-proof limits
+RECEIPT=.dsh-24x7\eval-full\d1_merged.json
+SCHEMA=sota_eval.v3
+ROWS=3300 COMPLETE=3300 DROPPED=0
+ASSETS=11 ORIGINS_PER_ASSET=300
+TARGETS=kronos_small,chronos2,bolt_small,timesfm
+TARGETS_IN_MCS=0
+MCS_INCLUDED=dip_fhs,dip_garch_t
+RESEARCH_ONLY=True LIVE_PNL_CLAIM=False
+RECEIPT_SHA256=4ba9d547de21d130ada763f4ace26873b0b30d7b0bd85fafc02008ca43b15820
+RECEIPT=.dsh-24x7\eval-full\h4_merged.json
+SCHEMA=sota_eval.v3
+ROWS=1500 COMPLETE=1500 DROPPED=0
+ASSETS=5 ORIGINS_PER_ASSET=300
+TARGETS=kronos_small,chronos2,bolt_small,timesfm
+TARGETS_IN_MCS=0
+MCS_INCLUDED=dip_fhs,dip_garch_t
+RESEARCH_ONLY=True LIVE_PNL_CLAIM=False
+RECEIPT_SHA256=a41c6ea6d4eb331281dc2c8fe462e3b1f5f71b171b34eccc867bd582ac54f062
+VERIFICATION=PASS
+INTERPRETATION=diagnostic real-data comparison; not universal SOTA proof
+LIMITS=local model artifacts, Binance current archives, no licensed PIT vintages, no production/live deployment evidence
+EXIT_CODE=0
