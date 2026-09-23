@@ -1,0 +1,37 @@
+Loading weights from local directory
+Loading weights from local directory
+[BTCUSDT] 25/40 origins 1.46/s
+[BTCUSDT] scored 40 origins
+/Users/vaithianathan/dipcatcher/scripts/sota_eval_kronos.py:520: RuntimeWarning: Mean of empty slice
+  means = {m: float(np.nanmean(loss_matrix[:, i])) for i, m in enumerate(model_names)}
+/Users/vaithianathan/dipcatcher/scripts/sota_eval_kronos.py:523: RuntimeWarning: Mean of empty slice
+  m: float(np.nanmean(loss_matrix[asset_ids == a, i])) for i, m in enumerate(model_names)
+/Users/vaithianathan/dipcatcher/scripts/sota_eval_kronos.py:529: RuntimeWarning: Mean of empty slice
+  m: {str(tau): float(np.nanmean(pinball_cube[:, i, k])) for k, tau in enumerate(TAUS)}
+elapsed=28.21s
+n_rows=40 n_complete=0
+model                  mean_crps   per-asset mean CRPS
+kronos_small            0.022368   BTCUSDT=0.022368
+dip_gauss               0.013228   BTCUSDT=0.013228
+dip_student_t           0.012924   BTCUSDT=0.012924
+dip_ewma_t              0.013204   BTCUSDT=0.013204
+dip_empirical           0.012896   BTCUSDT=0.012896
+dip_empirical_long      0.012761   BTCUSDT=0.012761
+dip_garch_t             0.012855   BTCUSDT=0.012855
+dip_fhs                 0.012830   BTCUSDT=0.012830
+dip_ewma_emp            0.012919   BTCUSDT=0.012919
+dip_lgbm_q                   nan   BTCUSDT=nan
+dip_blend               0.012906   BTCUSDT=0.012906
+DM kronos_small vs dip_gauss: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_student_t: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_ewma_t: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_empirical: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_empirical_long: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_garch_t: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_fhs: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_ewma_emp: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_lgbm_q: diff=+nan t=+nan p=nan preferred=inconclusive
+DM kronos_small vs dip_blend: diff=+nan t=+nan p=nan preferred=inconclusive
+SPA (any challenger beats kronos_small): p_lower=nan p_cons=nan p_upper=nan
+MCS @0.10: []
+receipt: /tmp/local-repro-btc.json

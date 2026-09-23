@@ -103,6 +103,81 @@ class ElasticNetRanker(RidgeRanker):
         )
 
 
+class NeuralRanker(RidgeRanker):
+    """Optional deterministic feed-forward neural ranker.
+
+    This is supervised score learning on forward labels, not an RL/P&L agent.
+    It reuses the same finite-row and feature-scaling contract as the linear
+    rankers while keeping the neural dependency optional at import time.
+    """
+
+    def __init__(self, seed: int = 42) -> None:
+        from sklearn.neural_network import MLPRegressor
+
+        self.seed = int(seed)
+        self.scaler = StandardScaler()
+        self.model = MLPRegressor(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            solver="adam",
+            alpha=1e-4,
+            batch_size="auto",
+            learning_rate_init=1e-3,
+            max_iter=300,
+            early_stopping=True,
+            validation_fraction=0.15,
+            n_iter_no_change=20,
+            random_state=self.seed,
+        )
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking", name="neural", version="v1", extra={"seed": self.seed}
+        )
+
+
+class EnsembleRanker(JoblibMixin):
+    """Leakage-safe blend of heterogeneous supervised rankers.
+
+    Each member is fit on the same causal training rows. Predictions are
+    standardized within the prediction batch before averaging so a tree model's
+    scale cannot dominate a linear model. This is a ranking ensemble, not a
+    portfolio/P&L model.
+    """
+
+    def __init__(self, seed: int = 42) -> None:
+        self.seed = int(seed)
+        self.members: list[Any] = [
+            RidgeRanker(alpha=1.0),
+            ElasticNetRanker(alpha=1.0, l1_ratio=0.5),
+            NeuralRanker(seed=self.seed),
+            # Tree backends remain available as standalone rankers. Keeping
+            # them out of the default ensemble avoids native-library thread
+            # interactions with the optional neural backend during parallel
+            # research runs; users can still train each tree model directly.
+        ]
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> EnsembleRanker:
+        for member in self.members:
+            member.fit(x, y, **kwargs)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        predictions = np.vstack([np.asarray(m.predict(x), dtype=float) for m in self.members])
+        centered = predictions - np.nanmean(predictions, axis=1, keepdims=True)
+        scales = np.nanstd(centered, axis=1, keepdims=True)
+        normalized = np.divide(centered, np.where(scales > 1e-12, scales, 1.0))
+        return np.nanmean(normalized, axis=0)
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="ranking",
+            name="ensemble",
+            version="v1",
+            extra={"members": [type(m).__name__ for m in self.members]},
+        )
+
+
 class XGBRegRanker(JoblibMixin):
     def __init__(self, n_estimators: int = 80, max_depth: int = 3, seed: int = 42) -> None:
         from xgboost import XGBRegressor
@@ -135,6 +210,8 @@ class LGBMRegRanker(JoblibMixin):
             n_estimators=n_estimators,
             num_leaves=num_leaves,
             random_state=seed,
+            n_jobs=1,
+            num_threads=1,
             verbosity=-1,
         )
 
@@ -162,6 +239,8 @@ class LGBMLambdaRanker(JoblibMixin):
         self.model = LGBMRanker(
             n_estimators=n_estimators,
             random_state=seed,
+            n_jobs=1,
+            num_threads=1,
             verbosity=-1,
             objective=objective,
         )

@@ -51,6 +51,20 @@ Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC
 - López de Prado. *Advances in Financial Machine Learning* — purged/embargoed CV, CPCV.
 - Diebold, Mariano (1995). Comparing predictive accuracy.
 
+## Foundation-model comparison targets
+
+- Shi et al. (2025). Kronos: A Foundation Model for the Language of Financial
+  Markets. *NeurIPS 2025* (arXiv:2508.02739); repo `shiyu-coder/Kronos` (weights under HF org `NeoQuasar`). Used as a
+  published SOTA comparison target for causal one-step-ahead return-distribution
+  forecasting; see `scripts/sota_eval_kronos.py` and `.dsh-24x7/evidence-sota-eval-*.json`.
+- Ansari et al. (2024/25). Chronos / Chronos-Bolt / Chronos-2: Amazon's
+  time-series foundation models (`amazon-science/chronos-forecasting`, weights
+  under HF org `autogluon`). Chronos-2 evaluated via native quantile output
+  (quantile-integral CRPS) under the same causal protocol.
+- Das et al. (2024). TimesFM: Google's decoder-only time-series foundation
+  model (`google/timesfm`, weights `google/timesfm-2.5-200m-pytorch`), evaluated
+  zero-shot under the same protocol.
+
 ## Data-snooping / multiple testing
 
 - White, H. (2000). A Reality Check for Data Snooping. *Econometrica* 68(5).

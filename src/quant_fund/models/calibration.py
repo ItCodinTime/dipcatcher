@@ -20,6 +20,13 @@ class ProbabilityCalibrator(JoblibMixin):
         self.iso = IsotonicRegression(out_of_bounds="clip")
         self.platt = LogisticRegression()
         self.fitted = False
+        self.score_feature: str | None = None
+        self.label: str | None = None
+        self.horizon: str | None = None
+        self.fit_start: str | None = None
+        self.fit_end: str | None = None
+        self.oos_start: str | None = None
+        self.oos_end: str | None = None
 
     def fit(
         self, scores: NDArray[np.float64], labels: NDArray[np.float64]
@@ -50,4 +57,17 @@ class ProbabilityCalibrator(JoblibMixin):
         return np.asarray(self.iso.predict(s), dtype=np.float64)
 
     def metadata(self) -> ModelMeta:
-        return ModelMeta(family="calibration", name=self.method, version="v1")
+        return ModelMeta(
+            family="calibration",
+            name=self.method,
+            version="v1",
+            extra={
+                "score_feature": self.score_feature,
+                "label": self.label,
+                "horizon": getattr(self, "horizon", None),
+                "fit_start": self.fit_start,
+                "fit_end": self.fit_end,
+                "oos_start": self.oos_start,
+                "oos_end": self.oos_end,
+            },
+        )

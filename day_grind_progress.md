@@ -1518,3 +1518,104 @@
   - Sergeant: ofi_p_ic↔session_chain (H27↔H29)
   - General: wick_skew_p_ic↔session_chain (H26↔H29) or stamp-only
   - Commander: continue Residual #246–#255 identity batch
+
+## 2026-09-21 — SOTA lane: Kronos pipeline glue + public-source collector wiring (devin)
+- NEW: `pipeline/kronos.py::forecast_kronos_frame` — per-security causal candle
+  forecasts -> MarketState; injected predictor for tests/research, strict local
+  artifact load (sha256-pinned) when `train.kronos.enabled`; fail-closed on
+  missing/empty frame, missing columns, or disabled config without predictor.
+- FIX (models/kronos.py): q05/q95 now derive from the predicted candle envelope
+  (min low / max high over horizon, never narrower than the close path) instead
+  of degenerate flat-path quantiles; diagnostics declare
+  `quantile_band=candle_envelope`. Honest band, not a calibrated interval.
+- FIX (data/ingest.py): `PublicMarketProvider` passed `path` to the adapter
+  constructor (only accepts `client`) so nasdaq_itch/fi_2010 could never be
+  configured; path now reaches `fetch`/`get_bars` only.
+- FIX (data/sources/base.py): `pit_frame` treated explicit `available_time=None`
+  as a timestamp and crashed on parse; None now falls back to event_time per the
+  documented default. GDELT timeline guarded against non-list payloads.
+- NEW CLI: `dipcatcher collect --source <name> --param k=v...` (explicit opt-in
+  network collection -> raw/sources/<source>.parquet + sha256 receipt) and
+  `dipcatcher kronos-forecast` (requires train.kronos.enabled; research-only
+  banner). Unknown sources fail closed with the registry list.
+- mypy: module-scoped `override` disable for data/sources/adapters — adapters
+  deliberately expose explicit fetch kwargs over the base `**kwargs` contract.
+- Docs: DATA_SOURCE_LABELS.md public-sources row; README collect + kronos notes.
+- Tests: +7 (kronos pipeline glue happy/fail-closed/multi-security; itch
+  path-routing regression). 164 touched-area tests green; ruff clean; mypy
+  clean on touched modules (11 files). Full suite not re-run (786s baseline).
+- Research-only; no live broker, no live-data or SOTA performance claim.
+
+## SOTA eval lane (continued)
+
+- Real data: 999+999+998 Binance daily bars (BTCUSDT/ETHUSDT/SOLUSDT) via
+  `dipcatcher collect`; in-progress bar dropped to keep PIT chain causal.
+- Kronos artifacts pinned local: Kronos-small (24.7M), Kronos-base (102M),
+  Kronos-Tokenizer-base. `data/models/` gitignored.
+- `scripts/sota_eval_kronos.py` (new, rerunnable): causal expanding-window
+  1-day-ahead return-distribution forecast; Kronos 16-draw ensemble vs
+  Gaussian/Student-t/EWMA-t/empirical baselines (window=250); CRPS + pinball
+  (5/50/95); Diebold-Mariano per pair; Hansen SPA; Hansen-Lunde-Nason MCS on
+  -losses (higher-is-better convention verified on synthetic data).
+- Kronos-small result (450 origins, 3 assets, seed 7): pooled CRPS
+  kronos=0.0216 vs baselines ~0.0136 (~37% lower); pinball worse at all taus;
+  DM t>+5.2 p<1e-4 all pairs; SPA p_lower/p_consistent=0.0005
+  (p_upper=0.47 disclosed); MCS@0.10 excludes kronos (p=0.0005), retains
+  student_t/ewma_t/empirical.
+- Adapter fixes verified upstream: clip is a KronosPredictor ctor arg (not
+  predict kwarg); calc_time_stamps needs pd.Series not DatetimeIndex.
+- Kronos-base eval in flight (same protocol) to check size scaling.
+- Scope/honesty: crypto daily bars only, zero-shot foundation model, not a
+  live-P&L or multi-domain claim.
+- Kronos-base result (same protocol): pooled CRPS 0.0287 — the 102M model is
+  worse than the 24.7M one; DM t>+9.2 p<1e-4; MCS@0.10 excludes kronos again.
+  Both published sizes lose on all 3 assets.
+- PROOF.md SOTA -> PROVEN (scoped: crypto daily distribution forecasting);
+  industry-grade remains NOT PROVEN (no matched incumbent run yet).
+
+## Remote eval fleet (codex-remote / ah-remote, DESKTOP-AJN4V4Q)
+
+- D:\dipcatcher is the live 24x7 checkout (opencode loop). Repo tarball +
+  models synced to D:\dipcatcher; third_party\Kronos cloned there.
+- Env trap: venvs built from Microsoft Store python hang suspended when
+  spawned detached (schtasks/session-0). Fix: `uv venv --python-preference
+  only-managed` at D:\evalenv (real CPython 3.12.14) + pythonw.exe children.
+- Deps in D:\evalenv: editable install of quant_fund + torch/transformers/
+  chronos-forecasting/timesfm/arch/lightgbm.
+- v3 eval script (shared, synced): targets kronos_small, chronos2, bolt_small,
+  timesfm; challengers +ewma_emp, +lgbm_q, garch_t, fhs, blend; shard-merge
+  mode; CRPS via completed quantile functions for quantile targets.
+- Shards: 4 daily done pre-env-fix (btc/eth/sol/bnb: all 4 published targets
+  excluded from MCS@0.10 vs lab challengers); 12 more running (7 daily + 5 4h).
+- Worker fleet on _deep parquets was frozen under Store python; cleaned up.
+
+## SOTA broadening round — COMPLETE (codex-remote shards merged)
+
+- All 16 shards finished: 11 daily + 5 4h asset-intervals, 150 origins each,
+  targets kronos_small/chronos2/bolt_small/timesfm, seed 7.
+- Harmonized shards onto the common 12-model set for pooled merge
+  (batch-1 shards predated dip_ewma_emp/dip_lgbm_q); h4 receipt keeps 14.
+- Results: every published target excluded from MCS@0.10 on d1 (1650 obs),
+  h4 (420), and pooled (2070) merges; pooled retains only dip_garch_t+dip_fhs.
+  Best published = timesfm (0.011891 pooled CRPS); best challenger =
+  dip_fhs (0.011269). Weakest challenger-vs-target DM pair still p=0.0112.
+- Receipts pulled to .dsh-24x7/evidence-sota-eval-v3-{d1,h4,pooled}.json + txt;
+  loss matrices in .dsh-24x7/eval-shards/ — merge reproduces locally exactly.
+- PROOF.md SOTA section updated (still PROVEN, now broader + more targets);
+  PROGRESS/HANDOFF/RESEARCH_REFERENCES updated. Industry-grade still NOT PROVEN.
+- ruff/mypy(154 files)/git-diff-check clean; focused kronos/data-pit tests pass.
+
+## Adversarial SOTA verification (local, 2026-09-22)
+
+- Causality audit of eval script: slices [:i+1], target i+1 return, y only in
+  scores, lgbm trains rows<i — clean.
+- Bar integrity: all eval parquets strictly monotonic, no dups/NaN.
+- Challenger recompute on BTC daily: 5 cols bit-exact; optimizer cols <=5e-4
+  (platform noise). Stored matrices provably real.
+- v4 splice re-verified on remote: challenger cols bit-identical, only kronos
+  column replaced. Corrected pairing still loses.
+- Independent local repro (macOS arm64, canonical tokenizer, 40 origins):
+  kronos_small CRPS 0.0224 vs challengers 0.0128-0.0132; excluded from MCS.
+- Local env quirk found: lgbm deadlocks in libomp (lgbm stubbed for repro).
+- PROOF.md gained "Adversarial verification" section; receipts in
+  .dsh-24x7/evidence-sota-local-repro-btc.*.

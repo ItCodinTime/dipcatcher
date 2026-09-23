@@ -13,9 +13,61 @@ from quant_fund.data.adapters.parquet import ParquetMarketProvider
 from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
 from quant_fund.data.corporate_actions import adjust_prices
 from quant_fund.data.lake import Lake
+from quant_fund.data.sources import SourceAdapter, get_source
 
 
-def make_provider(config: AppConfig) -> SyntheticMarketProvider | ParquetMarketProvider:
+class PublicMarketProvider:
+    """MarketDataProvider bridge for adapters that produce canonical bars.
+
+    Macro, news, filings, and positioning adapters remain generic source adapters
+    and are intentionally not routed through the market-bar ingest pipeline.
+    """
+
+    def __init__(self, config: AppConfig) -> None:
+        self.config = config
+        if config.data.source in {"nasdaq_itch", "fi_2010"} and config.data.source_path is None:
+            raise ValueError(f"{config.data.source} requires data.source_path")
+        try:
+            self.adapter: SourceAdapter = get_source(config.data.source)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"cannot configure public source {config.data.source!r}: {exc}"
+            ) from exc
+
+    def get_bars(self, start=None, end=None, security_ids=None):
+        source = self.config.data.source
+        kwargs: dict[str, object] = {}
+        if source in {"binance_public_data", "binance_market_websocket"}:
+            kwargs.update(
+                symbol=self.config.data.source_symbol,
+                interval=self.config.data.source_interval,
+                limit=self.config.data.source_limit,
+            )
+        elif source in {"nasdaq_itch", "fi_2010"}:
+            kwargs["path"] = self.config.data.source_path
+        elif source not in {"ccxt", "cryptofeed"}:
+            raise ValueError(
+                f"data source {source!r} is not a bar provider; use the public-source collector for generic observations"
+            )
+        frame = self.adapter.get_bars(**kwargs)
+        if start is not None and not frame.is_empty():
+            frame = frame.filter(pl.col("event_time") >= start)
+        if end is not None and not frame.is_empty():
+            frame = frame.filter(pl.col("event_time") <= end)
+        if security_ids is not None and not frame.is_empty():
+            frame = frame.filter(pl.col("security_id").is_in(security_ids))
+        return frame
+
+    def get_corporate_actions(self, **_):
+        return pl.DataFrame()
+
+    def get_security_master(self):
+        return pl.DataFrame()
+
+
+def make_provider(
+    config: AppConfig,
+) -> SyntheticMarketProvider | ParquetMarketProvider | PublicMarketProvider:
     """Route config.data.source to a market provider (fail-closed).
 
     Allowed: ``synthetic`` → SyntheticMarketProvider;
@@ -34,8 +86,23 @@ def make_provider(config: AppConfig) -> SyntheticMarketProvider | ParquetMarketP
     if source in {"file", "parquet"}:
         root = config.data.parquet_path or (Path(config.data.root) / "raw")
         return ParquetMarketProvider(Path(root))
+    from quant_fund.data.sources.registry import SOURCE_REGISTRY
+
+    if source in SOURCE_REGISTRY:
+        if source in {
+            "binance_public_data",
+            "binance_market_websocket",
+            "ccxt",
+            "cryptofeed",
+            "nasdaq_itch",
+            "fi_2010",
+        }:
+            return PublicMarketProvider(config)
+        raise ValueError(
+            f"data source {source!r} is not a market-bar provider; call a source adapter directly"
+        )
     raise ValueError(
-        f"unknown data source {config.data.source!r}; expected one of: synthetic, file, parquet"
+        f"unknown data source {config.data.source!r}; expected a registered public source or synthetic, file, parquet"
     )
 
 

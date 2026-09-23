@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -14,11 +14,197 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.cross_section import _date_keys
 from quant_fund.pipeline.dataset import build_gold, panel
 from quant_fund.pipeline.forecast import (
+    _load_rl_cached,
     conformal_sets_asof,
     forecast_asof,
     history_for_calibration,
 )
 from quant_fund.schemas.forecast import AssetForecast
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        ("rl_linucb.joblib", "RL_LINUCB"),
+        ("rl_thompson.joblib", "RL_THOMPSON"),
+        ("rl_quantile_thompson.joblib", "RL_QUANTILE_THOMPSON"),
+        ("rl_policy_gradient.joblib", "RL_POLICY_GRADIENT"),
+    ],
+)
+def test_rl_artifact_identity_is_preserved(tmp_path: Path, filename: str, expected: str) -> None:
+    import joblib
+
+    from quant_fund.models.rl import LinUCBRanker
+    from quant_fund.pipeline import forecast as forecast_module
+
+    root = tmp_path / "metadata"
+    root.mkdir()
+    joblib.dump({"policy": LinUCBRanker(1), "features": ["ret_1"]}, root / filename)
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    forecast_module._RANKER_CACHE.clear()
+    loaded = _load_rl_cached(cfg)
+    assert loaded is not None
+    assert loaded[2] == expected
+
+
+def test_rl_artifact_checksum_mismatch_fails_closed(tmp_path: Path) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.models.rl import LinUCBRanker
+    from quant_fund.pipeline import forecast as forecast_module
+
+    root = tmp_path / "metadata"
+    root.mkdir()
+    artifact = root / "rl_linucb.joblib"
+    save_joblib_artifact(
+        {"policy": LinUCBRanker(1), "features": ["ret_1"]}, artifact
+    )
+    artifact.write_bytes(artifact.read_bytes() + b"tampered")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    forecast_module._RANKER_CACHE.clear()
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        _load_rl_cached(cfg)
+
+
+def test_probability_calibrator_loader_fails_closed_for_missing_artifact(tmp_path: Path) -> None:
+    from quant_fund.pipeline import forecast as forecast_module
+
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    cfg.fusion.apply_probability_calibration = True
+    with pytest.raises(ValueError, match="artifact is missing"):
+        forecast_module._load_probability_calibrator(cfg)
+
+
+def test_probability_calibrator_loader_enforces_score_identity(tmp_path: Path) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import forecast as forecast_module
+
+    calibrator = ProbabilityCalibrator("isotonic").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator.score_feature = "wrong_score"
+    calibrator.label = "future_label"
+    path = tmp_path / "metadata" / "calibrator_auto.joblib"
+    save_joblib_artifact(calibrator, path)
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    with pytest.raises(ValueError, match="score identity mismatch"):
+        forecast_module._load_probability_calibrator(cfg)
+
+
+def test_probability_calibrator_loader_accepts_fitted_bound_artifact(tmp_path: Path) -> None:
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import forecast as forecast_module
+
+    calibrator = ProbabilityCalibrator("platt").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator.score_feature = "cs_pct_mom_20"
+    calibrator.label = "future_excess_return_5"
+    calibrator.horizon = "future_excess_return_5"
+    calibrator.fit_start = "2020-01-01"
+    calibrator.fit_end = "2020-02-01"
+    calibrator.oos_start = "2020-02-02"
+    calibrator.oos_end = "2020-02-10"
+    path = tmp_path / "metadata" / "calibrator_auto.joblib"
+    calibrator.save(path)
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    loaded = forecast_module._load_probability_calibrator(cfg)
+    assert loaded.method == "platt"
+
+
+def test_probability_calibrator_loader_rejects_configured_label_mismatch(tmp_path: Path) -> None:
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import forecast as forecast_module
+
+    calibrator = ProbabilityCalibrator("platt").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator.score_feature = "cs_pct_mom_20"
+    calibrator.label = "future_excess_return_5"
+    calibrator.horizon = "future_excess_return_5"
+    calibrator.fit_start = "2020-01-01"
+    calibrator.fit_end = "2020-02-01"
+    calibrator.oos_start = "2020-02-02"
+    calibrator.oos_end = "2020-02-10"
+    calibrator.save(tmp_path / "metadata" / "calibrator_auto.joblib")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    cfg.fusion.probability_calibration_label = "future_excess_return_20"
+    with pytest.raises(ValueError, match="label identity mismatch"):
+        forecast_module._load_probability_calibrator(cfg)
+
+
+def test_probability_calibrator_loader_rejects_missing_window_provenance(tmp_path: Path) -> None:
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import forecast as forecast_module
+
+    calibrator = ProbabilityCalibrator("platt").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator.score_feature = "cs_pct_mom_20"
+    calibrator.label = "future_excess_return_5"
+    calibrator.horizon = "future_excess_return_5"
+    calibrator.save(tmp_path / "metadata" / "calibrator_auto.joblib")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    with pytest.raises(ValueError, match="fit_start is missing"):
+        forecast_module._load_probability_calibrator(cfg)
+
+
+def test_probability_calibrator_loader_rejects_stale_asof(tmp_path: Path) -> None:
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import forecast as forecast_module
+
+    calibrator = ProbabilityCalibrator("platt").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator.score_feature = "cs_pct_mom_20"
+    calibrator.label = "future_excess_return_5"
+    calibrator.horizon = "future_excess_return_5"
+    calibrator.fit_start = "2020-01-01"
+    calibrator.fit_end = "2020-02-01"
+    calibrator.oos_start = "2020-02-02"
+    calibrator.oos_end = "2020-02-10"
+    calibrator.save(tmp_path / "metadata" / "calibrator_auto.joblib")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    cfg.fusion.probability_calibration_max_age_days = 5
+    with pytest.raises(ValueError, match="stale"):
+        forecast_module._load_probability_calibrator(
+            cfg, asof=datetime(2020, 2, 20, tzinfo=UTC)
+        )
+
+
+def test_ranker_loader_accepts_ensemble_artifact(tmp_path: Path) -> None:
+    from quant_fund.models.ranking import EnsembleRanker
+    from quant_fund.pipeline import forecast as forecast_module
+
+    root = tmp_path / "metadata"
+    root.mkdir()
+    x = np.arange(40, dtype=float).reshape(20, 2)
+    y = np.sin(x[:, 0])
+    model = EnsembleRanker(seed=3).fit(x, y)
+    model.features = ["ret_1", "vol_20"]
+    model.save(root / "ranker_ensemble.joblib")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    forecast_module._RANKER_CACHE.clear()
+    loaded = forecast_module._load_ranker_cached(cfg)
+    assert isinstance(loaded, EnsembleRanker)
+    assert loaded.features == ["ret_1", "vol_20"]
+
+
+def test_ranker_loader_discovers_neural_artifact(tmp_path: Path) -> None:
+    from quant_fund.models.ranking import NeuralRanker
+    from quant_fund.pipeline import forecast as forecast_module
+
+    root = tmp_path / "metadata"
+    root.mkdir()
+    x = np.arange(40, dtype=float).reshape(20, 2)
+    y = np.sin(x[:, 0])
+    model = NeuralRanker(seed=4).fit(x, y)
+    model.features = ["ret_1", "vol_20"]
+    model.save(root / "ranker_neural.joblib")
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    forecast_module._RANKER_CACHE.clear()
+    loaded = forecast_module._load_ranker_cached(cfg)
+    assert isinstance(loaded, NeuralRanker)
 
 
 def _asof() -> datetime:

@@ -127,7 +127,9 @@ def test_joblib_save_writes_sha256_sidecar(tmp_path) -> None:
     )
 
 
-def test_joblib_load_rejects_modified_artifact_before_deserialization(tmp_path, monkeypatch) -> None:
+def test_joblib_load_rejects_modified_artifact_before_deserialization(
+    tmp_path, monkeypatch
+) -> None:
     model = GARCHVol().fit_returns(_returns())
     path = tmp_path / "garch.joblib"
     model.save(path)
@@ -210,3 +212,16 @@ def test_garch_fallback_exposes_reason() -> None:
     assert forecast["variance"].shape == (2,)
     assert forecast["distribution"] == "normal"
     assert forecast["requested_distribution"] == "t"
+
+
+def test_garch_consumer_scope_rejects_pooled_asset_use() -> None:
+    pooled = GARCHVol(series_scope="date_level_equal_weight_cross_section")
+    with pytest.raises(ValueError, match="consumable only by date_level_portfolio"):
+        pooled.assert_consumer_scope("per_security")
+    pooled.assert_consumer_scope("date_level_portfolio")
+
+
+def test_garch_consumer_scope_rejects_unknown_scope() -> None:
+    model = GARCHVol(series_scope="per_security")
+    with pytest.raises(ValueError, match="scope mismatch"):
+        model.assert_consumer_scope("date_level_portfolio")

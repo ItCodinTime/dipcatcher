@@ -104,9 +104,7 @@ def assert_universe_not_from_future(
     leaked = trailing_adv(bars.filter(pl.col("event_time") <= asof), 20).filter(
         pl.col("event_time") == asof
     )
-    pit = trailing_adv(_visible_bars(bars, asof), 20).filter(
-        pl.col("event_time") == asof
-    )
+    pit = trailing_adv(_visible_bars(bars, asof), 20).filter(pl.col("event_time") == asof)
     if leaked.is_empty() or pit.is_empty():
         return
     joined = leaked.join(pit, on="security_id", suffix="_pit")

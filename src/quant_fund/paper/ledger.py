@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import tempfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 import polars as pl
@@ -38,9 +40,12 @@ def _promotion_receipt_digest(receipt: dict[str, Any]) -> str:
 
 def paper_root(data_root: Path | str, subdir: str = "paper") -> Path:
     relative = Path(subdir)
+    windows = PureWindowsPath(subdir)
     if (
         not subdir.strip()
         or relative.is_absolute()
+        or PurePosixPath(subdir).is_absolute()
+        or bool(windows.drive or windows.root)
         or any(part in {"", ".", ".."} for part in relative.parts)
     ):
         raise ValueError("paper ledger subdir must be a safe relative path")
@@ -51,6 +56,46 @@ def paper_root(data_root: Path | str, subdir: str = "paper") -> Path:
 
 def _nan() -> float:
     return float("nan")
+
+
+def _fsync_directory(path: Path) -> None:
+    """Make an atomic replacement visible after a host crash when supported."""
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _atomic_write_parquet(frame: pl.DataFrame, path: Path) -> None:
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".parquet", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            frame.write_parquet(handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _order_row(rec: OrderRecord, asof: datetime | None) -> dict[str, Any]:
@@ -128,16 +173,7 @@ class PaperLedger:
         self._positions: list[dict[str, Any]] = []
         self._cash_events: list[dict[str, Any]] = []
         if load_existing:
-            for name, target in (
-                ("orders", self._orders),
-                ("equity", self._equity),
-                ("shadow_equity", self._shadow_equity),
-                ("positions", self._positions),
-                ("cash_ledger", self._cash_events),
-            ):
-                path = self.root / f"{name}.parquet"
-                if path.is_file():
-                    target.extend(pl.read_parquet(path).to_dicts())
+            self.load_existing()
         self._meta: dict[str, Any] = {
             "run_id": run_id,
             "schema_version": self.SCHEMA_VERSION,
@@ -147,6 +183,19 @@ class PaperLedger:
                 "Not live broker connectivity. SYNTHETIC bars ⇒ research-only diagnostics."
             ),
         }
+
+    def load_existing(self) -> None:
+        """Load prior Parquet rows without masking corruption."""
+        for name, target in (
+            ("orders", self._orders),
+            ("equity", self._equity),
+            ("shadow_equity", self._shadow_equity),
+            ("positions", self._positions),
+            ("cash_ledger", self._cash_events),
+        ):
+            path = self.root / f"{name}.parquet"
+            if path.is_file():
+                target.extend(pl.read_parquet(path).to_dicts())
 
     def set_meta(self, **kwargs: Any) -> None:
         self._meta.update(kwargs)
@@ -209,39 +258,42 @@ class PaperLedger:
             "shadow": None if shadow is None else shadow.to_dict(),
         }
         path = self.root / "broker_state.json"
-        path.write_text(json.dumps(blob, indent=2, default=str))
+        _atomic_write_text(path, json.dumps(blob, indent=2, default=str))
         return path
 
     def flush(self) -> dict[str, Path]:
+        """Publish the complete in-memory ledger with crash-safe file replacement.
+
+        Each artifact is written to a same-directory temporary file, fsynced, and
+        atomically replaced. Callers publish ledger artifacts before the broker
+        state cursor so a cursor never intentionally points past accounting rows.
+        """
         paths: dict[str, Path] = {}
-        if self._orders:
-            op = self.root / "orders.parquet"
-            pl.DataFrame(self._orders, infer_schema_length=None).write_parquet(op)
-            paths["orders"] = op
-        if self._equity:
-            ep = self.root / "equity.parquet"
-            pl.DataFrame(self._equity, infer_schema_length=None).write_parquet(ep)
-            paths["equity"] = ep
-        if self._shadow_equity:
-            sp = self.root / "shadow_equity.parquet"
-            pl.DataFrame(self._shadow_equity, infer_schema_length=None).write_parquet(sp)
-            paths["shadow_equity"] = sp
-        if self._positions:
-            pp = self.root / "positions.parquet"
-            pl.DataFrame(self._positions, infer_schema_length=None).write_parquet(pp)
-            paths["positions"] = pp
-        if self._cash_events:
-            cp = self.root / "cash_ledger.parquet"
-            pl.DataFrame(self._cash_events, infer_schema_length=None).write_parquet(cp)
-            paths["cash_ledger"] = cp
-        mp = self.root / "meta.json"
-        mp.write_text(json.dumps(self._meta, indent=2, default=str))
-        paths["meta"] = mp
-        data_meta_paper = self.root.parent  # .../metadata/paper
-        (data_meta_paper / "latest_run.json").write_text(
-            json.dumps({"run_id": self.run_id, "path": str(self.root)}, indent=2)
+        frames = (
+            ("orders", self._orders),
+            ("equity", self._equity),
+            ("shadow_equity", self._shadow_equity),
+            ("positions", self._positions),
+            ("cash_ledger", self._cash_events),
         )
-        paths["latest"] = data_meta_paper / "latest_run.json"
+        for name, rows in frames:
+            path = self.root / f"{name}.parquet"
+            if rows:
+                _atomic_write_parquet(pl.DataFrame(rows, infer_schema_length=None), path)
+                paths[name] = path
+            elif path.exists():
+                path.unlink()
+                _fsync_directory(path.parent)
+        meta_path = self.root / "meta.json"
+        _atomic_write_text(meta_path, json.dumps(self._meta, indent=2, default=str))
+        paths["meta"] = meta_path
+        data_meta_paper = self.root.parent  # .../metadata/paper
+        latest_path = data_meta_paper / "latest_run.json"
+        _atomic_write_text(
+            latest_path,
+            json.dumps({"run_id": self.run_id, "path": str(self.root)}, indent=2),
+        )
+        paths["latest"] = latest_path
         return paths
 
     def load_equity(self) -> pl.DataFrame:
@@ -257,8 +309,15 @@ class PaperLedger:
         return pl.read_parquet(path)
 
     def write_promotion_dry_run(self, receipt: dict[str, Any]) -> Path:
+        """Publish the promotion receipt without exposing a partial JSON file."""
         path = self.root / "promotion_dry_run.json"
-        path.write_text(json.dumps(receipt, indent=2, default=str))
+        _atomic_write_text(path, json.dumps(receipt, indent=2, default=str))
+        return path
+
+    def write_analytics_export(self, export: dict[str, Any]) -> Path:
+        """Publish the validated analytics export as one complete JSON artifact."""
+        path = self.root / "analytics_export.json"
+        _atomic_write_text(path, json.dumps(export, indent=2, default=str))
         return path
 
 
@@ -566,6 +625,15 @@ def validate_ledger_schema(
     warnings: list[str] = []
     present: dict[str, bool] = {}
     schema_version: int | None = None
+    row_counts: dict[str, int | None] = {
+        "orders": None,
+        "equity": None,
+        "shadow_equity": None,
+        "positions": None,
+        "cash_ledger": None,
+    }
+    cursor_step: int | None = None
+    cursor_consistent = True
 
     meta_path = root / "meta.json"
     present["meta.json"] = meta_path.is_file()
@@ -614,6 +682,11 @@ def validate_ledger_schema(
             for key in LEDGER_BROKER_STATE_REQUIRED:
                 if key not in state:
                     errors.append(f"broker_state_missing:{key}")
+            raw_step = state.get("step")
+            if isinstance(raw_step, bool) or not isinstance(raw_step, int) or raw_step < 0:
+                errors.append("broker_state_step_invalid")
+            else:
+                cursor_step = raw_step
             if state.get("run_id") != meta.get("run_id"):
                 errors.append("broker_state_run_id_mismatch")
             fingerprint = state.get("resume_fingerprint")
@@ -680,8 +753,30 @@ def validate_ledger_schema(
                 errors.append("equity_missing:cash")
             if "asof" not in cols and "event_time" not in cols:
                 errors.append("equity_missing:asof_or_event_time")
+            row_counts["equity"] = eq.height
         except Exception as exc:  # noqa: BLE001 — report, don't crash validator
             errors.append(f"equity_unreadable:{type(exc).__name__}:{exc}")
+
+    shadow_path = root / "shadow_equity.parquet"
+    present["shadow_equity.parquet"] = shadow_path.is_file()
+    if shadow_path.is_file():
+        try:
+            shadow = pl.read_parquet(shadow_path)
+            row_counts["shadow_equity"] = shadow.height
+            for key in ("event_time", "nav", "gross", "net", "cash", "slot"):
+                if key not in shadow.columns:
+                    errors.append(f"shadow_equity_missing:{key}")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"shadow_equity_unreadable:{type(exc).__name__}:{exc}")
+
+    positions_path = root / "positions.parquet"
+    present["positions.parquet"] = positions_path.is_file()
+    if positions_path.is_file():
+        try:
+            positions = pl.read_parquet(positions_path)
+            row_counts["positions"] = positions.height
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"positions_unreadable:{type(exc).__name__}:{exc}")
 
     orders_path = root / "orders.parquet"
     present["orders.parquet"] = orders_path.is_file()
@@ -692,6 +787,7 @@ def validate_ledger_schema(
             for key in ("order_id", "security_id", "side", "status"):
                 if key not in cols:
                     errors.append(f"orders_missing:{key}")
+            row_counts["orders"] = od.height
         except Exception as exc:  # noqa: BLE001
             errors.append(f"orders_unreadable:{type(exc).__name__}:{exc}")
     else:
@@ -713,6 +809,7 @@ def validate_ledger_schema(
                 and not cash["cash_delta"].is_finite().all()
             ):
                 errors.append("cash_ledger_cash_delta_nonfinite")
+            row_counts["cash_ledger"] = cash.height
         except Exception as exc:  # noqa: BLE001
             errors.append(f"cash_ledger_unreadable:{type(exc).__name__}:{exc}")
 
@@ -728,6 +825,23 @@ def validate_ledger_schema(
             if "run_id" in promo and promo.get("run_id") != meta.get("run_id"):
                 errors.append("promotion_run_id_mismatch")
             errors.extend(promo_errors)
+
+    durable_equity_rows = row_counts["equity"]
+    if (
+        durable_equity_rows is not None
+        and durable_equity_rows > 0
+        and not present["broker_state.json"]
+    ):
+        cursor_consistent = False
+        errors.append("broker_state_missing_for_equity")
+    if cursor_step is not None:
+        if cursor_step > 0 and not present["equity.parquet"]:
+            cursor_consistent = False
+            errors.append("equity_missing_for_broker_state")
+        elif durable_equity_rows is not None and cursor_step != durable_equity_rows:
+            cursor_consistent = False
+            relation = "ahead" if cursor_step > durable_equity_rows else "behind"
+            errors.append(f"broker_state_step_{relation}_of_equity")
 
     analytics_path = root / "analytics_export.json"
     present["analytics_export.json"] = analytics_path.is_file()
@@ -762,6 +876,12 @@ def validate_ledger_schema(
         "errors": errors,
         "warnings": warnings,
         "present": present,
+        "row_counts": row_counts,
+        "cursor": {
+            "step": cursor_step,
+            "durable_equity_rows": row_counts["equity"],
+            "consistent": cursor_consistent,
+        },
         "schema_version": schema_version,
         "run_dir": str(root),
         "role": "ledger_schema_validation",

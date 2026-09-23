@@ -36,6 +36,9 @@ class Order(BaseModel):
     parent_id: str | None = None
     participation_rate: float | None = None
     limit_price: float | None = None
+    # Optional good-till time: resting orders cancel when the swept bar's
+    # time reaches expire_time. None means good-till-cancelled.
+    expire_time: datetime | None = None
 
     @model_validator(mode="after")
     def validate_event_order(self) -> Order:
@@ -48,6 +51,11 @@ class Order(BaseModel):
             raise ValueError(
                 "order timestamps must satisfy signal_time <= decision_time <= order_time"
             )
+        if self.expire_time is not None:
+            if (self.expire_time.tzinfo is not None) != aware[0]:
+                raise ValueError("expire_time must share timezone awareness with order times")
+            if self.expire_time < self.order_time:
+                raise ValueError("expire_time must be >= order_time")
         return self
 
     @field_validator("quantity")
@@ -85,6 +93,9 @@ class Fill(BaseModel):
     impact_cost: float = 0.0
     slippage: float = 0.0
     is_partial: bool = False
+    # Price at decision time (signal bar close) when the caller supplies it;
+    # enables signed implementation-shortfall decomposition downstream.
+    decision_price: float | None = None
 
     @field_validator("price")
     @classmethod
@@ -106,4 +117,11 @@ class Fill(BaseModel):
         """Fill quantity is unsigned; direction belongs to the parent order."""
         if not math.isfinite(value) or value <= 0.0:
             raise ValueError("quantity must be finite and strictly positive")
+        return value
+
+    @field_validator("decision_price")
+    @classmethod
+    def validate_decision_price(cls, value: float | None) -> float | None:
+        if value is not None and (not math.isfinite(value) or value <= 0.0):
+            raise ValueError("decision_price must be finite and strictly positive")
         return value

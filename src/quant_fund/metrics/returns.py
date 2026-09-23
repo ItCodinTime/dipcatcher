@@ -14,7 +14,7 @@ def _validate_periods(periods_per_year: float) -> None:
 
 
 def wealth_index(returns: Array) -> Array:
-    """Cumulative wealth path starting at 1.0.
+    """Cumulative wealth path from unit starting capital (initial 1.0 omitted).
 
     Empty input → empty array. Non-finite returns propagate as honest NaN
     (no silent zero-fill). Not a live P&L claim.
@@ -29,8 +29,9 @@ def drawdown_series(returns: Array) -> Array:
     w = wealth_index(returns)
     if w.size == 0:
         return np.asarray([], dtype=float)
-    # Guard divide-by-zero / non-finite peaks → honest NaN path
-    peak = np.maximum.accumulate(w)
+    # Include initial capital in the running peak: otherwise an immediate
+    # loss incorrectly becomes the first peak and reports zero drawdown.
+    peak = np.maximum.accumulate(np.concatenate(([1.0], w)))[1:]
     with np.errstate(invalid="ignore", divide="ignore"):
         dd = w / peak - 1.0
     return dd

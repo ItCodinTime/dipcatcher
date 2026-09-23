@@ -1,0 +1,42 @@
+......................................                                   [100%]
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_ok_after_paper_run
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_cursor_ahead_of_durable_equity
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_cursor_behind_durable_equity
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_missing_equity_with_nonzero_cursor_is_invalid
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_allows_valid_zero_step_empty_run
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_validates_persisted_analytics_export[not-json-analytics_export_invalid_json:]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_validates_persisted_analytics_export[["not", "an", "export"]-analytics_export_invalid:analytics_export_not_a_dict]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_validates_persisted_analytics_export[{"live_pnl_claim": true}-analytics_export_invalid:live_pnl_claim_must_be_false]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_binds_analytics_export_identity
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_tampered_analytics_export
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_flags_live_promote
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_missing_meta
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_equity_without_broker_state
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_positive_cursor_without_equity
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_rejects_positive_cursor_with_empty_equity
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_allows_zero_step_without_equity
+PASSED tests/unit/test_ledger_schema.py::test_ledger_flush_removes_stale_empty_parquet_artifact
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_is_total_for_non_object_and_string_version
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_reports_unreadable_json_artifacts[meta.json-meta.json_invalid_json:]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_reports_unreadable_json_artifacts[broker_state.json-broker_state_invalid_json:]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_reports_unreadable_json_artifacts[promotion_dry_run.json-promotion_dry_run_invalid_json:]
+PASSED tests/unit/test_ledger_schema.py::test_validate_ledger_schema_binds_artifact_run_identity
+PASSED tests/unit/test_ledger_schema.py::test_validate_promotion_missing_honesty_flags_fail_closed
+PASSED tests/unit/test_ledger_schema.py::test_validate_promotion_research_only_false_fail_closed
+PASSED tests/unit/test_ledger_schema.py::test_validate_promotion_dry_run_receipt_helper
+PASSED tests/unit/test_ledger_schema.py::test_validate_promotion_dry_run_rejects_non_string_run_id
+PASSED tests/unit/test_ledger_schema.py::test_latest_run_id_rejects_malformed_identity[payload0]
+PASSED tests/unit/test_ledger_schema.py::test_latest_run_id_rejects_malformed_identity[bad]
+PASSED tests/unit/test_ledger_schema.py::test_load_broker_state_rejects_malformed_json_objects[payload0]
+PASSED tests/unit/test_ledger_schema.py::test_load_broker_state_rejects_malformed_json_objects[bad]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_builder_hard_closes_live
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs0]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs1]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs2]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs3]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs4]
+PASSED tests/unit/test_ledger_schema.py::test_promotion_dry_run_rejects_invalid_diagnostics[kwargs5]
+PASSED tests/unit/test_ledger_schema.py::test_cash_ledger_parquet_schema_roundtrip_and_fail_closed
+38 passed in 1.28s

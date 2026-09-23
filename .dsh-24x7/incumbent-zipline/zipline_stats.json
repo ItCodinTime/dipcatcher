@@ -1,0 +1,371 @@
+{
+  "environment": {
+    "platform": "darwin",
+    "python": "3.12.13"
+  },
+  "fairness_verdict": {
+    "blockers": [
+      "pandas<3 env conflict (isolated venv required)",
+      "daily-mode data.current(asset,'open') in slippage does not return bar opens",
+      "integer-share rounding drops fractional crypto deltas",
+      "auto-delisting at bundle end forces liquidation"
+    ],
+    "fair_comparison": false,
+    "reference_engines": [
+      "dipcatcher",
+      "vectorbt",
+      "numpy_replica"
+    ],
+    "reference_nav": 1500764.656389184,
+    "zipline_nav": "see zipline_nav.csv (diverges ~46x)"
+  },
+  "incumbent": {
+    "name": "zipline-reloaded",
+    "repo": "https://github.com/stefan-jansen/zipline-reloaded",
+    "url": "https://zipline.ml4trading.io/"
+  },
+  "isolation_note": "Ran under an isolated venv: zipline-reloaded requires pandas<3 while the project pins pandas>=3; a same-env comparison is impossible by construction. Numerics are compared via the emitted NAV series.",
+  "live_pnl_claim": false,
+  "research_only": true,
+  "schema": "incumbent_bench_zipline.v1",
+  "workload": {
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "bar_files_sha256": {
+      "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+      "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+      "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb"
+    },
+    "bars_per_asset": 999,
+    "calendar": "24/7",
+    "commission_bps": 10.0,
+    "fills": "decision close t -> exec open t+1 (custom OpenFill slippage)",
+    "init_nav": 1000000.0,
+    "script_sha256": "b52250ebec93f26087009f76e42416b47b8c4933023a52fda9943e5b62a8365b",
+    "strategy": "causal SMA20 gate, equal-weight per gated name"
+  },
+  "zipline_stats": {
+    "ending_cash": 69510630.19467999,
+    "fees": 0.0,
+    "gross_exposure_max_over_nav": 0.9994500233981944,
+    "mid_cash": 1203309.147160004,
+    "mid_nav": 11529475.627160005,
+    "mid_positions": "<class 'list'>",
+    "n_orders": 2506,
+    "n_transactions": 1255,
+    "orders": 0,
+    "raw_txn_sample": [
+      {
+        "amount": "121",
+        "commission": "None",
+        "dt": "2024-01-17 00:00:00+00:00",
+        "order_id": "9994982051674599b64b41ab28111199",
+        "price": "2472.87",
+        "sid": "Equity(1 [ETHUSDT])"
+      },
+      {
+        "amount": "-4",
+        "commission": "None",
+        "dt": "2024-01-19 00:00:00+00:00",
+        "order_id": "327d2d0a1d3e4aab8f9d6bdb50fdd30c",
+        "price": "2587.41",
+        "sid": "Equity(1 [ETHUSDT])"
+      },
+      {
+        "amount": "3093",
+        "commission": "None",
+        "dt": "2024-01-19 00:00:00+00:00",
+        "order_id": "b459e376e5e14d6189c2a2734334f178",
+        "price": "97.60000000000001",
+        "sid": "Equity(2 [SOLUSDT])"
+      }
+    ],
+    "run_seconds": 0.5819097080002393,
+    "sample_transactions": [
+      {
+        "amount": 121.0,
+        "dt": "2024-01-17 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2472.87,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": -4.0,
+        "dt": "2024-01-19 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2587.41,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": 3093.0,
+        "dt": "2024-01-19 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 97.60000000000001,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": -3093.0,
+        "dt": "2024-01-20 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 102.10000000000001,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": 6.0,
+        "dt": "2024-01-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2470.81,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": -1.0,
+        "dt": "2024-01-22 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2491.9900000000002,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": -122.0,
+        "dt": "2024-01-24 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2457.06,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": 3287.0,
+        "dt": "2024-01-29 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 92.29,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": -31.0,
+        "dt": "2024-01-30 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 94.27,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": 7.0,
+        "dt": "2024-01-31 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 42031.05,
+        "sid": "BTCUSDT"
+      },
+      {
+        "amount": -7866.0,
+        "dt": "2026-09-17 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2515.7200000000003,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": 254.0,
+        "dt": "2026-09-20 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 76417.01,
+        "sid": "BTCUSDT"
+      },
+      {
+        "amount": 7961.0,
+        "dt": "2026-09-20 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2447.28,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": 191689.0,
+        "dt": "2026-09-20 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 101.63,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": 3.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 80883.86,
+        "sid": "BTCUSDT"
+      },
+      {
+        "amount": 9.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2612.14,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": -6990.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 112.72,
+        "sid": "SOLUSDT"
+      },
+      {
+        "amount": -257.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 81178.0,
+        "sid": "BTCUSDT"
+      },
+      {
+        "amount": -7970.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 2645.21,
+        "sid": "ETHUSDT"
+      },
+      {
+        "amount": -184699.0,
+        "dt": "2026-09-21 00:00:00+00:00",
+        "keys": [
+          "amount",
+          "commission",
+          "dt",
+          "order_id",
+          "price",
+          "sid"
+        ],
+        "price": 111.17,
+        "sid": "SOLUSDT"
+      }
+    ],
+    "total_commission": 1900445.95532
+  }
+}

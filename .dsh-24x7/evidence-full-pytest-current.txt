@@ -1,0 +1,17 @@
+tests/unit/test_candle_book_vendor_e2e.py::test_vendor_top_of_book_derives_ofi_proxy
+  /Users/vaithianathan/dipcatcher/src/quant_fund/microstructure/bench.py:269: RuntimeWarning: Mean of empty slice
+    np.nanmean(fused["ask_log_size_slope"].to_numpy().astype(float))
+
+tests/unit/test_garch_benchmark.py::test_forecasts_do_not_use_future_prices
+tests/unit/test_garch_benchmark.py::test_forecasts_do_not_use_future_prices
+  /Users/vaithianathan/dipcatcher/.venv/lib/python3.12/site-packages/arch/univariate/volatility.py:2838: RuntimeWarning: overflow encountered in exp
+    paths[loc, :, :] = np.exp(_lnsigma2[:, m:])
+
+tests/unit/test_garch_benchmark.py::test_forecasts_do_not_use_future_prices
+tests/unit/test_garch_benchmark.py::test_forecasts_do_not_use_future_prices
+  /Users/vaithianathan/dipcatcher/.venv/lib/python3.12/site-packages/arch/univariate/mean.py:1052: RuntimeWarning: invalid value encountered in dot
+    lrvp = variance_paths[:, :, : (i + 1)].dot(_impulses**2)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=== run exit code was 0 (all passed), real 9m42.234s ===
+3089 tests collected; full run exit code 0 (all passed), real 9m42.234s

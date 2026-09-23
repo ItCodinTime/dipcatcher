@@ -9,12 +9,14 @@ Dipcatcher is **Artificial Hedge’s proprietary research lab**. It provides poi
 - tail risk (VaR/ES, Kupiec)
 - drawdown probability (Brier, log-loss, ECE)
 - liquidity / implementation shortfall (Almgren–Chriss)
-- reinforcement learning as a contextual bandit (LinUCB regret)
+- reinforcement learning as contextual bandits (LinUCB, linear/quantile Thompson sampling, and neural policy gradient)
 - **Northset** — order-book snapshots and candlesticks (identities, OHLC vol, Kyle λ, Roll, OFI, VPIN)
 
 It is not a BUY/SELL LLM and not a Sharpe factory. Lab scores are proper scientific rules. SYNTHETIC oracle recovery is a correctness test, not live performance.
 
 See [docs/RESEARCH_CENTRE.md](docs/RESEARCH_CENTRE.md) and [docs/NORTHSET.md](docs/NORTHSET.md).
+For the full ML/RL training commands, artifacts, and evidence boundaries, see
+[docs/ML_RL_CAPABILITIES.md](docs/ML_RL_CAPABILITIES.md).
 For the evidence-gated production boundary, see
 [docs/INSTITUTIONAL_READINESS.md](docs/INSTITUTIONAL_READINESS.md).
 For operator procedures and incident handling, see
@@ -61,6 +63,22 @@ backward-compatible alias for older workflows; new integrations should use `dipc
 `dipcatcher ingest` also writes `data/metadata/data_manifest.json`, including source labels,
 schemas, row counts, and SHA-256 hashes for the bronze/silver data lake. `dipcatcher doctor`
 checks that manifest and the latest research receipt before operators trust the local data state.
+
+Public/open feeds are collected explicitly (network access is opt-in and never part of
+normal ingest):
+
+```bash
+uv run dipcatcher collect --source binance --param symbol=BTCUSDT --param interval=1d
+uv run dipcatcher collect --source fred --param series_id=GDP
+```
+
+Each collection lands under `data/raw/sources/` with a JSON receipt (SHA-256, row counts,
+PIT ranges, provenance). Bar-capable sources can also be routed through `data.source` in
+config (e.g. `binance_public_data`). See `docs/DATA_SOURCE_LABELS.md`.
+
+The optional Kronos candlestick adapter (`train.kronos` config) is research-only, loads
+strictly local pre-downloaded artifacts (`dipcatcher[nn]` extra), and never reaches the
+network or live execution paths.
 
 ## Tests
 

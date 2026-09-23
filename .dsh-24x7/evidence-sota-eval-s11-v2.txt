@@ -1,0 +1,75 @@
+n_rows=1500 n_complete=1500
+model                  mean_crps   per-asset mean CRPS
+kronos_small            0.021200   BNBUSDT=0.019467  BTCUSDT=0.016208  ETHUSDT=0.019519  SOLUSDT=0.029822  XRPUSDT=0.020987
+chronos2                0.016390   BNBUSDT=0.012289  BTCUSDT=0.012957  ETHUSDT=0.017769  SOLUSDT=0.019955  XRPUSDT=0.018982
+bolt_small              0.017857   BNBUSDT=0.013123  BTCUSDT=0.013877  ETHUSDT=0.018919  SOLUSDT=0.023233  XRPUSDT=0.020131
+timesfm                 0.015917   BNBUSDT=0.012612  BTCUSDT=0.012956  ETHUSDT=0.017454  SOLUSDT=0.019028  XRPUSDT=0.017534
+dip_gauss               0.015438   BNBUSDT=0.012499  BTCUSDT=0.012279  ETHUSDT=0.017212  SOLUSDT=0.018118  XRPUSDT=0.017084
+dip_student_t           0.015103   BNBUSDT=0.012088  BTCUSDT=0.012146  ETHUSDT=0.016762  SOLUSDT=0.017937  XRPUSDT=0.016580
+dip_ewma_t              0.015293   BNBUSDT=0.012188  BTCUSDT=0.012304  ETHUSDT=0.017029  SOLUSDT=0.017902  XRPUSDT=0.017039
+dip_empirical           0.015099   BNBUSDT=0.012104  BTCUSDT=0.012152  ETHUSDT=0.016763  SOLUSDT=0.017927  XRPUSDT=0.016551
+dip_empirical_long      0.015150   BNBUSDT=0.012095  BTCUSDT=0.012109  ETHUSDT=0.016763  SOLUSDT=0.018110  XRPUSDT=0.016673
+dip_garch_t             0.014981   BNBUSDT=0.011898  BTCUSDT=0.012068  ETHUSDT=0.016651  SOLUSDT=0.017825  XRPUSDT=0.016463
+dip_fhs                 0.014945   BNBUSDT=0.011905  BTCUSDT=0.012029  ETHUSDT=0.016597  SOLUSDT=0.017724  XRPUSDT=0.016471
+dip_ewma_emp            0.015192   BNBUSDT=0.012150  BTCUSDT=0.012264  ETHUSDT=0.016893  SOLUSDT=0.018025  XRPUSDT=0.016629
+dip_lgbm_q              0.015451   BNBUSDT=0.012289  BTCUSDT=0.012404  ETHUSDT=0.017092  SOLUSDT=0.018560  XRPUSDT=0.016908
+dip_blend               0.015095   BNBUSDT=0.012093  BTCUSDT=0.012147  ETHUSDT=0.016752  SOLUSDT=0.017926  XRPUSDT=0.016556
+Inference: 300 aligned target timestamps
+DM kronos_small vs chronos2: diff=+0.004810 t=+5.567 p=0.0000 preferred=chronos2
+DM kronos_small vs bolt_small: diff=+0.003344 t=+3.201 p=0.0015 preferred=bolt_small
+DM kronos_small vs timesfm: diff=+0.005284 t=+5.917 p=0.0000 preferred=timesfm
+DM kronos_small vs dip_gauss: diff=+0.005762 t=+6.429 p=0.0000 preferred=dip_gauss
+DM kronos_small vs dip_student_t: diff=+0.006098 t=+6.953 p=0.0000 preferred=dip_student_t
+DM kronos_small vs dip_ewma_t: diff=+0.005908 t=+6.734 p=0.0000 preferred=dip_ewma_t
+DM kronos_small vs dip_empirical: diff=+0.006101 t=+6.933 p=0.0000 preferred=dip_empirical
+DM kronos_small vs dip_empirical_long: diff=+0.006050 t=+6.718 p=0.0000 preferred=dip_empirical_long
+DM kronos_small vs dip_garch_t: diff=+0.006219 t=+6.927 p=0.0000 preferred=dip_garch_t
+DM kronos_small vs dip_fhs: diff=+0.006255 t=+6.970 p=0.0000 preferred=dip_fhs
+DM kronos_small vs dip_ewma_emp: diff=+0.006008 t=+6.634 p=0.0000 preferred=dip_ewma_emp
+DM kronos_small vs dip_lgbm_q: diff=+0.005750 t=+6.327 p=0.0000 preferred=dip_lgbm_q
+DM kronos_small vs dip_blend: diff=+0.006106 t=+6.951 p=0.0000 preferred=dip_blend
+SPA (any challenger beats kronos_small): p_lower=0.0010 p_cons=0.0010 p_upper=0.0010
+DM chronos2 vs kronos_small: diff=-0.004810 t=-5.567 p=0.0000 preferred=chronos2
+DM chronos2 vs bolt_small: diff=-0.001466 t=-2.573 p=0.0106 preferred=chronos2
+DM chronos2 vs timesfm: diff=+0.000473 t=+1.666 p=0.0968 preferred=timesfm
+DM chronos2 vs dip_gauss: diff=+0.000952 t=+3.098 p=0.0021 preferred=dip_gauss
+DM chronos2 vs dip_student_t: diff=+0.001288 t=+4.431 p=0.0000 preferred=dip_student_t
+DM chronos2 vs dip_ewma_t: diff=+0.001098 t=+3.998 p=0.0001 preferred=dip_ewma_t
+DM chronos2 vs dip_empirical: diff=+0.001291 t=+4.459 p=0.0000 preferred=dip_empirical
+DM chronos2 vs dip_empirical_long: diff=+0.001240 t=+4.269 p=0.0000 preferred=dip_empirical_long
+DM chronos2 vs dip_garch_t: diff=+0.001409 t=+5.123 p=0.0000 preferred=dip_garch_t
+DM chronos2 vs dip_fhs: diff=+0.001445 t=+5.251 p=0.0000 preferred=dip_fhs
+DM chronos2 vs dip_ewma_emp: diff=+0.001198 t=+4.304 p=0.0000 preferred=dip_ewma_emp
+DM chronos2 vs dip_lgbm_q: diff=+0.000940 t=+3.312 p=0.0010 preferred=dip_lgbm_q
+DM chronos2 vs dip_blend: diff=+0.001296 t=+4.468 p=0.0000 preferred=dip_blend
+SPA (any challenger beats chronos2): p_lower=0.0010 p_cons=0.0010 p_upper=0.0010
+DM bolt_small vs kronos_small: diff=-0.003344 t=-3.201 p=0.0015 preferred=bolt_small
+DM bolt_small vs chronos2: diff=+0.001466 t=+2.573 p=0.0106 preferred=chronos2
+DM bolt_small vs timesfm: diff=+0.001940 t=+4.037 p=0.0001 preferred=timesfm
+DM bolt_small vs dip_gauss: diff=+0.002418 t=+4.660 p=0.0000 preferred=dip_gauss
+DM bolt_small vs dip_student_t: diff=+0.002754 t=+5.249 p=0.0000 preferred=dip_student_t
+DM bolt_small vs dip_ewma_t: diff=+0.002564 t=+5.511 p=0.0000 preferred=dip_ewma_t
+DM bolt_small vs dip_empirical: diff=+0.002757 t=+5.241 p=0.0000 preferred=dip_empirical
+DM bolt_small vs dip_empirical_long: diff=+0.002707 t=+5.075 p=0.0000 preferred=dip_empirical_long
+DM bolt_small vs dip_garch_t: diff=+0.002876 t=+5.636 p=0.0000 preferred=dip_garch_t
+DM bolt_small vs dip_fhs: diff=+0.002911 t=+5.799 p=0.0000 preferred=dip_fhs
+DM bolt_small vs dip_ewma_emp: diff=+0.002665 t=+5.401 p=0.0000 preferred=dip_ewma_emp
+DM bolt_small vs dip_lgbm_q: diff=+0.002406 t=+4.335 p=0.0000 preferred=dip_lgbm_q
+DM bolt_small vs dip_blend: diff=+0.002762 t=+5.257 p=0.0000 preferred=dip_blend
+SPA (any challenger beats bolt_small): p_lower=0.0010 p_cons=0.0010 p_upper=0.0010
+DM timesfm vs kronos_small: diff=-0.005284 t=-5.917 p=0.0000 preferred=timesfm
+DM timesfm vs chronos2: diff=-0.000473 t=-1.666 p=0.0968 preferred=timesfm
+DM timesfm vs bolt_small: diff=-0.001940 t=-4.037 p=0.0001 preferred=timesfm
+DM timesfm vs dip_gauss: diff=+0.000479 t=+2.848 p=0.0047 preferred=dip_gauss
+DM timesfm vs dip_student_t: diff=+0.000814 t=+5.028 p=0.0000 preferred=dip_student_t
+DM timesfm vs dip_ewma_t: diff=+0.000624 t=+4.776 p=0.0000 preferred=dip_ewma_t
+DM timesfm vs dip_empirical: diff=+0.000818 t=+5.023 p=0.0000 preferred=dip_empirical
+DM timesfm vs dip_empirical_long: diff=+0.000767 t=+4.830 p=0.0000 preferred=dip_empirical_long
+DM timesfm vs dip_garch_t: diff=+0.000936 t=+6.776 p=0.0000 preferred=dip_garch_t
+DM timesfm vs dip_fhs: diff=+0.000972 t=+7.154 p=0.0000 preferred=dip_fhs
+DM timesfm vs dip_ewma_emp: diff=+0.000725 t=+4.581 p=0.0000 preferred=dip_ewma_emp
+DM timesfm vs dip_lgbm_q: diff=+0.000466 t=+2.331 p=0.0204 preferred=dip_lgbm_q
+DM timesfm vs dip_blend: diff=+0.000822 t=+5.066 p=0.0000 preferred=dip_blend
+SPA (any challenger beats timesfm): p_lower=0.0010 p_cons=0.0010 p_upper=0.0010
+MCS @0.10: ['dip_student_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+receipt: /tmp/discard_s11.json

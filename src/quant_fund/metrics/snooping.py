@@ -55,12 +55,10 @@ class SnoopingResult:
 class SpaResult:
     """Hansen's SPA outcome: lower / consistent / upper recentering variants.
 
-    ``p_upper`` never recenters (conservative); ``p_lower`` recenters every
-    column at its sample mean; ``p_consistent`` (the recommended variant)
-    recenters only columns that are not significantly negative. There is no
-    universal ordering between the three: ``p_consistent == p_lower`` exactly
-    when no column is significantly negative, and ``p_consistent`` can fall
-    below ``p_lower`` when bad columns inflate the all-recentered null.
+    ``p_upper`` recenters every column at its sample mean (least-favorable
+    null); ``p_lower`` recenters only nonnegative sample means;
+    ``p_consistent`` recenters columns that are not significantly negative.
+    With shared bootstrap draws, ``p_lower <= p_consistent <= p_upper``.
     """
 
     statistic: float
@@ -252,12 +250,13 @@ def spa_test(
 ) -> SpaResult:
     """Hansen's SPA (2005) — studentized Reality Check with three p-values.
 
-    ``T^SPA = max_k sqrt(T) f̄_k / σ̂_k``. Null bootstrap statistics recenter at
+    ``T^SPA = max(0, max_k sqrt(T) f̄_k / σ̂_k)``. Bootstrap sample means
+    subtract the following values before studentization:
 
-    - ``lower``      : ``g_k = f̄_k`` for every k (all columns recentered),
+    - ``lower``      : ``g_k = max(f̄_k, 0)`` (retain negative null means),
     - ``consistent`` : ``g_k = f̄_k`` only for columns passing
       ``sqrt(T) f̄_k/σ̂_k >= -sqrt(2 log log T)`` (bad columns recentered at 0),
-    - ``upper``      : ``g_k = 0`` (no recentering — conservative).
+    - ``upper``      : ``g_k = f̄_k`` for every k (least-favorable null).
 
     Zero-variance columns are dropped (reported in ``n_dropped``) because they
     cannot be studentized.
@@ -303,7 +302,7 @@ def spa_test(
             best_mean=nan,
             studentized=(),
         )
-    stat = float(np.max(t_stats))
+    stat = max(0.0, float(np.max(t_stats)))
     scale = float(np.sqrt(n))
     threshold = float(np.sqrt(2.0 * np.log(np.log(n)) / n))
 
@@ -311,11 +310,11 @@ def spa_test(
         # T*_b = max_k sqrt(T)(f̄*_{k,b} - g_k)/σ_k
         #      = max_k (t_boot_{k,b} + t_stats_k - sqrt(T) g_k/σ_k).
         adj = (scale * g) / sigma
-        t_star = (t_boot + t_stats[None, :] - adj[None, :]).max(axis=1)
+        t_star = np.maximum(0.0, (t_boot + t_stats[None, :] - adj[None, :]).max(axis=1))
         return float((1.0 + float(np.sum(t_star >= stat))) / (int(n_boot) + 1.0))
 
-    g_lower = means
-    g_upper = np.zeros_like(means)
+    g_lower = np.maximum(means, 0.0)
+    g_upper = means
     g_consistent = np.where(means >= -sigma * threshold, means, 0.0)
     p_lower = _p_for(g_lower)
     p_consistent = _p_for(g_consistent)
@@ -430,19 +429,23 @@ def model_confidence_set(
 ) -> McsResult:
     """Hansen–Lunde–Nason (2011) model confidence set, range statistic.
 
-    Within the current set the differentials are demeaned cross-sectionally
-    (H0: all remaining means equal); ``T_max = max_i t_i − min_i t_i`` with
-    studentized demeaned means. While the bootstrap p-value is below ``alpha``
-    the worst remaining model (smallest demeaned mean) is eliminated. Each
-    model's ``p_values`` entry is the p-value at the step it left the set (or
-    the final step's p-value when it survives), so the set
-    ``{i : p_values[i] >= alpha}`` is the MCS.
+    The public input is performance (higher is better). For each pair define
+    ``d_ij = f_j - f_i``, so positive values mean model i is worse. The range
+    statistic is ``max_ij mean(d_ij) / se(mean(d_ij))``. Its bootstrap null
+    centers each pairwise difference, and elimination removes the model with
+    the largest standardized disadvantage against another remaining model.
+
+    The full elimination path produces monotone adjusted p-values, independent
+    of ``alpha``; ``{i : p_values[i] >= alpha}`` is the confidence set. Columns
+    retain their original identity, including constant performance columns.
+    Exactly equivalent forecasts have zero pairwise statistic. A nonzero
+    differential with no estimable variance yields inconclusive NaN results.
     """
     if int(n_boot) < 1:
         raise ValueError("n_boot must be >= 1")
     if not np.isfinite(alpha) or not 0.0 < float(alpha) < 1.0:
         raise ValueError("alpha must be finite and in (0, 1)")
-    arr, n, n_rows_dropped, n_dropped = _prepare(f, drop_constant=True)
+    arr, n, n_rows_dropped, n_dropped = _prepare(f, drop_constant=False)
     k = int(arr.shape[1])
     if n < MIN_OBS or k < 1:
         return McsResult(
@@ -461,41 +464,57 @@ def model_confidence_set(
     block_v = _resolve_block(arr, block)
     rng = np.random.default_rng(seed)
     idx = stationary_bootstrap_indices(n, int(n_boot), block_v, rng)
-    scale = float(np.sqrt(n))
+    means = arr.mean(axis=0)
+    loss_diffs = means[None, :] - means[:, None]
+    boot_means = _bootstrap_means(arr, idx)
+    boot_diffs = boot_means[:, None, :] - boot_means[:, :, None]
+    boot_diffs -= loss_diffs[None, :, :]
+    sigma = np.sqrt(np.mean(boot_diffs**2, axis=0))
+
+    # Detect constant differences from the data rather than floating-point
+    # bootstrap noise, which can turn an unstudentizable pair into a huge t.
+    equivalent = np.zeros((k, k), dtype=bool)
+    invalid = np.zeros((k, k), dtype=bool)
+    for i in range(k):
+        for j in range(i, k):
+            diff = arr[:, j] - arr[:, i]
+            constant = np.ptp(diff) <= 1e-10 * max(float(np.max(np.abs(diff))), 1e-12)
+            same = bool(np.array_equal(arr[:, i], arr[:, j]))
+            equivalent[i, j] = equivalent[j, i] = same
+            invalid[i, j] = invalid[j, i] = bool(
+                not same and (constant or not np.isfinite(sigma[i, j]) or sigma[i, j] <= 0.0)
+            )
+    safe_sigma = np.where(equivalent | invalid, 1.0, sigma)
+    t_stats = np.where(equivalent, 0.0, loss_diffs / safe_sigma)
+    t_boot = np.where(equivalent[None, :, :], 0.0, boot_diffs / safe_sigma[None, :, :])
     active = np.ones(k, dtype=bool)
     p_values = np.full(k, float("nan"))
     elimination: list[int] = []
+    running_p = 0.0
     while True:
         cols = np.nonzero(active)[0]
         if cols.size <= 1:
             for c in cols:
                 p_values[int(c)] = 1.0
             break
-        sub = arr[:, cols]
-        demeaned = sub - sub.mean(axis=1, keepdims=True)
-        d_mean = demeaned.mean(axis=0)
-        boot = _bootstrap_means(demeaned, idx)
-        dev = scale * (boot - d_mean)
-        sigma = np.sqrt(np.mean(dev**2, axis=0))
-        if not np.all(np.isfinite(sigma)) or np.any(sigma <= 0.0):
-            p_values[cols] = float("nan")
+        pairs = np.ix_(cols, cols)
+        if invalid[pairs].any():
             break
-        t_stats = scale * d_mean / sigma
-        stat = float(t_stats.max() - t_stats.min())
-        t_boot = dev / sigma[None, :]
-        stat_star = t_boot.max(axis=1) - t_boot.min(axis=1)
+        pair_stats = t_stats[pairs]
+        stat = float(np.max(pair_stats))
+        stat_star = t_boot[:, cols][:, :, cols].max(axis=(1, 2))
         p = float((1.0 + float(np.sum(stat_star >= stat))) / (int(n_boot) + 1.0))
-        for c in cols:
-            p_values[int(c)] = p
-        if p >= float(alpha):
-            break
-        worst = int(cols[int(np.argmin(d_mean))])
+        running_p = max(running_p, p)
+        worst = int(cols[np.unravel_index(int(np.argmax(pair_stats)), pair_stats.shape)[0]])
+        p_values[worst] = running_p
         active[worst] = False
-        elimination.append(worst)
+        if running_p < float(alpha):
+            elimination.append(worst)
+    included = np.isfinite(p_values) & (p_values >= float(alpha))
     return McsResult(
-        included=tuple(bool(x) for x in active),
+        included=tuple(bool(x) for x in included),
         p_values=tuple(float(x) for x in p_values),
-        n_included=int(active.sum()),
+        n_included=int(included.sum()),
         alpha=float(alpha),
         n_obs=n,
         n_strategies=k,

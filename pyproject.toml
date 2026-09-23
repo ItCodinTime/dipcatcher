@@ -90,6 +90,13 @@ packages = ["quant_fund"]
 ignore_missing_imports = true
 warn_unused_ignores = false
 
+# Public-source adapters intentionally expose explicit per-source fetch kwargs
+# (series_id, cik, path, ...) instead of an untyped **kwargs signature, so the
+# LSP override warning on SourceAdapter.fetch(**kwargs) is disabled here only.
+[[tool.mypy.overrides]]
+module = ["quant_fund.data.sources.adapters"]
+disable_error_code = ["override"]
+
 # Numeric-return ratchet: these modules must not leak untyped library results.
 # Other modules retain the existing policy until their diagnostics are resolved.
 [[tool.mypy.overrides]]

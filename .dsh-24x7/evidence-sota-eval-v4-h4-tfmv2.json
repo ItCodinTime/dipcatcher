@@ -1,0 +1,1059 @@
+{
+  "artifact_sha256": {
+    "bolt_small": "ce58a20c3e1a493fab7773a52af20cb1c9d2a39686715e3d8f9bb0a406a0af36",
+    "chronos2": "7149a83b2219bf45a3bf0b859943c2df532a779047627e1567a8842441d2fc15",
+    "kronos_small": "ec0ef7fc2c84ae572119d71a4d251c466c58a419d7fa6068d8f2cf1713ede50b",
+    "kronos_small_tokenizer": "49948cd4dda107e318179377438078d4cfd830575d585b33ef1764d5a5a2c1cc",
+    "timesfm": "ac3772eb06f2faf2bfb0cb132257a0880ffd8a307953349cdd479890a78c8a30"
+  },
+  "bar_interval_ns": 14400000000000,
+  "bars_sha256": {
+    "btcusdt_4h_deep.parquet": "c147cab9cb20c92be2fe97365b13ddcf4454f142670fe1cebdfe312cc1252883",
+    "ethusdt_4h_deep.parquet": "7a9d8e51ece58d0b09750452c9b4b5cfd982bb4db151782424cd817ebb9ed197",
+    "solusdt_4h_deep.parquet": "33267199e2115b25e76504f902b955545324688f0631b66264f836a7bb55246e"
+  },
+  "bootstrap_sensitivity": [],
+  "challengers": [
+    "dip_gauss",
+    "dip_student_t",
+    "dip_ewma_t",
+    "dip_empirical",
+    "dip_empirical_long",
+    "dip_garch_t",
+    "dip_fhs",
+    "dip_ewma_emp",
+    "dip_lgbm_q",
+    "dip_blend"
+  ],
+  "common_sample": {
+    "mean_crps": {
+      "bolt_small": 0.0050451623712162875,
+      "chronos2": 0.005391529426314871,
+      "dip_blend": 0.004770299891011856,
+      "dip_empirical": 0.004770273920247056,
+      "dip_empirical_long": 0.0047863264762327265,
+      "dip_ewma_emp": 0.0047507131142047335,
+      "dip_ewma_t": 0.004816585005124876,
+      "dip_fhs": 0.004716730550105388,
+      "dip_garch_t": 0.004709811545536577,
+      "dip_gauss": 0.00484730542133521,
+      "dip_lgbm_q": 0.0049313204829804,
+      "dip_student_t": 0.004774801630142931,
+      "kronos_small": 0.030177501307630417,
+      "timesfm": 0.005042440620837938
+    },
+    "mean_pinball": {
+      "bolt_small": {
+        "0.05": 0.0009591222215585906,
+        "0.5": 0.003264471654720916,
+        "0.95": 0.001428011081477327
+      },
+      "chronos2": {
+        "0.05": 0.0010250319254330462,
+        "0.5": 0.0035875024572542243,
+        "0.95": 0.00143271488264792
+      },
+      "dip_blend": {
+        "0.05": 0.0008826200488882253,
+        "0.5": 0.0030874583657401413,
+        "0.95": 0.0015411781923736806
+      },
+      "dip_empirical": {
+        "0.05": 0.0008919993048429704,
+        "0.5": 0.003088253370497755,
+        "0.95": 0.0015410087713099393
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0009252769549610446,
+        "0.5": 0.003092243745698487,
+        "0.95": 0.0015088943778190933
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0008977516767647996,
+        "0.5": 0.0031143590080037007,
+        "0.95": 0.0014691931230885356
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0010055546879644973,
+        "0.5": 0.0030854022916893716,
+        "0.95": 0.0014035266404240471
+      },
+      "dip_fhs": {
+        "0.05": 0.0008883527495626874,
+        "0.5": 0.003092054318783141,
+        "0.95": 0.001431954611464003
+      },
+      "dip_garch_t": {
+        "0.05": 0.000892019010118704,
+        "0.5": 0.00308617336462724,
+        "0.95": 0.0014010921234620943
+      },
+      "dip_gauss": {
+        "0.05": 0.000896705528479728,
+        "0.5": 0.0030894268658792274,
+        "0.95": 0.0015056475894052834
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0009033537501449092,
+        "0.5": 0.003191880990668729,
+        "0.95": 0.0016472597411107074
+      },
+      "dip_student_t": {
+        "0.05": 0.0008770004319244491,
+        "0.5": 0.0030861160563272396,
+        "0.95": 0.0015437069947538517
+      },
+      "kronos_small": {
+        "0.05": 0.004946094641492037,
+        "0.5": 0.020688925441649037,
+        "0.95": 0.007704626304390537
+      },
+      "timesfm": {
+        "0.05": 0.001042145483469277,
+        "0.5": 0.003359343497261114,
+        "0.95": 0.0014295601274326535
+      }
+    },
+    "n_rows": 683
+  },
+  "config": {
+    "garch_window": 750,
+    "inference_seed": 7,
+    "lookback": 400,
+    "merged_parts": 3,
+    "n_boot": 1000,
+    "origins_per_asset": 300,
+    "samples_per_origin": 16,
+    "seed": 7,
+    "target_specs": {
+      "bolt_small": {
+        "kind": "bolt",
+        "model_dir": "data\\models\\chronos-bolt-small"
+      },
+      "chronos2": {
+        "kind": "chronos2",
+        "model_dir": "data\\models\\chronos-2"
+      },
+      "kronos_small": {
+        "kind": "kronos",
+        "model_dir": "data\\models\\Kronos-small"
+      },
+      "timesfm": {
+        "kind": "timesfm",
+        "model_dir": "data\\models\\timesfm-2.5-200m-pytorch"
+      }
+    },
+    "targets": [
+      "kronos_small",
+      "chronos2",
+      "bolt_small",
+      "timesfm"
+    ],
+    "taus": [
+      0.05,
+      0.5,
+      0.95
+    ],
+    "window": 250
+  },
+  "coverage": {
+    "bolt_small": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "chronos2": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_blend": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_empirical": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_empirical_long": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_ewma_emp": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_ewma_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_fhs": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_garch_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_gauss": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_lgbm_q": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "dip_student_t": {
+      "coverage_fraction": 0.7588888888888888,
+      "emitted": 900,
+      "finite_crps": 683,
+      "missing_or_failed": 217,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 0.91,
+          "emitted": 300,
+          "finite_crps": 273,
+          "missing_or_failed": 27,
+          "requested": 300,
+          "scored_all_metrics": 273
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 0.36666666666666664,
+          "emitted": 300,
+          "finite_crps": 110,
+          "missing_or_failed": 190,
+          "requested": 300,
+          "scored_all_metrics": 110
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 683
+    },
+    "kronos_small": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    },
+    "timesfm": {
+      "coverage_fraction": 1.0,
+      "emitted": 900,
+      "finite_crps": 900,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 900,
+      "scored_all_metrics": 900
+    }
+  },
+  "created_at": "2026-09-22T13:58:30.214086+00:00",
+  "diebold_mariano": {},
+  "disclaimer": "Causal walk-forward evaluation on public Binance klines with proper scores only. Not a live-trading or deployability claim.",
+  "effect_sizes": {
+    "status": "unavailable"
+  },
+  "implementation_sha256": {
+    "inference.py": "a1bf7489d5048dd8ddd5fdb1654c6d610c83b7539fbb2241996e409d89ae1b36",
+    "snooping.py": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+    "sota_eval_kronos.py": "44d90791d8ef00f2aa99b421765e1065141ef7a2edac177b62df27e8bd90b0d1",
+    "sota_evidence.py": "45fa0f73e268c7df18f7e8ea8a8e02d60cc057d41989d8854bd189602f98f824"
+  },
+  "inference": {
+    "bar_interval_ns": 14400000000000,
+    "method": "equal_weight_asset_loss_by_target_time",
+    "n_assets": 3,
+    "n_balanced_times": 107,
+    "n_excluded_times": 193,
+    "n_observations": 0,
+    "n_target_times": 300,
+    "reason": "gaps_in_balanced_target_times",
+    "status": "unavailable"
+  },
+  "inference_mean_crps": {
+    "bolt_small": null,
+    "chronos2": null,
+    "dip_blend": null,
+    "dip_empirical": null,
+    "dip_empirical_long": null,
+    "dip_ewma_emp": null,
+    "dip_ewma_t": null,
+    "dip_fhs": null,
+    "dip_garch_t": null,
+    "dip_gauss": null,
+    "dip_lgbm_q": null,
+    "dip_student_t": null,
+    "kronos_small": null,
+    "timesfm": null
+  },
+  "legacy_scores_require_rerun": false,
+  "live_pnl_claim": false,
+  "losses_file": "evidence-sota-eval-v4-h4-tfmv2.losses.npz",
+  "losses_sha256": "f9bf2c642a1558fcacbe4ea6b707f3a2455169161187ba631328957e9b8e0d34",
+  "mcs_included": {},
+  "mcs_p_values": {},
+  "mcs_status": "unavailable",
+  "mean_crps_per_asset": {
+    "BTCUSDT": {
+      "bolt_small": 0.004018730709977782,
+      "chronos2": 0.004465783732831207,
+      "dip_blend": 0.0036635435234908145,
+      "dip_empirical": 0.0036643138405130426,
+      "dip_empirical_long": 0.003680166398851251,
+      "dip_ewma_emp": 0.0036558454447071214,
+      "dip_ewma_t": 0.0037585436283723433,
+      "dip_fhs": 0.003641600262076387,
+      "dip_garch_t": 0.003630679122867912,
+      "dip_gauss": 0.0037537233642195625,
+      "dip_lgbm_q": 0.003759968850807914,
+      "dip_student_t": 0.003713031182305283,
+      "kronos_small": 0.02510784575174306,
+      "timesfm": 0.003909910282538467
+    },
+    "ETHUSDT": {
+      "bolt_small": 0.00551810616428864,
+      "chronos2": 0.0058185760348984355,
+      "dip_blend": 0.004918189195410771,
+      "dip_empirical": 0.004919418339906237,
+      "dip_empirical_long": 0.004934852912513894,
+      "dip_ewma_emp": 0.004931047651123445,
+      "dip_ewma_t": 0.005152258190795036,
+      "dip_fhs": 0.004900919309295406,
+      "dip_garch_t": 0.00490540549136164,
+      "dip_gauss": 0.005071816089856814,
+      "dip_lgbm_q": 0.0050549351876098955,
+      "dip_student_t": 0.003976859964342543,
+      "kronos_small": 0.03618452285119508,
+      "timesfm": 0.00516991132251441
+    },
+    "SOLUSDT": {
+      "bolt_small": 0.006227576625040533,
+      "chronos2": 0.006550150673066548,
+      "dip_blend": 0.006028452917722157,
+      "dip_empirical": 0.00602914758769057,
+      "dip_empirical_long": 0.006013145138191544,
+      "dip_ewma_emp": 0.006020010872844555,
+      "dip_ewma_t": 0.006052032415646968,
+      "dip_fhs": 0.0059439816900213275,
+      "dip_garch_t": 0.005948192828424707,
+      "dip_gauss": 0.006062545164189453,
+      "dip_lgbm_q": 0.006274447638654498,
+      "dip_student_t": 0.006033591348468668,
+      "kronos_small": 0.03985836637886951,
+      "timesfm": 0.00630784483259827
+    }
+  },
+  "mean_crps_pooled": {
+    "bolt_small": 0.005254804499768986,
+    "chronos2": 0.005611503480265397,
+    "dip_blend": 0.00487006187887458,
+    "dip_empirical": 0.004870959922703283,
+    "dip_empirical_long": 0.004876054816518896,
+    "dip_ewma_emp": 0.004868967989558374,
+    "dip_ewma_t": 0.004987611411604782,
+    "dip_fhs": 0.004828833753797708,
+    "dip_garch_t": 0.004828092480884753,
+    "dip_gauss": 0.004962694872755276,
+    "dip_lgbm_q": 0.005029783892357436,
+    "dip_student_t": 0.004774801630142931,
+    "kronos_small": 0.033716911660602554,
+    "timesfm": 0.005129222145883715
+  },
+  "mean_pinball_per_asset": {
+    "BTCUSDT": {
+      "bolt_small": {
+        "0.05": 0.0007743952326669098,
+        "0.5": 0.0025153860307289833,
+        "0.95": 0.0012383402420004705
+      },
+      "chronos2": {
+        "0.05": 0.0008529850815027243,
+        "0.5": 0.0029754085751274232,
+        "0.95": 0.0012859178518991345
+      },
+      "dip_blend": {
+        "0.05": 0.0006618025267742903,
+        "0.5": 0.002380683996742125,
+        "0.95": 0.0012817511726109449
+      },
+      "dip_empirical": {
+        "0.05": 0.0006659583572765097,
+        "0.5": 0.0023808715965590245,
+        "0.95": 0.0012792171585008635
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0007103643670131818,
+        "0.5": 0.0023852350739790276,
+        "0.95": 0.0012719235045050435
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0006818480529422078,
+        "0.5": 0.0024004394495216177,
+        "0.95": 0.0012325007274587149
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0008057886394094889,
+        "0.5": 0.002383507168880638,
+        "0.95": 0.0011913618438523124
+      },
+      "dip_fhs": {
+        "0.05": 0.0006863546882923414,
+        "0.5": 0.0023862385368960013,
+        "0.95": 0.0012557507624672967
+      },
+      "dip_garch_t": {
+        "0.05": 0.0007011069244403686,
+        "0.5": 0.0023834196218027546,
+        "0.95": 0.0011581174575477022
+      },
+      "dip_gauss": {
+        "0.05": 0.0006978005391332422,
+        "0.5": 0.002380272707854003,
+        "0.95": 0.001255435202025886
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0007021769780283291,
+        "0.5": 0.0024251228726160797,
+        "0.95": 0.001353009100343847
+      },
+      "dip_student_t": {
+        "0.05": 0.0006621617388967332,
+        "0.5": 0.0023800596407861615,
+        "0.95": 0.0012831135618664566
+      },
+      "kronos_small": {
+        "0.05": 0.0040532504640277455,
+        "0.5": 0.01725902613091891,
+        "0.95": 0.0069689182929184735
+      },
+      "timesfm": {
+        "0.05": 0.0008040932443400916,
+        "0.5": 0.0026141426330666927,
+        "0.95": 0.0011838885094431243
+      }
+    },
+    "ETHUSDT": {
+      "bolt_small": {
+        "0.05": 0.0009235427397486878,
+        "0.5": 0.0027138721201166874,
+        "0.95": 0.001521272350551723
+      },
+      "chronos2": {
+        "0.05": 0.0009007896246094698,
+        "0.5": 0.0028747871130323046,
+        "0.95": 0.0013602805213591897
+      },
+      "dip_blend": {
+        "0.05": 0.000866876081764856,
+        "0.5": 0.0024392985702472655,
+        "0.95": 0.0014539093333143427
+      },
+      "dip_empirical": {
+        "0.05": 0.000869619929939645,
+        "0.5": 0.0024404222102471273,
+        "0.95": 0.0014790180475070334
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0009482569703273996,
+        "0.5": 0.0024524675117190363,
+        "0.95": 0.0014594145166381724
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0008962711242140605,
+        "0.5": 0.0024657540231697427,
+        "0.95": 0.0015008630193252333
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0009133714388329847,
+        "0.5": 0.0024480097146341497,
+        "0.95": 0.001423578318251739
+      },
+      "dip_fhs": {
+        "0.05": 0.0008733127931606779,
+        "0.5": 0.002457270915097387,
+        "0.95": 0.0013741842864784313
+      },
+      "dip_garch_t": {
+        "0.05": 0.0008492386366640198,
+        "0.5": 0.0024445902074124236,
+        "0.95": 0.0014101683399879016
+      },
+      "dip_gauss": {
+        "0.05": 0.000893235431130774,
+        "0.5": 0.0024281424766531405,
+        "0.95": 0.0014063390153174966
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0008135770521082219,
+        "0.5": 0.002484811082512703,
+        "0.95": 0.0016359278412313432
+      },
+      "dip_student_t": {
+        "0.05": 0.0008656152493098577,
+        "0.5": 0.0024369496927563595,
+        "0.95": 0.0014147169733392773
+      },
+      "kronos_small": {
+        "0.05": 0.0034826435363934515,
+        "0.5": 0.010135064256817136,
+        "0.95": 0.004406413860179703
+      },
+      "timesfm": {
+        "0.05": 0.0009203544597134432,
+        "0.5": 0.0025886084587467585,
+        "0.95": 0.0014131641417244574
+      }
+    },
+    "SOLUSDT": {
+      "bolt_small": {
+        "0.05": 0.0011402695914469847,
+        "0.5": 0.004148026068575125,
+        "0.95": 0.0015664157467406537
+      },
+      "chronos2": {
+        "0.05": 0.0012271500637116173,
+        "0.5": 0.00440583684953765,
+        "0.95": 0.0015928594464351823
+      },
+      "dip_blend": {
+        "0.05": 0.0010893367819571412,
+        "0.5": 0.003968281633209057,
+        "0.95": 0.0018092553620128612
+      },
+      "dip_empirical": {
+        "0.05": 0.0011059023379263358,
+        "0.5": 0.003969508876873897,
+        "0.95": 0.001801969071027264
+      },
+      "dip_empirical_long": {
+        "0.05": 0.00111242140435927,
+        "0.5": 0.003970206256088993,
+        "0.95": 0.0017426804883012167
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0010947668437119625,
+        "0.5": 0.004001847633994847,
+        "0.95": 0.0016729709078248834
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0012211423168311097,
+        "0.5": 0.003957837465032232,
+        "0.95": 0.0015892443234341719
+      },
+      "dip_fhs": {
+        "0.05": 0.0010776856359994392,
+        "0.5": 0.003967100594985215,
+        "0.95": 0.0016134825665457154
+      },
+      "dip_garch_t": {
+        "0.05": 0.0010814351450193734,
+        "0.5": 0.003960926428242955,
+        "0.95": 0.0016188711233847289
+      },
+      "dip_gauss": {
+        "0.05": 0.00107898143781298,
+        "0.5": 0.003977228092398414,
+        "0.95": 0.0017697540057527235
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0011193427353844488,
+        "0.5": 0.004148889844420517,
+        "0.95": 0.0019191828541643171
+      },
+      "dip_student_t": {
+        "0.05": 0.0010766782095383539,
+        "0.5": 0.003966655061112276,
+        "0.95": 0.0018281433598667251
+      },
+      "kronos_small": {
+        "0.05": 0.0062951815815206905,
+        "0.5": 0.027679882915518483,
+        "0.95": 0.009583465157707416
+      },
+      "timesfm": {
+        "0.05": 0.0013034297297873079,
+        "0.5": 0.004320079131133301,
+        "0.95": 0.0016591331612294635
+      }
+    }
+  },
+  "mean_pinball_pooled": {
+    "bolt_small": {
+      "0.05": 0.0010220870666408069,
+      "0.5": 0.0033640565980281637,
+      "0.95": 0.0014960092649942954
+    },
+    "chronos2": {
+      "0.05": 0.0011170355957272424,
+      "0.5": 0.003734324368975043,
+      "0.95": 0.0014635089835881852
+    },
+    "dip_blend": {
+      "0.05": 0.0009311590287798504,
+      "0.5": 0.0031559554085493846,
+      "0.95": 0.001531613748291225
+    },
+    "dip_empirical": {
+      "0.05": 0.000942102042904513,
+      "0.5": 0.00315630886716468,
+      "0.95": 0.0015315673319855
+    },
+    "dip_empirical_long": {
+      "0.05": 0.0009704570338958442,
+      "0.5": 0.0031592290063108823,
+      "0.95": 0.0015079269809464464
+    },
+    "dip_ewma_emp": {
+      "0.05": 0.0009543004031074422,
+      "0.5": 0.0031862157862686796,
+      "0.95": 0.0015091285239061244
+    },
+    "dip_ewma_t": {
+      "0.05": 0.0010793509144519868,
+      "0.5": 0.003153927881828893,
+      "0.95": 0.0014494853630100347
+    },
+    "dip_fhs": {
+      "0.05": 0.0009440854736754481,
+      "0.5": 0.003159200198862906,
+      "0.95": 0.001443755730008142
+    },
+    "dip_garch_t": {
+      "0.05": 0.0009470512663664858,
+      "0.5": 0.0031538592197685182,
+      "0.95": 0.0014076600348953618
+    },
+    "dip_gauss": {
+      "0.05": 0.0009530637375264065,
+      "0.5": 0.0031615392141042045,
+      "0.95": 0.0015146370969294145
+    },
+    "dip_lgbm_q": {
+      "0.05": 0.0009505535801829761,
+      "0.5": 0.00324790044165023,
+      "0.95": 0.001651344105181273
+    },
+    "dip_student_t": {
+      "0.05": 0.0009253655488637914,
+      "0.5": 0.0031549990984726705,
+      "0.95": 0.0015327680458993842
+    },
+    "kronos_small": {
+      "0.05": 0.005612521243162093,
+      "0.5": 0.023593730685124256,
+      "0.95": 0.007903720622248324
+    },
+    "timesfm": {
+      "0.05": 0.0010868616669713618,
+      "0.5": 0.0034086946936022233,
+      "0.95": 0.001451404403609091
+    }
+  },
+  "n_complete": 683,
+  "n_dropped_incomplete": 217,
+  "n_rows": 900,
+  "n_scored_per_asset": {
+    "BTCUSDT": 300,
+    "ETHUSDT": 300,
+    "SOLUSDT": 300
+  },
+  "quantile_completion": "trapezoid on dense grid; exponential tails outside native quantile grid",
+  "research_only": true,
+  "schema": "sota_eval.v4",
+  "score_table_scope": "available_per_model; use common_sample for paired comparisons",
+  "scoring_contract": "native_shapes_timesfm_point_first.v2+spliced",
+  "source_parts_sha256": {
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/eval-full/h4_btcusdt_4h_deep.tfmv2.npz": "a0aba1e0f9bc8336c5be407c671cd4eb7812cc3c47186b5119792cfd1aa113aa",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/eval-full/h4_ethusdt_4h_deep.tfmv2.npz": "defa8862a828cfdb064eecae5b5dd98395cfd20eee54d4ffabc351c90a015e88",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/eval-full/h4_solusdt_4h_deep.tfmv2.npz": "671db5d38919d0479676416e7e10ae0c53d6174b174f54d9836ae67238395718"
+  },
+  "spa": {},
+  "timestamp_source": "reconstructed_from_hash_verified_bars"
+}

@@ -16,6 +16,8 @@ from quant_fund.config.models import AppConfig
 from quant_fund.fusion.engine import fuse_signals
 from quant_fund.metrics.conformal import assign_terciles
 from quant_fund.metrics.cross_section import _date_keys
+from quant_fund.models.base import JoblibMixin, load_joblib_artifact
+from quant_fund.models.calibration import ProbabilityCalibrator
 from quant_fund.models.conformal import MondrianCQR, SplitCQR
 from quant_fund.models.covariance import ledoit_wolf_cov, repair_psd, sample_cov
 from quant_fund.models.distribution import (
@@ -25,7 +27,7 @@ from quant_fund.models.distribution import (
     fit_scaled_wrappee,
     select_wrappee_family_name,
 )
-from quant_fund.models.ranking import RidgeRanker, available_features
+from quant_fund.models.ranking import available_features
 from quant_fund.pipeline.dataset import design_matrix, panel
 from quant_fund.portfolio.interval_risk import apply_interval_caps, interval_refs
 from quant_fund.portfolio.optimizer import optimize_mean_variance
@@ -735,21 +737,126 @@ def conformal_sets_asof(
 
 
 def _load_ranker_cached(config: AppConfig):
-    """Load ridge ranker joblib once per (path, mtime); None if missing."""
-    rank_path = Path(config.data.root) / "metadata" / "ranker_ridge.joblib"
-    if not rank_path.exists():
+    """Load the strongest available supervised ranker artifact.
+
+    Ensemble takes precedence over Ridge when both exist. This remains
+    deterministic and explicit: no model is trained or silently substituted at
+    forecast time.
+    """
+    root = Path(config.data.root) / "metadata"
+    rank_path = next(
+        (
+            candidate
+            for candidate in (
+                root / "ranker_auto.joblib",
+                root / "ranker_ensemble.joblib",
+                root / "ranker_neural.joblib",
+                root / "ranker_ridge.joblib",
+                root / "ranker_elasticnet.joblib",
+                root / "ranker_lambdarank.joblib",
+                root / "ranker_xendcg.joblib",
+                root / "ranker_xgboost.joblib",
+                root / "ranker_lightgbm.joblib",
+            )
+            if candidate.exists()
+        ),
+        None,
+    )
+    if rank_path is None:
         return None
     key = (str(rank_path.resolve()), rank_path.stat().st_mtime)
     cached = _RANKER_CACHE.get(key)
     if cached is not None:
         return cached
-    model = RidgeRanker.load(rank_path)
+    # The artifact name is a routing hint only: the serialized object may be
+    # any ranking implementation. JoblibMixin.load retains checksum
+    # verification while avoiding a Ridge-only type assertion.
+    model = JoblibMixin.load(rank_path)
     _RANKER_CACHE[key] = model
     # Bound cache size
     if len(_RANKER_CACHE) > 8:
         oldest = next(iter(_RANKER_CACHE))
         _RANKER_CACHE.pop(oldest, None)
     return model
+
+
+def _load_rl_cached(config: AppConfig):
+    """Load the strongest available persisted RL policy and feature contract."""
+    root = Path(config.data.root) / "metadata"
+    path = next(
+        (
+            candidate
+            for candidate in (
+                root / "rl_auto.joblib",
+                root / "rl_policy_gradient.joblib",
+                root / "rl_quantile_thompson.joblib",
+                root / "rl_linucb.joblib",
+                root / "rl_thompson.joblib",
+            )
+            if candidate.exists()
+        ),
+        None,
+    )
+    if path is None:
+        return None
+    key = (str(path.resolve()), path.stat().st_mtime)
+    cached = _RANKER_CACHE.get(key)
+    if cached is not None:
+        return cached
+    artifact = load_joblib_artifact(path)
+    if not isinstance(artifact, dict) or "policy" not in artifact or "features" not in artifact:
+        raise ValueError("RL artifact is malformed: expected policy and features")
+    policy = artifact["policy"]
+    features = artifact["features"]
+    if not (hasattr(policy, "scores") or hasattr(policy, "predict")) or not isinstance(features, list) or not features:
+        raise ValueError("RL artifact has an invalid policy or feature contract")
+    artifact_name = str(artifact.get("policy_name", path.stem.removeprefix("rl_"))).upper()
+    loaded = (policy, [str(feature) for feature in features], f"RL_{artifact_name}")
+    _RANKER_CACHE[key] = loaded
+    if len(_RANKER_CACHE) > 8:
+        oldest = next(iter(_RANKER_CACHE))
+        _RANKER_CACHE.pop(oldest, None)
+    return loaded
+
+
+def _load_probability_calibrator(
+    config: AppConfig, *, asof: datetime | None = None
+) -> ProbabilityCalibrator:
+    """Load an explicitly requested calibrator and validate its score identity."""
+    name = str(config.fusion.probability_calibrator)
+    path = Path(config.data.root) / "metadata" / f"calibrator_{name}.joblib"
+    if name == "auto":
+        path = Path(config.data.root) / "metadata" / "calibrator_auto.joblib"
+    if not path.is_file():
+        raise ValueError(f"probability calibration is enabled but artifact is missing: {path}")
+    calibrator = JoblibMixin.load(path)
+    if not isinstance(calibrator, ProbabilityCalibrator) or not calibrator.fitted:
+        raise ValueError("probability calibrator artifact is invalid or unfitted")
+    if calibrator.score_feature != "cs_pct_mom_20":
+        raise ValueError(
+            "probability calibrator score identity mismatch: expected cs_pct_mom_20"
+        )
+    expected_label = config.fusion.probability_calibration_label
+    if expected_label is not None and calibrator.label != expected_label:
+        raise ValueError("probability calibrator label identity mismatch")
+    expected_horizon = config.fusion.probability_calibration_horizon
+    if expected_horizon is not None and getattr(calibrator, "horizon", None) != expected_horizon:
+        raise ValueError("probability calibrator horizon identity mismatch")
+    for window_field in ("fit_start", "fit_end", "oos_start", "oos_end"):
+        value = getattr(calibrator, window_field, None)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"probability calibrator {window_field} is missing")
+    max_age = config.fusion.probability_calibration_max_age_days
+    if asof is not None and max_age is not None:
+        try:
+            fit_end = datetime.fromisoformat(str(calibrator.fit_end).replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("probability calibrator fit_end is not parseable") from exc
+        left = fit_end.date()
+        right = asof.date()
+        if (right - left).days < 0 or (right - left).days > max_age:
+            raise ValueError("probability calibrator is stale for forecast asof")
+    return calibrator
 
 
 def _panel_cached(config: AppConfig) -> pl.DataFrame:
@@ -780,27 +887,57 @@ def forecast_asof(
         raise ValueError(
             f"no panel rows for requested asof={asof!r} (refusing latest-date fallback)"
         )
-    feats = available_features(day.columns)
+    model = _load_ranker_cached(config)
+    ranker_features = getattr(model, "features", None) if model is not None else None
+    if ranker_features is not None:
+        if not isinstance(ranker_features, list) or not ranker_features:
+            raise ValueError("ranker artifact has an invalid feature contract")
+        missing = [feature for feature in ranker_features if feature not in day.columns]
+        if missing:
+            raise ValueError(f"ranker artifact feature contract missing columns: {missing}")
+        feats = [str(feature) for feature in ranker_features]
+    else:
+        feats = available_features(day.columns)
     x = (
         day.select(feats).fill_null(0.0).to_numpy().astype(float)
         if feats
         else np.zeros((day.height, 1))
     )
-    model = _load_ranker_cached(config)
+    notes: list[str] = []
     if model is not None:
         # A stale joblib / feature-set mismatch must surface: silently degrading
         # to the momentum heuristic would masquerade a fabricated alpha as model
         # output. The heuristic is used only when no ranker is loaded at all.
         scores = model.predict(x)
     else:
-        scores = (
-            day["cs_pct_mom_20"].fill_null(0.5).to_numpy().astype(float)
-            if "cs_pct_mom_20" in day.columns
-            else np.zeros(day.height)
-        )
+        rl_artifact = _load_rl_cached(config)
+        if rl_artifact is not None:
+            policy, rl_features, policy_note = rl_artifact
+            missing = [feature for feature in rl_features if feature not in day.columns]
+            if missing:
+                raise ValueError(f"RL artifact feature contract missing columns: {missing}")
+            rl_x = day.select(rl_features).fill_null(0.0).to_numpy().astype(float)
+            score_fn = getattr(policy, "scores", None) or getattr(policy, "predict", None)
+            if not callable(score_fn):
+                raise ValueError("RL artifact policy does not expose a callable scorer")
+            scores = score_fn(rl_x)
+            notes = [policy_note]
+        else:
+            scores = (
+                day["cs_pct_mom_20"].fill_null(0.5).to_numpy().astype(float)
+                if "cs_pct_mom_20" in day.columns
+                else np.zeros(day.height)
+            )
     # percentile ranks within the day
     order = scores.argsort().argsort()
     pct = (order + 0.5) / max(len(scores), 1)
+    if config.fusion.apply_probability_calibration:
+        calibrator = _load_probability_calibrator(config, asof=asof)
+        if "cs_pct_mom_20" not in day.columns:
+            raise ValueError("calibration requires cs_pct_mom_20 in the forecast panel")
+        raw_probability = day["cs_pct_mom_20"].fill_null(0.5).to_numpy().astype(float)
+        pct = np.asarray(calibrator.predict(raw_probability), dtype=float)
+        notes.append(f"CALIBRATED_{calibrator.method.upper()}")
     vol = (
         day["vol_20"].fill_null(0.02).to_numpy().astype(float)
         if "vol_20" in day.columns
@@ -812,7 +949,6 @@ def forecast_asof(
     tail = np.clip(vol * 0.1, 0, None)
     liq = np.zeros(day.height)
     fused = fuse_signals(alpha, conf, regime, vol, tail, liq, config.fusion)
-    notes = []
     if config.data.source == "synthetic":
         notes.append("SYNTHETIC")
     # Research-only weight smoke: skip conformal when fusion.skip_intervals is set.

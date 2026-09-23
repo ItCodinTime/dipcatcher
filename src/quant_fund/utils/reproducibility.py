@@ -49,3 +49,20 @@ def git_worktree_sha256() -> str:
         return hash_bytes(diff + bytes(additions))
     except (OSError, subprocess.SubprocessError):
         return "UNKNOWN"
+
+
+def git_revision() -> str:
+    """Return the checked-out revision, or an explicit unknown marker."""
+    git = shutil.which("git")
+    if git is None:
+        return "UNKNOWN"
+    try:
+        return subprocess.run(
+            [git, "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return "UNKNOWN"

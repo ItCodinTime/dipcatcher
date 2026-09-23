@@ -1,0 +1,64 @@
+n_rows=1650 n_complete=1650
+model                  mean_crps   per-asset mean CRPS
+kronos_small            0.023339   ADAUSDT=0.041679  AVAXUSDT=0.042221  BNBUSDT=0.015248  BTCUSDT=0.014994  DOGEUSDT=0.021579  ETHUSDT=0.018256  LINKUSDT=0.023999  LTCUSDT=0.018277  SOLUSDT=0.032147  TRXUSDT=0.007445  XRPUSDT=0.020882
+chronos2                0.016025   ADAUSDT=0.025814  AVAXUSDT=0.020544  BNBUSDT=0.011052  BTCUSDT=0.011514  DOGEUSDT=0.016855  ETHUSDT=0.015548  LINKUSDT=0.017767  LTCUSDT=0.014383  SOLUSDT=0.018326  TRXUSDT=0.006040  XRPUSDT=0.018432
+bolt_small              0.018695   ADAUSDT=0.032424  AVAXUSDT=0.029202  BNBUSDT=0.011908  BTCUSDT=0.012026  DOGEUSDT=0.020312  ETHUSDT=0.016266  LINKUSDT=0.019522  LTCUSDT=0.016929  SOLUSDT=0.020128  TRXUSDT=0.006493  XRPUSDT=0.020432
+timesfm                 0.014740   ADAUSDT=0.020796  AVAXUSDT=0.019376  BNBUSDT=0.011228  BTCUSDT=0.011038  DOGEUSDT=0.015862  ETHUSDT=0.014671  LINKUSDT=0.017352  LTCUSDT=0.013080  SOLUSDT=0.016689  TRXUSDT=0.005986  XRPUSDT=0.016059
+dip_gauss               0.014504   ADAUSDT=0.020284  AVAXUSDT=0.018806  BNBUSDT=0.011376  BTCUSDT=0.010758  DOGEUSDT=0.015616  ETHUSDT=0.014677  LINKUSDT=0.016871  LTCUSDT=0.012905  SOLUSDT=0.016395  TRXUSDT=0.005910  XRPUSDT=0.015948
+dip_student_t           0.014134   ADAUSDT=0.020114  AVAXUSDT=0.018419  BNBUSDT=0.010898  BTCUSDT=0.010436  DOGEUSDT=0.015104  ETHUSDT=0.014103  LINKUSDT=0.016613  LTCUSDT=0.012370  SOLUSDT=0.016198  TRXUSDT=0.005760  XRPUSDT=0.015464
+dip_ewma_t              0.014082   ADAUSDT=0.020190  AVAXUSDT=0.018178  BNBUSDT=0.010865  BTCUSDT=0.010538  DOGEUSDT=0.014893  ETHUSDT=0.014290  LINKUSDT=0.016481  LTCUSDT=0.012312  SOLUSDT=0.015898  TRXUSDT=0.005806  XRPUSDT=0.015448
+dip_empirical           0.014127   ADAUSDT=0.020026  AVAXUSDT=0.018420  BNBUSDT=0.010934  BTCUSDT=0.010437  DOGEUSDT=0.015114  ETHUSDT=0.014109  LINKUSDT=0.016605  LTCUSDT=0.012386  SOLUSDT=0.016176  TRXUSDT=0.005767  XRPUSDT=0.015427
+dip_empirical_long      0.014342   ADAUSDT=0.019997  AVAXUSDT=0.018822  BNBUSDT=0.010927  BTCUSDT=0.010418  DOGEUSDT=0.015689  ETHUSDT=0.014158  LINKUSDT=0.016968  LTCUSDT=0.012693  SOLUSDT=0.016380  TRXUSDT=0.006151  XRPUSDT=0.015559
+dip_garch_t             0.013995   ADAUSDT=0.019846  AVAXUSDT=0.018248  BNBUSDT=0.010645  BTCUSDT=0.010359  DOGEUSDT=0.015246  ETHUSDT=0.013968  LINKUSDT=0.016497  LTCUSDT=0.012178  SOLUSDT=0.015975  TRXUSDT=0.005787  XRPUSDT=0.015194
+dip_fhs                 0.013987   ADAUSDT=0.019736  AVAXUSDT=0.018298  BNBUSDT=0.010645  BTCUSDT=0.010344  DOGEUSDT=0.015358  ETHUSDT=0.013983  LINKUSDT=0.016397  LTCUSDT=0.012208  SOLUSDT=0.015886  TRXUSDT=0.005830  XRPUSDT=0.015171
+dip_blend               0.014124   ADAUSDT=0.020051  AVAXUSDT=0.018415  BNBUSDT=0.010912  BTCUSDT=0.010433  DOGEUSDT=0.015099  ETHUSDT=0.014098  LINKUSDT=0.016604  LTCUSDT=0.012374  SOLUSDT=0.016181  TRXUSDT=0.005761  XRPUSDT=0.015433
+DM kronos_small vs chronos2: diff=+0.007314 t=+7.366 p=0.0000 preferred=chronos2
+DM kronos_small vs bolt_small: diff=+0.004644 t=+4.967 p=0.0000 preferred=bolt_small
+DM kronos_small vs timesfm: diff=+0.008599 t=+8.855 p=0.0000 preferred=timesfm
+DM kronos_small vs dip_gauss: diff=+0.008834 t=+8.811 p=0.0000 preferred=dip_gauss
+DM kronos_small vs dip_student_t: diff=+0.009204 t=+9.306 p=0.0000 preferred=dip_student_t
+DM kronos_small vs dip_ewma_t: diff=+0.009257 t=+9.270 p=0.0000 preferred=dip_ewma_t
+DM kronos_small vs dip_empirical: diff=+0.009212 t=+9.287 p=0.0000 preferred=dip_empirical
+DM kronos_small vs dip_empirical_long: diff=+0.008997 t=+8.977 p=0.0000 preferred=dip_empirical_long
+DM kronos_small vs dip_garch_t: diff=+0.009344 t=+9.362 p=0.0000 preferred=dip_garch_t
+DM kronos_small vs dip_fhs: diff=+0.009352 t=+9.368 p=0.0000 preferred=dip_fhs
+DM kronos_small vs dip_blend: diff=+0.009215 t=+9.302 p=0.0000 preferred=dip_blend
+SPA (any challenger beats kronos_small): p_lower=0.0005 p_cons=0.0005 p_upper=0.4943
+DM chronos2 vs kronos_small: diff=-0.007314 t=-7.366 p=0.0000 preferred=chronos2
+DM chronos2 vs bolt_small: diff=-0.002670 t=-5.093 p=0.0000 preferred=chronos2
+DM chronos2 vs timesfm: diff=+0.001285 t=+4.278 p=0.0000 preferred=timesfm
+DM chronos2 vs dip_gauss: diff=+0.001520 t=+5.043 p=0.0000 preferred=dip_gauss
+DM chronos2 vs dip_student_t: diff=+0.001891 t=+6.311 p=0.0000 preferred=dip_student_t
+DM chronos2 vs dip_ewma_t: diff=+0.001943 t=+6.878 p=0.0000 preferred=dip_ewma_t
+DM chronos2 vs dip_empirical: diff=+0.001898 t=+6.358 p=0.0000 preferred=dip_empirical
+DM chronos2 vs dip_empirical_long: diff=+0.001683 t=+5.644 p=0.0000 preferred=dip_empirical_long
+DM chronos2 vs dip_garch_t: diff=+0.002030 t=+6.905 p=0.0000 preferred=dip_garch_t
+DM chronos2 vs dip_fhs: diff=+0.002038 t=+6.927 p=0.0000 preferred=dip_fhs
+DM chronos2 vs dip_blend: diff=+0.001901 t=+6.355 p=0.0000 preferred=dip_blend
+SPA (any challenger beats chronos2): p_lower=0.0005 p_cons=0.0005 p_upper=0.5112
+DM bolt_small vs kronos_small: diff=-0.004644 t=-4.967 p=0.0000 preferred=bolt_small
+DM bolt_small vs chronos2: diff=+0.002670 t=+5.093 p=0.0000 preferred=chronos2
+DM bolt_small vs timesfm: diff=+0.003955 t=+7.188 p=0.0000 preferred=timesfm
+DM bolt_small vs dip_gauss: diff=+0.004190 t=+7.311 p=0.0000 preferred=dip_gauss
+DM bolt_small vs dip_student_t: diff=+0.004560 t=+8.044 p=0.0000 preferred=dip_student_t
+DM bolt_small vs dip_ewma_t: diff=+0.004613 t=+8.265 p=0.0000 preferred=dip_ewma_t
+DM bolt_small vs dip_empirical: diff=+0.004567 t=+8.035 p=0.0000 preferred=dip_empirical
+DM bolt_small vs dip_empirical_long: diff=+0.004353 t=+7.666 p=0.0000 preferred=dip_empirical_long
+DM bolt_small vs dip_garch_t: diff=+0.004700 t=+8.313 p=0.0000 preferred=dip_garch_t
+DM bolt_small vs dip_fhs: diff=+0.004708 t=+8.348 p=0.0000 preferred=dip_fhs
+DM bolt_small vs dip_blend: diff=+0.004571 t=+8.050 p=0.0000 preferred=dip_blend
+SPA (any challenger beats bolt_small): p_lower=0.0010 p_cons=0.0010 p_upper=0.4863
+DM timesfm vs kronos_small: diff=-0.008599 t=-8.855 p=0.0000 preferred=timesfm
+DM timesfm vs chronos2: diff=-0.001285 t=-4.278 p=0.0000 preferred=timesfm
+DM timesfm vs bolt_small: diff=-0.003955 t=-7.188 p=0.0000 preferred=timesfm
+DM timesfm vs dip_gauss: diff=+0.000235 t=+1.764 p=0.0778 preferred=dip_gauss
+DM timesfm vs dip_student_t: diff=+0.000605 t=+5.510 p=0.0000 preferred=dip_student_t
+DM timesfm vs dip_ewma_t: diff=+0.000658 t=+6.214 p=0.0000 preferred=dip_ewma_t
+DM timesfm vs dip_empirical: diff=+0.000612 t=+5.459 p=0.0000 preferred=dip_empirical
+DM timesfm vs dip_empirical_long: diff=+0.000398 t=+2.968 p=0.0030 preferred=dip_empirical_long
+DM timesfm vs dip_garch_t: diff=+0.000745 t=+6.550 p=0.0000 preferred=dip_garch_t
+DM timesfm vs dip_fhs: diff=+0.000753 t=+6.607 p=0.0000 preferred=dip_fhs
+DM timesfm vs dip_blend: diff=+0.000616 t=+5.550 p=0.0000 preferred=dip_blend
+SPA (any challenger beats timesfm): p_lower=0.0005 p_cons=0.0005 p_upper=0.5092
+MCS @0.10: ['dip_garch_t', 'dip_fhs']
+receipt: /tmp/v-d1.json

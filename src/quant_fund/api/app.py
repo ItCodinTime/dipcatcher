@@ -721,6 +721,28 @@ def drift(config_path: str = "configs/research.yaml") -> dict[str, Any]:
                 "point_in_time": provenance.get("point_in_time"),
             }
         )
+    evidence_path = Path(cfg.data.root) / "metadata" / "reports" / "evidence_report.json"
+    if evidence_path.is_file():
+        sidecar = evidence_path.with_name(f"{evidence_path.name}.sha256")
+        try:
+            expected = sidecar.read_text(encoding="ascii").strip()
+            actual = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
+            if expected != actual:
+                raise ValueError("evidence report hash mismatch")
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            result["evidence_report"] = {"status": "invalid"}
+        except ValueError:
+            result["evidence_report"] = {"status": "invalid", "reason": "hash_mismatch"}
+        else:
+            health = evidence.get("health") if isinstance(evidence, dict) else None
+            if isinstance(health, dict) and health:
+                result["health"] = health
+                result["status"] = str(health.get("status", "insufficient_data"))
+            result["evidence_report"] = {
+                "status": evidence.get("status", "insufficient_evidence"),
+                "warnings": evidence.get("warnings", []),
+            }
     return _stamp_research_honesty(result)
 
 

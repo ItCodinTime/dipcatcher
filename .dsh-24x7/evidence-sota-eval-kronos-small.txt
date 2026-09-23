@@ -1,0 +1,16 @@
+Loading weights from local directory
+Loading weights from local directory
+elapsed=257.24s n_origins=450
+model              mean_crps   per-asset mean CRPS
+kronos              0.021572   BTCUSDT=0.014916  ETHUSDT=0.018017  SOLUSDT=0.031782
+dip_gauss           0.013944   BTCUSDT=0.010758  ETHUSDT=0.014677  SOLUSDT=0.016395
+dip_student_t       0.013579   BTCUSDT=0.010436  ETHUSDT=0.014103  SOLUSDT=0.016198
+dip_ewma_t          0.013575   BTCUSDT=0.010538  ETHUSDT=0.014290  SOLUSDT=0.015898
+dip_empirical       0.013574   BTCUSDT=0.010437  ETHUSDT=0.014109  SOLUSDT=0.016176
+DM kronos vs dip_gauss: diff=+0.007628 t=+5.269 p=0.0000 preferred=dip_gauss
+DM kronos vs dip_student_t: diff=+0.007993 t=+5.616 p=0.0000 preferred=dip_student_t
+DM kronos vs dip_ewma_t: diff=+0.007996 t=+5.427 p=0.0000 preferred=dip_ewma_t
+DM kronos vs dip_empirical: diff=+0.007998 t=+5.603 p=0.0000 preferred=dip_empirical
+SPA (any challenger beats kronos): p_lower=0.0005 p_cons=0.0005 p_upper=0.4708
+MCS @0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical']
+receipt: .dsh-24x7/evidence-sota-eval-kronos-small.json

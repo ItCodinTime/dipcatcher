@@ -1,0 +1,21 @@
+firm: Artificial Hedge
+product: Dipcatcher
+version: 1.0.0
+python_package: quant_fund
+role: Artificial Hedge proprietary research lab
+benchmark_catalog_version: 2
+families: ranking,alpha,volatility,distribution,regime,tail,drawdown,liquidity,reinforcement,conformal,evalues,jackknife_plus,crc,weighted_conformal,interval_risk,quantile_bandit,cv_plus,cpcv,localized_conformal,conformal_rank,online_crc,portfolio_conformal,northset
+mode: research
+live_allowed: False
+dir_raw: ok
+dir_bronze: ok
+dir_silver: ok
+dir_gold: ok
+dir_metadata: ok
+data_manifest: ok
+research_receipt: ok
+core_imports: ok
+default_fill: next_open
+kyle_ofi: dipcatcher kyle-ofi --dump-lambda-series PATH (research_only λ date-series parquet; no Sharpe/pnl)
+verify-research: runs northset_session_means_honesty_errors (session soft-verify dispatcher; research_only, no Sharpe)
+northset.shape_floors: depth_shape_finite_floor=None concentration_top_finite_floor=None queue_priority_finite_floor=None side_notional_finite_floor=None tob_size_share_finite_floor=None (shape_columns_ensured is a receipt stamp when synth ensure runs)

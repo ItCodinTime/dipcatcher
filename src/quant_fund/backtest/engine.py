@@ -58,6 +58,8 @@ class Book:
 def _valid_price(value: object) -> float | None:
     if value is None:
         return None
+    if isinstance(value, float):
+        return value if np.isfinite(value) and value > 0 else None
     try:
         price = float(str(value))
     except (TypeError, ValueError):
@@ -112,9 +114,15 @@ def _projected_exposures(
     current_weight = (current_shares * prices.get(sid, 0.0)) / nav_safe
     projected: dict[str, float] = dict(book.shares)
     projected[sid] = current_shares + delta
-    all_ids = sorted(set(projected) | set(prices))
-    gross = sum(abs(projected.get(s, 0.0) * prices.get(s, 0.0)) for s in all_ids)
-    net = sum(projected.get(s, 0.0) * prices.get(s, 0.0) for s in all_ids)
+    # Only nonzero-quantity ids with a valid mark contribute; a +0.0 term
+    # never changes a float sum, so restricting to contributors is bit-exact.
+    contributors = sorted(
+        s
+        for s in set(projected) | set(prices)
+        if projected.get(s, 0.0) != 0.0 and prices.get(s, 0.0) != 0.0
+    )
+    gross = sum(abs(projected[s] * prices[s]) for s in contributors)
+    net = sum(projected[s] * prices[s] for s in contributors)
     return current_weight, gross / nav_safe, net / nav_safe
 
 
@@ -165,7 +173,21 @@ def run_backtest(
         pl.col("vol_20") if "vol_20" in bars.columns else pl.lit(0.02).alias("vol_20"),
         "source",
     )
-    dates = sorted(px["event_time"].unique().to_list())
+    # Pre-index rows by timestamp once: per-date frame scans inside the loop
+    # are O(rows x dates) and dominate wall time on wide books. Dict lookup
+    # keeps identical iteration order (input row order preserved per date).
+    day_rows_map: dict[datetime, list[dict]] = {}
+    for row in px.iter_rows(named=True):
+        day_rows_map.setdefault(row["event_time"], []).append(row)
+    # The panel-level validation above already rejects duplicate
+    # (event_time, security_id) keys and non-finite weights, so the per-date
+    # target map can be built once without changing semantics.
+    weights_by_date: dict[datetime, dict[str, float]] = {}
+    for wrow in weights.iter_rows(named=True):
+        weights_by_date.setdefault(wrow["event_time"], {})[str(wrow["security_id"])] = float(
+            wrow["target_weight"]
+        )
+    dates = sorted(day_rows_map)
     book = Book(cash=initial_nav)
     navs: list[dict] = []
     fill_rows: list[dict] = []
@@ -188,8 +210,7 @@ def run_backtest(
 
     for i, dt in enumerate(dates[:-1] if use_next_open else dates):
         exec_dt = dates[i + 1] if use_next_open else dt
-        day_px = px.filter(pl.col("event_time") == exec_dt)
-        day_rows = day_px.iter_rows(named=True)
+        day_rows = day_rows_map.get(exec_dt, [])
         exec_mark: dict[str, float] = {}
         close_mark = dict(last_marks)
         next_mark_ages = dict(mark_ages)
@@ -233,11 +254,19 @@ def run_backtest(
             }
         )
         if stale_held:
-            details = ", ".join(f"{sid}={age if age is not None else 'unknown'}" for sid, age in stale_held.items())
+            details = ", ".join(
+                f"{sid}={age if age is not None else 'unknown'}" for sid, age in stale_held.items()
+            )
             raise StaleValuationError(
                 "held position valuation is stale beyond the configured limit: " + details
             )
-        tgt_rows = weights.filter(pl.col("event_time") == dt)
+        # Decision price = the signal bar's close at ``dt``; it anchors the
+        # implementation-shortfall drift of fills executing at ``exec_dt``.
+        decision_marks: dict[str, float] = {}
+        for row in day_rows_map.get(dt, []):
+            mark = _valid_price(row["close"])
+            if mark is not None:
+                decision_marks[str(row["security_id"])] = mark
         # Value held names without an execution bar at the last close rather
         # than at 0.0: a missing open must not understate NAV / exposures and
         # silently let the risk gate admit orders.
@@ -245,9 +274,11 @@ def run_backtest(
         nav = book.nav(nav_prices)
         if nav <= 0:
             break
-        target_w = _target_weight_map(tgt_rows)
+        target_w = weights_by_date.get(dt) or {}
         ids = set(exec_mark) | set(book.shares) | set(target_w)
         traded_turn = 0.0
+        costs_cfg = config.costs
+        shares = book.shares
         for sid in sorted(ids):
             price = exec_mark.get(sid)
             if price is None:
@@ -255,17 +286,17 @@ def run_backtest(
                 continue
             tw = target_w.get(sid, 0.0)
             desired = tw * nav / price
-            current = book.shares.get(sid, 0.0)
+            current = shares.get(sid, 0.0)
             delta = desired - current
             if abs(delta) * price < 1.0:
                 continue
-            costs = total_cost(delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), config.costs)
+            costs = total_cost(delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), costs_cfg)
             # participation cap
-            max_qty = config.costs.participation_limit * (advs.get(sid, 1.0) / price)
+            max_qty = costs_cfg.participation_limit * (advs.get(sid, 1.0) / price)
             if abs(delta) > max_qty > 0:
                 delta = np.sign(delta) * max_qty
                 costs = total_cost(
-                    delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), config.costs
+                    delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), costs_cfg
                 )
             try:
                 kill.assert_new_orders_allowed()
@@ -327,6 +358,7 @@ def run_backtest(
                     "fee": costs["commission"],
                     "spread_cost": costs["spread"],
                     "impact_cost": costs["impact"],
+                    "decision_price": decision_marks.get(sid),
                 }
             )
         # mark to close
@@ -352,7 +384,55 @@ def run_backtest(
                 "turnover": traded_turn,
             }
         )
-    eq = pl.DataFrame(navs) if navs else pl.DataFrame({"event_time": [], "nav": []})
+    return _build_result(
+        navs=navs,
+        fill_rows=fill_rows,
+        cost_sum=cost_sum,
+        reject_count=reject_count,
+        cash_reject_count=cash_reject_count,
+        halt_count=halt_count,
+        synthetic=synthetic,
+        config=config,
+        initial_nav=initial_nav,
+    )
+
+
+def _build_result(
+    *,
+    navs: list[dict],
+    fill_rows: list[dict],
+    cost_sum: dict[str, float],
+    reject_count: int,
+    cash_reject_count: int,
+    halt_count: int,
+    synthetic: bool,
+    config: AppConfig,
+    initial_nav: float,
+) -> BacktestResult:
+    """Shared metrics/output tail for ``run_backtest`` and the fast replay path."""
+    # Column-oriented construction: pl.DataFrame(list-of-dicts) goes through
+    # the slow from_dicts marshalling path; transposing to per-column lists is
+    # several times faster and produces an identical frame.
+    eq = (
+        pl.DataFrame({k: [r[k] for r in navs] for k in navs[0]})
+        if navs
+        else pl.DataFrame({"event_time": [], "nav": []})
+    )
+    fills_df = (
+        pl.DataFrame({k: [r[k] for r in fill_rows] for k in fill_rows[0]})
+        if fill_rows
+        else pl.DataFrame()
+    )
+    is_summary: dict[str, object] | None = None
+    if fills_df.height:
+        scored = fills_df.drop_nulls("decision_price")
+        if scored.height:
+            from quant_fund.execution.implementation_shortfall import (
+                aggregate_shortfall,
+                shortfall_frame,
+            )
+
+            is_summary = aggregate_shortfall(shortfall_frame(scored))
     if eq.height >= 2:
         rets = eq["nav"].pct_change().drop_nulls().to_numpy()
         sr = sharpe_ratio(rets)
@@ -399,6 +479,7 @@ def run_backtest(
             "kill_switch_halts": halt_count,
             "analytics": diag,
             "analytics_export": analytics_export,
+            "implementation_shortfall": is_summary or {},
             "research_only": True,
             "live_pnl_claim": False,
         }
@@ -412,6 +493,7 @@ def run_backtest(
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,
+            "implementation_shortfall": is_summary or {},
             "research_only": True,
             "live_pnl_claim": False,
         }
@@ -421,7 +503,7 @@ def run_backtest(
     metrics["data_source"] = note
     return BacktestResult(
         equity=eq,
-        fills=pl.DataFrame(fill_rows) if fill_rows else pl.DataFrame(),
+        fills=fills_df,
         metrics=metrics,
         frictionless=config.costs.frictionless,
         source_note=note,

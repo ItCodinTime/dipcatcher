@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "path": "data/metadata/research/latest.json",
+  "run_id": "f68246f3e4fad88e8ea1b9b8b7ec88c0bc96a536fc0d4f8e46cb8b11cd6d6034",
+  "scorecard_families": 23,
+  "errors": [],
+  "claim": "research_only"
+}

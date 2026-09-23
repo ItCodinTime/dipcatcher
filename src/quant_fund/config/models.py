@@ -179,6 +179,47 @@ class CostConfig(StrictConfigModel):
         return self
 
 
+class PerpConfig(StrictConfigModel):
+    """USDT-M perpetual margin/funding mechanics for the perp backtest book.
+
+    These fields are deliberately separate from CostConfig: funding is a
+    *cashflow*, not a transaction cost, and margin/liquidation have no spot
+    analog. Defaults are conservative (Binance large-cap maintenance margin
+    is ~0.4-1% tier-dependent; liquidation fee approximates the insurance-fund
+    charge on force-closed notional).
+    """
+
+    max_leverage: float = 3.0
+    maint_margin_ratio: float = 0.005
+    liquidation_fee_bps: float = 100.0
+    liquidation_on_wick: bool = True
+    funding_enabled: bool = True
+    fill_delay_bars: int = 0
+    funding_spike_multiplier: float = 1.0
+    periods_per_year_override: float | None = None
+    bar_seconds_hint: int | None = None
+
+    @model_validator(mode="after")
+    def valid_perp_bounds(self) -> PerpConfig:
+        if not np.isfinite(self.max_leverage) or self.max_leverage <= 0:
+            raise ValueError("max_leverage must be finite and positive")
+        if not np.isfinite(self.maint_margin_ratio) or not 0 < self.maint_margin_ratio < 1:
+            raise ValueError("maint_margin_ratio must be in (0, 1)")
+        for name in ("liquidation_fee_bps", "funding_spike_multiplier"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value < 0:
+                raise ValueError(f"{name} must be finite and non-negative")
+        if self.fill_delay_bars < 0:
+            raise ValueError("fill_delay_bars must be non-negative")
+        if self.periods_per_year_override is not None and (
+            not np.isfinite(self.periods_per_year_override) or self.periods_per_year_override <= 0
+        ):
+            raise ValueError("periods_per_year_override must be finite and positive")
+        if self.bar_seconds_hint is not None and self.bar_seconds_hint <= 0:
+            raise ValueError("bar_seconds_hint must be positive")
+        return self
+
+
 class ExecutionConfig(StrictConfigModel):
     fill: FillConvention = FillConvention.NEXT_OPEN
     allow_close_auction: bool = False
@@ -382,13 +423,43 @@ class DataConfig(StrictConfigModel):
     synthetic_oracle_beta: float = 0.015
     synthetic_oracle_phi: float = 0.70
     benchmark_id: str = "SEC_MKT"
+    source_symbol: str = "BTCUSDT"
+    source_interval: str = "1d"
+    source_path: Path | None = None
+    source_limit: int = 1000
 
     @field_validator("source")
     @classmethod
     def supported_source(cls, value: str) -> str:
         normalized = value.strip().lower()
-        if normalized not in {"synthetic", "file", "parquet"}:
-            raise ValueError("data source must be one of: synthetic, file, parquet")
+        supported = {
+            "synthetic",
+            "file",
+            "parquet",
+            "binance_public_data",
+            "binance_market_websocket",
+            "binance_usdtm_perp",
+            "binance_funding_rate",
+            "binance_perp_universe",
+            "cryptofeed",
+            "ccxt",
+            "nasdaq_itch",
+            "fi_2010",
+            "gdelt",
+            "sec_edgar",
+            "fred",
+            "alfred",
+            "us_treasury",
+            "cftc_cot",
+            "finra_short_sale_volume",
+            "world_bank",
+            "bea",
+            "openbb",
+        }
+        if normalized not in supported:
+            raise ValueError(
+                "unsupported data source; use a registered public source or synthetic/file/parquet"
+            )
         return normalized
 
     @model_validator(mode="after")
@@ -403,6 +474,64 @@ class DataConfig(StrictConfigModel):
             raise ValueError("synthetic_oracle_phi must be finite and strictly between -1 and 1")
         if not self.benchmark_id.strip():
             raise ValueError("benchmark_id must be non-empty")
+        if not self.source_symbol.strip() or not self.source_interval.strip():
+            raise ValueError("source_symbol and source_interval must be non-empty")
+        if not 1 <= self.source_limit <= 1000:
+            raise ValueError("source_limit must be between 1 and 1000")
+        return self
+
+
+class KronosConfig(StrictConfigModel):
+    """Explicit opt-in settings for the optional Kronos candlestick adapter."""
+
+    enabled: bool = False
+    model_path: Path | None = None
+    tokenizer_path: Path | None = None
+    model_sha256: str | None = None
+    tokenizer_sha256: str | None = None
+    lookback: int = 400
+    pred_len: int = 5
+    horizon_name: str = "5d"
+    device: str = "cpu"
+    max_context: int = 512
+    temperature: float = 1.0
+    top_k: int = 0
+    top_p: float = 0.9
+    sample_count: int = 1
+    clip: float = 5.0
+
+    @model_validator(mode="after")
+    def valid_kronos_settings(self) -> KronosConfig:
+        if self.lookback < 2:
+            raise ValueError("kronos.lookback must be >= 2")
+        if self.pred_len < 1:
+            raise ValueError("kronos.pred_len must be positive")
+        if not self.horizon_name.strip():
+            raise ValueError("kronos.horizon_name must be non-empty")
+        if self.device not in {"cpu", "cuda", "mps"}:
+            raise ValueError("kronos.device must be one of: cpu, cuda, mps")
+        if self.max_context < 2:
+            raise ValueError("kronos.max_context must be >= 2")
+        if not np.isfinite(self.temperature) or self.temperature <= 0:
+            raise ValueError("kronos.temperature must be finite and positive")
+        if self.top_k < 0:
+            raise ValueError("kronos.top_k must be non-negative")
+        if not np.isfinite(self.top_p) or not 0 < self.top_p <= 1:
+            raise ValueError("kronos.top_p must be finite and in (0, 1]")
+        if self.sample_count < 1:
+            raise ValueError("kronos.sample_count must be positive")
+        if not np.isfinite(self.clip) or self.clip <= 0:
+            raise ValueError("kronos.clip must be finite and positive")
+        for name, digest in (
+            ("model_sha256", self.model_sha256),
+            ("tokenizer_sha256", self.tokenizer_sha256),
+        ):
+            if digest is not None and (
+                len(digest) != 64 or any(c not in "0123456789abcdefABCDEF" for c in digest)
+            ):
+                raise ValueError(f"kronos.{name} must be a SHA-256 hex digest")
+        if self.enabled and (self.model_path is None or self.tokenizer_path is None):
+            raise ValueError("enabled Kronos requires local model_path and tokenizer_path")
         return self
 
 
@@ -410,6 +539,7 @@ class TrainConfig(StrictConfigModel):
     ranking_target: str = "future_excess_return_5"
     distribution_target: str = "future_log_return_5"
     volatility_target: str = "future_realized_var_5"
+    kronos: KronosConfig = Field(default_factory=KronosConfig)
     random_seed: int = 42
     xgb_n_estimators: int = 80
     xgb_max_depth: int = 3
@@ -425,6 +555,7 @@ class TrainConfig(StrictConfigModel):
     har_log: bool = True
     qlike_floor: float = 1e-12
     psd_eigen_tol: float = 1e-10
+    auto_min_oos_rows: int = 10
 
     @model_validator(mode="after")
     def valid_training_settings(self) -> TrainConfig:
@@ -454,6 +585,8 @@ class TrainConfig(StrictConfigModel):
             raise ValueError("elasticnet_l1 must be in [0, 1]")
         if self.qlike_floor <= 0 or self.psd_eigen_tol <= 0:
             raise ValueError("qlike_floor and psd_eigen_tol must be positive")
+        if self.auto_min_oos_rows < 1:
+            raise ValueError("auto_min_oos_rows must be positive")
         return self
 
 
@@ -526,6 +659,13 @@ class FusionConfig(StrictConfigModel):
     # Research-only: skip conformal_sets_asof in forecast_asof (weight-only smoke).
     # Does not affect live claim semantics; intervals/caps simply absent.
     skip_intervals: bool = False
+    # Calibration is opt-in because rank percentiles and calibrated class
+    # probabilities are different score identities.
+    apply_probability_calibration: bool = False
+    probability_calibrator: str = "auto"
+    probability_calibration_label: str | None = None
+    probability_calibration_horizon: str | None = None
+    probability_calibration_max_age_days: int | None = None
 
     @model_validator(mode="after")
     def valid_fusion_weights(self) -> FusionConfig:
@@ -544,6 +684,10 @@ class FusionConfig(StrictConfigModel):
                 raise ValueError(f"{name} must be finite and non-negative")
         if not np.isfinite(self.risk_weight) or self.risk_weight <= 0:
             raise ValueError("risk_weight must be finite and positive")
+        if self.probability_calibrator not in {"auto", "isotonic", "platt"}:
+            raise ValueError("probability_calibrator must be auto, isotonic, or platt")
+        if self.probability_calibration_max_age_days is not None and self.probability_calibration_max_age_days < 0:
+            raise ValueError("probability_calibration_max_age_days must be non-negative")
         return self
 
 
@@ -714,6 +858,7 @@ class AppConfig(StrictConfigModel):
     horizons: HorizonConfig = Field(default_factory=HorizonConfig)
     quantiles: QuantileConfig = Field(default_factory=QuantileConfig)
     costs: CostConfig = Field(default_factory=CostConfig)
+    perp: PerpConfig = Field(default_factory=PerpConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     constraints: PortfolioConstraints = Field(default_factory=PortfolioConstraints)
     optimizer: OptimizerConfig = Field(default_factory=OptimizerConfig)

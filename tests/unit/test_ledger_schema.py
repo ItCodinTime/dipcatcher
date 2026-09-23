@@ -66,18 +66,145 @@ def test_validate_ledger_schema_ok_after_paper_run(tmp_path: Path) -> None:
         _bars(),
         cfg,
         champion_weights=_weights(),
+        shadow_weights=_weights(),
         initial_nav=100_000.0,
         max_steps=3,
         run_id="schema-ok",
         prefer_latest=False,
     )
-    report = validate_ledger_schema(tmp_path / "metadata" / "paper" / "schema-ok")
+    root = tmp_path / "metadata" / "paper" / "schema-ok"
+    report = validate_ledger_schema(root)
     assert report["ok"] is True, report
     assert report["schema_version"] == PaperLedger.SCHEMA_VERSION
     assert report["present"]["meta.json"]
     assert report["present"]["broker_state.json"]
     assert report["present"]["analytics_export.json"]
     assert (Path(result.paths["analytics_export"])).is_file()
+    assert report["row_counts"]["equity"] == 3
+    assert report["row_counts"]["shadow_equity"] == 3
+    assert report["cursor"]["step"] == 3
+    assert report["cursor"]["durable_equity_rows"] == 3
+    assert report["cursor"]["consistent"] is True
+
+
+def test_validate_ledger_schema_rejects_cursor_ahead_of_durable_equity(
+    tmp_path: Path,
+) -> None:
+    cfg = _mini_cfg(tmp_path)
+    run_paper_loop(
+        _bars(),
+        cfg,
+        champion_weights=_weights(),
+        initial_nav=100_000.0,
+        max_steps=3,
+        run_id="cursor-ahead",
+        prefer_latest=False,
+    )
+    root = tmp_path / "metadata" / "paper" / "cursor-ahead"
+    state_path = root / "broker_state.json"
+    state = json.loads(state_path.read_text())
+    state["step"] = 4
+    state_path.write_text(json.dumps(state))
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "broker_state_step_ahead_of_equity" in report["errors"]
+    assert report["cursor"]["consistent"] is False
+
+
+def test_validate_ledger_schema_rejects_cursor_behind_durable_equity(
+    tmp_path: Path,
+) -> None:
+    cfg = _mini_cfg(tmp_path)
+    run_paper_loop(
+        _bars(),
+        cfg,
+        champion_weights=_weights(),
+        initial_nav=100_000.0,
+        max_steps=3,
+        run_id="cursor-behind",
+        prefer_latest=False,
+    )
+    root = tmp_path / "metadata" / "paper" / "cursor-behind"
+    state_path = root / "broker_state.json"
+    state = json.loads(state_path.read_text())
+    state["step"] = 2
+    state_path.write_text(json.dumps(state))
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "broker_state_step_behind_of_equity" in report["errors"]
+    assert report["cursor"]["consistent"] is False
+
+
+def test_validate_ledger_schema_missing_equity_with_nonzero_cursor_is_invalid(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "metadata" / "paper" / "missing-equity-cursor"
+    root.mkdir(parents=True)
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": "missing-equity-cursor",
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "x",
+            }
+        )
+    )
+    (root / "broker_state.json").write_text(
+        json.dumps(
+            {
+                "run_id": "missing-equity-cursor",
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "step": 1,
+            }
+        )
+    )
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "equity_missing_for_broker_state" in report["errors"]
+
+
+def test_validate_ledger_schema_allows_valid_zero_step_empty_run(tmp_path: Path) -> None:
+    root = tmp_path / "metadata" / "paper" / "empty-zero-step"
+    root.mkdir(parents=True)
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": "empty-zero-step",
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "x",
+            }
+        )
+    )
+    (root / "broker_state.json").write_text(
+        json.dumps(
+            {
+                "run_id": "empty-zero-step",
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "step": 0,
+                "champion": {
+                    "slot": "champion",
+                    "cash": 0.0,
+                    "shares": {},
+                    "allow_capital": True,
+                    "n_orders": 0,
+                    "n_fills": 0,
+                },
+            }
+        )
+    )
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is True, report
+    assert report["errors"] == []
 
 
 @pytest.mark.parametrize(
@@ -211,6 +338,170 @@ def test_validate_ledger_schema_missing_meta(tmp_path: Path) -> None:
     report = validate_ledger_schema(root)
     assert report["ok"] is False
     assert "meta.json_missing" in report["errors"]
+
+
+def test_validate_ledger_schema_rejects_equity_without_broker_state(tmp_path: Path) -> None:
+    root = tmp_path / "equity-without-cursor"
+    root.mkdir()
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "research only",
+            }
+        )
+    )
+    pl.DataFrame(
+        {
+            "event_time": [datetime(2026, 1, 1, tzinfo=UTC)],
+            "nav": [100.0],
+            "cash": [100.0],
+        }
+    ).write_parquet(root / "equity.parquet")
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "broker_state_missing_for_equity" in report["errors"]
+
+
+def test_validate_ledger_schema_rejects_positive_cursor_without_equity(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "cursor-without-equity"
+    root.mkdir()
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "research only",
+            }
+        )
+    )
+    (root / "broker_state.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "step": 2,
+                "champion": {
+                    "slot": "champion",
+                    "cash": 100.0,
+                    "shares": {},
+                    "allow_capital": True,
+                    "n_orders": 0,
+                    "n_fills": 0,
+                },
+            }
+        )
+    )
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "equity_missing_for_broker_state" in report["errors"]
+    assert report["cursor"]["consistent"] is False
+
+
+def test_validate_ledger_schema_rejects_positive_cursor_with_empty_equity(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "cursor-with-empty-equity"
+    root.mkdir()
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "research only",
+            }
+        )
+    )
+    (root / "broker_state.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "step": 2,
+                "champion": {
+                    "slot": "champion",
+                    "cash": 100.0,
+                    "shares": {},
+                    "allow_capital": True,
+                    "n_orders": 0,
+                    "n_fills": 0,
+                },
+            }
+        )
+    )
+    pl.DataFrame(
+        {
+            "event_time": pl.Series([], dtype=pl.Datetime("us", "UTC")),
+            "nav": pl.Series([], dtype=pl.Float64),
+            "cash": pl.Series([], dtype=pl.Float64),
+        }
+    ).write_parquet(root / "equity.parquet")
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is False
+    assert "broker_state_step_ahead_of_equity" in report["errors"]
+    assert report["cursor"]["consistent"] is False
+
+
+def test_validate_ledger_schema_allows_zero_step_without_equity(tmp_path: Path) -> None:
+    root = tmp_path / "zero-step-without-equity"
+    root.mkdir()
+    (root / "meta.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "label": "PAPER_SIMULATED",
+                "disclaimer": "research only",
+            }
+        )
+    )
+    (root / "broker_state.json").write_text(
+        json.dumps(
+            {
+                "run_id": root.name,
+                "schema_version": PaperLedger.SCHEMA_VERSION,
+                "step": 0,
+                "champion": {
+                    "slot": "champion",
+                    "cash": 100.0,
+                    "shares": {},
+                    "allow_capital": True,
+                    "n_orders": 0,
+                    "n_fills": 0,
+                },
+            }
+        )
+    )
+
+    report = validate_ledger_schema(root)
+
+    assert report["ok"] is True, report
+    assert report["cursor"]["consistent"] is True
+
+
+def test_ledger_flush_removes_stale_empty_parquet_artifact(tmp_path: Path) -> None:
+    ledger = PaperLedger(tmp_path, "stale-empty")
+    ledger.root.mkdir(parents=True, exist_ok=True)
+    stale = ledger.root / "equity.parquet"
+    pl.DataFrame({"event_time": [datetime(2024, 1, 1, tzinfo=UTC)], "nav": [1.0]}).write_parquet(
+        stale
+    )
+
+    ledger.flush()
+
+    assert not stale.exists()
 
 
 def test_validate_ledger_schema_is_total_for_non_object_and_string_version(tmp_path: Path) -> None:

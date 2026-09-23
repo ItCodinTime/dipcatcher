@@ -69,6 +69,29 @@ class LinUCBRanker:
         self.b = self.b + float(reward) * v
 
 
+class LinearThompsonRanker(LinUCBRanker):
+    """Bayesian linear Thompson sampler for contextual ranking.
+
+    The posterior mean is ridge regression and the exploration covariance is
+    proportional to ``A^-1``. Sampling is deterministic under the supplied
+    seed, making this suitable for reproducible research diagnostics.
+    """
+
+    def __init__(self, n_features: int, alpha: float = 1.0, seed: int = 7) -> None:
+        super().__init__(n_features, alpha)
+        self.seed = int(seed)
+        self.rng = np.random.default_rng(self.seed)
+
+    def scores(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        xx = self._check_x(x, allow_batch=True)
+        xx = np.where(np.isfinite(xx), xx, 0.0)
+        a_inv = np.linalg.inv(self.a)
+        mean = a_inv @ self.b
+        covariance = (self.alpha**2) * a_inv
+        sample = self.rng.multivariate_normal(mean, covariance, check_valid="ignore")
+        return xx @ sample
+
+
 def _topk_mean(y: NDArray[np.float64], scores: NDArray[np.float64], k: int) -> float:
     k = max(1, min(int(k), int(y.size)))
     idx = np.argsort(scores)[-k:]
@@ -155,4 +178,64 @@ def run_linucb_panel(
         oracle_reward=oracle_r,
         uniform_reward=uniform,
         cumulative_regret=regret,
+    )
+
+
+def run_thompson_panel(
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    dates: NDArray[Any],
+    *,
+    oracle: NDArray[np.float64] | None = None,
+    top_k: int = 3,
+    alpha: float = 1.0,
+    seed: int = 7,
+) -> BanditTrace:
+    """Online Thompson-sampling analogue of :func:`run_linucb_panel`."""
+    xx = np.asarray(x, dtype=float)
+    yy = np.asarray(y, dtype=float)
+    dates_arr = np.asarray(dates)
+    if xx.ndim != 2 or yy.ndim != 1 or yy.shape[0] != xx.shape[0]:
+        raise ValueError("x must be 2-D and y must align with x")
+    if dates_arr.shape[0] != xx.shape[0]:
+        raise ValueError("dates must align with x")
+    oo_all = None if oracle is None else np.asarray(oracle, dtype=float)
+    if oo_all is not None and oo_all.shape[0] != xx.shape[0]:
+        raise ValueError("oracle must align with x")
+    if xx.shape[0] == 0:
+        empty = np.asarray([], dtype=float)
+        return BanditTrace([], empty, empty, empty, empty)
+    keys = _date_keys(dates_arr)
+    policy = LinearThompsonRanker(xx.shape[1], alpha=alpha, seed=seed)
+    rng = np.random.default_rng(seed)
+    pol: list[float] = []
+    ora: list[float] = []
+    uni: list[float] = []
+    kept: list[str] = []
+    for key in sorted(set(keys)):
+        mask = np.array([k == key for k in keys], dtype=bool)
+        if int(mask.sum()) < max(top_k * 2, 4):
+            continue
+        x_day, y_day = xx[mask], yy[mask]
+        finite = np.isfinite(y_day) & np.isfinite(x_day).all(axis=1)
+        if int(finite.sum()) < max(top_k * 2, 4):
+            continue
+        x_day, y_day = x_day[finite], y_day[finite]
+        scores = policy.scores(x_day)
+        pol.append(_topk_mean(y_day, scores, top_k))
+        oo = y_day if oo_all is None else oo_all[mask][finite]
+        ora.append(_topk_mean(y_day, oo, top_k))
+        uni.append(_topk_mean(y_day, rng.normal(size=y_day.size), top_k))
+        for i in np.argsort(scores)[-top_k:]:
+            policy.update(x_day[i], float(y_day[i]))
+        kept.append(key)
+    policy_reward = np.asarray(pol, dtype=float)
+    oracle_reward = np.asarray(ora, dtype=float)
+    uniform = np.asarray(uni, dtype=float)
+    return BanditTrace(
+        kept,
+        policy_reward,
+        oracle_reward,
+        uniform,
+        np.cumsum(oracle_reward - policy_reward),
     )

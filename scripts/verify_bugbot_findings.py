@@ -21,7 +21,14 @@ def check_1_fz0_properness() -> bool:
     var_true = 0.0
     es_true = 1.0
     grid = [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    scores = [float(mean_fissler_ziegel(losses, np.full(losses.size, var_true), np.full(losses.size, e), alpha)) for e in grid]
+    scores = [
+        float(
+            mean_fissler_ziegel(
+                losses, np.full(losses.size, var_true), np.full(losses.size, e), alpha
+            )
+        )
+        for e in grid
+    ]
     argmin = grid[int(np.argmin(scores))]
     # Cross-check with the raw elementwise API too
     single = float(
@@ -34,7 +41,9 @@ def check_1_fz0_properness() -> bool:
     print(
         f"  e-grid scores: {dict(zip(map(str, grid), [round(s, 4) for s in scores], strict=True))}"
     )
-    print(f"  argmin over e-grid = {argmin} | true ES=1.0 | (1-alpha)*ES=0.05 | score@true-ES={single:.4f}")
+    print(
+        f"  argmin over e-grid = {argmin} | true ES=1.0 | (1-alpha)*ES=0.05 | score@true-ES={single:.4f}"
+    )
     reproduced = abs(argmin - es_true) < 1e-12
     return bool(reproduced)
 
@@ -67,9 +76,13 @@ def check_3_kill_switch_accounting() -> bool:
     cfg = load_config("configs/research.yaml")
     # Force kill switch to HALT so every order attempt is blocked
     cfg = cfg.model_copy(deep=True)
-    object.__setattr__(cfg, "kill_switch", cfg.kill_switch.model_copy(update={"state": "HALT_NEW_ORDERS"}))
+    object.__setattr__(
+        cfg, "kill_switch", cfg.kill_switch.model_copy(update={"state": "HALT_NEW_ORDERS"})
+    )
 
-    dates = pl.datetime_range(pl.date(2024, 1, 1), pl.date(2024, 1, 10), "1d", eager=True).alias("event_time")
+    dates = pl.datetime_range(pl.date(2024, 1, 1), pl.date(2024, 1, 10), "1d", eager=True).alias(
+        "event_time"
+    )
     bars = pl.DataFrame(
         {
             "event_time": dates,

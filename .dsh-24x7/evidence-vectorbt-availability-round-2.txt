@@ -1,0 +1,11 @@
+Downloading numba (2.6MiB)
+Downloading widgetsnbextension (2.1MiB)
+Downloading jedi (4.7MiB)
+Downloading plotly (9.2MiB)
+Downloading llvmlite (38.6MiB)
+ Downloaded widgetsnbextension
+ Downloaded numba
+ Downloaded jedi
+ Downloaded plotly
+ Downloaded llvmlite
+Installed 59 packages in 4.43s

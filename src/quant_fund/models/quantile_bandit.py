@@ -187,6 +187,11 @@ class QuantileThompson:
         self._prec = precs
 
     def select(self, context_matrix: NDArray[np.float64], k: int) -> NDArray[np.intp]:
+        scores = self.scores(context_matrix)
+        return _topk_indices(scores, k)
+
+    def scores(self, context_matrix: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Draw one posterior quantile and return one score per context row."""
         xx = np.asarray(context_matrix, dtype=float)
         if xx.ndim == 1:
             xx = xx.reshape(1, -1)
@@ -197,8 +202,7 @@ class QuantileThompson:
             raise RuntimeError("quantile bandit refit produced incomplete state")
         tau_idx = int(self.rng.integers(0, self.n_quantiles))
         beta = _draw_gaussian(self._beta[tau_idx], self._prec[tau_idx], self.rng)
-        scores = xx @ beta
-        return _topk_indices(scores, k)
+        return xx @ beta
 
     def update(self, context: NDArray[np.float64], reward: float) -> None:
         if not np.isfinite(reward):

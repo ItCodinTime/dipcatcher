@@ -1,0 +1,46 @@
+{
+  "protocol": {
+    "source": "synthetic",
+    "seed": 0,
+    "steps": 20,
+    "assets": 8,
+    "fill": "next_open",
+    "capital": "simulated_only",
+    "live_pnl_claim": false,
+    "research_only": true
+  },
+  "environment": {
+    "python": "3.12.13 (main, Jun 11 2026, 03:55:21) [Clang 22.1.3 ]",
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "polars": "1.44.2"
+  },
+  "elapsed_seconds": 0.13739041599910706,
+  "steps_completed": 20,
+  "steps_per_second": 145.5705614875639,
+  "artifact_rows": {
+    "orders": 320,
+    "equity": 20,
+    "shadow_equity": 20,
+    "positions": 160,
+    "cash_ledger": 160
+  },
+  "broker_state_step": 20,
+  "ledger_schema_ok": true,
+  "ledger_schema_errors": [],
+  "incumbent_package_availability": {
+    "qlib": false,
+    "vectorbt": false,
+    "zipline": false
+  },
+  "incumbent_reference_urls": {
+    "qlib": "https://github.com/microsoft/qlib",
+    "vectorbt": "https://vectorbt.dev/",
+    "zipline-reloaded": "https://zipline.ml4trading.io/"
+  },
+  "limitations": [
+    "synthetic bars and deterministic weights",
+    "simulated fills and no broker connection",
+    "no matched incumbent workload was executed",
+    "timing is a local lab measurement, not production latency"
+  ]
+}

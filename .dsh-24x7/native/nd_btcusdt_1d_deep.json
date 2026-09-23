@@ -1,0 +1,130 @@
+{
+  "asset": "BTCUSDT",
+  "bars_sha256": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+  "freq": "1h",
+  "horizon": 12,
+  "live_pnl_claim": false,
+  "lookback": 80,
+  "metrics": {
+    "bolt_small": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.03417249417249417,
+      "path_rankic_se": 0.032713507510539204,
+      "ret_rankic": -0.06705763397371081,
+      "vol_mae": 0.005952225470913484,
+      "vol_r2": -0.8946964151612289
+    },
+    "chronos2": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.03421911421911422,
+      "path_rankic_se": 0.032601103821993355,
+      "ret_rankic": -0.1551150568339648,
+      "vol_mae": 0.005940291849423255,
+      "vol_r2": -0.8958114032402937
+    },
+    "dip_blend": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0705827505827506,
+      "path_rankic_se": 0.03654670749843978,
+      "ret_rankic": 0.029280769786330957,
+      "vol_mae": 0.004309031758538165,
+      "vol_r2": -0.09626903300914091
+    },
+    "dip_empirical": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0670862470862471,
+      "path_rankic_se": 0.03656865273357606,
+      "ret_rankic": 0.05906821186902077,
+      "vol_mae": 0.004107043965561627,
+      "vol_r2": -0.06628828619527183
+    },
+    "dip_empirical_long": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.051841491841491845,
+      "path_rankic_se": 0.036651190662625115,
+      "ret_rankic": -0.09456327292525472,
+      "vol_mae": 0.004077914095036034,
+      "vol_r2": -0.005876163533328871
+    },
+    "dip_ewma_emp": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.03813519813519813,
+      "path_rankic_se": 0.036707228172662414,
+      "ret_rankic": 0.0010449004988944321,
+      "vol_mae": 0.004049657980041151,
+      "vol_r2": -0.15670021238729248
+    },
+    "dip_ewma_t": {
+      "n_origins": 0,
+      "path_rankic_mean": NaN,
+      "path_rankic_se": NaN,
+      "ret_rankic": NaN,
+      "vol_mae": 0.0042585238575226095,
+      "vol_r2": -0.31546808030776186
+    },
+    "dip_fhs": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.05216783216783217,
+      "path_rankic_se": 0.0366496471406247,
+      "ret_rankic": -0.08473649707218969,
+      "vol_mae": 0.004216664389967395,
+      "vol_r2": -0.3405688776299367
+    },
+    "dip_garch_t": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.04648018648018648,
+      "path_rankic_se": 0.03667515351649525,
+      "ret_rankic": -0.19810264558495094,
+      "vol_mae": 0.0052240599367894035,
+      "vol_r2": -0.573180070472082
+    },
+    "dip_gauss": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0670862470862471,
+      "path_rankic_se": 0.03656865273357606,
+      "ret_rankic": 0.05906821186902077,
+      "vol_mae": 0.004107043965561627,
+      "vol_r2": -0.06628828619527183
+    },
+    "dip_lgbm_q": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.03692307692307692,
+      "path_rankic_se": 0.03671135881273958,
+      "ret_rankic": -0.0003751152790586562,
+      "vol_mae": 0.0038624684967216373,
+      "vol_r2": -0.19403732409964447
+    },
+    "dip_student_t": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.05930069930069931,
+      "path_rankic_se": 0.03661347203945697,
+      "ret_rankic": -0.04134134823720263,
+      "vol_mae": 0.00454429506470526,
+      "vol_r2": -0.13846931705540566
+    },
+    "kronos_small": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0009324009324009338,
+      "path_rankic_se": 0.03198816983287721,
+      "ret_rankic": -0.036458182868698535,
+      "vol_mae": 0.005151279379399799,
+      "vol_r2": -0.6903763116573705
+    },
+    "timesfm": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0006293706293706336,
+      "path_rankic_se": 0.032077188682367655,
+      "ret_rankic": -0.12064267380748674,
+      "vol_mae": 0.006037455832307709,
+      "vol_r2": -0.9172824131696555
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 8455.71514749527,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "f1efe17510e5ba9ca2e5b5c245610e3de8a2fa315ecc6452f56cc12f8938e8f3",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

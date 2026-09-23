@@ -64,6 +64,27 @@ def set_alias(run_id: str, alias: str, *, promotion: dict[str, Any] | None = Non
     _ = run
 
 
+def attach_artifact_identity(run_id: str, identity: dict[str, Any]) -> None:
+    """Attach verified artifact identity to an existing MLflow run."""
+    if not isinstance(run_id, str) or not run_id.strip():
+        raise ValueError("run_id must be non-empty")
+    digest = identity.get("artifact_sha256")
+    if not isinstance(digest, str) or len(digest) != 64:
+        raise ValueError("artifact identity requires a 64-character sha256")
+    int(digest, 16)
+    if identity.get("manifest_valid") is not True:
+        raise ValueError("artifact identity manifest must be valid")
+    MlflowClient().set_tags(
+        run_id,
+        {
+            "artifact_sha256": digest,
+            "artifact_manifest_valid": "true",
+            "artifact_class": str(identity.get("artifact_class", "")),
+            "artifact_manifest_schema": str(identity.get("manifest_schema", "")),
+        },
+    )
+
+
 def promotion_is_approved(promotion: dict[str, Any] | None, *, run_id: str | None = None) -> bool:
     """Validate the explicit promotion receipt required for champion status.
 
@@ -83,6 +104,16 @@ def promotion_is_approved(promotion: dict[str, Any] | None, *, run_id: str | Non
         return False
     if "synthetic_evidence_not_promotable" in list(promotion.get("reasons") or []):
         return False
+    artifact_sha256 = promotion.get("artifact_sha256")
+    if artifact_sha256 is not None:
+        if not isinstance(artifact_sha256, str) or len(artifact_sha256) != 64:
+            return False
+        try:
+            int(artifact_sha256, 16)
+        except ValueError:
+            return False
+        if promotion.get("manifest_valid") is not True:
+            return False
     return bool(
         promotion.get("receipt_schema") == "promotion.v1"
         and promotion.get("promote") is True
@@ -125,6 +156,20 @@ def promotion_decision(
     if metrics.get("evidence_complete") is not True:
         ok = False
         reasons.append("evidence_incomplete")
+    artifact_sha256 = metrics.get("artifact_sha256")
+    if artifact_sha256 is not None:
+        if not isinstance(artifact_sha256, str) or len(artifact_sha256) != 64:
+            ok = False
+            reasons.append("artifact_hash_invalid")
+        else:
+            try:
+                int(artifact_sha256, 16)
+            except ValueError:
+                ok = False
+                reasons.append("artifact_hash_invalid")
+    if metrics.get("manifest_valid") is False:
+        ok = False
+        reasons.append("artifact_manifest_invalid")
     leakage_pass = leakage_ok is True
     if cfg.require_leakage_pass and not leakage_pass:
         ok = False
@@ -173,6 +218,8 @@ def promotion_decision(
         "data_source": data_source,
         "synthetic": synthetic_flag,
         "run_id": metrics.get("run_id"),
+        "artifact_sha256": artifact_sha256,
+        "manifest_valid": metrics.get("manifest_valid"),
     }
 
 

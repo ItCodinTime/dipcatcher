@@ -44,6 +44,14 @@ receipt. Required invariants are `research_only: true`, `live_pnl_claim: false`,
 and `would_promote_live: false`. A kill-switch halt or ledger validation error
 is an incident requiring investigation, not a performance result.
 
+Ledger publication uses a crash-consistency protocol: orders/equity/positions,
+metadata, promotion receipts, and analytics exports are written through
+same-directory temporary files, fsynced, and atomically replaced. The broker
+resume cursor is published only after those artifacts, so a cursor cannot
+intentionally advance beyond durable accounting rows. If a process dies during
+publication, preserve the run directory and resume from the last valid
+`broker_state.json`; never hand-edit a receipt or parquet file.
+
 ## Incident containment
 
 1. Stop new paper orders with the configured kill switch.

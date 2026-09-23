@@ -1,0 +1,75 @@
+== v3 daily balanced panel: status=computed n_obs=150 ==
+auto_block (Politis-White median) = 6.0
+  block=   1.0 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  block=   2.0 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  block=   6.0 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  block=  12.1 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  block=  24.2 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  seed=   7 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  seed=  11 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  seed=  23 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  seed=  42 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+  seed= 101 MCS@0.10: ['dip_student_t', 'dip_ewma_t', 'dip_empirical', 'dip_garch_t', 'dip_fhs', 'dip_blend']
+SPA (any challenger beats target), seed sweep:
+  seed=  7 kronos_small   p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed=  7 chronos2       p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed=  7 bolt_small     p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed=  7 timesfm        p_lower=0.0015 p_cons=0.0015 p_upper=0.0015
+  seed= 11 kronos_small   p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 11 chronos2       p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 11 bolt_small     p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 11 timesfm        p_lower=0.0020 p_cons=0.0020 p_upper=0.0020
+  seed= 23 kronos_small   p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 23 chronos2       p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 23 bolt_small     p_lower=0.0005 p_cons=0.0005 p_upper=0.0005
+  seed= 23 timesfm        p_lower=0.0030 p_cons=0.0030 p_upper=0.0030
+
+note: effect sizes (mean CRPS deltas) are in evidence-sota-eval-v3-d1-repro.json diebold_mariano section
+
+=== SEED-REPLICATION PROVENANCE AUDIT (2026-09-22) ===
+d1_btcusdt_1d_deep: kronos_crps=0.04998 n_models=14
+d1fix_btcusdt_1d_deep: kronos_crps=0.01639 n_models=11
+seed11_btcusdt_1d_deep: kronos_crps=0.04555 n_models=11
+seed23_btcusdt_1d_deep: kronos_crps=0.04787 n_models=11
+FINDING: seed11/seed23 shards carry WRONG tokenizer pairing (Kronos-Tokenizer-2k,
+  kronos_crps ~0.046-0.05 vs corrected-base ~0.0164). They replicate the handicapped
+  Kronos run, not the corrected claim. Corrected-pairing evidence = d1fix_* (seed 7).
+  seed11 merge still shows challengers 0.014 << kronos 0.070 but cannot serve as
+  corrected-claim seed replication -> corrected-pairing seed-11 rerun queued remote.
+  seed11 shards also lack scoring-contract meta -> 'unverified_scoring_contract'.
+
+=== TIMESFM SCORING-CONTRACT INCIDENT (2026-09-22) ===
+Upstream layout (verified in installed timesfm source + live probe):
+  full_forecast channels = [q50, q10, q20, q30, q40, POINT, q60, q70, q80, q90]
+  - channel 5 = point forecast (empirical: quant[...,5] == point exactly)
+  - correction loop writes quantiles to {1,2,3,4,6,7,8,9}; ch0 = raw median
+BUG: legacy remote adapter took q[:9] = {0..8} = 8 deciles + point, dropping
+  q90 (right tail truncated). Local v1 contract took q[1:] = {1..9} = 8 deciles
+  + point, dropping q50 (point ~= median, near-harmless but still wrong).
+FIX (contract v2): np.delete(q, 5) -> the true 9 deciles.
+BLAST RADIUS: every TimesFM column in remote-produced shards/receipts (v3, v4,
+  h4f in-flight) used the legacy adapter; its CRPS is inflated (underdispersed
+  grid). Direction: TimesFM was handicapped; corrected scores can only improve
+  its standing -> margin vs challengers will shrink. Challenger columns are
+  deterministic and unaffected; kronos/chronos2/bolt adapters verified
+  equivalent across checkouts.
+REMEDIATION: corrected timesfm-only shards per cell + column splice (the
+  established kronos-splice pattern, with bit-verification of other columns).
+
+=== CORRECTED TIMESFM PROBE (contract v2, BTC daily-deep, 20 origins, seed 7) ===
+tfmfix_probe.json (remote, post-fix):
+  timesfm CRPS 0.012002 vs challengers 0.011090-0.011663
+  MCS @0.10 retains all 9 challengers; timesfm EXCLUDED
+  SPA vs timesfm: p_cons=0.0199, p_upper=0.5522 (20 obs, small panel)
+  -> corrected scoring does NOT flip the ordering; the fix shrinks the margin
+     but the claim survives on this probe. Full-cell corrected reruns queued.
+
+=== CONTRACT-V2 MERGES (timesfm corrected, spliced) ===
+v3-d1 tfmv2 (1650 origins, 11 daily assets, verified inference):
+  timesfm 0.014860 (vs legacy-handicapped 0.014740) — still above ALL challengers
+  best challenger dip_fhs 0.013987; weakest DM pair dip_gauss-vs-timesfm p=0.1535
+  SPA p_upper=0.0010 floor; MCS @0.10 = {student_t, ewma_t, empirical, garch_t, fhs, blend}
+  ALL FOUR TARGETS EXCLUDED under corrected scoring.
+v3-h4 tfmv2 (750 rows/420 complete; balanced panel unavailable — student-t NaN):
+  all challengers (0.0049-0.0055) < timesfm-v2 0.005542 < bolt < chronos2 < kronos.
+  superseded by h4f full-coverage cells.

@@ -1,0 +1,3 @@
+Success: no issues found in 2 source files
+
+mypy_exit=0

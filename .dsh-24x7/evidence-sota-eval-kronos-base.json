@@ -1,0 +1,140 @@
+{
+  "bars_sha256": {
+    "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+    "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+    "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb"
+  },
+  "config": {
+    "lookback": 400,
+    "n_boot": 2000,
+    "origins_per_asset": 150,
+    "samples_per_origin": 16,
+    "seed": 7,
+    "taus": [
+      0.05,
+      0.5,
+      0.95
+    ],
+    "window": 250
+  },
+  "created_at": "2026-09-21T14:13:50.738083+00:00",
+  "diebold_mariano_vs_kronos": {
+    "dip_empirical": {
+      "mean_loss_diff_kronos_minus_challenger": 0.01508311581806232,
+      "n": 450,
+      "p_value": 7.6963913018998e-20,
+      "preferred": "dip_empirical",
+      "statistic": 9.561847151184399
+    },
+    "dip_ewma_t": {
+      "mean_loss_diff_kronos_minus_challenger": 0.015081430760124392,
+      "n": 450,
+      "p_value": 2.214268985378718e-19,
+      "preferred": "dip_ewma_t",
+      "statistic": 9.429639381919664
+    },
+    "dip_gauss": {
+      "mean_loss_diff_kronos_minus_challenger": 0.014713267741005585,
+      "n": 450,
+      "p_value": 1.1026944303978512e-18,
+      "preferred": "dip_gauss",
+      "statistic": 9.22645156693328
+    },
+    "dip_student_t": {
+      "mean_loss_diff_kronos_minus_challenger": 0.01507779158362423,
+      "n": 450,
+      "p_value": 7.545209695125112e-20,
+      "preferred": "dip_student_t",
+      "statistic": 9.564317849949745
+    }
+  },
+  "disclaimer": "Causal walk-forward evaluation on public Binance klines with proper scores only. Not a live-trading or deployability claim.",
+  "elapsed_seconds": 839.94,
+  "kronos_artifact_sha256": "53ebc8ebf3b553fd20f1298fbfa70209d83a9dfd20e99e8d27b295ca4b34ec48",
+  "live_pnl_claim": false,
+  "mcs_included": {
+    "dip_empirical": true,
+    "dip_ewma_t": true,
+    "dip_gauss": false,
+    "dip_student_t": true,
+    "kronos": false
+  },
+  "mcs_p_values": {
+    "dip_empirical": 0.9760119940029985,
+    "dip_ewma_t": 0.9760119940029985,
+    "dip_gauss": 0.0004997501249375312,
+    "dip_student_t": 0.9760119940029985,
+    "kronos": 0.0004997501249375312
+  },
+  "mean_crps_per_asset": {
+    "BTCUSDT": {
+      "dip_empirical": 0.010436660100400787,
+      "dip_ewma_t": 0.010538426357341292,
+      "dip_gauss": 0.010758024291988787,
+      "dip_student_t": 0.010435880227200066,
+      "kronos": 0.02203212943921662
+    },
+    "ETHUSDT": {
+      "dip_empirical": 0.014108879254844501,
+      "dip_ewma_t": 0.01428990027551333,
+      "dip_gauss": 0.014677350939938058,
+      "dip_student_t": 0.01410296610613405,
+      "kronos": 0.029010040026334085
+    },
+    "SOLUSDT": {
+      "dip_empirical": 0.016175544212621937,
+      "dip_ewma_t": 0.015897812108826383,
+      "dip_gauss": 0.01639525256711058,
+      "dip_student_t": 0.01619820993784738,
+      "kronos": 0.03492826155650348
+    }
+  },
+  "mean_crps_pooled": {
+    "dip_empirical": 0.013573694522622408,
+    "dip_ewma_t": 0.013575379580560336,
+    "dip_gauss": 0.013943542599679141,
+    "dip_student_t": 0.013579018757060498,
+    "kronos": 0.02865681034068473
+  },
+  "mean_pinball_pooled": {
+    "dip_empirical": {
+      "0.05": 0.0027850863275258567,
+      "0.5": 0.00897971912089366,
+      "0.95": 0.0035227960883802505
+    },
+    "dip_ewma_t": {
+      "0.05": 0.002993268434177431,
+      "0.5": 0.008952314571189205,
+      "0.95": 0.003377494823635919
+    },
+    "dip_gauss": {
+      "0.05": 0.002971085092719459,
+      "0.5": 0.008987239624231765,
+      "0.95": 0.0035088593934081134
+    },
+    "dip_student_t": {
+      "0.05": 0.002859460793281218,
+      "0.5": 0.009012789863798281,
+      "0.95": 0.0035148989089957036
+    },
+    "kronos": {
+      "0.05": 0.005347807467901147,
+      "0.5": 0.01994904706320363,
+      "0.95": 0.007221097419241564
+    }
+  },
+  "n_scored_per_asset": {
+    "BTCUSDT": 150,
+    "ETHUSDT": 150,
+    "SOLUSDT": 150
+  },
+  "research_only": true,
+  "schema": "sota_eval.v1",
+  "spa_vs_kronos": {
+    "p_consistent": 0.0004997501249375312,
+    "p_lower": 0.0004997501249375312,
+    "p_upper": 0.4737631184407796,
+    "statistic": 8.85096791870257
+  },
+  "tokenizer_artifact_sha256": "70e5c35d91fd24244d47e46e70529897ba89c2922dd38635805b00d6df86a791"
+}

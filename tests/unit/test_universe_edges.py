@@ -207,9 +207,7 @@ def test_assert_universe_detects_late_available_bar() -> None:
         .alias("available_time"),
     )
     asof = datetime(2020, 1, 21, tzinfo=UTC)
-    membership = pl.DataFrame(
-        {"security_id": ["A"], "asof": [asof], "adv": [50_000_000.0]}
-    )
+    membership = pl.DataFrame({"security_id": ["A"], "asof": [asof], "adv": [50_000_000.0]})
 
     with pytest.raises(LeakageError, match="Universe ADV"):
         assert_universe_not_from_future(membership, bars, asof)

@@ -250,13 +250,13 @@ For discrete samples, ES is the mean of losses strictly exceeding VaR plus a bou
 
 ## Maximum drawdown
 
-Wealth \(W_t = \prod_{u\le t}(1+R_u)\), peak \(\mathrm{Peak}_t = \max_{u\le t} W_u\):
+Starting from \(W_0=1\), wealth \(W_t = \prod_{u=1}^{t}(1+R_u)\) and peak \(\mathrm{Peak}_t = \max_{0\le u\le t} W_u\):
 
 \[
 \mathrm{DD}_t = W_t/\mathrm{Peak}_t - 1, \qquad \mathrm{MDD} = \min_t \mathrm{DD}_t
 \]
 
-MDD is \(\le 0\). Monotone increasing wealth implies MDD \(= 0\). If any return or drawdown observation is non-finite, the metric is NaN rather than a minimum over a silently truncated finite subset.
+MDD is \(\le 0\). A first-period loss is measured against the initial capital, so \(R_1=-0.2\) gives \(\mathrm{DD}_1=-0.2\). Monotone increasing wealth implies MDD \(= 0\). If any return or drawdown observation is non-finite, the metric is NaN rather than a minimum over a silently truncated finite subset.
 
 ## Sharpe ratio
 

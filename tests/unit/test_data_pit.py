@@ -460,6 +460,11 @@ def test_make_provider_synthetic_vs_file_routing(tmp_path: Path) -> None:
     )
     assert isinstance(make_provider(syn), SyntheticMarketProvider)
 
+    public = AppConfig.model_validate(
+        {"data": {"root": str(tmp_path / "public"), "source": "binance_public_data"}}
+    )
+    assert make_provider(public).__class__.__name__ == "PublicMarketProvider"
+
     raw = tmp_path / "raw"
     raw.mkdir()
     for src in ("file", "parquet"):
@@ -468,6 +473,35 @@ def test_make_provider_synthetic_vs_file_routing(tmp_path: Path) -> None:
         )
         prov = make_provider(cfg)
         assert isinstance(prov, ParquetMarketProvider)
+
+
+def test_make_provider_itch_routes_path_to_fetch_not_constructor(tmp_path: Path) -> None:
+    """nasdaq_itch/fi_2010 pass data.source_path to fetch, never __init__."""
+    csv_path = tmp_path / "itch.csv"
+    csv_path.write_text(
+        "security_id,event_time,open,high,low,close,volume\n"
+        "A,2024-01-02T00:00:00Z,10,11,9,10.5,100\n"
+    )
+    cfg = AppConfig.model_validate(
+        {
+            "data": {
+                "root": str(tmp_path / "itch"),
+                "source": "nasdaq_itch",
+                "source_path": str(csv_path),
+            }
+        }
+    )
+    prov = make_provider(cfg)
+    assert prov.__class__.__name__ == "PublicMarketProvider"
+    bars = prov.get_bars()
+    assert bars.height == 1
+    assert bars["security_id"][0] == "A"
+
+    missing = AppConfig.model_validate(
+        {"data": {"root": str(tmp_path / "none"), "source": "nasdaq_itch"}}
+    )
+    with pytest.raises(ValueError, match="source_path"):
+        make_provider(missing)
 
 
 def test_make_provider_unknown_source_fail_closed(tmp_path: Path) -> None:

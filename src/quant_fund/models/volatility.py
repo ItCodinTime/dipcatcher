@@ -367,6 +367,23 @@ class GARCHVol(JoblibMixin):
             "series_scope": getattr(self, "series_scope", "univariate_return_series"),
         }
 
+    def assert_consumer_scope(self, consumer_scope: str) -> None:
+        """Reject a pooled artifact at a per-security volatility consumer."""
+        if not isinstance(consumer_scope, str) or not consumer_scope.strip():
+            raise ValueError("consumer_scope must be a non-empty string")
+        artifact_scope = getattr(self, "series_scope", "univariate_return_series")
+        if artifact_scope == "date_level_equal_weight_cross_section":
+            if consumer_scope != "date_level_portfolio":
+                raise ValueError(
+                    "pooled date-level GARCH artifacts are consumable only by "
+                    "date_level_portfolio risk consumers"
+                )
+            return
+        if artifact_scope != consumer_scope:
+            raise ValueError(
+                f"GARCH scope mismatch: artifact={artifact_scope!r}, consumer={consumer_scope!r}"
+            )
+
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compatibility adapter: current-origin sigma for each requested row."""
         n = int(np.asarray(x).shape[0])

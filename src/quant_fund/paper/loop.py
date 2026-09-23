@@ -332,6 +332,7 @@ def run_paper_loop(
     """
     resume_id = resume_run_id or getattr(config.paper, "resume_run_id", None) or run_id
     prior_state: dict[str, Any] | None = None
+    resume_step = 0
     if resume:
         if not resume_id:
             raise ValueError("resume=True requires resume_run_id or run_id")
@@ -343,6 +344,7 @@ def run_paper_loop(
         raw_step = prior_state.get("step", 0)
         if isinstance(raw_step, bool) or not isinstance(raw_step, int) or raw_step < 0:
             raise ValueError("cannot resume from broker state with invalid step")
+        resume_step = raw_step
         for cursor_name in ("last_decision", "last_exec"):
             raw_cursor = prior_state.get(cursor_name)
             if raw_cursor is not None and (
@@ -369,6 +371,32 @@ def run_paper_loop(
             raise ValueError("cannot resume from broker state with invalid mark_ages")
         run_id = resume_id
     run_id = run_id or f"paper-{uuid4().hex[:10]}"
+    ledger = PaperLedger(
+        config.data.root,
+        run_id,
+        config.paper.ledger_subdir,
+        load_existing=False,
+    )
+    if resume:
+        equity_path = ledger.root / "equity.parquet"
+        if not equity_path.is_file():
+            if resume_step != 0:
+                raise ValueError(
+                    "cannot resume: durable equity.parquet is missing for a nonzero cursor"
+                )
+        else:
+            try:
+                durable_equity_rows = pl.read_parquet(equity_path).height
+            except Exception as exc:
+                raise ValueError("cannot resume: durable equity.parquet is unreadable") from exc
+            if durable_equity_rows != resume_step:
+                raise ValueError(
+                    "cannot resume: durable equity row count does not match broker cursor"
+                )
+        try:
+            ledger.load_existing()
+        except Exception as exc:
+            raise ValueError("cannot resume: durable ledger artifact is unreadable") from exc
 
     px = bars
     if "adv" not in px.columns:
@@ -444,12 +472,6 @@ def run_paper_loop(
                 config=config, initial_cash=0.0, slot="shadow", allow_capital=False
             )
 
-    ledger = PaperLedger(
-        config.data.root,
-        run_id,
-        config.paper.ledger_subdir,
-        load_existing=bool(resume),
-    )
     prior_promo: dict[str, Any] | None = None
     if resume:
         prior_promo_path = ledger.root / "promotion_dry_run.json"
@@ -710,7 +732,9 @@ def run_paper_loop(
         steps_this_run += 1
         last_decision = dt
         last_exec = exec_dt
-        # Persist broker state every step for crash-safe multi-day resume
+        # Publish ledger rows before advancing the resume cursor.  A crash after
+        # state publication must never leave broker state ahead of durable accounting.
+        ledger.flush()
         ledger.save_broker_state(
             champ,
             shadow,
@@ -833,8 +857,21 @@ def run_paper_loop(
         "drawdown_duration", metrics.get("drawdown_duration", {})
     )
     ledger.set_meta(metrics=metrics)
-    # Final broker state
-    ledger.save_broker_state(
+    # Publish all accounting and metadata before the final resume cursor. A
+    # cursor must never claim more durable progress than the ledger artifacts.
+    paths = ledger.flush()
+    # Schema-aligned analytics JSON (same keys as backtest export where possible)
+    ae_path = ledger.write_analytics_export(metrics["analytics_export"])
+    paths["analytics_export"] = ae_path
+    ae_report = validate_analytics_export(metrics["analytics_export"])
+    metrics["analytics_export_validation"] = ae_report
+    metrics["analytics_export_ok"] = bool(ae_report.get("ok"))
+    # Persist validation onto meta after export (fail-closed flags in metrics).
+    ledger.set_meta(metrics=metrics)
+    ledger.flush()
+    # Final broker state is intentionally published last, after every ledger
+    # artifact has been durably replaced.
+    broker_state_path = ledger.save_broker_state(
         champ,
         shadow,
         last_decision=last_decision,
@@ -845,20 +882,7 @@ def run_paper_loop(
         ),
         mark_ages=mark_ages,
     )
-    paths = ledger.flush()
-    # Schema-aligned analytics JSON (same keys as backtest export where possible)
-    import json as _json_ae
-
-    ae_path = ledger.root / "analytics_export.json"
-    ae_path.write_text(_json_ae.dumps(metrics["analytics_export"], indent=2, default=str))
-    paths["analytics_export"] = ae_path
-    ae_report = validate_analytics_export(metrics["analytics_export"])
-    metrics["analytics_export_validation"] = ae_report
-    metrics["analytics_export_ok"] = bool(ae_report.get("ok"))
-    # Persist validation onto meta after export (fail-closed flags in metrics).
-    ledger.set_meta(metrics=metrics)
-    ledger.flush()
-    paths["broker_state"] = ledger.root / "broker_state.json"
+    paths["broker_state"] = broker_state_path
     paths["promotion_dry_run"] = promo_path
     orders_df = (
         pl.DataFrame(ledger._orders, infer_schema_length=None) if ledger._orders else pl.DataFrame()
