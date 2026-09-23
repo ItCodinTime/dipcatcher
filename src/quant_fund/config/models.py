@@ -829,7 +829,10 @@ class FusionConfig(StrictConfigModel):
             raise ValueError("risk_weight must be finite and positive")
         if self.probability_calibrator not in {"auto", "isotonic", "platt"}:
             raise ValueError("probability_calibrator must be auto, isotonic, or platt")
-        if self.probability_calibration_max_age_days is not None and self.probability_calibration_max_age_days < 0:
+        if (
+            self.probability_calibration_max_age_days is not None
+            and self.probability_calibration_max_age_days < 0
+        ):
             raise ValueError("probability_calibration_max_age_days must be non-negative")
         return self
 

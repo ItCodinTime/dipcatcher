@@ -92,9 +92,7 @@ def trailing_nav_allocations(
     return pl.DataFrame({"event_time": dates, **allocations})
 
 
-def mix_targets(
-    targets: Mapping[str, pl.DataFrame], allocations: pl.DataFrame
-) -> pl.DataFrame:
+def mix_targets(targets: Mapping[str, pl.DataFrame], allocations: pl.DataFrame) -> pl.DataFrame:
     """Combine full target snapshots; explicit zeros flow through to exits."""
     names = sorted(targets)
     if not names or not set(names).issubset(allocations.columns):
@@ -117,7 +115,7 @@ def mix_targets(
     combined = combined.join(allocations.select(["event_time", *names]), on="event_time")
     if combined.height != grid.height:
         raise ValueError("allocations missing target dates")
-    expression = sum(pl.col(f"{name}_right") * pl.col(name) for name in names)
+    expression = sum((pl.col(f"{name}_right") * pl.col(name) for name in names), pl.lit(0.0))
     return combined.select(*keys, expression.alias("target_weight"))
 
 
@@ -145,9 +143,7 @@ def banded_targets(targets: pl.DataFrame, band: float) -> pl.DataFrame:
         sid = str(row["security_id"])
         requested = float(row["target_weight"])
         old = previous.get(sid, 0.0)
-        if (requested == 0.0 and old != 0.0) or (
-            requested != 0.0 and abs(requested - old) > band
-        ):
+        if (requested == 0.0 and old != 0.0) or (requested != 0.0 and abs(requested - old) > band):
             rows.append(row)
             previous[sid] = requested
     if not rows:

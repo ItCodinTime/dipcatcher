@@ -605,9 +605,7 @@ def train_ranking_auto(config: AppConfig) -> dict[str, Any]:
     candidates = ("ridge", "elasticnet", "neural", "ensemble")
     results = [train_ranking(config, candidate) for candidate in candidates]
     viable = [
-        result
-        for result in results
-        if np.isfinite(float(result["metrics"].get("mean_ic", np.nan)))
+        result for result in results if np.isfinite(float(result["metrics"].get("mean_ic", np.nan)))
     ]
     if not viable:
         raise ValueError("automatic ranking selection produced no finite candidate metric")
@@ -690,9 +688,13 @@ def train_calibration(config: AppConfig, model_name: str = "isotonic") -> dict[s
     final.fit_end = str(dates.max())
     if oos_label:
         oos_dates = np.concatenate(
-            [dates[test_mask] for _train_mask, test_mask in _walk_forward_splits(
-                dates, config, horizon_bars=_label_horizon(label)
-            ) if test_mask.any()]
+            [
+                dates[test_mask]
+                for _train_mask, test_mask in _walk_forward_splits(
+                    dates, config, horizon_bars=_label_horizon(label)
+                )
+                if test_mask.any()
+            ]
         )
         if oos_dates.size:
             final.oos_start = str(oos_dates.min())
@@ -885,7 +887,9 @@ def train_distribution_auto(config: AppConfig) -> dict[str, Any]:
         "metrics": selected["metrics"],
         "path": str(auto_path),
         "selected_model": selected_name,
-        "candidates": {Path(str(r["path"])).stem.removeprefix("dist_"): r["metrics"] for r in results},
+        "candidates": {
+            Path(str(r["path"])).stem.removeprefix("dist_"): r["metrics"] for r in results
+        },
     }
 
 
@@ -1505,7 +1509,9 @@ def train_volatility_auto(config: AppConfig) -> dict[str, Any]:
         "metrics": selected["metrics"],
         "path": str(auto_path),
         "selected_model": selected_name,
-        "candidates": {Path(str(r["path"])).stem.removeprefix("vol_"): r["metrics"] for r in results},
+        "candidates": {
+            Path(str(r["path"])).stem.removeprefix("vol_"): r["metrics"] for r in results
+        },
     }
 
 
@@ -1842,7 +1848,9 @@ def train_reinforcement(config: AppConfig, model_name: str = "linucb") -> dict[s
     requested_top_k = max(1, int(config.constraints.max_positions or 3))
     # LinUCB's panel evaluator requires at least 2*k arms per date so that the
     # selected set is not the entire cross-section. Cap k for narrow universes.
-    n_arms = int(np.max([np.sum(np.asarray(dates) == date) for date in set(np.asarray(dates).tolist())]))
+    n_arms = int(
+        np.max([np.sum(np.asarray(dates) == date) for date in set(np.asarray(dates).tolist())])
+    )
     top_k = min(requested_top_k, max(1, n_arms // 2))
     runner = run_linucb_panel if model_name == "linucb" else run_thompson_panel
     trace = runner(
@@ -1936,8 +1944,7 @@ def train_reinforcement_auto(config: AppConfig) -> dict[str, Any]:
     auto_path = Path(config.data.root) / "metadata" / "rl_auto.joblib"
     save_joblib_artifact(selected_payload, auto_path)
     candidate_diagnostics = {
-        Path(str(result["path"])).stem.removeprefix("rl_"): result["metrics"]
-        for result in results
+        Path(str(result["path"])).stem.removeprefix("rl_"): result["metrics"] for result in results
     }
     candidate_diagnostics.update(
         {name: {"unavailable": reason} for name, reason in unavailable.items()}
@@ -2106,8 +2113,16 @@ def train_family(config: AppConfig, family: str, model_name: str | None = None) 
         "ranking": lambda: train_ranking(config, model_name or "ridge"),
         "calibration": lambda: train_calibration(config, model_name or "isotonic"),
         "alpha": lambda: train_alpha(config, model_name or "ridge"),
-        "distribution": lambda: train_distribution_auto(config) if model_name == "auto" else train_distribution(config, model_name or "gaussian"),
-        "volatility": lambda: train_volatility_auto(config) if model_name == "auto" else train_volatility(config, model_name or "ewma"),
+        "distribution": lambda: (
+            train_distribution_auto(config)
+            if model_name == "auto"
+            else train_distribution(config, model_name or "gaussian")
+        ),
+        "volatility": lambda: (
+            train_volatility_auto(config)
+            if model_name == "auto"
+            else train_volatility(config, model_name or "ewma")
+        ),
         "regime": lambda: train_regime(config, model_name or "hmm"),
         "tail": lambda: train_tail(config, model_name or "historical"),
         "reinforcement": lambda: train_reinforcement(config, model_name or "linucb"),

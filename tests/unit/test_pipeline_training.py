@@ -37,12 +37,21 @@ def test_train_distribution_auto_selects_lowest_finite_pinball(
     from quant_fund.models.base import save_joblib_artifact
     from quant_fund.pipeline import train as train_module
 
-    scores = {"empirical": 0.4, "gaussian": 0.2, "linear_qr": float("nan"), "xgboost": 0.3, "lightgbm": 0.25}
+    scores = {
+        "empirical": 0.4,
+        "gaussian": 0.2,
+        "linear_qr": float("nan"),
+        "xgboost": 0.3,
+        "lightgbm": 0.25,
+    }
 
     def fake_train(config, model_name):
         path = Path(config.data.root) / "metadata" / f"dist_{model_name}.joblib"
         save_joblib_artifact({"features": ["f0"], "model": model_name}, path)
-        return {"path": str(path), "metrics": {"mean_pinball": scores[model_name], "n_oos_rows": 20}}
+        return {
+            "path": str(path),
+            "metrics": {"mean_pinball": scores[model_name], "n_oos_rows": 20},
+        }
 
     monkeypatch.setattr(train_module, "train_distribution", fake_train)
     cfg = load_config("configs/research.yaml")
@@ -98,7 +107,12 @@ def test_train_reinforcement_auto_selects_best_finite_policy(
     from quant_fund.models.rl import LinUCBRanker
     from quant_fund.pipeline import train as train_module
 
-    advantages = {"linucb": 0.01, "thompson": 0.05, "quantile_thompson": float("nan"), "policy_gradient": 0.02}
+    advantages = {
+        "linucb": 0.01,
+        "thompson": 0.05,
+        "quantile_thompson": float("nan"),
+        "policy_gradient": 0.02,
+    }
 
     def fake_train(config, model_name):
         path = Path(config.data.root) / "metadata" / f"rl_{model_name}.joblib"

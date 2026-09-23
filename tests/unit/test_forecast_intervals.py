@@ -56,9 +56,7 @@ def test_rl_artifact_checksum_mismatch_fails_closed(tmp_path: Path) -> None:
     root = tmp_path / "metadata"
     root.mkdir()
     artifact = root / "rl_linucb.joblib"
-    save_joblib_artifact(
-        {"policy": LinUCBRanker(1), "features": ["ret_1"]}, artifact
-    )
+    save_joblib_artifact({"policy": LinUCBRanker(1), "features": ["ret_1"]}, artifact)
     artifact.write_bytes(artifact.read_bytes() + b"tampered")
     cfg = AppConfig()
     cfg.data.root = tmp_path
@@ -82,7 +80,9 @@ def test_probability_calibrator_loader_enforces_score_identity(tmp_path: Path) -
     from quant_fund.models.calibration import ProbabilityCalibrator
     from quant_fund.pipeline import forecast as forecast_module
 
-    calibrator = ProbabilityCalibrator("isotonic").fit(np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10))
+    calibrator = ProbabilityCalibrator("isotonic").fit(
+        np.linspace(0, 1, 20), np.tile([0.0, 1.0], 10)
+    )
     calibrator.score_feature = "wrong_score"
     calibrator.label = "future_label"
     path = tmp_path / "metadata" / "calibrator_auto.joblib"
@@ -165,9 +165,7 @@ def test_probability_calibrator_loader_rejects_stale_asof(tmp_path: Path) -> Non
     cfg.data.root = tmp_path
     cfg.fusion.probability_calibration_max_age_days = 5
     with pytest.raises(ValueError, match="stale"):
-        forecast_module._load_probability_calibrator(
-            cfg, asof=datetime(2020, 2, 20, tzinfo=UTC)
-        )
+        forecast_module._load_probability_calibrator(cfg, asof=datetime(2020, 2, 20, tzinfo=UTC))
 
 
 def test_ranker_loader_accepts_ensemble_artifact(tmp_path: Path) -> None:

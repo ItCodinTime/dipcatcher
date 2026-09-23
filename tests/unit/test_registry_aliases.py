@@ -43,8 +43,13 @@ def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.Monke
     ]
 
 
-def test_attach_artifact_identity_rejects_invalid_manifest_before_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("quant_fund.registry.mlflow_store.MlflowClient", lambda: (_ for _ in ()).throw(AssertionError("client should not be called")))
+def test_attach_artifact_identity_rejects_invalid_manifest_before_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "quant_fund.registry.mlflow_store.MlflowClient",
+        lambda: (_ for _ in ()).throw(AssertionError("client should not be called")),
+    )
     with pytest.raises(ValueError, match="64-character sha256"):
         attach_artifact_identity("run-id", {"artifact_sha256": "bad", "manifest_valid": True})
 

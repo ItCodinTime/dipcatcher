@@ -242,9 +242,7 @@ def mean_crps_student_t(y: Array, mu: Array, sigma: Array, nu: float | Array) ->
 
 
 # 19-quantile grid used by the one-step GARCH/TSFM evaluation lanes.
-GARCH_ONE_STEP_CRPS_TAUS: tuple[float, ...] = tuple(
-    float(x) for x in np.linspace(0.05, 0.95, 19)
-)
+GARCH_ONE_STEP_CRPS_TAUS: tuple[float, ...] = tuple(float(x) for x in np.linspace(0.05, 0.95, 19))
 
 
 def log_score_gaussian(y: Array, mu: Array, sigma: Array) -> Array:

@@ -81,8 +81,7 @@ def _write_manifest(path: Path, payload: Any) -> None:
         ) as temporary:
             temporary_path = Path(temporary.name)
             temporary.write(
-                json.dumps(_manifest_payload(path, payload), sort_keys=True, indent=2)
-                + "\n"
+                json.dumps(_manifest_payload(path, payload), sort_keys=True, indent=2) + "\n"
             )
             temporary.flush()
             os.fsync(temporary.fileno())
