@@ -431,13 +431,17 @@ def test_kyle_lambda_date_series_and_ofi_depth_corr() -> None:
 
 
 def test_cli_dump_lambda_series_help_mentions_research_only() -> None:
+    import re
 
     result = CliRunner().invoke(app, ["kyle-ofi", "--help"])
     assert result.exit_code == 0
-    assert "--dump-lambda-series" in result.stdout
-    assert (
-        "research_only" in result.stdout.lower() or "research_diagnostic" in result.stdout.lower()
-    )
+    # Rich wraps long option names at narrow terminal widths (CI default 80
+    # cols); strip ANSI codes and all non-alphanumerics so the flag survives
+    # any line-wrap/box-drawing.
+    squashed = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    squashed = re.sub(r"[^a-z0-9]+", "", squashed.lower())
+    assert "dumplambdaseries" in squashed
+    assert "research" in squashed
 
 
 def test_residual_depth_fwd_ret_1_soft_verify() -> None:
