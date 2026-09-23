@@ -115,7 +115,7 @@ def mix_targets(targets: Mapping[str, pl.DataFrame], allocations: pl.DataFrame) 
     combined = combined.join(allocations.select(["event_time", *names]), on="event_time")
     if combined.height != grid.height:
         raise ValueError("allocations missing target dates")
-    expression = sum(pl.col(f"{name}_right") * pl.col(name) for name in names)
+    expression = sum((pl.col(f"{name}_right") * pl.col(name) for name in names), pl.lit(0.0))
     return combined.select(*keys, expression.alias("target_weight"))
 
 
