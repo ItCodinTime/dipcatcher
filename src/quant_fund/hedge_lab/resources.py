@@ -90,7 +90,8 @@ def physical_memory() -> tuple[int, int]:
 
         status = MemoryStatusEx()
         status.dwLength = ctypes.sizeof(MemoryStatusEx)
-        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        windll = getattr(ctypes, "windll", None)
+        if windll is not None and windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return int(status.ullTotalPhys), int(status.ullAvailPhys)
     except Exception:
         pass

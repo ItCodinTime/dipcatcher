@@ -83,7 +83,7 @@ class PerpBook:
         return sum(self.qty[s] * marks[s] for s in self.qty if s in marks)
 
 
-def infer_periods_per_year(times: list[datetime], hint_seconds: int | None = None) -> float:
+def infer_periods_per_year(times: list[datetime], hint_seconds: float | None = None) -> float:
     """Bar-spacing annualization on a 365.25-day calendar.
 
     Median spacing is robust to isolated missing bars; a hint wins only when
