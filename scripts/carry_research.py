@@ -198,7 +198,7 @@ def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag="") -> int:
     champ = dict(enter=0.00015, exit_=0.0, lb=9, nw=0.12, mx=15, band=1.3)
     if tag:
         # expanded 355-coin universe pick (docs/carry_expansion_2026_09.md)
-        champ.update(enter=0.0002, nw=0.12, mx=60, rsr=0.002, rsc=1.5, rsf=1.0)
+        champ.update(enter=0.0002, exit_=-0.000125, nw=0.12, mx=60, rsr=0.002, rsc=1.5, rsf=1.0)
     out = {}
     for label, (p, s, f) in {
         "dev": (dev_p, dev_s, dev_f),
