@@ -142,6 +142,58 @@ the v3 config: full Sharpe 6.63 but only +274%, and holdout **−0.54 Sharpe /
 names into churn cost exactly where yield is thinnest. Daily bars remain
 the sweet spot for this mechanism.
 
+## Multi-venue expansion — venue depth census + dYdX probe
+
+Venue funding-history census (all public endpoints probed 2026-09-22):
+
+| venue | OHLC depth | funding depth | verdict |
+|-------|-----------|---------------|---------|
+| Binance | 2019+ | 2019+ (Vision) | **base book** |
+| Hyperliquid | listing+ | listing+ (hourly, paginated) | **fetched** |
+| dYdX v4 indexer | 2023-10+ | 2023-10+ (hourly) | fetched, rejected below |
+| OKX | 2017+ | ~3 mo only | dead |
+| Bybit | — | ~3 mo only | dead |
+| Gate.io | — | hard-capped 180 d | dead |
+| Bitget | — | ~1 mo | dead |
+
+`scripts/fetch_dydx_carry.py` / `build_dydx_book.py` + `fetch_hyperliquid_carry.py`
+/ `build_hl_book.py` produce venue-namespaced books (`DYDX:BTC`, `HL:BTC` — each a
+separate delta-neutral pair marked at its own wicks, spot hedge from the venue
+itself when listed, else Binance spot). This keeps cross-venue basis risk
+*inside* the model rather than assuming one global perp price.
+
+### Two data traps found and fixed (`carry_research.py`)
+
+1. **`eligible_coins` union-staleness:** "still listed at window end" compared
+   each coin's last bar to the *merged* union's last timestamp — any venue
+   whose fetch ended a day earlier silently dropped ALL its names, and a stale
+   `binance_carry_extra` (ended 2026-08-31) ejected the whole extra universe
+   from holdout/full. Now `nz[-1] >= last_i - max_gap`: delisted-mid-window
+   names stay excluded, venues ending ≤3 days apart all pass.
+2. **`run_grid` skipped the eligible filter** — dead coins (YFII, AUDIO)
+   entered the book then aborted every config on `StaleValuationError`. Grid
+   now filters identically to `run_champion`.
+
+`fetch_binance_daily_tail.py` gained `--data`/`--since` + a funding-tail
+merge; klines for both Binance dirs refreshed through 2026-09-22.
+(`fapi.binance.com` funding endpoint geo-blocks this host with HTTP 451 —
+funding history ends 2026-08-31 for Binance names, so Sep-2026 carry is
+modestly understated. Honest direction: missing events can't pay.)
+
+### dYdX result — real risk, net-negative, rejected
+
+- dYdX standalone (68 names, Binance-spot hedge): dev Sharpe 6.80 / +23%, but
+  **holdout DD −17.1%** — the Oct-2025 flash crash decoupled dYdX perps from
+  the Binance spot hedge leg for hours. That is honest modeled risk, not a
+  data bug: on thin venues the two legs genuinely stop trading together.
+- Merged with the Binance book under champion v4: dev 6.56/+342% (a wash —
+  dYdX rarely clears the 2bp bar), full **5.83/+355% vs Binance-only
+  6.44/+397%**, holdout 1.42 vs 4.35. The venue adds basis-crash exposure
+  with almost no funding harvest.
+- `enter_rate_by_prefix` (per-venue entry bars, e.g. `{"DYDX:": 0.0005}`)
+  probed at 3/5/8bp — dev return moved ≤0.4pp; thin book stays thin.
+  dYdX is **documented, not shipped**; fetcher + builder retained.
+
 ## Reproduce
 
 ```
