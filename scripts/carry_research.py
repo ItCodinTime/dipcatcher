@@ -42,10 +42,23 @@ class OverlayAdapter:
         return {k: v * s for k, v in targets.items()}
 
 
-def load_carry():
-    perp = pl.read_parquet(DATA / "perp_bars.parquet")
-    spot = pl.read_parquet(DATA / "spot_bars.parquet")
-    fund = pl.read_parquet(DATA / "funding.parquet")
+def load_carry(extra_dir: pathlib.Path | str | None = None):
+    if extra_dir is not None:
+        extra_dir = pathlib.Path(extra_dir)
+
+    def _bars(name):
+        frames = [pl.read_parquet(DATA / name)]
+        if extra_dir is not None and (extra_dir / name).exists():
+            frames.append(pl.read_parquet(extra_dir / name))
+        return (
+            pl.concat(frames)
+            .unique(["event_time", "security_id"])
+            .sort(["event_time", "security_id"])
+        )
+
+    perp = _bars("perp_bars.parquet")
+    spot = _bars("spot_bars.parquet")
+    fund = _bars("funding.parquet")
     # aggregate the day's funding events into the daily bar timestamp
     fund = (
         fund.with_columns(pl.col("event_time").dt.truncate("1d").alias("event_time"))
@@ -102,9 +115,14 @@ def main() -> int:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", nargs="?", default="grid", choices=["grid", "champion"])
+    ap.add_argument(
+        "--extra-dir",
+        default=None,
+        help="second parquet dir merged into the universe (e.g. data/binance_carry_extra)",
+    )
     args = ap.parse_args()
 
-    perp, spot, fund = load_carry()
+    perp, spot, fund = load_carry(args.extra_dir)
     print("coins:", fund["security_id"].n_unique(), "fund rows:", fund.height)
     dev_end = SPLIT
     dev_p = perp.filter(pl.col("event_time") < dev_end)
@@ -113,7 +131,8 @@ def main() -> int:
     print("dev bars:", dev_p.height, "dev fund:", dev_f.height)
 
     if args.mode == "champion":
-        return run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end)
+        tag = "_expanded" if args.extra_dir else ""
+        return run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag=tag)
     return run_grid(dev_p, dev_s, dev_f)
 
 
@@ -150,9 +169,12 @@ def eligible_coins(perp: pl.DataFrame, spot: pl.DataFrame, max_gap: int = 3) -> 
     return keep
 
 
-def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end) -> int:
+def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag="") -> int:
     """Evaluate the dev-selected config on dev, holdout, and full windows."""
     champ = dict(enter=0.00015, exit_=0.0, lb=9, nw=0.12, mx=15, band=1.3)
+    if tag:
+        # expanded 355-coin universe pick (docs/carry_expansion_2026_09.md)
+        champ.update(nw=0.11, mx=60)
     out = {}
     for label, (p, s, f) in {
         "dev": (dev_p, dev_s, dev_f),
@@ -175,11 +197,13 @@ def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end) -> int:
         out[label] = m
         print(label, json.dumps(m, default=str), flush=True)
         if label == "full":
-            r.equity.write_parquet("artifacts/carry_equity_full.parquet")
-            w.write_parquet("artifacts/carry_weights_full.parquet")
+            r.equity.write_parquet(f"artifacts/carry_equity{tag}_full.parquet")
+            w.write_parquet(f"artifacts/carry_weights{tag}_full.parquet")
     pathlib.Path("artifacts").mkdir(exist_ok=True)
-    pathlib.Path("artifacts/carry_champion.json").write_text(json.dumps(out, indent=2, default=str))
-    print("wrote artifacts/carry_champion.json + equity/weights parquet")
+    pathlib.Path(f"artifacts/carry_champion{tag}.json").write_text(
+        json.dumps(out, indent=2, default=str)
+    )
+    print(f"wrote artifacts/carry_champion{tag}.json + equity/weights parquet")
     return 0
 
 
