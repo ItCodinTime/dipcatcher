@@ -1,0 +1,116 @@
+{
+  "kind": "sim_live_bench_receipt",
+  "run_id": "solo-btcusdt",
+  "live_pnl_claim": false,
+  "simulated_only": true,
+  "research_only": true,
+  "bench_only": true,
+  "data_label": "binance_public_data",
+  "git_sha": null,
+  "bars": {
+    "root": "data/raw/sources",
+    "interval": "1d",
+    "symbols": [
+      "BTCUSDT"
+    ],
+    "sha256": {
+      "BTCUSDT": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843"
+    },
+    "tail_bars": null,
+    "eval_tail_bars": null
+  },
+  "strategy": {
+    "champion": {
+      "name": "s",
+      "spec": "ewma_emp",
+      "policy": {
+        "mode": "long_flat",
+        "kappa": 0.15,
+        "gross_target": 1.0,
+        "name_cap": 0.25,
+        "cost_gate": 0.15,
+        "deadband": 0.01,
+        "band_lo": 0.05,
+        "band_hi": 0.95,
+        "gate_on": "edge",
+        "sizing": "risk"
+      }
+    },
+    "challengers": [],
+    "taus": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.39999999999999997,
+      0.44999999999999996,
+      0.49999999999999994,
+      0.5499999999999999,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.7999999999999999,
+      0.85,
+      0.9,
+      0.95
+    ],
+    "window": 750,
+    "min_history": null
+  },
+  "forecaster_stats": {
+    "BTCUSDT:ewma_emp": {
+      "emitted": 3261,
+      "failed": 0,
+      "warmup": 60
+    }
+  },
+  "quantile_cache_digests": {
+    "BTCUSDT:ewma_emp": "82efa55bd12a2eb3"
+  },
+  "loop_metrics": {
+    "status": "bench_only_no_paper_loop"
+  },
+  "champion_equity_stats": {
+    "status": "ok",
+    "n_marks": 3321,
+    "nav_start": 1000000.0,
+    "nav_end": 2117611.844542947,
+    "total_return": 1.1176118445429473,
+    "ann_return": 0.08604546547657832,
+    "ann_vol": 0.08730756111849093,
+    "sharpe_simulated": 0.9889234480267168,
+    "max_drawdown": -0.11518818359230154,
+    "bars_per_year": 365.25,
+    "n_fills": 767
+  },
+  "book_stats": {
+    "s": {
+      "status": "ok",
+      "n_marks": 3321,
+      "nav_start": 1000000.0,
+      "nav_end": 2117611.844542947,
+      "total_return": 1.1176118445429473,
+      "ann_return": 0.08604546547657832,
+      "ann_vol": 0.08730756111849093,
+      "sharpe_simulated": 0.9889234480267168,
+      "max_drawdown": -0.11518818359230154,
+      "bars_per_year": 365.25,
+      "n_fills": 767
+    }
+  },
+  "divergence": null,
+  "promotion_dry_run": null,
+  "conventions": [
+    "signal at decision bar t uses only closes <= t (causal)",
+    "fills at next bar open (config.execution.fill)",
+    "forecast horizon = next close-close; fill at next open (disclosed mismatch)",
+    "absent name on a present date = flatten (engine sparse-panel semantics)",
+    "spot book only: no funding, borrow, or perp legs modeled",
+    "close_total_return := close (spot crypto has no corporate actions)"
+  ],
+  "paths": {}
+}

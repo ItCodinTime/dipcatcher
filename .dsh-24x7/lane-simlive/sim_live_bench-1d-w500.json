@@ -1,0 +1,207 @@
+{
+  "kind": "sim_live_bench_receipt",
+  "run_id": "bench-1d-w500",
+  "live_pnl_claim": false,
+  "simulated_only": true,
+  "research_only": true,
+  "bench_only": true,
+  "data_label": "binance_public_data",
+  "git_sha": "e6b0c79",
+  "bars": {
+    "root": "data/raw/sources",
+    "interval": "1d",
+    "symbols": [
+      "BNBUSDT",
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "sha256": {
+      "BNBUSDT": "313b3e6b0bf57e7466cdddcc2140cc09cdeeabda43f088b6b978cdb056213aff",
+      "BTCUSDT": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+      "ETHUSDT": "3a98525bc28b1d88c3ddbe2d3a5d5d395d222310d026c7f4ea742b0c2bfbe089",
+      "SOLUSDT": "30241c88ad9ad82c18c1ad45a064b87ca7cc1e2180c4d9f4bf19837bb12bbcae",
+      "XRPUSDT": "542e6fa82a63a5489dd04f8b369e55d57529f3946a2f9dfc8717ece99ff60c6f"
+    },
+    "tail_bars": null,
+    "eval_tail_bars": null
+  },
+  "strategy": {
+    "champion": {
+      "name": "ewma_emp_long_flat",
+      "spec": "ewma_emp",
+      "policy": {
+        "mode": "long_flat",
+        "kappa": 0.15,
+        "gross_target": 1.0,
+        "name_cap": 0.25,
+        "cost_gate": 0.15,
+        "deadband": 0.01,
+        "band_lo": 0.05,
+        "band_hi": 0.95,
+        "gate_on": "edge",
+        "sizing": "risk"
+      }
+    },
+    "challengers": [
+      {
+        "name": "z20",
+        "spec": "ewma_emp",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.2,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk"
+        }
+      },
+      {
+        "name": "z25",
+        "spec": "ewma_emp",
+        "policy": {
+          "mode": "long_flat",
+          "kappa": 0.15,
+          "gross_target": 1.0,
+          "name_cap": 0.25,
+          "cost_gate": 0.25,
+          "deadband": 0.01,
+          "band_lo": 0.05,
+          "band_hi": 0.95,
+          "gate_on": "edge",
+          "sizing": "risk"
+        }
+      }
+    ],
+    "taus": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.39999999999999997,
+      0.44999999999999996,
+      0.49999999999999994,
+      0.5499999999999999,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.7999999999999999,
+      0.85,
+      0.9,
+      0.95
+    ],
+    "window": 500,
+    "min_history": null
+  },
+  "forecaster_stats": {
+    "BNBUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "BTCUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "ETHUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "SOLUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    },
+    "XRPUSDT:ewma_emp": {
+      "emitted": 2171,
+      "failed": 0,
+      "warmup": 60
+    }
+  },
+  "quantile_cache_digests": {
+    "BNBUSDT:ewma_emp": "e9b8d212b4a870df",
+    "BTCUSDT:ewma_emp": "ff5b511e73e5707b",
+    "ETHUSDT:ewma_emp": "9760f4c9818aa4cf",
+    "SOLUSDT:ewma_emp": "c277339ee77fcb65",
+    "XRPUSDT:ewma_emp": "6da92f2041e8cf1a"
+  },
+  "loop_metrics": {
+    "status": "bench_only_no_paper_loop"
+  },
+  "champion_equity_stats": {
+    "status": "ok",
+    "n_marks": 2231,
+    "nav_start": 1000000.0,
+    "nav_end": 27287655.05739901,
+    "total_return": 26.287655057399007,
+    "ann_return": 0.7186831213600147,
+    "ann_vol": 0.33440257081034885,
+    "sharpe_simulated": 1.7849788309619337,
+    "max_drawdown": -0.22062921936991375,
+    "bars_per_year": 365.25,
+    "n_fills": 1721
+  },
+  "book_stats": {
+    "ewma_emp_long_flat": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 27287655.05739901,
+      "total_return": 26.287655057399007,
+      "ann_return": 0.7186831213600147,
+      "ann_vol": 0.33440257081034885,
+      "sharpe_simulated": 1.7849788309619337,
+      "max_drawdown": -0.22062921936991375,
+      "bars_per_year": 365.25,
+      "n_fills": 1721
+    },
+    "z20": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 12869733.461189669,
+      "total_return": 11.869733461189668,
+      "ann_return": 0.5196219258779016,
+      "ann_vol": 0.27562851876470107,
+      "sharpe_simulated": 1.6523318381896628,
+      "max_drawdown": -0.16966090014431545,
+      "bars_per_year": 365.25,
+      "n_fills": 1253
+    },
+    "z25": {
+      "status": "ok",
+      "n_marks": 2231,
+      "nav_start": 1000000.0,
+      "nav_end": 5006233.730941377,
+      "total_return": 4.006233730941377,
+      "ann_return": 0.30188431122182613,
+      "ann_vol": 0.22322252698658118,
+      "sharpe_simulated": 1.2891654038650904,
+      "max_drawdown": -0.190551058677481,
+      "bars_per_year": 365.25,
+      "n_fills": 718
+    }
+  },
+  "divergence": null,
+  "promotion_dry_run": null,
+  "conventions": [
+    "signal at decision bar t uses only closes <= t (causal)",
+    "fills at next bar open (config.execution.fill)",
+    "forecast horizon = next close-close; fill at next open (disclosed mismatch)",
+    "absent name on a present date = flatten (engine sparse-panel semantics)",
+    "spot book only: no funding, borrow, or perp legs modeled",
+    "close_total_return := close (spot crypto has no corporate actions)"
+  ],
+  "paths": {}
+}

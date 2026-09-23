@@ -153,11 +153,22 @@ def run_sim_live(
     bench: bool = True,
     bench_only: bool = False,
     prefer_latest: bool = True,
+    eval_tail_bars: int | None = None,
 ) -> SimLiveResult:
     """Run the simulated-live book end to end and write the receipt."""
     taus = np.asarray(DEFAULT_TAUS if taus is None else taus, dtype=float)
     slots = [champion, *(challengers or [])]
-    specs = sorted({slot.spec for slot in slots})
+
+    def _member_specs(spec: str) -> list[str]:
+        # "vincent(a+b[+...])" — element-wise mean of member quantile panels
+        # (Vincentization: the arena-proven ensemble primitive, applied causally
+        # per origin before the policy map). Parens avoid the ':' separator in
+        # challenger CLI syntax.
+        if spec.startswith("vincent(") and spec.endswith(")"):
+            return spec[len("vincent("):-1].split("+")
+        return [spec]
+
+    specs = sorted({m for slot in slots for m in _member_specs(slot.spec)})
 
     bar_files: dict[str, str] = {}
     for sym in symbols:
@@ -227,12 +238,36 @@ def run_sim_live(
         cache_digests[f"{sid}:{spec}"] = digest
 
     def _panel_for(slot: StrategySlot) -> pl.DataFrame:
-        panels = {sid: quantile_cache[(sid, slot.spec)][0] for sid in per_sid}
+        members = _member_specs(slot.spec)
+        panels: dict[str, np.ndarray] = {}
+        for sid in per_sid:
+            member_panels = [quantile_cache[(sid, m)][0] for m in members]
+            if len(member_panels) == 1:
+                panels[sid] = member_panels[0]
+            else:
+                # Vincentize: row-wise mean over member quantile rows. Rows
+                # with any NaN member stay NaN (fail-closed, no partial blend).
+                stacked = np.stack(member_panels, axis=0)
+                panels[sid] = np.where(
+                    np.isfinite(stacked).all(axis=0), stacked.mean(axis=0), np.nan
+                )
         times = {sid: per_sid[sid][1] for sid in per_sid}
         return quantile_panels_to_weights(panels, times, slot.policy, taus)
 
     champion_w = _panel_for(champion)
     challenger_w = {slot.name: _panel_for(slot) for slot in (challengers or [])}
+
+    if eval_tail_bars is not None:
+        # Out-of-sample slice: panels were computed on full history (causal,
+        # so tail rows are unaffected); the loop/bench sees only the last N
+        # shared dates and starts flat at the cut.
+        tail_cut = sorted(bars["event_time"].unique().to_list())[-int(eval_tail_bars)]
+        bars = bars.filter(pl.col("event_time") >= tail_cut)
+        champion_w = champion_w.filter(pl.col("event_time") >= tail_cut)
+        challenger_w = {
+            name: w.filter(pl.col("event_time") >= tail_cut)
+            for name, w in challenger_w.items()
+        }
 
     result: PaperLoopResult | None = None
     if not bench_only:
@@ -300,6 +335,7 @@ def run_sim_live(
             "symbols": sorted(symbols),
             "sha256": bar_files,
             "tail_bars": tail_bars,
+            "eval_tail_bars": eval_tail_bars,
         },
         "strategy": {
             "champion": {"name": champion.name, "spec": champion.spec, "policy": asdict(champion.policy)},

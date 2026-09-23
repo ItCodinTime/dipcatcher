@@ -1657,6 +1657,11 @@ def sim_live(
     deadband: float = typer.Option(0.01, help="Min |Δtarget| before re-emit"),
     window: int = typer.Option(750, help="Trailing returns window per origin"),
     tail_bars: int | None = typer.Option(None, help="Use only last N bars per asset"),
+    eval_tail: int | None = typer.Option(
+        None, "--eval-tail",
+        help="OOS eval: panels on full history, loop/bench on last N shared dates",
+    ),
+    sizing: str = typer.Option("edge", help="Sizing law: 'edge' (k*edge) | 'risk' (k*edge/disp)"),
     max_steps: int | None = typer.Option(None, help="Cap decision steps"),
     run_id: str | None = typer.Option(None, help="Paper run_id"),
     resume: bool = typer.Option(
@@ -1693,6 +1698,7 @@ def sim_live(
         cost_gate=entry_bps / 1e4 if gate_on == "mu" else entry_bps,
         deadband=deadband,
         gate_on=gate_on,
+        sizing=sizing,
     )
     slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
     challengers: list[StrategySlot] = []
@@ -1704,11 +1710,12 @@ def sim_live(
         c_bps = float(parts[3]) if len(parts) > 3 else entry_bps
         c_kappa = float(parts[4]) if len(parts) > 4 else kappa
         c_gate_on = parts[5] if len(parts) > 5 else gate_on
+        c_sizing = parts[6] if len(parts) > 6 else sizing
         challengers.append(
             StrategySlot(name=cname, spec=cspec, policy=QuantilePolicy(
                 mode=cmode, kappa=c_kappa, gross_target=gross,
                 name_cap=name_cap, cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
-                deadband=deadband, gate_on=c_gate_on,
+                deadband=deadband, gate_on=c_gate_on, sizing=c_sizing,
             ))
         )
     result = run_sim_live(
@@ -1720,6 +1727,7 @@ def sim_live(
         challengers=challengers,
         window=window,
         tail_bars=tail_bars,
+        eval_tail_bars=eval_tail,
         out_dir=out,
         run_id=run_id,
         max_steps=max_steps,

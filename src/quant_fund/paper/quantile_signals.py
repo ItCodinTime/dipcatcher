@@ -39,6 +39,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -249,6 +250,10 @@ FORECASTERS: dict[str, tuple[Forecaster, int]] = {
     # name -> (fn, min_returns_history)
     "empirical": (empirical_quantiles, 60),
     "ewma_emp": (ewma_emp_quantiles, 60),
+    # lam variants: EWMA memory is the real robustness axis for ewma_emp —
+    # lam^k makes trailing-window length beyond ~3/(1-lam) a no-op.
+    "ewma_emp94": (partial(ewma_emp_quantiles, lam=0.94), 60),
+    "ewma_emp99": (partial(ewma_emp_quantiles, lam=0.99), 60),
     "evt": (evt_quantiles, 100),
     "garch_t": (garch_t_quantiles, 200),
     "fhs": (fhs_quantiles, 200),
@@ -274,12 +279,15 @@ class QuantilePolicy:
     band_lo: float = 0.05  # dispersion band lower tau
     band_hi: float = 0.95  # dispersion band upper tau
     gate_on: str = "mu"  # "mu": |mu| return gate | "edge": |mu/disp| z-gate
+    sizing: str = "edge"  # "edge": w=kappa*edge | "risk": w=kappa*edge/disp (vol-parity)
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
             raise ValueError("mode must be long_flat or symmetric")
         if self.gate_on not in {"mu", "edge"}:
             raise ValueError("gate_on must be 'mu' or 'edge'")
+        if self.sizing not in {"edge", "risk"}:
+            raise ValueError("sizing must be 'edge' or 'risk'")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -331,7 +339,8 @@ def weights_from_quantiles(
         if gate_metric <= policy.cost_gate:
             w = 0.0
         else:
-            w = float(np.clip(policy.kappa * edge, -policy.name_cap, policy.name_cap))
+            raw_w = policy.kappa * edge if policy.sizing == "edge" else policy.kappa * edge / disp
+            w = float(np.clip(raw_w, -policy.name_cap, policy.name_cap))
             if policy.mode == "long_flat":
                 w = max(w, 0.0)
         raw[sid] = w

@@ -186,6 +186,24 @@ def test_policy_gate_on_validation() -> None:
         QuantilePolicy(gate_on="bogus")
 
 
+def test_policy_risk_sizing_scales_inverse_disp() -> None:
+    """sizing='risk': w = kappa*edge/disp — quiet regimes size up, loud size down."""
+    pol = QuantilePolicy(
+        mode="symmetric", kappa=0.015, cost_gate=0.0, sizing="risk",
+        name_cap=10.0, gross_target=10.0,
+    )
+    quiet = weights_from_quantiles({"A": _q(0.01, 0.01)}, TAUS, pol)  # edge=1, disp=0.01
+    loud = weights_from_quantiles({"A": _q(0.01, 0.10)}, TAUS, pol)   # edge=0.1, disp=0.10
+    assert quiet["A"] == pytest.approx(0.015 * 1.0 / 0.01)
+    assert loud["A"] == pytest.approx(0.015 * 0.1 / 0.10)
+    assert quiet["A"] > loud["A"]
+
+
+def test_policy_sizing_validation() -> None:
+    with pytest.raises(ValueError, match="sizing"):
+        QuantilePolicy(sizing="bogus")
+
+
 # --------------------------------------------------------------------------
 # Panel -> weights
 # --------------------------------------------------------------------------
@@ -366,6 +384,74 @@ def test_sim_live_resume_continues_without_duplicate_fills(tmp_path: Path) -> No
     if orders_path.is_file():
         orders = pl.read_parquet(orders_path)
         assert orders.height == fills1 + int(m2["n_fills"] or 0)
+
+
+def test_vincent_blend_averages_member_panels(tmp_path: Path) -> None:
+    """vincent(a+b) emits the element-wise mean of member quantile rows."""
+    from quant_fund.paper.sim_live import StrategySlot, run_sim_live
+
+    bars_root = tmp_path / "bars"
+    bars_root.mkdir()
+    _bars_panel(["AAA"], 200, seed=47).write_parquet(bars_root / "aaa_1d.parquet")
+    cfg = AppConfig.model_validate(
+        {
+            "data": {"root": str(tmp_path / "data"), "source": "synthetic"},
+            "paper": {"ledger_subdir": "sim_live_test", "enable_shadow": False},
+        }
+    )
+    pol = QuantilePolicy(mode="long_flat", kappa=1.0, cost_gate=0.0, deadband=0.0)
+    res = run_sim_live(
+        bars_root=bars_root,
+        symbols=["AAA"],
+        interval="1d",
+        config=cfg,
+        champion=StrategySlot(name="vin", spec="vincent(empirical+ewma_emp)", policy=pol),
+        window=120,
+        out_dir=tmp_path / "out",
+        run_id="vincent-test",
+        bench_only=True,
+    )
+    receipt = res.receipt
+    assert receipt["strategy"]["champion"]["spec"] == "vincent(empirical+ewma_emp)"
+    # Both member panels got cached under their own specs.
+    cache = tmp_path / "out" / "qpanel_cache"
+    names = [p.name for p in cache.glob("*.npz")]
+    assert any(n.startswith("qpanel_AAA_empirical_") for n in names)
+    assert any(n.startswith("qpanel_AAA_ewma_emp_") for n in names)
+    assert receipt["book_stats"]["vin"]["status"] == "ok"
+
+
+def test_eval_tail_clips_bars_not_panels(tmp_path: Path) -> None:
+    """--eval-tail: panels from full history, book sees only the tail window."""
+    from quant_fund.paper.sim_live import StrategySlot, run_sim_live
+
+    bars_root = tmp_path / "bars"
+    bars_root.mkdir()
+    _bars_panel(["AAA"], 200, seed=53).write_parquet(bars_root / "aaa_1d.parquet")
+    cfg = AppConfig.model_validate(
+        {
+            "data": {"root": str(tmp_path / "data"), "source": "synthetic"},
+            "paper": {"ledger_subdir": "sim_live_test", "enable_shadow": False},
+        }
+    )
+    pol = QuantilePolicy(mode="long_flat", kappa=1.0, cost_gate=0.0, deadband=0.0)
+    res = run_sim_live(
+        bars_root=bars_root,
+        symbols=["AAA"],
+        interval="1d",
+        config=cfg,
+        champion=StrategySlot(name="emp_lf", spec="empirical", policy=pol),
+        window=120,
+        out_dir=tmp_path / "out",
+        run_id="eval-tail-test",
+        bench_only=True,
+        eval_tail_bars=60,
+    )
+    receipt = res.receipt
+    assert receipt["bars"]["eval_tail_bars"] == 60
+    st = receipt["book_stats"]["emp_lf"]
+    assert st["status"] == "ok"
+    assert st["n_marks"] <= 60
 
 
 def test_evt_and_ewma_emp_quantiles_match_lane_math() -> None:
