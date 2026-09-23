@@ -115,6 +115,7 @@ constraints are (a) baseline per-name weight ≤ ~0.12, (b) scaled weight
 | lb | 3–20 | 9 optimal; shorter whipsaws, longer rides through squeezes |
 | mx | 15–150 | plateau 50–75; mid zone (25–45) is the DD cliff |
 | floor | <1.0 | bidirectional scaling gives up ~100pp of full return |
+| `rate_exponent` | 0.25–1.0 | tilting weight ∝ rate^exp is dominated: +7pp return at exp 0.25 but worse Sharpe/DD/holdout; concentration into top payers IS the squeeze channel |
 | vol-scaling (`vol_lookback`/`vol_ref`) | 10–40d, 3–5%/d | Sharpe-optimal variant below |
 
 ## Vol-scaled sizing — Sharpe-optimal variant (not champion)
