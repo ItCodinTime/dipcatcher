@@ -12,7 +12,9 @@ from numpy.typing import NDArray
 Array = NDArray[np.float64]
 
 
-def crr_parameters(sigma: float, n: int, r: float, q: float, T: float) -> tuple[float, float, float, float]:
+def crr_parameters(
+    sigma: float, n: int, r: float, q: float, T: float
+) -> tuple[float, float, float, float]:
     if n < 1:
         raise ValueError("n must be a positive integer")
     if T <= 0:

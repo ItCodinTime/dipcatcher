@@ -794,7 +794,9 @@ def validate_ledger_schema(
         elif equity_rows == 0:
             errors.append("broker_state_step_equity_empty")
         elif equity_rows is not None and equity_rows != state_step:
-            errors.append(f"broker_state_step_equity_count_mismatch:step={state_step}:rows={equity_rows}")
+            errors.append(
+                f"broker_state_step_equity_count_mismatch:step={state_step}:rows={equity_rows}"
+            )
 
     orders_path = root / "orders.parquet"
     present["orders.parquet"] = orders_path.is_file()

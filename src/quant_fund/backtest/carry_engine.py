@@ -329,9 +329,7 @@ def run_carry_backtest(
             old_spot = spot_vwap.get(sid, so)
             if delta < 0:
                 book.cash += (-delta) * (old_entry - po)  # buy back short: realize
-                _attr(sid)["realized"] += (-delta) * (so - old_spot) + (-delta) * (
-                    old_entry - po
-                )
+                _attr(sid)["realized"] += (-delta) * (so - old_spot) + (-delta) * (old_entry - po)
             if abs(current) < 1e-12:
                 book.perp_entry[sid] = po
                 spot_vwap[sid] = so
@@ -395,9 +393,7 @@ def run_carry_backtest(
                     continue
                 liq_perp[sid] = _valid_price(row["ph"]) or last_perp.get(sid, 0.0)
 
-        def _mmr_deficit(
-            lp: dict[str, float] = liq_perp, ls: dict[str, float] = liq_spot
-        ) -> float:
+        def _mmr_deficit(lp: dict[str, float] = liq_perp, ls: dict[str, float] = liq_spot) -> float:
             return perp_cfg.maint_margin_ratio * book.perp_gross(lp) - book.equity(ls, lp)
 
         while _mmr_deficit() > 0 and book.perp_gross(liq_perp) > 0:
@@ -492,13 +488,17 @@ def run_carry_backtest(
         for k in ("funding", "realized", "fees", "liq_realized", "liq_fee", "unrealized")
     }
     final_equity = float(navs[-1]["nav"]) if navs else float(initial_nav)
-    conservation_error = final_equity - float(initial_nav) - (
-        attr_totals["funding"]
-        + attr_totals["realized"]
-        + attr_totals["liq_realized"]
-        - attr_totals["fees"]
-        - attr_totals["liq_fee"]
-        + attr_totals["unrealized"]
+    conservation_error = (
+        final_equity
+        - float(initial_nav)
+        - (
+            attr_totals["funding"]
+            + attr_totals["realized"]
+            + attr_totals["liq_realized"]
+            - attr_totals["fees"]
+            - attr_totals["liq_fee"]
+            + attr_totals["unrealized"]
+        )
     )
     pnl_attribution = {
         "by_symbol": {sid: row for sid, row in sorted(attr.items())},

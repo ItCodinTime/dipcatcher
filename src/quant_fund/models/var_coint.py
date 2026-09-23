@@ -133,9 +133,7 @@ def fevd(fit: dict[str, Array], horizon: int = 10) -> dict[str, Array]:
     return {"gfevd": gf, "mse": mse}
 
 
-def diebold_yilmaz(
-    y: Array, p: int = 2, horizon: int = 10
-) -> dict[str, Array]:
+def diebold_yilmaz(y: Array, p: int = 2, horizon: int = 10) -> dict[str, Array]:
     """Diebold–Yilmaz (2012) connectedness from a VAR(p).
 
     Returns the generalized-FEVD connectedness table, total spillover
@@ -161,9 +159,7 @@ def diebold_yilmaz(
     }
 
 
-def engle_granger(
-    y: Array, x: Array, max_lag: int | None = None
-) -> dict[str, float]:
+def engle_granger(y: Array, x: Array, max_lag: int | None = None) -> dict[str, float]:
     """Engle–Granger (1987) two-step cointegration test.
 
     Regresses y on x (levels), then runs an ADF test (no deterministic
@@ -185,10 +181,7 @@ def engle_granger(
     lags = min(max_lag, rows // 4)
     # ADF: dy_i on [res_i, dy_{i-1}, ..., dy_{i-lags}], i = lags..T-2.
     tgt = dy[lags:]
-    xr = np.column_stack(
-        [res[lags:-1]]
-        + [dy[lags - j : dy.size - j] for j in range(1, lags + 1)]
-    )
+    xr = np.column_stack([res[lags:-1]] + [dy[lags - j : dy.size - j] for j in range(1, lags + 1)])
     b, *_ = np.linalg.lstsq(xr, tgt, rcond=None)
     e = tgt - xr @ b
     s2 = float(e @ e) / (tgt.size - xr.shape[1])
@@ -206,9 +199,7 @@ def engle_granger(
     }
 
 
-def johansen_test(
-    y: Array, p: int = 2, det: int = 0
-) -> dict[str, Array]:
+def johansen_test(y: Array, p: int = 2, det: int = 0) -> dict[str, Array]:
     """Johansen (1991) trace and max-eigenvalue cointegration tests.
 
     ``det``: 0 = no deterministic terms in levels; 1 = constant.
@@ -337,9 +328,7 @@ def spread_half_life(spread: Array) -> float:
     return -math.log(2.0) / math.log(rho)
 
 
-def granger_causality_matrix(
-    y: Array, p: int = 2
-) -> dict[str, Array]:
+def granger_causality_matrix(y: Array, p: int = 2) -> dict[str, Array]:
     """Pairwise Granger F-tests: entry [i, j] is the p-value for
     'variable j Granger-causes variable i'."""
     m = _as_panel(y)
@@ -350,19 +339,14 @@ def granger_causality_matrix(
     fmat = np.full((n, n), np.nan)
     rows = t - p
     for i in range(n):
-        xr = np.column_stack(
-            [np.ones(rows)]
-            + [m[p - lag : t - lag, i] for lag in range(1, p + 1)]
-        )
+        xr = np.column_stack([np.ones(rows)] + [m[p - lag : t - lag, i] for lag in range(1, p + 1)])
         tgt = m[p:, i]
         b0, *_ = np.linalg.lstsq(xr, tgt, rcond=None)
         rss0 = float(((tgt - xr @ b0) ** 2).sum())
         for j in range(n):
             if i == j:
                 continue
-            xu = np.column_stack(
-                [xr] + [m[p - lag : t - lag, j] for lag in range(1, p + 1)]
-            )
+            xu = np.column_stack([xr] + [m[p - lag : t - lag, j] for lag in range(1, p + 1)])
             b1, *_ = np.linalg.lstsq(xu, tgt, rcond=None)
             rss1 = float(((tgt - xu @ b1) ** 2).sum())
             f = ((rss0 - rss1) / p) / (rss1 / (rows - xr.shape[1] - p))

@@ -88,14 +88,12 @@ def crypto_factor_returns(
             .sort(["security_id", "event_time"])
             .rename({"value": "funding_rate"})
         )
-        panel = panel.join_asof(
-            froll, on="event_time", by="security_id", strategy="backward"
-        )
+        panel = panel.join_asof(froll, on="event_time", by="security_id", strategy="backward")
     else:
         panel = panel.with_columns(pl.lit(None, dtype=pl.Float64).alias("funding_rate"))
 
     rows: list[dict] = []
-    for (et,) , grp in panel.group_by("event_time", maintain_order=True):
+    for (et,), grp in panel.group_by("event_time", maintain_order=True):
         ret1 = grp["ret1"].to_numpy().astype(float)
         mom_sig = grp["mom_sig"].to_numpy().astype(float)
         adv = grp["adv"].to_numpy().astype(float)
@@ -109,18 +107,14 @@ def crypto_factor_returns(
                 # liq factor = long liquid / short illiquid
                 "liq": _tercile_spread(adv, ret1),
                 # carry = long names that receive funding / short payers
-                "carry": -_tercile_spread(rate, ret1)
-                if np.isfinite(rate).any()
-                else float("nan"),
+                "carry": -_tercile_spread(rate, ret1) if np.isfinite(rate).any() else float("nan"),
                 "n_names": int(np.isfinite(ret1).sum()),
             }
         )
     return pl.DataFrame(rows).sort("event_time")
 
 
-def _rolling_beta(
-    y: np.ndarray, x: np.ndarray, window: int, ridge: float
-) -> np.ndarray:
+def _rolling_beta(y: np.ndarray, x: np.ndarray, window: int, ridge: float) -> np.ndarray:
     """Trailing-window OLS betas (no intercept handling — caller centers).
 
     Returns ``(T, K)`` array; row t fits y[t-window:t] on x[t-window:t]
@@ -173,9 +167,7 @@ def estimate_factor_betas(
         bars.select("security_id", "event_time", "close")
         .sort(["security_id", "event_time"])
         .with_columns(
-            (pl.col("close") / pl.col("close").shift(1) - 1.0)
-            .over("security_id")
-            .alias("ret1")
+            (pl.col("close") / pl.col("close").shift(1) - 1.0).over("security_id").alias("ret1")
         )
         .select("security_id", "event_time", "ret1")
     )
@@ -226,9 +218,7 @@ def decompose_book_factors(
         bars.select("security_id", "event_time", "close")
         .sort(["security_id", "event_time"])
         .with_columns(
-            (pl.col("close") / pl.col("close").shift(1) - 1.0)
-            .over("security_id")
-            .alias("ret1")
+            (pl.col("close") / pl.col("close").shift(1) - 1.0).over("security_id").alias("ret1")
         )
         .select("security_id", "event_time", "ret1")
     )
@@ -247,10 +237,9 @@ def decompose_book_factors(
     declared_b = betas.select("security_id", "event_time", *bcols).sort(
         ["security_id", "event_time"]
     )
-    b_prev = (
-        grid.join_asof(declared_b, on="event_time", by="security_id", strategy="backward")
-        .with_columns([pl.col(c).shift(1).over("security_id").alias(c) for c in bcols])
-    )
+    b_prev = grid.join_asof(
+        declared_b, on="event_time", by="security_id", strategy="backward"
+    ).with_columns([pl.col(c).shift(1).over("security_id").alias(c) for c in bcols])
     frame = (
         rets.join(w_prev, on=["security_id", "event_time"], how="inner")
         .join(b_prev, on=["security_id", "event_time"], how="left")
@@ -264,16 +253,16 @@ def decompose_book_factors(
     ]
     for c in fcols:
         # exposure to factor k summed across names; multiply by f_k after join
-        agg_exprs.append(
-            (pl.col("w_prev") * pl.col(f"beta_{c}")).sum().alias(f"expo_{c}")
-        )
+        agg_exprs.append((pl.col("w_prev") * pl.col(f"beta_{c}")).sum().alias(f"expo_{c}"))
     per_t = frame.group_by("event_time", maintain_order=True).agg(agg_exprs)
     per_t = per_t.join(fmat, on="event_time", how="left")
     contrib_cols = []
     for c in fcols:
         per_t = per_t.with_columns((pl.col(f"expo_{c}") * pl.col(c)).alias(f"contrib_{c}"))
         contrib_cols.append(f"contrib_{c}")
-    total_contrib = pl.sum_horizontal([pl.col(c) for c in contrib_cols]) if contrib_cols else pl.lit(0.0)
+    total_contrib = (
+        pl.sum_horizontal([pl.col(c) for c in contrib_cols]) if contrib_cols else pl.lit(0.0)
+    )
     return per_t.with_columns((pl.col("book_ret") - total_contrib).alias("alpha_resid"))
 
 
@@ -283,9 +272,7 @@ def factor_summary(frame: pl.DataFrame) -> dict[str, object]:
         return {"status": "empty", "live_pnl_claim": False, "research_only": True}
     total = float(frame["book_ret"].sum())
     contrib_cols = [c for c in frame.columns if c.startswith("contrib_")]
-    by_factor = {
-        c[len("contrib_"):]: float(frame[c].sum()) for c in contrib_cols
-    }
+    by_factor = {c[len("contrib_") :]: float(frame[c].sum()) for c in contrib_cols}
     resid = float(frame["alpha_resid"].sum())
     denom = abs(total) if abs(total) > 0 else None
     return {

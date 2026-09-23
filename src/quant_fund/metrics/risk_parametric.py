@@ -41,9 +41,7 @@ def _require_alpha(alpha: float) -> float:
     return a
 
 
-def cornish_fisher_var(
-    losses: Array, alpha: float = 0.95
-) -> dict[str, float]:
+def cornish_fisher_var(losses: Array, alpha: float = 0.95) -> dict[str, float]:
     """Cornish–Fisher (1937) modified VaR for loss observations.
 
     ``z_cf = z + (z^2-1)S/6 + (z^3-3z)K/24 - (2z^3-5z)S^2/36``;
@@ -77,9 +75,7 @@ def cornish_fisher_var(
     }
 
 
-def cornish_fisher_es(
-    losses: Array, alpha: float = 0.95, n_quad: int = 512
-) -> dict[str, float]:
+def cornish_fisher_es(losses: Array, alpha: float = 0.95, n_quad: int = 512) -> dict[str, float]:
     """ES under the Cornish–Fisher quantile mapping.
 
     Integrates the CF quantile function from ``alpha`` to 1 (numeric

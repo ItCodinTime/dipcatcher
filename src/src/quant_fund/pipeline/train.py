@@ -1048,9 +1048,7 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
             fold_status.extend(statuses)
             for origin, record in fold_density.items():
                 if origin in density_by_date:
-                    raise ValueError(
-                        "Realized GARCH one-step density origin repeated across folds"
-                    )
+                    raise ValueError("Realized GARCH one-step density origin repeated across folds")
                 density_by_date[origin] = record
         else:
             fold_model = make_model()
@@ -1496,7 +1494,9 @@ def train_tail(config: AppConfig, model_name: str = "historical") -> dict[str, A
     return {"metrics": metrics, "path": str(path)}
 
 
-def train_robinhood_plus(config: AppConfig, model_name: str = "hierarchical_markov") -> dict[str, Any]:
+def train_robinhood_plus(
+    config: AppConfig, model_name: str = "hierarchical_markov"
+) -> dict[str, Any]:
     """Persist the robinhood+ engine card. The tokenizer is unsupervised."""
     _require_model(model_name, {"hierarchical_markov", "transformer"}, "robinhood_plus")
     from quant_fund.models.robinhood_plus.bench import bench_robinhood_plus

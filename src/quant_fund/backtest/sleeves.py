@@ -393,6 +393,11 @@ def basis_carry_hysteresis_weights(
     name_weight: float = 0.08,
     max_names: int = 10,
     rebalance_band: float | None = None,
+    rate_scale_ref: float | None = None,
+    rate_scale_cap: float = 2.0,
+    rate_scale_floor: float = 0.3,
+    vol_lookback: int | None = None,
+    vol_ref: float = 0.04,
 ) -> pl.DataFrame:
     """Event-driven carry membership book — the low-churn version.
 
@@ -409,6 +414,20 @@ def basis_carry_hysteresis_weights(
     entered cheap can drift to many multiples of the intended weight and blow
     past the perp book's leverage/margin limits (the engine caps leverage only
     at order time). ``None`` keeps the original hold-untouched behaviour.
+
+    ``rate_scale_ref`` enables regime-scaled sizing: when set, all weight rows
+    emitted at a timestamp are multiplied by
+    ``clip(book_rate / rate_scale_ref, rate_scale_floor, rate_scale_cap)``
+    where ``book_rate`` is the mean trailing rate across the day's qualifying
+    candidates (top ``max_names``) plus currently held names — the book
+    self-sizes with funding dispersion (deploys more when yields are rich,
+    thins when they compress) without adding churn between event days.
+
+    ``vol_lookback`` enables per-name vol scaling: each emitted weight is also
+    multiplied by ``min(1, vol_ref / vol_i)`` where ``vol_i`` is the symbol's
+    daily close-close return std over the last ``vol_lookback`` bars. Wildest
+    microcaps — the ones that drive basis-squeeze drawdowns — get diluted
+    weight while calm names keep full size.
     """
     _validate_bars(bars)
     if funding.height == 0:
@@ -437,6 +456,23 @@ def basis_carry_hysteresis_weights(
         rates_by_time.setdefault(row["event_time"], {})[str(row["security_id"])] = row["rate_ma"]
         px_by_time.setdefault(row["event_time"], {})[str(row["security_id"])] = row["close"]
 
+    vols_by_time: dict[datetime, dict[str, float]] = {}
+    if vol_lookback is not None:
+        vroll = (
+            bars.select("security_id", "event_time", "close")
+            .sort(["security_id", "event_time"])
+            .with_columns(
+                pl.col("close")
+                .pct_change()
+                .rolling_std(vol_lookback, min_samples=5)
+                .over("security_id")
+                .alias("vol")
+            )
+            .select("security_id", "event_time", "vol")
+        )
+        for row in vroll.iter_rows(named=True):
+            vols_by_time.setdefault(row["event_time"], {})[str(row["security_id"])] = row["vol"]
+
     active: dict[str, float] = {}
     entry_px: dict[str, float] = {}
     out_t: list[datetime] = []
@@ -453,6 +489,34 @@ def basis_carry_hysteresis_weights(
                 out_w.append(0.0)
                 del active[sid]
                 entry_px.pop(sid, None)
+        cands = sorted(
+            (
+                (sid, r)
+                for sid, r in rates.items()
+                if r is not None and r >= enter_rate and sid not in active
+            ),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
+        scale = 1.0
+        if rate_scale_ref is not None and rate_scale_ref > 0:
+            book_rates = [r for _, r in cands[:max_names]] + [
+                rates[s] for s in active if rates.get(s) is not None
+            ]
+            if book_rates:
+                scale = min(
+                    rate_scale_cap,
+                    max(rate_scale_floor, (sum(book_rates) / len(book_rates)) / rate_scale_ref),
+                )
+        w_now = name_weight * scale
+        vols_t = vols_by_time.get(t, {})
+
+        def _vscale(sid: str, w: float, vols_t: dict[str, float] = vols_t) -> float:
+            v = vols_t.get(sid)
+            if v is None or v <= 0:
+                return w
+            return w * min(1.0, vol_ref / v)
+
         if rebalance_band is not None:
             for sid in list(active):
                 p0 = entry_px.get(sid)
@@ -463,27 +527,19 @@ def basis_carry_hysteresis_weights(
                 if drift >= rebalance_band or drift <= 1.0 / rebalance_band:
                     out_t.append(t)
                     out_s.append(sid)
-                    out_w.append(name_weight)
+                    out_w.append(_vscale(sid, w_now))
                     entry_px[sid] = p1
-        cands = sorted(
-            (
-                (sid, r)
-                for sid, r in rates.items()
-                if r is not None and r >= enter_rate and sid not in active
-            ),
-            key=lambda kv: kv[1],
-            reverse=True,
-        )
         for sid, _r in cands:
             if len(active) >= max_names:
                 break
-            active[sid] = name_weight
+            w_sid = _vscale(sid, w_now)
+            active[sid] = w_sid
             pe = px_now.get(sid)
             if pe is not None and pe > 0:
                 entry_px[sid] = pe
             out_t.append(t)
             out_s.append(sid)
-            out_w.append(name_weight)
+            out_w.append(w_sid)
     return pl.DataFrame({"event_time": out_t, "security_id": out_s, "target_weight": out_w}).sort(
         ["event_time", "security_id"]
     )

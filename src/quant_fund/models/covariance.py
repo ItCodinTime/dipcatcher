@@ -270,9 +270,9 @@ def _analytical_nonlinear_shrinkage(centered: Array, n_eff: int) -> Array:
             np.maximum(1.0 - (x * x) / 5.0, 0.0) / scale, axis=1
         )
         log_term = np.log(np.abs((np.sqrt(5.0) - x) / (np.sqrt(5.0) + x)))
-        hilbert = (-3.0 / 10.0 / np.pi) * x + (
-            3.0 / 4.0 / np.sqrt(5.0) / np.pi
-        ) * (1.0 - (x * x) / 5.0) * log_term
+        hilbert = (-3.0 / 10.0 / np.pi) * x + (3.0 / 4.0 / np.sqrt(5.0) / np.pi) * (
+            1.0 - (x * x) / 5.0
+        ) * log_term
     edge = np.isclose(np.abs(x), np.sqrt(5.0), rtol=0.0, atol=1e-12)
     hilbert = np.where(edge, (-3.0 / 10.0 / np.pi) * x, hilbert)
     hftilde = np.mean(hilbert / scale, axis=1)
@@ -287,7 +287,11 @@ def _analytical_nonlinear_shrinkage(centered: Array, n_eff: int) -> Array:
             (1.0 / np.pi)
             * (
                 3.0 / 10.0 / (h * h)
-                + 3.0 / 4.0 / np.sqrt(5.0) / h * (1.0 - 1.0 / 5.0 / (h * h))
+                + 3.0
+                / 4.0
+                / np.sqrt(5.0)
+                / h
+                * (1.0 - 1.0 / 5.0 / (h * h))
                 * np.log((1.0 + np.sqrt(5.0) * h) / (1.0 - np.sqrt(5.0) * h))
             )
             * float(np.mean(1.0 / lam))
@@ -516,9 +520,7 @@ _DCC_AGDCC_FULL_ALIASES = frozenset(
         "ces_agdcc_full",
     }
 )
-_OPTIMIZER_AGDCC_ALIASES = frozenset(
-    alias.replace("-", "_") for alias in _DCC_AGDCC_ALIASES
-)
+_OPTIMIZER_AGDCC_ALIASES = frozenset(alias.replace("-", "_") for alias in _DCC_AGDCC_ALIASES)
 _OPTIMIZER_AGDCC_FULL_ALIASES = frozenset(
     alias.replace("-", "_") for alias in _DCC_AGDCC_FULL_ALIASES
 )
@@ -890,10 +892,7 @@ def _agdcc_step_q(
 ) -> Array:
     r"""Diagonal CES AG-DCC \(Q_t = Q^\ast + Azz'A + B Q B + G nn'G\)."""
     return np.asarray(
-        intercept
-        + _agdcc_news(a, z_prev)
-        + _agdcc_congruence_diag(b, q)
-        + _agdcc_news(g, n_prev),
+        intercept + _agdcc_news(a, z_prev) + _agdcc_congruence_diag(b, q) + _agdcc_news(g, n_prev),
         dtype=float,
     )
 
@@ -1569,12 +1568,7 @@ def agdcc(
     candidate = np.asarray(res.x if res.success and np.isfinite(res.fun) else x0)
     a, b, g = _unpack(candidate)
     intercept = _agdcc_intercept(qbar, nbar, a, b, g)
-    if (
-        np.any(a < 0)
-        or np.any(b < 0)
-        or np.any(g < 0)
-        or min_eigenvalue(intercept) < -1e-10
-    ):
+    if np.any(a < 0) or np.any(b < 0) or np.any(g < 0) or min_eigenvalue(intercept) < -1e-10:
         a, b, g = start_a, start_b, start_g
         intercept = _agdcc_intercept(qbar, nbar, a, b, g)
     h = _agdcc_one_step_h(z, qbar, intercept, a, b, g, sigma_one_step)
@@ -1785,9 +1779,7 @@ def ccc(returns: Array) -> tuple[Array, dict[str, float | str]]:
     }
 
 
-def ewma(
-    returns: Array, lam: float = EWMA_DEFAULT_LAM
-) -> tuple[Array, dict[str, float | str]]:
+def ewma(returns: Array, lam: float = EWMA_DEFAULT_LAM) -> tuple[Array, dict[str, float | str]]:
     r"""RiskMetrics EWMA covariance. Returns one-step-ahead \(H_{t+1}\) and params.
 
     \(H_{t+1}=\lambda H_t+(1-\lambda)r_t r_t'\) on the trailing contiguous

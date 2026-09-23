@@ -755,7 +755,9 @@ def _make_ranker(name: str, config: AppConfig) -> Any:
         "pcr": PCRRanker(t.pcr_n_factors),
         "pls": PLSRanker(t.pls_n_factors),
         "tprf": ThreePassFilterRanker(t.tprf_n_factors),
-        "gbrt": GBRTRanker(t.gbrt_n_estimators, t.gbrt_max_depth, t.gbrt_learning_rate, t.random_seed),
+        "gbrt": GBRTRanker(
+            t.gbrt_n_estimators, t.gbrt_max_depth, t.gbrt_learning_rate, t.random_seed
+        ),
         "pp": PrincipalPortfolioRanker(t.pp_n_factors),
         "combo": CombinationRanker(),
         "alasso": AdaptiveLassoRanker(t.alasso_alpha),
@@ -1340,9 +1342,7 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
             fold_status.extend(statuses)
             for origin, record in fold_density.items():
                 if origin in density_by_date:
-                    raise ValueError(
-                        "Realized GARCH one-step density origin repeated across folds"
-                    )
+                    raise ValueError("Realized GARCH one-step density origin repeated across folds")
                 density_by_date[origin] = record
         else:
             fold_model = make_model()
@@ -2066,7 +2066,9 @@ def train_policy_gradient(config: AppConfig) -> dict[str, Any]:
     }
 
 
-def train_robinhood_plus(config: AppConfig, model_name: str = "hierarchical_markov") -> dict[str, Any]:
+def train_robinhood_plus(
+    config: AppConfig, model_name: str = "hierarchical_markov"
+) -> dict[str, Any]:
     """Persist the robinhood+ engine card. The tokenizer is unsupervised."""
     _require_model(model_name, {"hierarchical_markov", "transformer"}, "robinhood_plus")
     from quant_fund.models.robinhood_plus.bench import bench_robinhood_plus

@@ -38,6 +38,7 @@ def _archive(root: Path, symbol: str, date: str) -> dict[str, str]:
         "revision_id": "current-2024-01-01",
     }
 
+
 def _receipt(root: Path) -> Path:
     payload = {
         "schema_version": 1,
@@ -51,6 +52,7 @@ def _receipt(root: Path) -> Path:
     path = root / "receipt.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
+
 
 def test_verify_binance_receipt_validates_candidate_archive_set(tmp_path: Path) -> None:
     receipt = _receipt(tmp_path)

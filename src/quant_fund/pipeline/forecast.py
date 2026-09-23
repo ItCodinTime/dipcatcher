@@ -1543,9 +1543,7 @@ class OptimizerCovarianceEstimate:
     fallback_reason: str | None = None
 
 
-def _trailing_return_matrix(
-    hist: pl.DataFrame, ids: list[str]
-) -> tuple[list[str], Array]:
+def _trailing_return_matrix(hist: pl.DataFrame, ids: list[str]) -> tuple[list[str], Array]:
     if "ret_1" not in hist.columns or hist.is_empty() or not ids:
         return [], np.empty((0, 0), dtype=float)
     wide = (
@@ -1827,9 +1825,7 @@ def _named_ledoit_wolf_nonlinear_optimizer_estimate(
     )
 
 
-def _unmeasured_optimizer_covariance(
-    reason: str, ids: list[str]
-) -> OptimizerCovarianceEstimate:
+def _unmeasured_optimizer_covariance(reason: str, ids: list[str]) -> OptimizerCovarianceEstimate:
     n = len(ids)
     sigma = np.empty((0, 0), dtype=float) if n == 0 else np.diag(np.ones(n) * 0.02**2)
     return OptimizerCovarianceEstimate(
@@ -2238,7 +2234,9 @@ def forecast_asof(
             diagnostics["core_engine"] = ENGINE_NAME
             diagnostics["robinhood_plus_status"] = hit.forecast.status
             diagnostics["robinhood_plus_model_version"] = MODEL_VERSION
-            diagnostics["robinhood_plus_backend"] = str(hit.forecast.diagnostics.get("backend", "numpy"))
+            diagnostics["robinhood_plus_backend"] = str(
+                hit.forecast.diagnostics.get("backend", "numpy")
+            )
             diagnostics["robinhood_plus_decoder"] = str(hit.forecast.diagnostics.get("decoder", ""))
             if hit.forecast.expected_returns:
                 expected = dict(hit.forecast.expected_returns)
@@ -2256,7 +2254,9 @@ def forecast_asof(
         elif config.robinhood_plus.enabled:
             diagnostics["core_engine"] = "ridge"
             diagnostics["robinhood_plus_status"] = (
-                hit.forecast.status if hit is not None else ("challenger" if blend <= 0.0 else "absent")
+                hit.forecast.status
+                if hit is not None
+                else ("challenger" if blend <= 0.0 else "absent")
             )
         forecasts.append(
             AssetForecast(
@@ -2477,17 +2477,13 @@ def optimize_asof(
     hist = filter_trailing_returns_asof(hist, state.asof)
     estimator = require_implemented_optimizer_covariance(config.optimizer.covariance)
     if estimator in IMPLEMENTED_OPTIMIZER_NAMED_SPECS:
-        estimate = estimate_optimizer_covariance_asof(
-            config, base, state.asof, ids, hist
-        )
+        estimate = estimate_optimizer_covariance_asof(config, base, state.asof, ids, hist)
         alpha_map = dict(zip(ids, alpha, strict=False))
         ids = estimate.security_ids
         alpha = np.array([alpha_map.get(c, 0.0) for c in ids], dtype=float)
         sig = estimate.sigma
     elif "ret_1" in hist.columns and hist.height > 20:
-        estimate = estimate_optimizer_covariance_asof(
-            config, base, state.asof, ids, hist
-        )
+        estimate = estimate_optimizer_covariance_asof(config, base, state.asof, ids, hist)
         if estimate.unmeasured_reason is None:
             alpha_map = dict(zip(ids, alpha, strict=False))
             ids = estimate.security_ids

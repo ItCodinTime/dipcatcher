@@ -215,9 +215,7 @@ def test_named_dcc_ignores_unpublished_return_restatement(tmp_path: Path) -> Non
     dirty_hist = filter_trailing_returns_asof(
         unpublished.filter(pl.col("event_time") <= asof), asof
     )
-    clean_hist = filter_trailing_returns_asof(
-        omitted.filter(pl.col("event_time") <= asof), asof
-    )
+    clean_hist = filter_trailing_returns_asof(omitted.filter(pl.col("event_time") <= asof), asof)
     seen: dict[str, list[np.ndarray]] = {}
 
     def capture(returns: np.ndarray) -> tuple[np.ndarray, dict[str, float | str]]:
@@ -322,10 +320,7 @@ def test_named_dcc_fails_closed_on_short_contiguous_suffix(tmp_path: Path) -> No
     asof = dates[-1]
     hole = dates[-(DCC_STAGE1_MIN_OBS - 1)]
     frame = frame.with_columns(
-        pl.when(pl.col("event_time") == hole)
-        .then(None)
-        .otherwise(pl.col("ret_1"))
-        .alias("ret_1")
+        pl.when(pl.col("event_time") == hole).then(None).otherwise(pl.col("ret_1")).alias("ret_1")
     )
     ids = frame["security_id"].unique().sort().to_list()
     hist = frame.filter(pl.col("event_time") <= asof)

@@ -112,8 +112,10 @@ def tuff_test(hits: Array, alpha: float = 0.99) -> dict[str, float]:
     t = max(first + 1, 1)
     phat = 1.0 / t
     lr = -2.0 * (
-        math.log(max(p, 1e-300)) + (t - 1) * math.log(max(1 - p, 1e-300))
-        - math.log(phat) - (t - 1) * math.log(max(1 - phat, 1e-300))
+        math.log(max(p, 1e-300))
+        + (t - 1) * math.log(max(1 - p, 1e-300))
+        - math.log(phat)
+        - (t - 1) * math.log(max(1 - phat, 1e-300))
     )
     lr = float(max(lr, 0.0))
     return {

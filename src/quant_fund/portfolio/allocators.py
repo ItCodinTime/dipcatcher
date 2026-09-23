@@ -33,12 +33,7 @@ Array = NDArray[np.float64]
 
 def _as_cov(cov: Array) -> Array:
     m = np.asarray(cov, dtype=float)
-    if (
-        m.ndim != 2
-        or m.shape[0] != m.shape[1]
-        or m.shape[0] < 2
-        or not np.all(np.isfinite(m))
-    ):
+    if m.ndim != 2 or m.shape[0] != m.shape[1] or m.shape[0] < 2 or not np.all(np.isfinite(m)):
         raise ValueError("cov must be a finite square matrix (n >= 2)")
     if np.max(np.abs(m - m.T)) > 1e-6 * max(1.0, float(np.abs(m).max())):
         raise ValueError("cov must be symmetric")
@@ -142,11 +137,7 @@ def equal_risk_contribution(cov: Array, x0: Array | None = None) -> Array:
         target = total / n
         return float(np.sum((rc - target) ** 2))
 
-    start = (
-        inverse_volatility(m)
-        if x0 is None
-        else np.asarray(x0, dtype=float).reshape(-1)
-    )
+    start = inverse_volatility(m) if x0 is None else np.asarray(x0, dtype=float).reshape(-1)
     if start.size != n or not np.all(np.isfinite(start)) or np.any(start <= 0.0):
         raise ValueError("x0 must be a positive finite vector matching cov")
     res = opt.minimize(

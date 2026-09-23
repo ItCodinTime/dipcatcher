@@ -92,7 +92,9 @@ def _equity_returns(equity: pl.DataFrame) -> np.ndarray:
     return nav[1:] / nav[:-1] - 1.0
 
 
-def _benchmark_returns(feat: pl.DataFrame, equity: pl.DataFrame, benchmark_id: str) -> np.ndarray | None:
+def _benchmark_returns(
+    feat: pl.DataFrame, equity: pl.DataFrame, benchmark_id: str
+) -> np.ndarray | None:
     if not benchmark_id or "security_id" not in feat.columns or "close" not in feat.columns:
         return None
     if equity.is_empty() or "event_time" not in equity.columns:
@@ -105,7 +107,9 @@ def _benchmark_returns(feat: pl.DataFrame, equity: pl.DataFrame, benchmark_id: s
     )
     if bench.height < 3:
         return None
-    joined = equity.select("event_time").join(bench, on="event_time", how="inner").sort("event_time")
+    joined = (
+        equity.select("event_time").join(bench, on="event_time", how="inner").sort("event_time")
+    )
     close = joined["close"].to_numpy().astype(float)
     if close.size < 3:
         return None
@@ -212,9 +216,7 @@ def run_hedge_lab(
             tail_p=proto.var_tail_p,
             lookback=proto.overlay_lookback,
         )
-    result = run_backtest(
-        bars, weights, cfg, initial_nav=proto.initial_nav, risk_overlay=overlay
-    )
+    result = run_backtest(bars, weights, cfg, initial_nav=proto.initial_nav, risk_overlay=overlay)
     rets = _equity_returns(result.equity)
     bench = _align_book_and_benchmark(
         rets, _benchmark_returns(bars, result.equity, str(cfg.data.benchmark_id))
@@ -255,9 +257,7 @@ def run_hedge_lab(
             n_m = min(rets_m.size, bench_m.size)
             rets_m = rets_m[-n_m:]
             bench_m = bench_m[-n_m:]
-        economic_m = book_economic_scoreboard(
-            rets_m, data_source=source, benchmark_returns=bench_m
-        )
+        economic_m = book_economic_scoreboard(rets_m, data_source=source, benchmark_returns=bench_m)
         boot_m: dict[str, Any] = {"status": "skipped"}
         if do_boot and rets_m.size >= 20:
             boot_m = moving_block_bootstrap_ci(rets_m, n_boot=boot_n)

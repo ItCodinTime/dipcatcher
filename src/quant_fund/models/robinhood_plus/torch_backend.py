@@ -213,9 +213,7 @@ def _kline_paths_from_kronos(
         )
         arr = pred_df[cols].to_numpy(dtype=np.float64)
         if arr.shape != (pred_len, 6):
-            raise RobinhoodPlusTorchError(
-                f"Kronos-mini path shape {arr.shape} != ({pred_len}, 6)"
-            )
+            raise RobinhoodPlusTorchError(f"Kronos-mini path shape {arr.shape} != ({pred_len}, 6)")
         paths.append(arr)
     return np.stack(paths, axis=0)
 

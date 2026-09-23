@@ -30,7 +30,11 @@ def verify_binance_receipt(
         raise ValueError("unsupported Binance receipt schema_version")
     if payload.get("source") != "binance-public-data":
         raise ValueError("receipt source must be binance-public-data")
-    for field, expected in (("candidate_only", True), ("proof_status", "not_proof"), ("proof_eligible", False)):
+    for field, expected in (
+        ("candidate_only", True),
+        ("proof_status", "not_proof"),
+        ("proof_eligible", False),
+    ):
         if payload.get(field) != expected:
             raise ValueError(f"receipt {field} must be {expected!r}")
     raw_time = payload.get("ingested_time")

@@ -95,7 +95,9 @@ def diffusion_index_forecast(
         # y_{t+1-l} aligns so t indexes rows; y_t at row t: y_{row} for
         # l=1 uses y[row - l + 1]... define dependent as y[row + h - 1]? We
         # forecast y_{t+h} from F_t and y_t — build target y[t+h].
-        cols.append(np.array([yv[i - lag_ + 1] if i - lag_ + 1 >= 0 else np.nan for i in range(rows)]))
+        cols.append(
+            np.array([yv[i - lag_ + 1] if i - lag_ + 1 >= 0 else np.nan for i in range(rows)])
+        )
     X = np.column_stack(cols)
     dep = np.array([yv[i + horizon] for i in range(rows)])
     good = np.isfinite(X).all(axis=1)
@@ -113,8 +115,11 @@ def diffusion_index_forecast(
     except np.linalg.LinAlgError:
         se = np.full(Xg.shape[1], np.nan)
     # One-step-ahead forecast at the last available t = rows-1.
-    x_last = np.array([1.0] + [F[rows - 1, j] for j in range(k)]
-                      + [yv[rows - lag_] for lag_ in range(1, ar_lags + 1)])
+    x_last = np.array(
+        [1.0]
+        + [F[rows - 1, j] for j in range(k)]
+        + [yv[rows - lag_] for lag_ in range(1, ar_lags + 1)]
+    )
     fc = float(x_last @ beta)
     return {
         "coefs": beta,

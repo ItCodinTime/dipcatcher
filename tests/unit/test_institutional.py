@@ -279,9 +279,9 @@ def test_factor_betas_recover_injected_beta() -> None:
     factors = crypto_factor_returns(bars)
     f_mkt = factors.select("event_time", "mkt")
     betas = estimate_factor_betas(bars, f_mkt, window=10)
-    tail = betas.filter(
-        (pl.col("security_id") == "BETA2") & pl.col("beta_mkt").is_not_null()
-    ).sort("event_time")
+    tail = betas.filter((pl.col("security_id") == "BETA2") & pl.col("beta_mkt").is_not_null()).sort(
+        "event_time"
+    )
     assert tail.height > 0
     assert tail["beta_mkt"][-1] == pytest.approx(2.0, abs=0.10)
 
@@ -290,15 +290,11 @@ def test_decompose_book_factors_identity() -> None:
     px = {f"S{k}": [100.0 + i + 0.2 * np.sin(i) for i in range(12)] for k in range(6)}
     bars = _bars(px)
     factors = crypto_factor_returns(bars).select("event_time", "mkt")
-    w = _weights(
-        [(T0 + timedelta(days=d), f"S{k}", 1.0 / 6) for d in range(11) for k in range(6)]
-    )
+    w = _weights([(T0 + timedelta(days=d), f"S{k}", 1.0 / 6) for d in range(11) for k in range(6)])
     betas = pl.DataFrame(
         {
             "security_id": [f"S{k}" for k in range(6) for _ in range(12)],
-            "event_time": sorted(
-                [T0 + timedelta(days=d) for _ in range(6) for d in range(12)]
-            ),
+            "event_time": sorted([T0 + timedelta(days=d) for _ in range(6) for d in range(12)]),
             "beta_mkt": [1.0] * 72,
         }
     )
@@ -335,9 +331,7 @@ def test_reconcile_broker_states_match_and_diff() -> None:
 
 
 def test_reconcile_equity_and_fills() -> None:
-    eq = pl.DataFrame(
-        {"event_time": [T0, T0 + timedelta(days=1)], "nav": [100.0, 101.0]}
-    )
+    eq = pl.DataFrame({"event_time": [T0, T0 + timedelta(days=1)], "nav": [100.0, 101.0]})
     assert reconcile_equity(eq, eq)["match"] is True
     shifted = eq.with_columns(pl.col("nav") + 1.0)
     rep = reconcile_equity(eq, shifted)
@@ -409,9 +403,7 @@ def test_limit_order_rests_without_bar_then_fills_on_touch(tmp_path) -> None:
     assert recs == []
     assert "o1" in broker.open_orders
     # Bar touching 99 fills at min(open, limit)
-    recs = broker.process_bar(
-        "A", bar_open=100.0, bar_high=101.0, bar_low=98.0, adv_dollars=1e9
-    )
+    recs = broker.process_bar("A", bar_open=100.0, bar_high=101.0, bar_low=98.0, adv_dollars=1e9)
     assert len(recs) == 1 and recs[0].order.status is OrderStatus.FILLED
     assert recs[0].fill.price == pytest.approx(99.0)
     assert "o1" not in broker.open_orders
@@ -447,9 +439,7 @@ def test_sell_limit_symmetric_and_immediate_bar_eval(tmp_path) -> None:
         bar_low=99.0,
     )
     assert rec.order.status is OrderStatus.ACKED
-    recs = broker.process_bar(
-        "A", bar_open=102.0, bar_high=103.0, bar_low=101.5, adv_dollars=1e9
-    )
+    recs = broker.process_bar("A", bar_open=102.0, bar_high=103.0, bar_low=101.5, adv_dollars=1e9)
     assert len(recs) == 1 and recs[0].order.status is OrderStatus.FILLED
     assert recs[0].fill.price == pytest.approx(102.0)  # gap-up fills at open
 
@@ -473,9 +463,7 @@ def test_open_orders_persist_through_state_roundtrip(tmp_path) -> None:
     broker.submit(_order(limit=99.0), price=100.0, nav=100_000.0, adv_dollars=1e9)
     restored = SimulatedBroker.from_state(cfg, broker.to_dict())
     assert "o1" in restored.open_orders
-    recs = restored.process_bar(
-        "A", bar_open=100.0, bar_high=101.0, bar_low=98.0, adv_dollars=1e9
-    )
+    recs = restored.process_bar("A", bar_open=100.0, bar_high=101.0, bar_low=98.0, adv_dollars=1e9)
     assert len(recs) == 1 and recs[0].order.status is OrderStatus.FILLED
 
 
@@ -498,9 +486,7 @@ def test_resting_limit_partial_fill_keeps_residual(tmp_path) -> None:
     assert residual.status is OrderStatus.PARTIAL
     assert residual.quantity == pytest.approx(5.0)
     # Second touching bar completes the residual; book empties.
-    recs = broker.process_bar(
-        "A", bar_open=99.0, bar_high=100.0, bar_low=98.5, adv_dollars=4950.0
-    )
+    recs = broker.process_bar("A", bar_open=99.0, bar_high=100.0, bar_low=98.5, adv_dollars=4950.0)
     assert len(recs) == 1 and recs[0].order.status is OrderStatus.FILLED
     assert not recs[0].fill.is_partial
     assert "o1" not in broker.open_orders
@@ -552,9 +538,7 @@ def test_amend_order_cancel_replace(tmp_path) -> None:
     assert rec.order.quantity == pytest.approx(20.0)
     assert rec.order.limit_price == pytest.approx(99.5)
     # Amended limit now touches on a bar that missed the old 98.0 limit
-    recs = broker.process_bar(
-        "A", bar_open=100.0, bar_high=101.0, bar_low=99.0, adv_dollars=1e9
-    )
+    recs = broker.process_bar("A", bar_open=100.0, bar_high=101.0, bar_low=99.0, adv_dollars=1e9)
     assert len(recs) == 1 and recs[0].order.status is OrderStatus.FILLED
     assert recs[0].fill.price == pytest.approx(99.5)
     assert recs[0].fill.quantity == pytest.approx(20.0)
@@ -583,9 +567,7 @@ def test_fill_decision_price_validation() -> None:
 def test_broker_decision_price_slippage(tmp_path) -> None:
     broker = SimulatedBroker(config=_cfg(tmp_path), initial_cash=100_000.0)
     broker.mark({"A": 100.0})
-    rec = broker.submit(
-        _order(), price=101.0, nav=100_000.0, adv_dollars=1e9, decision_price=100.0
-    )
+    rec = broker.submit(_order(), price=101.0, nav=100_000.0, adv_dollars=1e9, decision_price=100.0)
     assert rec.fill.decision_price == pytest.approx(100.0)
     assert rec.fill.slippage == pytest.approx(10.0)  # adverse $10 for 10 qty
 
@@ -697,6 +679,4 @@ def test_ops_snapshot_markdown_and_invalid_nav(tmp_path) -> None:
     assert "| gross |" in md
     assert "kill_switch" in md
     with pytest.raises(ValueError, match="nav"):
-        ops_snapshot(
-            nav=float("nan"), cash=0.0, positions={}, marks={}, config=_cfg(tmp_path)
-        )
+        ops_snapshot(nav=float("nan"), cash=0.0, positions={}, marks={}, config=_cfg(tmp_path))

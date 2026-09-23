@@ -145,10 +145,7 @@ def fit_t_mixture(
     resp = np.full((n, k), 1.0 / k)
     for _ in range(max_iter):
         log_p = np.column_stack(
-            [
-                _log_t_pdf(m, mus[j], covs[j], nus[j]) + math.log(w[j])
-                for j in range(k)
-            ]
+            [_log_t_pdf(m, mus[j], covs[j], nus[j]) + math.log(w[j]) for j in range(k)]
         )
         ll = float(logsumexp(log_p, axis=1).sum())
         ll_path.append(ll)
@@ -161,9 +158,7 @@ def fit_t_mixture(
             diff = m - mus[j]
             delta = np.einsum("ij,jk,ik->i", diff, np.linalg.pinv(covs[j]), diff)
             diff_norm[:, j] = (nus[j] + d) / (nus[j] + delta)
-            diff_logn[:, j] = digamma((nus[j] + d) / 2.0) - np.log(
-                (nus[j] + delta) / 2.0
-            )
+            diff_logn[:, j] = digamma((nus[j] + d) / 2.0) - np.log((nus[j] + delta) / 2.0)
         n_k = resp.sum(axis=0) + 1e-12
         w = n_k / n
         mus = ((resp * diff_norm).T @ m) / (resp * diff_norm).sum(axis=0)[:, None]
@@ -185,9 +180,7 @@ def fit_t_mixture(
                     + (nu / 2.0) * nk * (lu - ub)
                 )
 
-            res = opt.minimize_scalar(
-                nu_obj, bounds=(3.0, 300.0), method="bounded"
-            )
+            res = opt.minimize_scalar(nu_obj, bounds=(3.0, 300.0), method="bounded")
             if res.success and np.isfinite(res.x):
                 nus[j] = float(res.x)
         if ll - prev_ll < tol * (1.0 + abs(prev_ll)):
@@ -261,11 +254,7 @@ def mixing_density_stats(fit: dict[str, Array]) -> dict[str, float]:
     resp = fit["responsibilities"]
     k = w.size
     eff = 1.0 / float(np.sum(w * w))
-    gaps = [
-        float(np.linalg.norm(mus[i] - mus[j]))
-        for i in range(k)
-        for j in range(i + 1, k)
-    ]
+    gaps = [float(np.linalg.norm(mus[i] - mus[j])) for i in range(k) for j in range(i + 1, k)]
     ent = float(-np.mean(np.sum(resp * np.log(resp + 1e-16), axis=1)))
     return {
         "eff_components": eff,

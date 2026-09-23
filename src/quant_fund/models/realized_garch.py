@@ -39,13 +39,7 @@ def parkinson_daily_variance(
     if highs.shape != lows.shape:
         raise ValueError("Parkinson high and low must have the same length")
     out = np.full(highs.shape, np.nan, dtype=float)
-    ok = (
-        np.isfinite(highs)
-        & np.isfinite(lows)
-        & (highs > 0.0)
-        & (lows > 0.0)
-        & (highs >= lows)
-    )
+    ok = np.isfinite(highs) & np.isfinite(lows) & (highs > 0.0) & (lows > 0.0) & (highs >= lows)
     if not np.any(ok):
         return out
     log_hl = np.log(highs[ok] / lows[ok])
@@ -137,7 +131,9 @@ class RealizedGARCHVol(JoblibMixin):
             realized_measure=realized_measure,
         )
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> RealizedGARCHVol:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> RealizedGARCHVol:
         """Fit on causal returns plus ``realized_measure=``; ``y`` may be a label."""
         if "returns" not in kwargs:
             raise ValueError(
@@ -217,9 +213,7 @@ class RealizedGARCHVol(JoblibMixin):
             return 1e12
         mu = params["mu"]
         log_x = np.log(np.clip(measure_percent, _GARCH_VARIANCE_FLOOR, None))
-        uncond = (params["omega"] + params["gamma"] * params["xi"]) / (
-            1.0 - params["persistence"]
-        )
+        uncond = (params["omega"] + params["gamma"] * params["xi"]) / (1.0 - params["persistence"])
         log_h = float(np.clip(uncond, *_LOG_H_BOUNDS))
         nll = 0.0
         for ret, x_t, lx in zip(
@@ -242,8 +236,10 @@ class RealizedGARCHVol(JoblibMixin):
                 + np.log(params["sigma_u"])
                 + 0.5 * (u / params["sigma_u"]) ** 2
             )
-            log_h = params["omega"] + params["beta"] * log_h + params["gamma"] * np.log(
-                max(float(x_t), _GARCH_VARIANCE_FLOOR)
+            log_h = (
+                params["omega"]
+                + params["beta"] * log_h
+                + params["gamma"] * np.log(max(float(x_t), _GARCH_VARIANCE_FLOOR))
             )
         if not np.isfinite(nll):
             return 1e12
@@ -303,9 +299,7 @@ class RealizedGARCHVol(JoblibMixin):
     ) -> tuple[float, float] | None:
         if returns_percent.size != measure_percent.size:
             return None
-        uncond = (params["omega"] + params["gamma"] * params["xi"]) / (
-            1.0 - params["persistence"]
-        )
+        uncond = (params["omega"] + params["gamma"] * params["xi"]) / (1.0 - params["persistence"])
         log_h = float(np.clip(uncond, *_LOG_H_BOUNDS))
         last_h = float(np.exp(log_h))
         last_x = float(measure_percent[0])
@@ -315,8 +309,10 @@ class RealizedGARCHVol(JoblibMixin):
                 return None
             last_h = h
             last_x = float(x_t)
-            log_h = params["omega"] + params["beta"] * log_h + params["gamma"] * np.log(
-                max(float(x_t), _GARCH_VARIANCE_FLOOR)
+            log_h = (
+                params["omega"]
+                + params["beta"] * log_h
+                + params["gamma"] * np.log(max(float(x_t), _GARCH_VARIANCE_FLOOR))
             )
         if not np.isfinite(last_h) or last_h <= 0.0 or not np.isfinite(last_x) or last_x <= 0.0:
             return None

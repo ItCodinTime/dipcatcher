@@ -176,8 +176,7 @@ class SimulatedBroker:
             or (
                 market_predicted_vol is not None
                 and (
-                    not np.isfinite(float(market_predicted_vol))
-                    or float(market_predicted_vol) < 0
+                    not np.isfinite(float(market_predicted_vol)) or float(market_predicted_vol) < 0
                 )
             )
         ):

@@ -68,7 +68,11 @@ def mrmr_select(x: Array, y: Array, k: int) -> dict[str, Array]:
         j_best = remaining[int(np.argmax(mrmr))]
         selected.append(j_best)
         scores[j_best] = float(mrmr.max())
-    return {"selected": np.asarray(selected, dtype=np.float64), "scores": scores, "relevance": relevance}
+    return {
+        "selected": np.asarray(selected, dtype=np.float64),
+        "scores": scores,
+        "relevance": relevance,
+    }
 
 
 def univariate_screen(x: Array, y: Array, k: int) -> dict[str, Array]:

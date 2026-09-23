@@ -111,7 +111,12 @@ class GARCHVol(JoblibMixin):
         power: float = 2.0,
         series_scope: str = "univariate_return_series",
     ) -> None:
-        if isinstance(p, bool) or isinstance(q, bool) or not isinstance(p, int) or not isinstance(q, int):
+        if (
+            isinstance(p, bool)
+            or isinstance(q, bool)
+            or not isinstance(p, int)
+            or not isinstance(q, int)
+        ):
             raise ValueError("p and q must be integers")
         if isinstance(dist, bool) or not isinstance(dist, str):
             raise ValueError("dist must be a string")
@@ -276,7 +281,10 @@ class GARCHVol(JoblibMixin):
         if returns.size == 0 or self.result is None:
             raise ValueError("GARCHVol requires a successful fit for in-sample diagnostics")
         if self.result is not None:
-            sigma = np.asarray(self.result.conditional_volatility, dtype=float).reshape(-1) / _GARCH_SCALE
+            sigma = (
+                np.asarray(self.result.conditional_volatility, dtype=float).reshape(-1)
+                / _GARCH_SCALE
+            )
             if sigma.size != returns.size or not np.isfinite(sigma).all() or np.any(sigma <= 0.0):
                 raise ValueError("fitted conditional volatility is invalid")
             mean = self._mean_decimal()
@@ -426,11 +434,7 @@ class GARCHVol(JoblibMixin):
             return out
         if self.result is None:
             standardized = (values[valid] - self._mean_decimal()) / scales[valid]
-            out[valid] = (
-                -0.5 * standardized**2
-                - np.log(scales[valid])
-                - 0.5 * np.log(2.0 * np.pi)
-            )
+            out[valid] = -0.5 * standardized**2 - np.log(scales[valid]) - 0.5 * np.log(2.0 * np.pi)
             return out
         distribution = self.result.model.distribution
         names = distribution.parameter_names()

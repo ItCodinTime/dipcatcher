@@ -63,7 +63,7 @@ def fetch_yahoo_chart(
     attempt = 0
     while True:
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — public chart JSON
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — public chart JSON  # nosec B310
                 payload = json.loads(resp.read().decode("utf-8"))
             break
         except urllib.error.HTTPError as exc:

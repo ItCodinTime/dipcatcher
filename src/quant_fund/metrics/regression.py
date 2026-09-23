@@ -68,9 +68,7 @@ def ols(y: Array, x: Array, add_const: bool = True) -> dict[str, Array]:
     }
 
 
-def hc_covariance(
-    resid: Array, design: Array, kind: str = "HC3"
-) -> Array:
+def hc_covariance(resid: Array, design: Array, kind: str = "HC3") -> Array:
     """White (1980) heteroskedasticity-consistent covariance of OLS betas.
 
     ``kind`` in {HC0, HC1, HC2, HC3, HC4 (Cribari-Neto 2004)}.
@@ -103,9 +101,7 @@ def hc_covariance(
     return xtx_inv @ meat @ xtx_inv
 
 
-def hac_covariance(
-    resid: Array, design: Array, lag: int | None = None
-) -> Array:
+def hac_covariance(resid: Array, design: Array, lag: int | None = None) -> Array:
     """Newey–West (1987) HAC covariance of OLS betas (Bartlett kernel)."""
     e = np.asarray(resid, dtype=float).reshape(-1)
     m = np.asarray(design, dtype=float)
@@ -169,9 +165,7 @@ def durbin_watson(resid: Array) -> float:
     return float(np.sum(np.diff(e) ** 2) / denom)
 
 
-def breusch_godfrey(
-    y: Array, x: Array, lags: int = 1
-) -> dict[str, float]:
+def breusch_godfrey(y: Array, x: Array, lags: int = 1) -> dict[str, float]:
     """Breusch–Godfrey LM test: aux regression of resid on [X, lagged resid]."""
     v, m = _as_xy(y, x)
     m = _with_const(m)
@@ -179,9 +173,7 @@ def breusch_godfrey(
     if lags < 1 or n <= k + lags + 2:
         raise ValueError("lags >= 1 with sufficient data required")
     e = ols(v, m[:, 1:])["resid"]
-    e_lag = np.column_stack(
-        [np.concatenate([np.zeros(j), e[:-j]]) for j in range(1, lags + 1)]
-    )
+    e_lag = np.column_stack([np.concatenate([np.zeros(j), e[:-j]]) for j in range(1, lags + 1)])
     aux = np.column_stack([m, e_lag])
     r2 = float(ols(e, aux[:, 1:], add_const=True)["r2"][0])
     lm = (n - lags) * r2
@@ -219,9 +211,7 @@ def white_test(y: Array, x: Array) -> dict[str, float]:
     return {"lm": lm, "pvalue": float(sstats.chi2.sf(lm, df)), "df": float(df)}
 
 
-def ramsey_reset(
-    y: Array, x: Array, powers: tuple[int, ...] = (2, 3)
-) -> dict[str, float]:
+def ramsey_reset(y: Array, x: Array, powers: tuple[int, ...] = (2, 3)) -> dict[str, float]:
     """Ramsey (1969) RESET: F-test on powers of fitted values."""
     v, m = _as_xy(y, x)
     m = _with_const(m)
@@ -370,9 +360,7 @@ def theil_sen(x: Array, y: Array) -> dict[str, float]:
     return {"slope": slope, "intercept": intercept}
 
 
-def huber_regression(
-    x: Array, y: Array, c: float = 1.345, max_iter: int = 100
-) -> dict[str, Array]:
+def huber_regression(x: Array, y: Array, c: float = 1.345, max_iter: int = 100) -> dict[str, Array]:
     """Huber (1964) M-estimation via IRLS (psi clipped at c*sigma)."""
     xv = np.asarray(x, dtype=float)
     yv = np.asarray(y, dtype=float).reshape(-1)
@@ -402,9 +390,7 @@ def huber_regression(
     return {"beta": beta, "resid": resid, "iterations": np.array([float(iters + 1)])}
 
 
-def quantile_regression(
-    x: Array, y: Array, tau: float = 0.5
-) -> dict[str, Array]:
+def quantile_regression(x: Array, y: Array, tau: float = 0.5) -> dict[str, Array]:
     """Koenker–Bassett (1978) quantile regression via LP (HiGHS)."""
     xv = np.asarray(x, dtype=float)
     yv = np.asarray(y, dtype=float).reshape(-1)
@@ -421,9 +407,7 @@ def quantile_regression(
     # y = Xb + u+ - u-  ->  Xb + u+ - u- = y
     a_eq = np.column_stack([xv, np.eye(n), -np.eye(n)])
     bounds = [(None, None)] * k + [(0.0, None)] * (2 * n)
-    res = opt.linprog(
-        c, A_eq=a_eq, b_eq=yv, bounds=bounds, method="highs"
-    )
+    res = opt.linprog(c, A_eq=a_eq, b_eq=yv, bounds=bounds, method="highs")
     if not res.success:
         raise ValueError(f"quantile regression LP failed: {res.message}")
     beta = res.x[:k]
@@ -431,9 +415,7 @@ def quantile_regression(
     return {"beta": beta, "resid": resid, "tau": np.array([tau])}
 
 
-def two_sls(
-    y: Array, x_endog: Array, x_exog: Array, instruments: Array
-) -> dict[str, Array]:
+def two_sls(y: Array, x_endog: Array, x_exog: Array, instruments: Array) -> dict[str, Array]:
     """Two-stage least squares.
 
     ``x_exog`` are included exogenous regressors (constant added);
@@ -458,7 +440,9 @@ def two_sls(
     n = v.size
     k_end, k_ex, k_z = xe.shape[1], xx.shape[1], zi.shape[1]
     if k_z < k_end:
-        raise ValueError("under-identified: need at least as many instruments as endogenous regressors")
+        raise ValueError(
+            "under-identified: need at least as many instruments as endogenous regressors"
+        )
     if n < k_end + k_ex + k_z + 2:
         raise ValueError("insufficient data for 2SLS")
     z_full = np.column_stack([np.ones(n), xx, zi])

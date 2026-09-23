@@ -154,11 +154,14 @@ def build_tearsheet(
     }
 
     if fills is not None and fills.height > 0:
-        cost_cols = [c for c in ("fee", "spread_cost", "impact_cost", "slippage") if c in fills.columns]
+        cost_cols = [
+            c for c in ("fee", "spread_cost", "impact_cost", "slippage") if c in fills.columns
+        ]
         sheet["execution"] = {
             "n_fills": int(fills.height),
             "cost_totals": {
-                c: float(fills[c].sum()) for c in cost_cols  # type: ignore[index]
+                c: float(fills[c].sum())
+                for c in cost_cols  # type: ignore[index]
             },
             "total_cost": float(
                 sum(fills[c].sum() for c in cost_cols)  # type: ignore[arg-type]
@@ -271,9 +274,7 @@ def tearsheet_markdown(sheet: dict[str, Any]) -> str:
                 f" (gross {_fmt(row['gross_pnl'])})"
             )
         for row in attr.get("by_sleeve", []):
-            lines.append(
-                f"- sleeve {row['sleeve']}: net {_fmt(row['net_pnl'])}"
-            )
+            lines.append(f"- sleeve {row['sleeve']}: net {_fmt(row['net_pnl'])}")
         lines.append("")
     return "\n".join(lines)
 

@@ -79,8 +79,9 @@ def _median_bandwidth(v: Array) -> float:
     return max(med, 1e-8)
 
 
-def hsic(x: Array, y: Array, sigma: float | None = None, n_perm: int = 200,
-         seed: int = 0) -> dict[str, float]:
+def hsic(
+    x: Array, y: Array, sigma: float | None = None, n_perm: int = 200, seed: int = 0
+) -> dict[str, float]:
     """Gretton et al. (2005) HSIC with median-heuristic RBF kernels.
 
     HSIC = tr(KHLH)/n^2; the p-value is a seeded permutation test on the
