@@ -566,7 +566,15 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
         "source": str(weights_path),
         "claim": "research_only",
     }
-    if estimate.estimator in {"dcc_gaussian", "dcc_student_t", "adcc", "ccc", "agdcc", "agdcc_full", "ewma"}:
+    if estimate.estimator in {
+        "dcc_gaussian",
+        "dcc_student_t",
+        "adcc",
+        "ccc",
+        "agdcc",
+        "agdcc_full",
+        "ewma",
+    }:
         payload["covariance_horizon"] = 1
     overlay = estimate.overlay
     if overlay is not None:

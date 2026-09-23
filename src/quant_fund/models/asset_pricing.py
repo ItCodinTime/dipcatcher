@@ -27,7 +27,9 @@ from quant_fund.models.base import JoblibMixin, ModelMeta
 from quant_fund.models.ranking import _finite
 
 
-def voc_ridge(signals: NDArray[np.float64], y: NDArray[np.float64], z: float) -> NDArray[np.float64]:
+def voc_ridge(
+    signals: NDArray[np.float64], y: NDArray[np.float64], z: float
+) -> NDArray[np.float64]:
     r"""Kelly–Malamud–Zhou ridge: beta(z) = (z I + T^{-1} S'S)^{-1} T^{-1} S' R.
 
     Dual form beta = S'(SS' + z T I)^{-1} y when P>T. z=0 is ridgeless

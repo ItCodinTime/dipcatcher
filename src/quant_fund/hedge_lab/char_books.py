@@ -42,7 +42,9 @@ def lagged_characteristic_book(
     )
     dates = [_date_key(d) for d in data["event_time"].unique().sort().to_list()]
     by_date: dict[str, pl.DataFrame] = {}
-    keyed = data.with_columns(pl.col("event_time").map_elements(_date_key, return_dtype=pl.Utf8).alias("_d"))
+    keyed = data.with_columns(
+        pl.col("event_time").map_elements(_date_key, return_dtype=pl.Utf8).alias("_d")
+    )
     for key, grp in keyed.group_by("_d", maintain_order=True):
         stamp = key[0] if isinstance(key, tuple) else key
         by_date[str(stamp)] = grp

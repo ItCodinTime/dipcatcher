@@ -58,10 +58,14 @@ def build_labels(
             (
                 pl.col(f"future_return_{h}")
                 - (
-                    pl.when(pl.col("_in_universe")).then(pl.col(f"future_return_{h}")).otherwise(None)
+                    pl.when(pl.col("_in_universe"))
+                    .then(pl.col(f"future_return_{h}"))
+                    .otherwise(None)
                     if membership is not None
                     else pl.col(f"future_return_{h}")
-                ).mean().over("event_time")
+                )
+                .mean()
+                .over("event_time")
             ).alias(f"future_idio_return_{h}")
         )
         # Realized volatility is the square root of forward squared log returns.

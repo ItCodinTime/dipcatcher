@@ -101,7 +101,16 @@ def hunt_cmd(
         }
         for c in receipt["cards"][:25]
     ]
-    typer.echo(json.dumps({"hit_sharpe5": receipt["hit_sharpe5"], "best": receipt["best_abs_sharpe"], "top": slim}, indent=2))
+    typer.echo(
+        json.dumps(
+            {
+                "hit_sharpe5": receipt["hit_sharpe5"],
+                "best": receipt["best_abs_sharpe"],
+                "top": slim,
+            },
+            indent=2,
+        )
+    )
 
 
 @ls_app.command("race")

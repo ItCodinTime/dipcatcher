@@ -1384,7 +1384,9 @@ def tearsheet_cmd(
     ),
     fills: Path | None = typer.Option(None, "--fills", help="Optional fills parquet for IS/TCA"),
     weights: Path | None = typer.Option(
-        None, "--weights", help="Optional target-weight panel (event_time, security_id, target_weight)"
+        None,
+        "--weights",
+        help="Optional target-weight panel (event_time, security_id, target_weight)",
     ),
     bars: Path | None = typer.Option(
         None, "--bars", help="Optional per-name bars for per-security attribution"

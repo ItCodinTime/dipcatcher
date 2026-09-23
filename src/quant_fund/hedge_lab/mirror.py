@@ -106,7 +106,9 @@ def long_short_path(
             text = str(stamp)
             kept_dates.append(text[:10] if len(text) >= 10 else text)
         if id_arr is not None:
-            prev_map = {str(sid): float(ww) for sid, ww in zip(id_arr[idx].tolist(), w, strict=True)}
+            prev_map = {
+                str(sid): float(ww) for sid, ww in zip(id_arr[idx].tolist(), w, strict=True)
+            }
         else:
             prev_map = {str(i): float(ww) for i, ww in enumerate(w)}
     r = np.asarray(rets, dtype=float)
@@ -133,9 +135,7 @@ def pair_book_and_mirror(
     one_way_cost: float = 0.0,
 ) -> dict[str, Any]:
     """Frictionless-odd / cost-even identity for one score card."""
-    book = long_short_path(
-        scores, y, dates, ids, k_frac=k_frac, one_way_cost=one_way_cost
-    )
+    book = long_short_path(scores, y, dates, ids, k_frac=k_frac, one_way_cost=one_way_cost)
     mirror = long_short_path(
         -np.asarray(scores, dtype=float),
         y,
@@ -271,18 +271,14 @@ def run_file_tape_mirror(
         "combo_ic": oos_rank_scores(
             "combo_ic", cfg, x, y, dates, ids, horizon_bars=horizon, feature_names=used
         ),
-        "anti_univ": nested_worst_univariate_scores(
-            x, y, dates, cfg, horizon_bars=horizon
-        ),
+        "anti_univ": nested_worst_univariate_scores(x, y, dates, cfg, horizon_bars=horizon),
         "random": random_date_scores(dates, seed=7),
     }
     rows = []
     cards = {}
     for name, scores in engines.items():
         for cost in (0.0, float(one_way_cost)):
-            pair = pair_book_and_mirror(
-                scores, y, dates, ids, k_frac=k_frac, one_way_cost=cost
-            )
+            pair = pair_book_and_mirror(scores, y, dates, ids, k_frac=k_frac, one_way_cost=cost)
             key = f"{name}_c{cost:.4f}"
             cards[key] = pair
             row = summarize_pair(key, pair)

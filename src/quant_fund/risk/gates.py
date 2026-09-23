@@ -162,7 +162,9 @@ def dd_remaining_leverage(
         peak = max(peak, eq)
         dd = max(0.0, 1.0 - eq / peak) if peak > 0 else 1.0
         remaining = float(limit) - dd
-        lev[i] = 0.0 if remaining <= float(cushion) else min(1.0, remaining / max(float(limit), _EPS))
+        lev[i] = (
+            0.0 if remaining <= float(cushion) else min(1.0, remaining / max(float(limit), _EPS))
+        )
     return lev
 
 
@@ -422,7 +424,9 @@ def apply_gate_stack(
         else:
             scaled = dd_halt(scaled, limit=float(spec.dd_limit))
             with np.errstate(divide="ignore", invalid="ignore"):
-                rebuilt = np.where(np.abs(r) > _EPS, scaled / r, np.where(scaled == 0.0, 0.0, scale))
+                rebuilt = np.where(
+                    np.abs(r) > _EPS, scaled / r, np.where(scaled == 0.0, 0.0, scale)
+                )
             scale = np.where(np.isfinite(rebuilt), rebuilt, scale)
             notes.append("dd=halt-and-stay-cash")
     n_halt = int(np.sum(scale <= 1e-12))

@@ -4,7 +4,6 @@ from datetime import UTC, datetime, timedelta
 
 import polars as pl
 import pytest
-
 from quant_fund.research.crypto_external_benchmark import (
     ExternalBenchmarkProtocol,
     build_external_protocol,
@@ -19,21 +18,29 @@ def _panel(source: str = "binance-public-data") -> pl.DataFrame:
     for day in range(40):
         event = start + timedelta(days=day)
         for symbol in ("BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "XRPUSDT"):
-            rows.append({
-                "security_id": symbol, "symbol": symbol, "event_time": event,
-                "available_time": event + timedelta(days=1),
-                "ingested_time": event + timedelta(days=2), "source": source,
-                "revision_id": "receipt-v1", "open": 100.0, "high": 101.0,
-                "low": 99.0, "close": 100.5 + day, "volume": 10.0,
-                "currency": "USDT", "session": "24x7",
-            })
+            rows.append(
+                {
+                    "security_id": symbol,
+                    "symbol": symbol,
+                    "event_time": event,
+                    "available_time": event + timedelta(days=1),
+                    "ingested_time": event + timedelta(days=2),
+                    "source": source,
+                    "revision_id": "receipt-v1",
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.5 + day,
+                    "volume": 10.0,
+                    "currency": "USDT",
+                    "session": "24x7",
+                }
+            )
     return pl.DataFrame(rows)
 
 
 def test_protocol_is_frozen_and_candidate_only() -> None:
-    protocol = build_external_protocol(
-        input_id="fixture", input_sha256="a" * 64, n_dates=40
-    )
+    protocol = build_external_protocol(input_id="fixture", input_sha256="a" * 64, n_dates=40)
 
     assert isinstance(protocol, ExternalBenchmarkProtocol)
     assert protocol.symbols == ("BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "XRPUSDT")
@@ -64,7 +71,10 @@ def test_validate_external_panel_rejects_synthetic_or_mixed_sources() -> None:
         validate_external_panel(_panel("synthetic"), protocol)
 
     mixed = _panel().with_columns(
-        pl.when(pl.col("symbol") == "BTCUSDT").then(pl.lit("other")).otherwise(pl.col("source")).alias("source")
+        pl.when(pl.col("symbol") == "BTCUSDT")
+        .then(pl.lit("other"))
+        .otherwise(pl.col("source"))
+        .alias("source")
     )
     with pytest.raises(ValueError, match="one external source"):
         validate_external_panel(mixed, protocol)
@@ -95,11 +105,16 @@ def test_protocol_metadata_rejects_invalid_digest_and_date_count() -> None:
 
 def test_validate_external_panel_rejects_incomplete_or_mixed_revision_panel() -> None:
     protocol = build_external_protocol(input_id="fixture", input_sha256="a" * 64, n_dates=40)
-    incomplete = _panel().filter(~((pl.col("symbol") == "ADAUSDT") & (pl.col("event_time").dt.day() == 5)))
+    incomplete = _panel().filter(
+        ~((pl.col("symbol") == "ADAUSDT") & (pl.col("event_time").dt.day() == 5))
+    )
     with pytest.raises(ValueError, match="complete"):
         validate_external_panel(incomplete, protocol)
     mixed = _panel().with_columns(
-        pl.when(pl.col("symbol") == "XRPUSDT").then(pl.lit("receipt-v2")).otherwise(pl.col("revision_id")).alias("revision_id")
+        pl.when(pl.col("symbol") == "XRPUSDT")
+        .then(pl.lit("receipt-v2"))
+        .otherwise(pl.col("revision_id"))
+        .alias("revision_id")
     )
     with pytest.raises(ValueError, match="revision_id"):
         validate_external_panel(mixed, protocol)
@@ -136,10 +151,12 @@ def test_validate_external_panel_rejects_naive_or_mixed_timezone_timestamps() ->
 def test_select_external_model_uses_validation_only_and_rejects_invalid_losses() -> None:
     import numpy as np
 
-    selected = select_external_model({
-        "candidate": np.array([1.0, 2.0, 1.5]),
-        "baseline": np.array([2.0, 2.0, 2.0]),
-    })
+    selected = select_external_model(
+        {
+            "candidate": np.array([1.0, 2.0, 1.5]),
+            "baseline": np.array([2.0, 2.0, 2.0]),
+        }
+    )
     assert selected == "candidate"
     with pytest.raises(ValueError, match="finite"):
         select_external_model({"candidate": np.array([1.0, np.nan])})
@@ -147,7 +164,6 @@ def test_select_external_model_uses_validation_only_and_rejects_invalid_losses()
 
 def test_summarize_external_losses_reports_hac_dm_and_fail_closed_status() -> None:
     import numpy as np
-
     from quant_fund.research.crypto_external_benchmark import summarize_external_losses
 
     validation = {

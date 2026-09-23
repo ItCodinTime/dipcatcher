@@ -75,11 +75,7 @@ def close_panel(
         col = "close_total_return" if "close_total_return" in gold.columns else "close"
     if col not in gold.columns:
         raise ValueError(f"gold panel missing {col}")
-    present = [
-        s
-        for s in symbols
-        if s in set(gold["security_id"].unique().to_list())
-    ]
+    present = [s for s in symbols if s in set(gold["security_id"].unique().to_list())]
     if not present:
         raise ValueError("none of the requested symbols are on the tape")
     sub = gold.filter(pl.col("security_id").is_in(present)).select(
@@ -184,9 +180,7 @@ def _gates(
         if n < 10:
             continue
         # Negative IC as DM loss: higher IC ⇒ lower loss.
-        result = diebold_mariano(
-            -series[:n], -bench[:n], lags=lags, name_a=name, name_b=benchmark
-        )
+        result = diebold_mariano(-series[:n], -bench[:n], lags=lags, name_a=name, name_b=benchmark)
         chunk = series[:n]
         finite = chunk[np.isfinite(chunk)]
         means[name] = float(np.mean(finite)) if finite.size else float("nan")
@@ -425,7 +419,9 @@ def run_lightspeed_file_book(
         "scheme": cfg.validation.scheme,
         "train_bars": int(cfg.validation.train_bars),
         "one_way_cost": float(one_way_cost),
-        "cs_ic": [{k: v for k, v in c.items() if k not in {"ic_series", "ic_dates"}} for c in ic_cards],
+        "cs_ic": [
+            {k: v for k, v in c.items() if k not in {"ic_series", "ic_dates"}} for c in ic_cards
+        ],
         "cs_ls": ls_cards,
         "gates": gates,
         "momentum_books": books,

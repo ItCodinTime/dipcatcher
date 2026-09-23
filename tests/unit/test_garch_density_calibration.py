@@ -37,9 +37,9 @@ def test_log_score_gaussian_standard_normal_at_median() -> None:
     expected = -0.5 * math.log(2.0 * math.pi)
     out = log_score_gaussian(np.array([0.0]), np.array([0.0]), np.array([1.0]))
     assert out[0] == pytest.approx(expected)
-    assert mean_log_score_gaussian(np.array([0.0]), np.array([0.0]), np.array([1.0])) == pytest.approx(
-        expected
-    )
+    assert mean_log_score_gaussian(
+        np.array([0.0]), np.array([0.0]), np.array([1.0])
+    ) == pytest.approx(expected)
 
 
 def test_log_score_gaussian_jacobian_identity() -> None:

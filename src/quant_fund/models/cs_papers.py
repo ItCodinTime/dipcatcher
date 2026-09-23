@@ -392,7 +392,9 @@ class SDFElasticNetRanker(JoblibMixin):
         self.b: NDArray[np.float64] | None = None
         self.n_dates: int = 0
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> SDFElasticNetRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> SDFElasticNetRanker:
         dates = kwargs.get("dates")
         if dates is None:
             raise ValueError("SDF elastic net requires per-row dates")
@@ -466,7 +468,11 @@ class RPPCARanker(JoblibMixin):
             family="ranking",
             name="rp_pca",
             version="v1",
-            extra={"n_factors": self.n_factors, "rp_gamma": self.gamma, "paper": "Lettau, Pelger, RFS 2020"},
+            extra={
+                "n_factors": self.n_factors,
+                "rp_gamma": self.gamma,
+                "paper": "Lettau, Pelger, RFS 2020",
+            },
         )
 
 
@@ -479,7 +485,9 @@ class GXThreePassRanker(JoblibMixin):
         self.n_factors = int(n_factors)
         self.premia: NDArray[np.float64] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> GXThreePassRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> GXThreePassRanker:
         dates = kwargs.get("dates")
         if dates is None:
             raise ValueError("Giglio–Xiu three-pass requires per-row dates")
@@ -530,7 +538,9 @@ class FNWRanker(JoblibMixin):
         self.selected = selected
         return self
 
-    def predict(self, x: NDArray[np.float64], dates: NDArray[Any] | None = None) -> NDArray[np.float64]:
+    def predict(
+        self, x: NDArray[np.float64], dates: NDArray[Any] | None = None
+    ) -> NDArray[np.float64]:
         if self.spline_coef is None:
             raise ValueError("FNWRanker is not fitted")
         x = np.where(np.isfinite(x), x, 0.0)
@@ -538,10 +548,7 @@ class FNWRanker(JoblibMixin):
             return np.full(x.shape[0], self.intercept, dtype=float)
         ranks = cs_rank_unit_interval(x, dates)
         cols = np.hstack(
-            [
-                quadratic_spline_basis(ranks[:, j], self.n_intervals)[:, 1:]
-                for j in self.selected
-            ]
+            [quadratic_spline_basis(ranks[:, j], self.n_intervals)[:, 1:] for j in self.selected]
         )
         return self.intercept + cols @ self.spline_coef
 
@@ -572,7 +579,9 @@ class DoubleSelectionRanker(JoblibMixin):
         self.mean_: NDArray[np.float64] | None = None
         self.scale_: NDArray[np.float64] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> DoubleSelectionRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> DoubleSelectionRanker:
         xx, yy, _ = _finite(x, y)
         if xx.shape[0] == 0:
             raise ValueError("double-selection fit has no finite rows")
@@ -647,7 +656,9 @@ def _column_standardize(
     return (x - mean) / scale, np.asarray(mean, dtype=float), np.asarray(scale, dtype=float)
 
 
-def _ols_intercept(design: NDArray[np.float64], y: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+def _ols_intercept(
+    design: NDArray[np.float64], y: NDArray[np.float64]
+) -> tuple[float, NDArray[np.float64]]:
     y = np.asarray(y, dtype=float).reshape(-1)
     if design.size == 0:
         return float(np.mean(y)) if y.size else 0.0, np.zeros(0, dtype=float)
@@ -706,7 +717,9 @@ def fama_macbeth_ridge_slopes(
 
 def pcr_loadings(
     x: NDArray[np.float64], y: NDArray[np.float64], n_factors: int
-) -> tuple[NDArray[np.float64], float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[
+    NDArray[np.float64], float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]
+]:
     """GKX PCR: leading PCs of standardized Z, then OLS of y on the scores."""
     xs, mean, scale = _column_standardize(x)
     n_obs, n_char = xs.shape
@@ -722,7 +735,9 @@ def pcr_loadings(
 
 def tprf_fit(
     x: NDArray[np.float64], y: NDArray[np.float64], n_factors: int
-) -> tuple[NDArray[np.float64], float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+) -> tuple[
+    NDArray[np.float64], float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]
+]:
     """Kelly–Pruitt automatic-proxy 3PRF (JoE 2015 Table 1 + Table 2).
 
     Predictors are column-standardized. Each automatic proxy is the residual
@@ -829,7 +844,9 @@ class FamaMacBethRanker(JoblibMixin):
         self.lambda_bar: NDArray[np.float64] | None = None
         self.n_dates: int = 0
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> FamaMacBethRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> FamaMacBethRanker:
         dates = kwargs.get("dates")
         if dates is None:
             raise ValueError("Fama–MacBeth requires per-row dates")
@@ -966,7 +983,10 @@ class PLSRanker(JoblibMixin):
             family="ranking",
             name="pls",
             version="v1",
-            extra={"n_factors": self.n_factors, "paper": "Gu, Kelly, Xiu, RFS 2020 PLS; Kelly, Pruitt, JoE 2015"},
+            extra={
+                "n_factors": self.n_factors,
+                "paper": "Gu, Kelly, Xiu, RFS 2020 PLS; Kelly, Pruitt, JoE 2015",
+            },
         )
 
 
@@ -983,7 +1003,9 @@ class ThreePassFilterRanker(JoblibMixin):
         self.mean: NDArray[np.float64] | None = None
         self.scale: NDArray[np.float64] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> ThreePassFilterRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> ThreePassFilterRanker:
         xx, yy, _ = _finite(x, y)
         if xx.shape[0] < 3:
             raise ValueError("3PRF fit needs at least three finite rows")
@@ -1003,7 +1025,10 @@ class ThreePassFilterRanker(JoblibMixin):
             family="ranking",
             name="tprf",
             version="v1",
-            extra={"n_factors": self.n_factors, "paper": "Kelly, Pruitt, Journal of Econometrics 2015"},
+            extra={
+                "n_factors": self.n_factors,
+                "paper": "Kelly, Pruitt, Journal of Econometrics 2015",
+            },
         )
 
 
@@ -1075,7 +1100,9 @@ class PrincipalPortfolioRanker(JoblibMixin):
         self.names: list[Any] = []
         self.index: dict[Any, int] = {}
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> PrincipalPortfolioRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> PrincipalPortfolioRanker:
         dates = kwargs.get("dates")
         ids = kwargs.get("ids")
         if dates is None or ids is None:
@@ -1096,7 +1123,10 @@ class PrincipalPortfolioRanker(JoblibMixin):
         return self
 
     def predict(
-        self, x: NDArray[np.float64], dates: NDArray[Any] | None = None, ids: NDArray[Any] | None = None
+        self,
+        x: NDArray[np.float64],
+        dates: NDArray[Any] | None = None,
+        ids: NDArray[Any] | None = None,
     ) -> NDArray[np.float64]:
         if self.beta is None or self.pi_k is None:
             raise ValueError("PrincipalPortfolioRanker is not fitted")
@@ -1144,7 +1174,9 @@ class CombinationRanker(JoblibMixin):
         self.intercepts: NDArray[np.float64] | None = None
         self.slopes: NDArray[np.float64] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> CombinationRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> CombinationRanker:
         xx, yy, _ = _finite(x, y)
         if xx.shape[0] == 0:
             raise ValueError("combination fit has no finite rows")
@@ -1232,9 +1264,7 @@ class ClassicRanker(JoblibMixin):
         )
 
 
-def _mean_date_ic(
-    x_col: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]
-) -> float:
+def _mean_date_ic(x_col: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]) -> float:
     ics: list[float] = []
     for idx in date_groups(dates):
         a = x_col[idx]
@@ -1356,7 +1386,9 @@ class ColumnSubsetRanker(JoblibMixin):
         self._name = str(name)
         self._idx: NDArray[np.intp] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> ColumnSubsetRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> ColumnSubsetRanker:
         xs, idx, subnames = _subset_design(x, kwargs.get("features"), self.columns)
         self._idx = idx
         kw = dict(kwargs)
@@ -1686,7 +1718,9 @@ class ResidualRidgeRanker(JoblibMixin):
         self.inner.fit(xr, y, **kwargs)
         return self
 
-    def predict(self, x: NDArray[np.float64], dates: NDArray[Any] | None = None) -> NDArray[np.float64]:
+    def predict(
+        self, x: NDArray[np.float64], dates: NDArray[Any] | None = None
+    ) -> NDArray[np.float64]:
         if dates is None:
             raise ValueError("ridge_neut predict requires per-row dates")
         xr = cs_residualize_on_controls(x, dates, self._features)
@@ -1728,7 +1762,9 @@ class AdaptiveLassoRanker(JoblibMixin):
         self.mean_: NDArray[np.float64] | None = None
         self.scale_: NDArray[np.float64] | None = None
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> AdaptiveLassoRanker:
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> AdaptiveLassoRanker:
         xx, yy, _ = _finite(x, y)
         if xx.shape[0] == 0:
             raise ValueError("adaptive LASSO fit has no finite rows")
@@ -1765,5 +1801,9 @@ class AdaptiveLassoRanker(JoblibMixin):
             family="ranking",
             name="alasso",
             version="v1",
-            extra={"alpha": self.alpha, "power": self.power, "paper": "Zou, JASA 2006 adaptive LASSO"},
+            extra={
+                "alpha": self.alpha,
+                "power": self.power,
+                "paper": "Zou, JASA 2006 adaptive LASSO",
+            },
         )

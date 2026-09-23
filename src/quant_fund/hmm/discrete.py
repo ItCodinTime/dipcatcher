@@ -119,9 +119,7 @@ def viterbi(model: DiscreteHMM, observations: list[int] | IntArray) -> tuple[Int
     return path, path_prob
 
 
-def gamma_xi(
-    model: DiscreteHMM, observations: list[int] | IntArray
-) -> tuple[Array, Array, float]:
+def gamma_xi(model: DiscreteHMM, observations: list[int] | IntArray) -> tuple[Array, Array, float]:
     """E-step occupancies γ_t(j) and transitions ξ_t(i,j)."""
     o = _as_obs(observations, model.n_obs)
     alpha, p_o = forward(model, o)
@@ -132,12 +130,7 @@ def gamma_xi(
     t_len, n = o.size, model.n_states
     xi = np.zeros((max(t_len - 1, 0), n, n), dtype=float)
     for t in range(t_len - 1):
-        raw = (
-            alpha[t][:, None]
-            * model.A
-            * model.B[:, o[t + 1]][None, :]
-            * beta[t + 1][None, :]
-        )
+        raw = alpha[t][:, None] * model.A * model.B[:, o[t + 1]][None, :] * beta[t + 1][None, :]
         xi[t] = raw / p_o
     return gamma, xi, p_o
 

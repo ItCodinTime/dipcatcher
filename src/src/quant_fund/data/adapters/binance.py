@@ -95,7 +95,10 @@ def _read_daily_row(
             member = archive.getinfo(member_name)
             if member.file_size > _MAX_MEMBER_BYTES:
                 raise ValueError("Binance ZIP member exceeds maximum size")
-            if member.compress_size == 0 or member.file_size > member.compress_size * _MAX_COMPRESSION_RATIO:
+            if (
+                member.compress_size == 0
+                or member.file_size > member.compress_size * _MAX_COMPRESSION_RATIO
+            ):
                 raise ValueError("Binance ZIP member exceeds maximum compression ratio")
             raw = archive.read(member_name)
     except zipfile.BadZipFile as exc:
@@ -115,9 +118,7 @@ def _read_daily_row(
         open_ms = int(values[0])
         close_ms = int(values[6])
         open_price, high, low, close, volume = (float(values[i]) for i in (1, 2, 3, 4, 5))
-        quote_volume, taker_base_volume, taker_quote_volume = (
-            float(values[i]) for i in (7, 9, 10)
-        )
+        quote_volume, taker_base_volume, taker_quote_volume = (float(values[i]) for i in (7, 9, 10))
         trades = int(values[8])
     except (TypeError, ValueError) as exc:
         raise ValueError("Binance kline row contains malformed numeric values") from exc
@@ -198,8 +199,23 @@ def normalize_binance_archives(
         raise ValueError(f"Binance symbol set must be exactly {BINANCE_SYMBOLS}")
     if len(revision_ids) != 1:
         raise ValueError("all Binance archives must use the same revision_id")
-    return pl.DataFrame(rows).select(
-        "security_id", "symbol", "event_time", "available_time", "ingested_time",
-        "source", "revision_id", "open", "high", "low", "close", "volume",
-        "currency", "session",
-    ).sort("symbol")
+    return (
+        pl.DataFrame(rows)
+        .select(
+            "security_id",
+            "symbol",
+            "event_time",
+            "available_time",
+            "ingested_time",
+            "source",
+            "revision_id",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "currency",
+            "session",
+        )
+        .sort("symbol")
+    )

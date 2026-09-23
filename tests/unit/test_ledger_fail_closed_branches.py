@@ -397,7 +397,6 @@ def test_validate_ledger_schema_full_flow_ok(tmp_path: Path) -> None:
     assert report["live_pnl_claim"] is False
 
 
-
 def test_positive_cursor_requires_matching_equity_rows(tmp_path: Path) -> None:
     root = _ledger_dir(tmp_path, "cursor-equity")
     state = {
@@ -437,6 +436,7 @@ def test_positive_cursor_requires_matching_equity_rows(tmp_path: Path) -> None:
     ).write_parquet(root / "equity.parquet")
     coherent = validate_ledger_schema(root)
     assert not any(error.startswith("broker_state_step_") for error in coherent["errors"])
+
 
 def _paper_cfg(tmp_path: Path):  # noqa: ANN202
     from quant_fund.config.loader import load_config

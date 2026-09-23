@@ -41,9 +41,7 @@ def heston_char(
     d = np.sqrt(xi_h**2 + xi**2 * (1j * u_c + u_c**2))
     g2 = (xi_h - d) / (xi_h + d)
     exp_dt = np.exp(-d * T)
-    c = (kappa * theta / xi**2) * (
-        (xi_h - d) * T - 2.0 * np.log((1.0 - g2 * exp_dt) / (1.0 - g2))
-    )
+    c = (kappa * theta / xi**2) * ((xi_h - d) * T - 2.0 * np.log((1.0 - g2 * exp_dt) / (1.0 - g2)))
     d_term = ((xi_h - d) / xi**2) * (1.0 - exp_dt) / (1.0 - g2 * exp_dt)
     return np.exp(c + d_term * v0 + 1j * u_c * (np.log(S0) + (r - q) * T))
 

@@ -68,7 +68,9 @@ def test_kelly_clips_negative_mean_to_zero() -> None:
 
 def test_kelly_does_not_sign_flip_a_loser() -> None:
     r = np.concatenate([np.full(40, -0.002), np.full(40, -0.001)])
-    gated = apply_gate_stack(r, GateSpec(vol_target=None, dd_limit=None, es_limit=None, crc_alpha=None, crash_lookback=0))
+    gated = apply_gate_stack(
+        r, GateSpec(vol_target=None, dd_limit=None, es_limit=None, crc_alpha=None, crash_lookback=0)
+    )
     assert float(np.max(gated.returns)) <= 1e-12
 
 

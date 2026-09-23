@@ -82,8 +82,7 @@ def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame
         ).alias("z_vs_ma20"),
         # Jegadeesh–Titman skip: 20-session return ending five sessions ago.
         (
-            pl.col(PX).shift(5).over("security_id") / pl.col(PX).shift(20).over("security_id")
-            - 1.0
+            pl.col(PX).shift(5).over("security_id") / pl.col(PX).shift(20).over("security_id") - 1.0
         ).alias("mom_skip_5_20"),
     )
     # vol
@@ -129,8 +128,10 @@ def compute_base_features(bars: pl.DataFrame, config: AppConfig) -> pl.DataFrame
             "turnover_proxy"
         ),
         dollar.rolling_std(20).over("security_id").alias("volume_vol"),
-        (dollar.rolling_mean(20).over("security_id") / dollar.rolling_mean(60).over("security_id"))
-        .alias("adv_ratio_20_60"),
+        (
+            dollar.rolling_mean(20).over("security_id")
+            / dollar.rolling_mean(60).over("security_id")
+        ).alias("adv_ratio_20_60"),
         pl.col(RAW_PX).log().alias("log_price"),
     )
     df = df.with_columns(_bar_characteristics())
@@ -192,9 +193,7 @@ def _bar_characteristics() -> list[pl.Expr]:
         .sqrt()
         .alias("downside_vol_20"),
         (pl.col("vol_20") / pl.col("vol_60")).alias("vol_ratio_20_60"),
-        (pl.col(PX) / pl.col(PX).rolling_max(252).over("security_id") - 1.0).alias(
-            "high_52w_prox"
-        ),
+        (pl.col(PX) / pl.col(PX).rolling_max(252).over("security_id") - 1.0).alias("high_52w_prox"),
     ]
 
 

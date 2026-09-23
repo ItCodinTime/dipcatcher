@@ -64,9 +64,7 @@ def _clear_caches() -> None:
     clear_forecast_caches()
 
 
-def _fake_ewma(
-    returns: np.ndarray, lam: float = 0.94
-) -> tuple[np.ndarray, dict[str, float | str]]:
+def _fake_ewma(returns: np.ndarray, lam: float = 0.94) -> tuple[np.ndarray, dict[str, float | str]]:
     x = np.asarray(returns, dtype=float)
     n = int(x.shape[1])
     sigma = np.eye(n, dtype=float) * 0.0009

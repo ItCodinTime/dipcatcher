@@ -37,9 +37,11 @@ def _adf_tstat(y: Array, lags: int) -> tuple[float, int]:
     if rows <= lags + 2:
         raise ValueError("insufficient observations for ADF")
     X = np.ones((rows, 1 + lags))
-    X[:, 1 : 1 + lags] = np.column_stack(
-        [dy[lags - k : n - 1 - k] for k in range(1, lags + 1)]
-    ) if lags > 0 else np.empty((rows, 0))
+    X[:, 1 : 1 + lags] = (
+        np.column_stack([dy[lags - k : n - 1 - k] for k in range(1, lags + 1)])
+        if lags > 0
+        else np.empty((rows, 0))
+    )
     dep = dy[lags:]
     reg = np.column_stack([yl[lags:], X])
     beta, *_ = np.linalg.lstsq(reg, dep, rcond=None)

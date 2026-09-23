@@ -114,9 +114,7 @@ def test_realized_garch_rejects_inferred_or_invented_measures() -> None:
     with pytest.raises(ValueError, match="realized_measure"):
         RealizedGARCHVol().fit(np.empty((80, 0)), returns, returns=returns)
     with pytest.raises(ValueError, match="returns="):
-        RealizedGARCHVol().fit(
-            np.empty((80, 0)), returns, realized_measure=np.full(80, 0.0001)
-        )
+        RealizedGARCHVol().fit(np.empty((80, 0)), returns, realized_measure=np.full(80, 0.0001))
     with pytest.raises(ValueError, match="parkinson_daily_ohlc"):
         RealizedGARCHVol(realized_measure="close_to_close_squared")
     with pytest.raises(ValueError, match="same length"):
@@ -187,7 +185,9 @@ def test_realized_garch_asof_ignores_origin_and_future_ohlc(tmp_path: Path) -> N
     cfg = _cfg(tmp_path)
     frame = _rgarch_panel()
     asof = frame["event_time"].unique().sort().to_list()[70]
-    _asof_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _asof_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope=GARCH_DATE_LEVEL_SCOPE)
     clean = realized_garch_market_forecast_asof(cfg, frame, asof)
     poisoned = frame.with_columns(
@@ -212,7 +212,9 @@ def test_realized_garch_asof_drops_unpublished_ohlc_restatement(tmp_path: Path) 
     dates = frame["event_time"].unique().sort().to_list()
     asof = dates[70]
     early = dates[20]
-    _hist_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _hist_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope=GARCH_DATE_LEVEL_SCOPE)
     poisoned = frame.with_columns(
         pl.when((pl.col("security_id") == "S00") & (pl.col("event_time") == early))
@@ -241,7 +243,9 @@ def test_realized_garch_asof_uses_restatement_once_available(tmp_path: Path) -> 
     dates = frame["event_time"].unique().sort().to_list()
     asof = dates[70]
     early = dates[20]
-    _hist_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _hist_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope=GARCH_DATE_LEVEL_SCOPE)
     poisoned = frame.with_columns(
         pl.when((pl.col("security_id") == "S00") & (pl.col("event_time") == early))
@@ -261,7 +265,9 @@ def test_realized_garch_asof_null_available_time_fail_closed(tmp_path: Path) -> 
     cfg = _cfg(tmp_path)
     frame = _rgarch_panel().with_columns(pl.col("event_time").alias("available_time"))
     asof = frame["event_time"].unique().sort().to_list()[40]
-    _asof_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _asof_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope=GARCH_DATE_LEVEL_SCOPE)
     poisoned = frame.with_columns(
         pl.when(pl.col("security_id") == "S00")
@@ -278,7 +284,9 @@ def test_wrong_scope_and_missing_artifact(tmp_path: Path) -> None:
     frame = _rgarch_panel()
     asof = frame["event_time"].unique().sort().to_list()[50]
     assert realized_garch_market_forecast_asof(cfg, frame, asof) is None
-    _asof_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _asof_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope="univariate_return_series")
     with pytest.raises(ValueError, match="series_scope"):
         realized_garch_market_forecast_asof(cfg, frame, asof)
@@ -288,7 +296,9 @@ def test_forecast_asof_consumes_realized_garch_overlay(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path)
     frame = _rgarch_panel()
     asof = frame["event_time"].unique().sort().to_list()[60]
-    _asof_dates, values, measures = _realized_garch_history(frame.filter(pl.col("event_time") < asof))
+    _asof_dates, values, measures = _realized_garch_history(
+        frame.filter(pl.col("event_time") < asof)
+    )
     _save_rgarch(tmp_path, values, measures, series_scope=GARCH_DATE_LEVEL_SCOPE)
     state = forecast_asof(cfg, asof, frame=frame)
     rgarch = realized_garch_market_forecast_asof(cfg, frame, asof)

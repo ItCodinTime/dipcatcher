@@ -185,8 +185,16 @@ def reconcile_fills(
         mismatches.append(f"expected frame has {exp_dup} duplicated key rows")
     if act_dup:
         mismatches.append(f"actual frame has {act_dup} duplicated key rows")
-    qd = np.abs((both["q_act"] - both["q_exp"]).to_numpy().astype(float)) if both.height else np.array([])
-    pd_ = np.abs((both["p_act"] - both["p_exp"]).to_numpy().astype(float)) if both.height else np.array([])
+    qd = (
+        np.abs((both["q_act"] - both["q_exp"]).to_numpy().astype(float))
+        if both.height
+        else np.array([])
+    )
+    pd_ = (
+        np.abs((both["p_act"] - both["p_exp"]).to_numpy().astype(float))
+        if both.height
+        else np.array([])
+    )
     n_qty_bad = int((qd > tol).sum()) if qd.size else 0
     n_px_bad = int((pd_ > tol).sum()) if pd_.size else 0
     if n_qty_bad:

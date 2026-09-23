@@ -28,8 +28,9 @@ from quant_fund.config.models import (
 T0 = datetime(2024, 1, 1, tzinfo=UTC)
 
 
-def _bars(sids: list[str], n_days: int, rng: np.random.Generator | None = None,
-          missing: float = 0.0) -> pl.DataFrame:
+def _bars(
+    sids: list[str], n_days: int, rng: np.random.Generator | None = None, missing: float = 0.0
+) -> pl.DataFrame:
     rows = []
     for k, sid in enumerate(sids):
         px = 100.0 * (1 + 0.05 * k)
@@ -53,13 +54,17 @@ def _bars(sids: list[str], n_days: int, rng: np.random.Generator | None = None,
                 }
             )
             px = close
-    return pl.DataFrame(rows).with_columns(
-        pl.col("event_time").cast(pl.Datetime("us", "UTC"))
-    )
+    return pl.DataFrame(rows).with_columns(pl.col("event_time").cast(pl.Datetime("us", "UTC")))
 
 
-def _weights(sids: list[str], n_days: int, rng: np.random.Generator,
-             lo: float = -0.3, hi: float = 1.2, sparse: float = 0.0) -> pl.DataFrame:
+def _weights(
+    sids: list[str],
+    n_days: int,
+    rng: np.random.Generator,
+    lo: float = -0.3,
+    hi: float = 1.2,
+    sparse: float = 0.0,
+) -> pl.DataFrame:
     rows = []
     for i in range(n_days):
         for sid in sids:
@@ -72,9 +77,7 @@ def _weights(sids: list[str], n_days: int, rng: np.random.Generator,
                     "target_weight": float(rng.uniform(lo, hi)),
                 }
             )
-    return pl.DataFrame(rows).with_columns(
-        pl.col("event_time").cast(pl.Datetime("us", "UTC"))
-    )
+    return pl.DataFrame(rows).with_columns(pl.col("event_time").cast(pl.Datetime("us", "UTC")))
 
 
 def _cfg(
@@ -202,11 +205,7 @@ def test_fuzz_random_panels():
             max_participation=float(rng.uniform(0.05, 1.0)),
             max_predicted_vol=float(rng.choice([0.01, 0.05, 0.4, 100.0])),
             stale_price_bars=int(rng.integers(0, 7)),
-            fill=(
-                FillConvention.NEXT_OPEN
-                if rng.random() < 0.5
-                else FillConvention.CLOSE_AUCTION
-            ),
+            fill=(FillConvention.NEXT_OPEN if rng.random() < 0.5 else FillConvention.CLOSE_AUCTION),
             kill="ENABLED" if rng.random() < 0.8 else "HALT_NEW_ORDERS",
         )
         try:
@@ -302,9 +301,7 @@ def test_sparse_rebalance_grid():
     keep = sorted(set(weights["event_time"].to_list()))[::4]
     weights = weights.filter(pl.col("event_time").is_in(keep))
     cfg = _cfg(commission_bps=5.0)
-    _assert_identical(
-        run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
-    )
+    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
 
 
 def test_empty_weights():

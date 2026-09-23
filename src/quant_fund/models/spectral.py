@@ -41,7 +41,9 @@ def periodogram_daniell(series: Array, m: int = 5) -> dict[str, Array]:
     return {"freqs": freqs, "density": sm, "raw": F}
 
 
-def periodogram_welch(series: Array, seg_len: int = 128, overlap: float = 0.5) -> dict[str, Array | float]:
+def periodogram_welch(
+    series: Array, seg_len: int = 128, overlap: float = 0.5
+) -> dict[str, Array | float]:
     """Welch (1967) averaged periodogram with Hann-tapered segments."""
     v = _v(series)
     n = v.size

@@ -144,7 +144,9 @@ def test_joblib_save_writes_sha256_sidecar(tmp_path) -> None:
     )
 
 
-def test_joblib_load_rejects_modified_artifact_before_deserialization(tmp_path, monkeypatch) -> None:
+def test_joblib_load_rejects_modified_artifact_before_deserialization(
+    tmp_path, monkeypatch
+) -> None:
     model = GARCHVol().fit_returns(_returns())
     path = tmp_path / "garch.joblib"
     model.save(path)

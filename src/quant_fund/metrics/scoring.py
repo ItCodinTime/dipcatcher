@@ -342,17 +342,14 @@ def crps_gaussian_mixture(y: Array, weights: Array, mu: Array, sigma: Array) -> 
     s_ij = np.sqrt(sig_arr[:, None] ** 2 + sig_arr[None, :] ** 2)
     d_ij = m_ij / s_ij
     a_ij = s_ij * (
-        2.0 * np.exp(-0.5 * d_ij * d_ij) / np.sqrt(2.0 * np.pi)
-        + d_ij * erf(d_ij / np.sqrt(2.0))
+        2.0 * np.exp(-0.5 * d_ij * d_ij) / np.sqrt(2.0 * np.pi) + d_ij * erf(d_ij / np.sqrt(2.0))
     )
     spread = float((w[:, None] * w[None, :] * a_ij).sum())
     out[ok] = single @ w - 0.5 * spread
     return out
 
 
-def gaussian_mixture_quantiles(
-    weights: Array, mu: Array, sigma: Array, taus: Array
-) -> Array:
+def gaussian_mixture_quantiles(weights: Array, mu: Array, sigma: Array, taus: Array) -> Array:
     """Quantiles of a Gaussian mixture by bisection on the monotone CDF.
 
     Returns NaN for a degenerate mixture (same contract as

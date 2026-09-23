@@ -83,15 +83,15 @@ def ops_snapshot(
             "securities": unmarked,
         },
         "kill_switch": {
-            "status": OK if kill_switch_state == "ENABLED" else (INSUFFICIENT if kill_switch_state is None else BREACH),
+            "status": OK
+            if kill_switch_state == "ENABLED"
+            else (INSUFFICIENT if kill_switch_state is None else BREACH),
             "state": kill_switch_state,
         },
     }
 
     if mark_age_bars is not None:
-        stale = sorted(
-            s for s, a in mark_age_bars.items() if a > cfg.stale_price_bars
-        )
+        stale = sorted(s for s, a in mark_age_bars.items() if a > cfg.stale_price_bars)
         checks["mark_staleness"] = {
             "status": BREACH if stale else OK,
             "stale_securities": stale,
@@ -129,7 +129,11 @@ def ops_snapshot(
     overall = (
         BREACH
         if BREACH in statuses
-        else (WARN if WARN in statuses else (INSUFFICIENT if all(s == INSUFFICIENT for s in statuses) else OK))
+        else (
+            WARN
+            if WARN in statuses
+            else (INSUFFICIENT if all(s == INSUFFICIENT for s in statuses) else OK)
+        )
     )
     return {
         "asof": None if asof is None else asof.isoformat(),

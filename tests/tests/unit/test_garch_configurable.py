@@ -213,10 +213,14 @@ def test_aparch_and_figarch_inadmissible_specs_fail_closed() -> None:
     )
     figarch = GARCHVol(vol="figarch")
     assert (
-        figarch._spec_inadmissible_reason(_Params({"omega": 0.1, "phi": 0.2, "d": 0.0, "beta": 0.3}))
+        figarch._spec_inadmissible_reason(
+            _Params({"omega": 0.1, "phi": 0.2, "d": 0.0, "beta": 0.3})
+        )
         == "invalid_fractional_d"
     )
     assert (
-        figarch._spec_inadmissible_reason(_Params({"omega": 0.1, "phi": 0.2, "d": 0.4, "beta": 0.3}))
+        figarch._spec_inadmissible_reason(
+            _Params({"omega": 0.1, "phi": 0.2, "d": 0.4, "beta": 0.3})
+        )
         is None
     )

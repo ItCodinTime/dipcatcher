@@ -74,7 +74,11 @@ def fit_gp_regression(
             except np.linalg.LinAlgError:
                 return 1e12
             alpha = _chol_solve(L, yv)
-            ll = -0.5 * float(yv @ alpha) - float(np.sum(np.log(np.diag(L)))) - 0.5 * n * math.log(2 * math.pi)
+            ll = (
+                -0.5 * float(yv @ alpha)
+                - float(np.sum(np.log(np.diag(L))))
+                - 0.5 * n * math.log(2 * math.pi)
+            )
             return -ll if np.isfinite(ll) else 1e12
 
         res = opt.minimize(
@@ -157,9 +161,7 @@ def predict_kernel_ridge(fit: dict[str, Array | float], X_new: Array) -> Array:
     return np.asarray(Ks @ np.asarray(fit["alpha"], dtype=float))
 
 
-def kernel_pca(
-    X: Array, n_components: int = 3, length: float | None = None
-) -> dict[str, Array]:
+def kernel_pca(X: Array, n_components: int = 3, length: float | None = None) -> dict[str, Array]:
     """Scholkopf et al. (1998) kernel PCA with RBF kernel.
 
     Returns principal coordinates and eigenvalues (explained variance

@@ -14,8 +14,18 @@ import polars as pl
 from quant_fund.data.adapters.binance import BINANCE_SYMBOLS
 
 _REQUIRED_COLUMNS = {
-    "security_id", "symbol", "event_time", "available_time", "ingested_time",
-    "source", "revision_id", "open", "high", "low", "close", "volume",
+    "security_id",
+    "symbol",
+    "event_time",
+    "available_time",
+    "ingested_time",
+    "source",
+    "revision_id",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
 }
 
 
@@ -37,16 +47,26 @@ class ExternalBenchmarkProtocol:
     n_dates: int = 0
 
 
-def build_external_protocol(*, input_id: str, input_sha256: str, n_dates: int) -> ExternalBenchmarkProtocol:
+def build_external_protocol(
+    *, input_id: str, input_sha256: str, n_dates: int
+) -> ExternalBenchmarkProtocol:
     """Build the frozen candidate-only protocol after basic metadata checks."""
-    if not input_id or len(input_sha256) != 64 or any(c not in "0123456789abcdef" for c in input_sha256.lower()):
+    if (
+        not input_id
+        or len(input_sha256) != 64
+        or any(c not in "0123456789abcdef" for c in input_sha256.lower())
+    ):
         raise ValueError("external benchmark input metadata is invalid")
     if isinstance(n_dates, bool) or not isinstance(n_dates, int) or n_dates < 1:
         raise ValueError("n_dates must be a positive integer")
-    return ExternalBenchmarkProtocol(input_id=input_id, input_sha256=input_sha256.lower(), n_dates=n_dates)
+    return ExternalBenchmarkProtocol(
+        input_id=input_id, input_sha256=input_sha256.lower(), n_dates=n_dates
+    )
 
 
-def validate_external_panel(frame: pl.DataFrame, protocol: ExternalBenchmarkProtocol) -> dict[str, Any]:
+def validate_external_panel(
+    frame: pl.DataFrame, protocol: ExternalBenchmarkProtocol
+) -> dict[str, Any]:
     """Validate a complete five-symbol PIT panel without filling or dropping data."""
     missing = _REQUIRED_COLUMNS - set(frame.columns)
     if missing:
@@ -124,6 +144,7 @@ def build_external_origins(
         raise ValueError("insufficient test origins")
     return validation, test[:n_test]
 
+
 def select_external_model(validation_losses: dict[str, Any]) -> str:
     """Select one model using validation losses only, with deterministic ties."""
     if not validation_losses:
@@ -142,6 +163,7 @@ def select_external_model(validation_losses: dict[str, Any]) -> str:
     if len(sizes) != 1:
         raise ValueError("validation losses must align")
     return min(sorted(normalized), key=lambda name: float(np.mean(normalized[name])))
+
 
 def summarize_external_losses(
     validation_losses: dict[str, Any],
@@ -184,9 +206,7 @@ def summarize_external_losses(
             name_a=selected,
             name_b=competitor,
         )
-        p_adjusted = (
-            min(1.0, dm.p_value * len(competitors)) if math.isfinite(dm.p_value) else None
-        )
+        p_adjusted = min(1.0, dm.p_value * len(competitors)) if math.isfinite(dm.p_value) else None
         comparisons[competitor] = {
             "mean_loss_difference": float(dm.mean_loss_diff),
             "effect_size": float(dm.mean_loss_diff),
@@ -199,7 +219,9 @@ def summarize_external_losses(
         }
     return {
         "selected": selected,
-        "validation_mean_loss": float(np.mean(np.asarray(validation_losses[selected], dtype=float))),
+        "validation_mean_loss": float(
+            np.mean(np.asarray(validation_losses[selected], dtype=float))
+        ),
         "test_mean_loss": float(np.mean(normalized_test[selected])),
         "n_test": int(next(iter(sizes))),
         "horizon": horizon,
@@ -210,4 +232,3 @@ def summarize_external_losses(
         "proof_eligible": False,
         "sota_proven": False,
     }
-

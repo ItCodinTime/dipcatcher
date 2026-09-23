@@ -39,13 +39,7 @@ def parkinson_daily_variance(
     if highs.size != lows.size:
         raise ValueError("high and low must have the same length")
     out = np.full(highs.size, np.nan, dtype=float)
-    valid = (
-        np.isfinite(highs)
-        & np.isfinite(lows)
-        & (highs > 0.0)
-        & (lows > 0.0)
-        & (highs >= lows)
-    )
+    valid = np.isfinite(highs) & np.isfinite(lows) & (highs > 0.0) & (lows > 0.0) & (highs >= lows)
     if np.any(valid):
         log_range = np.log(highs[valid] / lows[valid])
         out[valid] = (log_range * log_range) / (4.0 * math.log(2.0))
@@ -111,7 +105,9 @@ class RealizedGARCHVol(JoblibMixin):
             raise ValueError(f"{name} must be a numeric one-dimensional array") from exc
         return out
 
-    def _fallback(self, returns: NDArray[np.float64], measures: NDArray[np.float64], reason: str) -> RealizedGARCHVol:
+    def _fallback(
+        self, returns: NDArray[np.float64], measures: NDArray[np.float64], reason: str
+    ) -> RealizedGARCHVol:
         self.result = None
         self.converged = False
         self.fit_status = "fallback"
@@ -182,9 +178,8 @@ class RealizedGARCHVol(JoblibMixin):
 
     def _one_step_variance(self) -> float:
         log_state = (
-            (1.0 - self._persistence) * self._log_measure_mean
-            + self._persistence * self._last_log_measure
-        )
+            1.0 - self._persistence
+        ) * self._log_measure_mean + self._persistence * self._last_log_measure
         variance = self._scale * math.exp(log_state)
         return float(max(variance, _VARIANCE_FLOOR))
 
@@ -214,7 +209,9 @@ class RealizedGARCHVol(JoblibMixin):
             logs = np.empty(horizon, dtype=float)
             logs[0] = math.log(start)
             for index in range(1, horizon):
-                logs[index] = self._persistence * logs[index - 1] + (1.0 - self._persistence) * math.log(long_run)
+                logs[index] = self._persistence * logs[index - 1] + (
+                    1.0 - self._persistence
+                ) * math.log(long_run)
             variance = np.maximum(np.exp(logs), _VARIANCE_FLOOR)
         out: dict[str, Any] = {
             "variance": variance,
@@ -234,7 +231,9 @@ class RealizedGARCHVol(JoblibMixin):
             levels = np.asarray(quantiles, dtype=float)
             if levels.ndim != 1 or np.any((levels <= 0.0) | (levels >= 1.0)):
                 raise ValueError("quantiles must lie strictly between 0 and 1")
-            out["quantiles"] = self._mean_decimal() + np.sqrt(variance)[:, None] * norm.ppf(levels)[None, :]
+            out["quantiles"] = (
+                self._mean_decimal() + np.sqrt(variance)[:, None] * norm.ppf(levels)[None, :]
+            )
         return out
 
     def _mean_decimal(self) -> float:
@@ -242,7 +241,11 @@ class RealizedGARCHVol(JoblibMixin):
 
     def pit(self, returns: Any, sigma: Any | None = None) -> NDArray[np.float64]:
         values = self._as_vector(returns, "returns")
-        scales = np.full(values.size, self.last_sigma) if sigma is None else self._as_vector(sigma, "sigma")
+        scales = (
+            np.full(values.size, self.last_sigma)
+            if sigma is None
+            else self._as_vector(sigma, "sigma")
+        )
         if values.size != scales.size:
             raise ValueError("returns and sigma must have the same length")
         out = np.full(values.size, np.nan, dtype=float)
@@ -252,7 +255,11 @@ class RealizedGARCHVol(JoblibMixin):
 
     def log_density(self, returns: Any, sigma: Any | None = None) -> NDArray[np.float64]:
         values = self._as_vector(returns, "returns")
-        scales = np.full(values.size, self.last_sigma) if sigma is None else self._as_vector(sigma, "sigma")
+        scales = (
+            np.full(values.size, self.last_sigma)
+            if sigma is None
+            else self._as_vector(sigma, "sigma")
+        )
         if values.size != scales.size:
             raise ValueError("returns and sigma must have the same length")
         out = np.full(values.size, np.nan, dtype=float)
@@ -261,7 +268,9 @@ class RealizedGARCHVol(JoblibMixin):
         out[valid] = -0.5 * standardized**2 - np.log(scales[valid]) - 0.5 * math.log(2.0 * math.pi)
         return out
 
-    def predict_from_returns(self, returns: Any, realized_measure: Any | None = None) -> NDArray[np.float64]:
+    def predict_from_returns(
+        self, returns: Any, realized_measure: Any | None = None
+    ) -> NDArray[np.float64]:
         """Compatibility adapter returning current-origin sigma per input row."""
         values = self._as_vector(returns, "returns")
         if realized_measure is not None:
