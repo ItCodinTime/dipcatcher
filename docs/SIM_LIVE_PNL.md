@@ -8,11 +8,12 @@ broker connectivity exists on this path.
 
 Pipeline: causal quantile panels (`fhs|evt|garch_t|egarch_l|empirical|
 ewma_emp{,94,99}|vincent(a+b)|agree(a,b)`, `@hN` horizon variants) →
-`QuantilePolicy` (mu-bps or edge-z gate, `edge`/`risk` sizing,
-book-vol target, tail gate, entry/exit persistence, market-disp
-breaker, top-k concentration, deadband carry, caps) → sparse weight
-panel → event loop (next-open fills). Receipts in
-`.dsh-24x7/lane-simlive/`.
+`QuantilePolicy` (mu-bps or edge-z gate with hysteresis, `edge`/`risk`
+sizing, book-vol target, tail gate, entry/exit persistence, leadership
+gate, breadth-scaled gross, signal-Sharpe meta-gate, accel gate,
+rebalance cadence, market-disp breaker, top-k concentration, target
+EWMA, deadband carry, caps) → sparse weight panel → event loop
+(next-open fills). Receipts in `.dsh-24x7/lane-simlive/`.
 
 ## Headline book (daily, 5 majors, 2020-08→2026-09, shared calendar)
 
@@ -36,7 +37,9 @@ raw return scale.
 
 | book | OOS return | OOS Sharpe | OOS maxDD |
 |---|---|---|---|
-| **champion + xp=3 + BTC-lead** | **+51.1%** | **+1.05** | −15.3% |
+| **xp3 + BTC-lead + breadth-gross** | **+50.5%** | **+1.04** | −15.2% |
+| **vincent(3-lam) + xp3 + BTC-lead + bvt** | +49.5% | +1.01 | **−12.8%** |
+| champion + xp=3 + BTC-lead | +51.1% | +1.05 | −15.3% |
 | ewriskz (champion) | +45.4% | +1.03 | −12.2% |
 | vincent(3-lam) + xp=3 + bvt=0.03 | +48.2% | +0.99 | −12.8% |
 | champion + xp=3 | +46.5% | +0.97 | −15.3% |
@@ -57,15 +60,16 @@ consecutive gate-passing dates before (re-)entry.
 | config | return | Sharpe | maxDD | ann vol |
 |---|---|---|---|---|
 | ewma_emp@h5 (5d horizon) | +3,486.1% | +1.62 | −39.8% | 41.7% |
-| **champion + xp=3 + BTC-lead** | **+2,942.1%** | +1.71 | −27.7% | 36.5% |
-| vincent(3-lam) + xp=3 + bvt=0.03 g2 | +2,752.5% | **+1.85** | −27.1% | 32.5% |
+| **xp3 + BTC-lead + breadth-gross** | **+3,309.8%** | +1.85 | −27.0% | 34.4% |
+| **vincent(3-lam) + xp3 + BTC-lead + bvt=0.03 g2** | +2,905.2% | **+1.97** | −27.1% | 30.7% |
+| champion + xp=3 + BTC-lead | +2,942.1% | +1.71 | −27.7% | 36.5% |
 | champion + xp=3 | +2,882.4% | +1.71 | −30.7% | 36.3% |
+| vincent(3-lam) + xp=3 + bvt=0.03 g2 | +2,752.5% | +1.85 | −27.1% | 32.5% |
 | champion (no bvt) | +2,628.8% | +1.79 | −22.1% | 33.4% |
 | vincent(ew94+97+99) bvt=0.03 g2 | +1,543.7% | +1.83 | −21.9% | 27.1% |
-| bvt=0.03 g2 | +1,394.9% | +1.72 | −18.6% | 28.1% |
 | bvt=0.02 | +672.8% | +1.82 | −16.6% | 19.4% |
 | persist=2 + bvt=0.02 | +630.2% | +1.81 | **−13.2%** | 19.0% |
-| bvt=0.015 | +447.7% | **+1.85** | **−13.1%** | 15.7% |
+| bvt=0.015 | +447.7% | +1.85 | **−13.1%** | 15.7% |
 
 Vol targeting is a clean efficient frontier — Sharpe holds ~1.8 while
 drawdown halves at bvt 0.015–0.02; chasing return past ~1,500% costs
@@ -85,6 +89,13 @@ the horizon axis is disclosed as rejected. `mkt_edge_min` (flat book
 when mean cross-asset edge sags) and `w_alpha` (target EWMA) are both
 ~Sharpe-neutral: the edge filter cuts into trend profits, and smoothing
 inflates turnover 6× (10.6k fills) without DD benefit — rejected.
+`breadth_gross` (gross cap × fraction of names with positive edge)
+*stacks*: on xp3+BTC-lead it lifts return to +3,310% at SR 1.85 —
+breadth-proportional exposure is the rare soft market filter that pays.
+Rejected in the same sweep: `rebal_every` cadence (SR ≤1.75, turnover
+down but exposure timing worse), `meta_min` signal-Sharpe gate (DD cut
+but lower return; meta=0.5 starves the book), `accel_min` (negative),
+`gate_out` hysteresis (SR 1.39 — loose exits hold losers).
 
 ## Rejected experiments (honest negatives)
 

@@ -346,6 +346,97 @@ def test_policy_w_alpha_smooths_toward_prior() -> None:
     assert second["A"] < 2.0 * raw + 1e-9
 
 
+def test_policy_gate_out_hysteresis() -> None:
+    """gate_out < cost_gate: a held name survives a mid-band signal that
+    would block a fresh entry; exits only below gate_out."""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
+        gate_on="edge", deadband=0.0, gate_out=0.2,
+    )
+    prev = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol)  # edge=1.0 -> enter
+    assert prev["A"] == pytest.approx(0.5)  # kappa*edge=1.0 clipped to name_cap
+    mid = weights_from_quantiles({"A": _q(0.006, 0.02)}, TAUS, pol, prev)  # edge=0.3
+    assert mid["A"] == pytest.approx(0.3)  # held: 0.3 > gate_out -> still trades
+    flat = weights_from_quantiles({"A": _q(0.006, 0.02)}, TAUS, pol)  # flat: 0.3 < cost_gate
+    assert flat.get("A", 0.0) == 0.0
+    dead = weights_from_quantiles({"A": _q(0.002, 0.02)}, TAUS, pol, prev)  # edge=0.1 < go
+    assert dead.get("A", 0.0) == 0.0
+
+
+def test_rebal_every_skips_dates_and_carries() -> None:
+    """rebal_every=2: only every 2nd decision date emits; book carries between."""
+    times = np.array([T0 + timedelta(hours=4 * i) for i in range(6)])
+    # alternating strong/flat signal rows
+    rows = [_q(0.02, 0.02), _q(-0.02, 0.02), _q(0.02, 0.02), _q(-0.02, 0.02),
+            _q(0.02, 0.02), _q(-0.02, 0.02)]
+    panel = np.vstack(rows)
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        deadband=0.0, rebal_every=2,
+    )
+    w = quantile_panels_to_weights({"A": panel}, {"A": times}, pol, TAUS)
+    emitted_dates = set(w["event_time"].to_list())
+    assert emitted_dates == {times[0], times[2], times[4]}
+    assert (w["target_weight"] > 0.0).all()  # all cadence dates emit the long
+
+
+def test_meta_min_gates_entries_by_signal_sharpe() -> None:
+    """meta_min>0: after an exit, a name whose signal direction has been
+    losing cannot re-enter until its rolling signal-Sharpe recovers.
+    (Entries are gated; exits are never gated.)"""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        gate_on="edge", deadband=0.0, meta_min=0.05, meta_lookback=10,
+    )
+    n = 40
+    times = np.array([T0 + timedelta(hours=4 * i) for i in range(n)])
+    # edge: +1 (long) bars 0-14, -1 (flat) 15-24, +1 (long) 25+
+    panel = np.vstack(
+        [_q(0.02, 0.02)] * 15 + [_q(-0.02, 0.02)] * 10 + [_q(0.02, 0.02)] * 15
+    )
+    # realized returns: long signal loses bars 1-14; flat bars 15-24 book
+    # sign(-1)*+0.01 = -0.01 (whipsaw losses); bars 25+ win +0.02.
+    realized = np.concatenate(
+        [[np.nan], np.full(14, -0.01), np.full(10, 0.01), np.full(15, 0.02)]
+    )
+    w = quantile_panels_to_weights(
+        {"A": panel}, {"A": times}, pol, TAUS, realized={"A": realized}
+    )
+    blocked = w.filter(
+        (pl.col("event_time") >= times[24]) & (pl.col("event_time") <= times[28])
+    )
+    assert blocked.height == 0 or (blocked["target_weight"] == 0.0).all()
+    late = w.filter(pl.col("event_time") >= times[29])
+    assert late.height > 0 and (late["target_weight"] > 0.0).all()
+    # Without the meta gate the same panels re-enter immediately at bar 25
+    pol2 = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0
+    )
+    w2 = quantile_panels_to_weights({"A": panel}, {"A": times}, pol2, TAUS)
+    assert w2.filter(pl.col("event_time") == times[25])["target_weight"][0] > 0.0
+
+
+def test_policy_breadth_gross_scales_by_participation() -> None:
+    """gross cap = gross_target * fraction of names with positive edge."""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=10.0, name_cap=10.0, gross_target=1.0,
+        cost_gate=0.0, gate_on="edge", deadband=0.0, breadth_gross=True,
+    )
+    # 2 of 3 names positive edge -> cap = 1.0 * 2/3
+    out = weights_from_quantiles(
+        {"A": _q(0.05, 0.02), "B": _q(0.04, 0.02), "C": _q(-0.03, 0.02)},
+        TAUS, pol,
+    )
+    gross = sum(abs(w) for w in out.values())
+    assert gross == pytest.approx(2.0 / 3.0, rel=1e-6)
+    # all-positive breadth -> full gross
+    out2 = weights_from_quantiles(
+        {"A": _q(0.05, 0.02), "B": _q(0.04, 0.02), "C": _q(0.03, 0.02)},
+        TAUS, pol,
+    )
+    assert sum(abs(w) for w in out2.values()) == pytest.approx(1.0, rel=1e-6)
+
+
 def test_horizon_spec_uses_nbar_returns() -> None:
     """``ewma_emp@h3`` consumes 3-bar overlapping returns; panel stays causal
     and finite, and the cache key/spec parse round-trips."""

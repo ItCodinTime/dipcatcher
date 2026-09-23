@@ -268,7 +268,18 @@ def run_sim_live(
                     np.isfinite(stacked).all(axis=0), stacked.mean(axis=0), np.nan
                 )
         times = {sid: per_sid[sid][1] for sid in per_sid}
-        return quantile_panels_to_weights(panels, times, slot.policy, taus)
+        # Per-bar realized returns (index 0 -> NaN) feed the meta-gate's
+        # rolling signal-Sharpe — causal: payoff of bar i is booked at
+        # decision i, gating the *next* position.
+        realized: dict[str, np.ndarray] = {}
+        for sid in per_sid:
+            c = per_sid[sid][0]
+            r = np.full(c.size, np.nan)
+            r[1:] = c[1:] / c[:-1] - 1.0
+            realized[sid] = r
+        return quantile_panels_to_weights(
+            panels, times, slot.policy, taus, realized=realized
+        )
 
     champion_w = _panel_for(champion)
     challenger_w = {slot.name: _panel_for(slot) for slot in (challengers or [])}

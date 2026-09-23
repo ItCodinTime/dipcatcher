@@ -290,6 +290,12 @@ class QuantilePolicy:
     leader_sid: str | None = None  # leadership gate: alts need leader edge > leader_edge_min
     leader_edge_min: float = 0.0
     w_alpha: float = 1.0  # target EWMA: w = a*raw + (1-a)*prior (1 = off)
+    gate_out: float | None = None  # exit threshold (hysteresis); default = cost_gate
+    meta_min: float | None = None  # entry needs rolling signal-Sharpe >= this
+    meta_lookback: int = 60  # bars of signal payoff history for the meta-gate
+    accel_min: float | None = None  # entry needs edge - edge[-1] >= this
+    rebal_every: int = 1  # emit targets only every k-th decision date
+    breadth_gross: bool = False  # scale gross by fraction of names with edge>0
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -310,6 +316,14 @@ class QuantilePolicy:
             raise ValueError("top_k must be >= 1")
         if not (0.0 < float(self.w_alpha) <= 1.0):
             raise ValueError("w_alpha must be in (0, 1]")
+        if self.gate_out is not None and (
+            not np.isfinite(float(self.gate_out)) or float(self.gate_out) < 0
+        ):
+            raise ValueError("gate_out must be finite and non-negative")
+        if int(self.meta_lookback) < 2:
+            raise ValueError("meta_lookback must be >= 2")
+        if int(self.rebal_every) < 1:
+            raise ValueError("rebal_every must be >= 1")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -336,6 +350,7 @@ def weights_from_quantiles(
     prev_targets: dict[str, float] | None = None,
     streaks: dict[str, int] | None = None,
     fail_streaks: dict[str, int] | None = None,
+    entry_mask: dict[str, bool] | None = None,
 ) -> dict[str, float]:
     """Map per-name quantile rows to target weights under ``policy``.
 
@@ -378,7 +393,15 @@ def weights_from_quantiles(
         edge = mu / disp
         edge_map[sid] = edge
         gate_metric = abs(mu) if policy.gate_on == "mu" else abs(edge)
-        passed = gate_metric > policy.cost_gate
+        prior = float(prev_targets.get(sid, 0.0))
+        # Hysteresis: held names exit at the (looser) gate_out level; flat
+        # names must clear cost_gate to enter.
+        thr = policy.cost_gate
+        if abs(prior) > 1e-12 and policy.gate_out is not None:
+            thr = policy.gate_out
+        passed = gate_metric > thr
+        if passed and abs(prior) < 1e-12 and entry_mask is not None:
+            passed = entry_mask.get(sid, True)  # meta/accel gates: entries only
         if (
             passed
             and policy.leader_sid is not None
@@ -400,7 +423,6 @@ def weights_from_quantiles(
             streaks[sid] = streaks.get(sid, 0) + 1 if passed else 0
         if fail_streaks is not None:
             fail_streaks[sid] = 0 if passed else fail_streaks.get(sid, 0) + 1
-        prior = float(prev_targets.get(sid, 0.0))
         confirmed = policy.persist_bars <= 1 or abs(prior) > 1e-12 or (
             streaks is not None and streaks.get(sid, 0) >= policy.persist_bars
         )
@@ -436,9 +458,15 @@ def weights_from_quantiles(
         if book_vol > 0.0 and policy.book_vol_target > 0.0:
             scale = policy.book_vol_target / book_vol
             raw = {sid: w * scale for sid, w in raw.items()}
+    gross_cap = policy.gross_target
+    if policy.breadth_gross and edge_map:
+        # Breadth-scaled gross: fraction of names with positive edge scales
+        # the cap — full size only when the whole book agrees with the drift.
+        breadth = sum(1 for e in edge_map.values() if e > 0.0) / len(edge_map)
+        gross_cap = policy.gross_target * breadth
     gross = sum(abs(w) for w in raw.values())
-    if gross > policy.gross_target > 0.0:
-        scale = policy.gross_target / gross
+    if gross > gross_cap > 0.0:
+        scale = gross_cap / gross
         raw = {sid: w * scale for sid, w in raw.items()}
     if policy.top_k is not None and len(raw) > policy.top_k:
         # Cross-sectional concentration: keep the k largest |target| names;
@@ -525,6 +553,7 @@ def quantile_panels_to_weights(
     event_times: dict[str, np.ndarray],
     policy: QuantilePolicy,
     taus: np.ndarray,
+    realized: dict[str, np.ndarray] | None = None,
 ) -> pl.DataFrame:
     """Apply ``policy`` sequentially per date → target-weight panel.
 
@@ -534,11 +563,21 @@ def quantile_panels_to_weights(
     rows are keyed by the *decision* bar's event_time (the loop executes at
     the next bar under next-open convention). The deadband state is the last
     emitted target per name.
+
+    ``realized[sid]`` (optional) is the per-bar simple return aligned to
+    ``event_times[sid]`` (``realized[i] = close_i/close_{i-1} - 1``). It feeds
+    the meta-gate: each date books ``sign(prev_edge) * realized[i]`` — the
+    PnL the *signal direction* earned over the bar just completed — into a
+    rolling per-name signal-Sharpe, which gates entries when
+    ``policy.meta_min`` is set. Causal: payoff for bar ``i`` is only known
+    at decision ``i``, and it gates the *next* position.
     """
     taus = np.asarray(taus, dtype=float)
     prev: dict[str, float] = {}
     streaks: dict[str, int] = {}
     fail_streaks: dict[str, int] = {}
+    sig_pnl: dict[str, list[float]] = {}
+    prev_edge: dict[str, float] = {}
     out_t: list[Any] = []
     out_s: list[str] = []
     out_w: list[float] = []
@@ -550,17 +589,53 @@ def quantile_panels_to_weights(
         sid: {t: i for i, t in enumerate(event_times[sid])} for sid in panels
     }
     timeline = sorted({t for sid in panels for t in event_times[sid]})
-    for t_i in timeline:
+    for step_i, t_i in enumerate(timeline):
         q_rows = {}
         for sid, panel in panels.items():
             i = row_index[sid].get(t_i)
             if i is None:
                 continue
+            # Book the signal payoff realized over the bar ending at t_i:
+            # the position direction was set by the *previous* decision's
+            # edge — strictly causal.
+            if realized is not None and sid in realized:
+                r = float(realized[sid][i])
+                e_prev = prev_edge.get(sid)
+                if np.isfinite(r) and e_prev is not None:
+                    sig_pnl.setdefault(sid, []).append(float(np.sign(e_prev)) * r)
             q = panel[i]
             if np.isfinite(q).all():
                 q_rows[sid] = q
         if not q_rows:
             continue
+        # Refresh prev_edge for names with a valid row (used by accel gate
+        # and next date's payoff booking).
+        cur_edge: dict[str, float] = {}
+        for sid, q in q_rows.items():
+            m, d = quantile_moments(np.asarray(q, dtype=float), taus, policy)
+            if np.isfinite(m) and np.isfinite(d) and d > 0:
+                cur_edge[sid] = m / d
+        # Rebalance cadence: only every k-th decision date emits targets;
+        # other dates carry the book (sparse semantics). Signal payoffs and
+        # edges still update above, so gates stay current.
+        if policy.rebal_every > 1 and (step_i % policy.rebal_every) != 0:
+            prev_edge.update(cur_edge)
+            continue
+        entry_mask: dict[str, bool] | None = None
+        if policy.meta_min is not None or policy.accel_min is not None:
+            entry_mask = {}
+            for sid in q_rows:
+                ok = True
+                if policy.meta_min is not None:
+                    hist = sig_pnl.get(sid, [])[-policy.meta_lookback:]
+                    if len(hist) >= max(10, policy.meta_lookback // 4):
+                        mu_h = float(np.mean(hist))
+                        sd_h = float(np.std(hist, ddof=1))
+                        sig_sr = mu_h / sd_h if sd_h > 0 else 0.0
+                        ok = sig_sr >= policy.meta_min
+                if ok and policy.accel_min is not None and sid in prev_edge:
+                    ok = (cur_edge.get(sid, 0.0) - prev_edge[sid]) >= policy.accel_min
+                entry_mask[sid] = ok
         if policy.mkt_disp_cut is not None:
             # Market-wide vol breaker: median forecast dispersion across names
             # above the cut -> flatten the whole book for this decision date.
@@ -576,15 +651,19 @@ def quantile_panels_to_weights(
                 streaks.clear()
                 fail_streaks.clear()
                 prev = {}
+                prev_edge.update(cur_edge)
                 for sid, w in targets.items():
                     out_t.append(t_i)
                     out_s.append(sid)
                     out_w.append(w)
                 continue
-        targets = weights_from_quantiles(q_rows, taus, policy, prev, streaks, fail_streaks)
+        targets = weights_from_quantiles(
+            q_rows, taus, policy, prev, streaks, fail_streaks, entry_mask
+        )
         # The emitted dict IS the carried book: names dropped from it are
         # flattened by the engine, so the deadband reference resets wholesale.
         prev = dict(targets)
+        prev_edge.update(cur_edge)
         for sid, w in targets.items():
             out_t.append(t_i)
             out_s.append(sid)

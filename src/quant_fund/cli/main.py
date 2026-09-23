@@ -1678,6 +1678,18 @@ def sim_live(
     top_k: int | None = typer.Option(
         None, help="Keep only the k largest |target| names per date"
     ),
+    gate_out: float | None = typer.Option(
+        None, help="Exit threshold hysteresis (held names exit below this)"
+    ),
+    meta_min: float | None = typer.Option(
+        None, help="Entry gate: rolling signal-Sharpe of the name >= this"
+    ),
+    rebal_every: int = typer.Option(
+        1, help="Emit targets only every k-th decision date (book carries otherwise)"
+    ),
+    breadth_gross: bool = typer.Option(
+        False, help="Scale gross cap by fraction of names with edge > 0"
+    ),
     max_steps: int | None = typer.Option(None, help="Cap decision steps"),
     run_id: str | None = typer.Option(None, help="Paper run_id"),
     resume: bool = typer.Option(
@@ -1721,6 +1733,10 @@ def sim_live(
         exit_persist=exit_persist,
         mkt_disp_cut=mkt_disp_cut,
         top_k=top_k,
+        gate_out=gate_out,
+        meta_min=meta_min,
+        rebal_every=rebal_every,
+        breadth_gross=breadth_gross,
     )
     slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
     challengers: list[StrategySlot] = []
@@ -1734,11 +1750,17 @@ def sim_live(
         c_gate_on = parts[5] if len(parts) > 5 else gate_on
         c_sizing = parts[6] if len(parts) > 6 else sizing
         # Trailing key=value overrides: bvt=<book_vol_target> tg=<tail_gate>
-        kv = {}
+        # pb= xp= tk= rb= (ints) · gross= nc= db= go= meta= ac= cut= le= (floats)
+        # · lead=<SID> (string)
+        kv: dict[str, float] = {}
+        kv_str: dict[str, str] = {}
         for extra in parts[7:]:
             if "=" in extra:
                 k, v = extra.split("=", 1)
-                kv[k.strip()] = float(v)
+                if k.strip() == "lead":
+                    kv_str["lead"] = v.strip().upper()
+                else:
+                    kv[k.strip()] = float(v)
         challengers.append(
             StrategySlot(name=cname, spec=cspec, policy=QuantilePolicy(
                 mode=cmode, kappa=c_kappa, gross_target=kv.get("gross", gross),
@@ -1750,6 +1772,14 @@ def sim_live(
                 exit_persist=int(kv.get("xp", exit_persist)),
                 mkt_disp_cut=kv.get("cut"),
                 top_k=int(kv["tk"]) if "tk" in kv else top_k,
+                gate_out=kv.get("go", gate_out),
+                meta_min=kv.get("meta", meta_min),
+                rebal_every=int(kv.get("rb", rebal_every)),
+                accel_min=kv.get("ac"),
+                leader_sid=kv_str.get("lead"),
+                leader_edge_min=kv.get("le", 0.0),
+                w_alpha=kv.get("wa", 1.0),
+                breadth_gross=bool(kv.get("bg", 0.0)),
             ))
         )
     result = run_sim_live(
