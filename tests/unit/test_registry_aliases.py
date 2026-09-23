@@ -14,11 +14,11 @@ from quant_fund.registry.mlflow_store import (
 
 
 def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, dict[str, str]]] = []
+    calls: list[tuple[str, str, str]] = []
 
     class FakeClient:
-        def set_tags(self, run_id: str, tags: dict[str, str]) -> None:
-            calls.append((run_id, tags))
+        def set_tag(self, run_id: str, key: str, value: str) -> None:
+            calls.append((run_id, key, value))
 
     monkeypatch.setattr("quant_fund.registry.mlflow_store.MlflowClient", FakeClient)
     attach_artifact_identity(
@@ -31,15 +31,10 @@ def test_attach_artifact_identity_writes_verified_tags(monkeypatch: pytest.Monke
         },
     )
     assert calls == [
-        (
-            "run-id",
-            {
-                "artifact_sha256": "a" * 64,
-                "artifact_manifest_valid": "true",
-                "artifact_class": "RidgeRanker",
-                "artifact_manifest_schema": "model_artifact.v1",
-            },
-        )
+        ("run-id", "artifact_sha256", "a" * 64),
+        ("run-id", "artifact_manifest_valid", "true"),
+        ("run-id", "artifact_class", "RidgeRanker"),
+        ("run-id", "artifact_manifest_schema", "model_artifact.v1"),
     ]
 
 
