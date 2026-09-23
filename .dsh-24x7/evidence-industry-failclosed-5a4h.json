@@ -1,0 +1,18 @@
+{
+ "workload": "5a_4h_mismatched_calendar",
+ "bars_rows": 20000,
+ "research_only": true,
+ "live_pnl_claim": false,
+ "reference": {
+  "raised": true,
+  "type": "StaleValuationError",
+  "ms": 1008.5634999995818,
+  "msg": "held position valuation is stale beyond the configured limit: ETHUSDT=4, SOLUSDT=4, BTCUSDT=4"
+ },
+ "fast": {
+  "raised": true,
+  "type": "StaleValuationError",
+  "ms": 258.4447910048766,
+  "msg": "held position valuation is stale beyond the configured limit: ETHUSDT=4, SOLUSDT=4, BTCUSDT=4"
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "kind": "clean_install_reproducibility",
+ "clone": "git clone /Users/vaithianathan/dipcatcher /tmp/dipcatcher-clean (GIT_LFS_SKIP_SMUDGE=1)",
+ "head": "f27434c1d6ddbf38e43195f6b84e6be1e676196e",
+ "uv_sync_frozen_all_groups": "PASS (exit 0)",
+ "smokes": {
+  "research": "PASS (exit 0)",
+  "doctor": "PASS (exit 0; live_allowed: False)",
+  "paper --max-steps 2": "PASS (exit 0; artifacts written under data/metadata/paper/)",
+  "verify-research": "PASS (exit 0; valid=true, claim=research_only)"
+ },
+ "lfs_caveat": {
+  "status": "GAP-RECORDED",
+  "detail": "2 LFS-tracked files unrecoverable: data/file_us_wide/gold/features.parquet (1.4GB), labels.parquet \u2014 objects absent from local .git/lfs and remote ('remote missing object'). Not on any eval path; provenance gap disclosed.",
+  "affects_eval": false
+ },
+ "research_only": true,
+ "live_pnl_claim": false
+}

@@ -1,0 +1,39 @@
+{
+  "script": "_industry_stress.py",
+  "bars_files": [
+    "bnbusdt_1d_deep.parquet",
+    "btcusdt_1d_deep.parquet",
+    "ethusdt_1d_deep.parquet",
+    "solusdt_1d_deep.parquet",
+    "xrpusdt_1d_deep.parquet"
+  ],
+  "bars_rows": 15179,
+  "n_assets": 5,
+  "n_dates": 3322,
+  "weight_rows": 15084,
+  "research_only": true,
+  "live_pnl_claim": false,
+  "determinism": {
+    "reps": 3,
+    "identical": true,
+    "nav_sha256": "6a376ad99233b802a5d42923ce15e672f7af55eb3a38fefa783192fe1dc38c2d",
+    "fills_sha256": "75fdf9b6d024bcf1713fa9d8c0fd7aafb27bf8c45fdf3097bf389f6926c97f89",
+    "ms": [
+      310.7825419938308,
+      75.85054200171726,
+      75.01979199878406
+    ],
+    "ms_median": 75.85054200171726
+  },
+  "peak_rss_raw": 402046976.0,
+  "reference": {
+    "ms": 849.3607089985744,
+    "nav_sha256": "6a376ad99233b802a5d42923ce15e672f7af55eb3a38fefa783192fe1dc38c2d",
+    "fills_sha256": "75fdf9b6d024bcf1713fa9d8c0fd7aafb27bf8c45fdf3097bf389f6926c97f89",
+    "n_nav": 3321,
+    "n_fills": 7766,
+    "nav_bitwise_equal": true,
+    "fills_equal": true
+  },
+  "peak_rss_final": 413974528.0
+}

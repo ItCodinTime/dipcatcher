@@ -74,15 +74,14 @@ def attach_artifact_identity(run_id: str, identity: dict[str, Any]) -> None:
     int(digest, 16)
     if identity.get("manifest_valid") is not True:
         raise ValueError("artifact identity manifest must be valid")
-    MlflowClient().set_tags(
-        run_id,
-        {
-            "artifact_sha256": digest,
-            "artifact_manifest_valid": "true",
-            "artifact_class": str(identity.get("artifact_class", "")),
-            "artifact_manifest_schema": str(identity.get("manifest_schema", "")),
-        },
-    )
+    client = MlflowClient()
+    for key, value in {
+        "artifact_sha256": digest,
+        "artifact_manifest_valid": "true",
+        "artifact_class": str(identity.get("artifact_class", "")),
+        "artifact_manifest_schema": str(identity.get("manifest_schema", "")),
+    }.items():
+        client.set_tag(run_id, key, value)
 
 
 def promotion_is_approved(promotion: dict[str, Any] | None, *, run_id: str | None = None) -> bool:

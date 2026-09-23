@@ -75,7 +75,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Sync
-        run: uv sync --frozen --all-groups
+        run: uv sync --frozen --all-groups --all-extras
       - name: Pytest
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage

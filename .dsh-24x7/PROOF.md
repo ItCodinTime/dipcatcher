@@ -103,6 +103,25 @@ Every required dimension is now **measured against named incumbents on matched w
 
 Residual honesty notes: the 11-asset latency median is ~9–11% behind vectorbt (quiet-box rerun `evidence-incumbent-vectorbt-fast-11a-quiet.json` tightened the earlier ~25%-CPU measurement — conclusion unchanged), and UX setup is wordier than vectorbt by construction (schema-validated panels are what make the fault battery fail closed). Zipline remains attempted-and-documented-not-fair. This is a real, rerunnable evidence trail.
 
+### Production-readiness rubric (2026-09-23)
+
+Thresholds were fixed **before** the measurements below ran. `Industry-grade` flips to PROVEN only if every row is measured-pass; otherwise the status stays NOT PROVEN and the failing rows name the gap. "Measured" means a durable receipt exists under `.dsh-24x7/` — existence of a check in CI is not evidence.
+
+| dimension | pass threshold | status |
+|---|---|---|
+| determinism | `run_backtest_fast` on identical inputs ×3 → byte-identical serialized equity + fills (sha256); fast path bit-identical to `run_backtest` at the same scale | **PASS** — 3/3 identical on 5-asset×3322-bar (nav `6a376ad…`, fills `75fdf9b…`) and 3-asset×4000-bar 4h (nav `8a2c5f1…`, fills `dc7ba24…`); both bitwise-equal to reference | 
+| scale/stress | ≥3× the incumbent-bench workload (≈10k+ bar rows) completes with bitwise reference parity; peak RSS < 1 GiB; malformed/at-scale inputs fail closed with a typed error on both engine paths | **PASS** — 15,179-row 1d and 12,000-row 4h workloads both bitwise-equal to reference (7,766 / 6,188 fills); peak RSS ≈ 400 MB; mismatched-calendar 4h panel raises `StaleValuationError` identically on reference (1009 ms) and fast (258 ms) paths |
+| clean-install reproducibility | fresh `git clone` → `uv sync --frozen --all-groups` succeeds → `dipcatcher research` + `doctor` + `paper --max-steps 2` + `verify-research` all exit 0 | **PENDING** |
+| test coverage | CI invocation `pytest -q -m "not network" --cov` exits 0 and reports ≥ `fail_under` (70 %) | **PENDING** |
+| CI green | a complete GitHub Actions run on the pushed HEAD concludes `success` on every required job (not cancelled, not skipped-by-dependency) | **PENDING** — recent history is red (ruff-format drift, `torch` missing in test env); under repair |
+| incumbent correctness | NAV parity within float tolerance on matched workloads | **PASS** — vectorbt 1.5e-15; qlib 1.03e-7 (float32 floor) |
+| incumbent latency | within ~15 % of vectorbt median on the largest matched workload, or faster | **PASS** — 1.09× on 11-asset quiet-box; 1.28× faster on 3-asset; ~104× faster than qlib |
+| reliability (fail-closed) | every injected fault class → typed fail-closed rejection | **PASS** — 6/6 (`evidence-ux-security.json`) |
+| security | 0 known CVEs (pip-audit on lockfile); 0 HIGH bandit; 0 secrets in tracked tree | **PASS** — 0/0/0 (`evidence-ux-security.json`) |
+| tests | unit suite green; environment-specific failures disclosed individually | **PASS-with-disclosure** — 3111 pass local + 1 documented macOS-only arch-optimizer boundary failure (passes on Windows); remote host green |
+
+Current verdict on this rubric: **5 measured-pass, 1 pass-with-disclosure, 3 pending** → `STATUS` remains `NOT PROVEN` until the pending rows resolve.
+
 ## SOTA
 
 `STATUS: PROVEN` (scope: causal next-bar crypto return-distribution forecasting, proper scores, real Binance bars — 11 daily assets × 300 origins under verified contract v2 + canonical pairing (`merge_d1_11a_v2.json`), 5 four-hour assets × 300 (h4f), ~300 origins per cell (v4) plus an independent 150-origin replication (v3), four published foundation-model targets, seed-robustness replications at seeds 7/11/23)
