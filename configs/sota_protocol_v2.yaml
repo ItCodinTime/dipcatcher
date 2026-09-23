@@ -1,0 +1,34 @@
+# Frozen SOTA v2 slate. Do not edit after ml_lane.json cites protocol_sha256.
+# Not an AppConfig. Does not inherit dipcatcher.sota.v1.
+
+protocol_id: dipcatcher.sota.v2
+parent_protocol_id: dipcatcher.sota.v1
+frozen: true
+lane: ml_trees
+ranking_target: future_idio_return_1
+horizons_later: [5, 20]
+embargo_bars: 5
+scheme: rolling
+train_bars: 252
+one_way_cost: 0.001
+delay: 1
+holdout_start: "2025-01-02"
+selection_end: "2024-12-31"
+public_features_only: true
+synthetic_promotable: false
+champion: ridge
+blend_weight: 0
+engines:
+  - ridge
+  - gbrt
+  - lambdarank
+  - xgboost
+promotion:
+  - pairwise_dm_neg_ic_vs_ridge
+  - white_reality_check
+  - hansen_spa
+  - romano_wolf_stepm
+notes:
+  - Trees already in the train catalog. This lane does not add a neural net.
+  - Holdout is scored once. No retune after the receipt.
+  - ADR-007 still blocks a new network until this receipt exists.

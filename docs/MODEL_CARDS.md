@@ -31,10 +31,11 @@ evidence.
 
 | Family | Baseline | ML |
 |---|---|---|
-| Ranking | composite, ridge, ElasticNet | XGB/LGBM, LambdaRank, XE-NDCG |
+| Ranking | composite, ridge, ElasticNet | XGB/LGBM, LambdaRank, XE-NDCG, RFF / ridgeless (Kelly–Malamud–Zhou), SDF ridge / EN (Kozak–Nagel–Santosh), IPCA / joint IPCA-\(\alpha\) (Kelly–Pruitt–Su), RP-PCA (Lettau–Pelger), FNW group LASSO, Giglio–Xiu 3-pass, FGX double-selection, Fama–MacBeth / ridge-FM, GKX PCR/PLS/GBRT, Kelly–Pruitt 3PRF, Kelly–Malamud–Pedersen principal portfolios, Rapach combination / IC-weighted combo, Zou adaptive LASSO, a priori classic signs |
+| K-line foundation | robinhood+ NumPy hierarchical BSQ + Markov decoder | optional Kronos torch weights (`[nn]`) |
 | Alpha | historical mean, ridge residual | trees |
 | Distribution | empirical, Gaussian, linear QR | XGB/LGBM quantile |
-| Volatility | rolling, EWMA, causal GARCH/EGARCH/GJR, HAR-RV | XGB/LGBM |
+| Volatility | rolling, EWMA, causal GARCH/EGARCH/GJR/APARCH/FIGARCH, HAR-RV | XGB/LGBM |
 
 Rolling and EWMA baseline cards use `vol_20` and `vol_ewma`, respectively,
 which are sigma features. Training squares those forecasts before QLIKE so the
@@ -53,12 +54,32 @@ comes from the full feature panel, not rows retained by forward-label filtering,
 newly observed `ret_1` values remain available even when their future label is null.
 The current pooled panel fit must also record
 `series_scope=date_level_equal_weight_cross_section`; this is not an
-asset-specific volatility forecast and must not be consumed as one without a
-keyed-per-security artifact.
+asset-specific volatility forecast. Per-security causal forecasts are a
+separate `garch_name_forecasts_asof` namespace (`series_scope=security_level_ret_1`)
+and must not be consumed as the market overlay.
 Forecast consumers must use
 `forecast(...)["variance"]` or `cumulative_variance`; the legacy `predict()` sigma
-adapter is not valid input to variance QLIKE. Current training artifacts are research
-outputs and are not automatically connected to live/risk consumers.
+adapter is not valid input to variance QLIKE. `forecast_asof` consumes
+`vol_garch.joblib` as a **date-level equal-weight market overlay**: it clones the
+artifact specification and refits on `ret_1` dates strictly before the decision
+origin, then scales optimizer covariance so equal-weight market variance matches
+the one-step GARCH variance. Paper/backtest `check_order` prefers the
+Parkinson Realized GARCH overlay for `max_predicted_vol` when
+`vol_realized_garch.joblib` is present (Wave 117); otherwise it uses this
+return-only one-step market sigma. Per-security `vol_20` remains the
+name-level impact/cost field. Walk-forward QLIKE for the pooled GARCH artifact
+is the date-level equal-weight realized-variance score on nonoverlapping
+origins (stride = label horizon); overlapping-date QLIKE is a diagnostic only.
+The volatility bench uses the same date-level collapse and Hansen–Hodrick
+lags of at least \(h-1\). Per-security walk-forward QLIKE/density lives in
+`garch_name_walk_forward` (`scoring_scope=security_level_ret_1`, Wave 114)
+and must not be consumed as the market overlay score. Realized GARCH
+(`RealizedGARCHVol`, Wave 115) is a separate Parkinson-daily-OHLC namespace
+and does not replace this overlay, `vol_20`, or covariance scaling.
+Paper/backtest `check_order` prefers the Parkinson Realized GARCH one-step
+sigma for `max_predicted_vol` when `vol_realized_garch.joblib` is present
+(Wave 117); otherwise it keeps this return-only overlay. This is a
+research-lab risk overlay, not a live or high-frequency RV claim.
 
 Model artifacts are published transactionally: training serializes to a same-directory
 temporary file, flushes it, and atomically replaces the final `.joblib` path only after
@@ -85,12 +106,29 @@ artifact records the v2 supervised input contract. `har_design(...)` remains an
 opt-in helper for callers that explicitly provide a causal historical RV series;
 it is not silently applied to forward labels inside `fit()`.
 
-| Covariance | sample, EWMA, LW, factor | DCC |
+| Covariance | sample, EWMA, LW 2004, OAS, NL LW 2020, factor | one-step Gaussian / Student-t DCC, scalar CES ADCC, diagonal/full AG-DCC, and Bollerslev CCC \(H_{t+1}\); named RiskMetrics EWMA one-step path; named trailing OAS / analytical nonlinear LW / unbiased sample plus overlay; named CCC one-step path |
 | Regime | 1-state, vol threshold | Gaussian HMM |
 | Tail | historical, Gaussian | distribution-derived, drawdown classifier |
 | Liquidity | half-spread, bps, sqrt impact | Almgren–Chriss |
 | Northset | OHLC/session identities, SYNTHETIC L2, OHLC vol, Kyle/Roll/OFI/VPIN | none (ADR-007) |
-| Conformal | Split CQR + ACI wrapping Gaussian / linear QR / historical tail | blocked until ADR-007 + coverage baseline |
+| Conformal | Split CQR + ACI wrapping Gaussian / linear QR / historical tail | still wraps baselines; robinhood+ paths may feed raw quantiles |
+
+### robinhood+ card requirements
+
+A robinhood+ artifact must record `family=kline_foundation`, `backend`
+(`numpy` or `torch`), `decoder`, `price_space=split_adjusted`, lookback,
+`pred_len`, `sample_count`, `s1_bits` / `s2_bits`, and Kronos attribution
+(arXiv:2508.02739, MIT). The NumPy path is a hierarchical BSQ tokenizer plus
+s1-then-s2 autoregression — not a claim that Hub weights were loaded. Torch
+weights require the `[nn]` extra and local checkpoints unless
+`allow_network=true`. Default `blend_weight` is 0 until robinhood+ beats
+**public-feature** ridge (oracle columns dropped) on a **non-synthetic** PIT
+tape, Diebold–Mariano does not prefer ridge on CRPS, and the calibration
+gate is green (Jackknife+ ≥ 1−2α, CQR/ACI Kupiec recorded, PIT KS recorded).
+SYNTHETIC IC is an engine-correctness diagnostic and cannot take a champion
+alias. Forecasts enter fusion; they do not bypass the risk gate.
+`execution_claim=research_only`. The name is internal; not affiliated with
+Robinhood Markets, Inc.
 
 Do not treat feature importance as causal. SHAP is optional and unlabeled as causal.
 

@@ -1,0 +1,191 @@
+{
+  "hold_no_overlay": {
+    "label": "hold_no_overlay",
+    "economic": {
+      "catalog": "hedge_lab_analytics",
+      "data_source": "parquet",
+      "research_only": true,
+      "execution_claim": "paper_backtest",
+      "sharpe": 0.8041042440062176,
+      "flag_high_sharpe": false,
+      "sortino": 1.1542840142348663,
+      "calmar": 0.4487394861101082,
+      "max_drawdown": -0.2779100292635933,
+      "cagr": 0.12470920371659,
+      "ann_vol": 0.16264237539800605,
+      "n_returns": 2691,
+      "psr_vs_zero": 1.0,
+      "min_trl_days": 10.253354798847706,
+      "synthetic_not_promotable": false,
+      "information_ratio": -0.07838720377849288,
+      "active_ann_vol": 0.12380336201334793
+    },
+    "backtest": {
+      "total_return": 2.5078171370430375,
+      "sharpe": 0.8041042440062123,
+      "max_drawdown": -0.2779100292635933,
+      "mean_turnover": 0.046677750855575455,
+      "commission": 25124.576318851945,
+      "spread": 125622.8815942599,
+      "impact": 3576.193362543965,
+      "risk_gate_rejects": 55448,
+      "n": 2691,
+      "source_note": "file",
+      "book_risk_overlay": null
+    },
+    "bootstrap": {
+      "status": "ok",
+      "n": 2691,
+      "n_boot": 641898,
+      "block": 21,
+      "workspace_gib_requested": 73.54145434591919,
+      "ram_total_gib": 127.6761360168457,
+      "sharpe_p05": 0.34992744435202466,
+      "sharpe_p50": 0.7974680953385993,
+      "sharpe_p95": 1.2596075758776353,
+      "calmar_p05": 0.1301695588045785,
+      "calmar_p50": 0.4865232252493733,
+      "calmar_p95": 1.092653223938602,
+      "catalog": "hedge_lab_analytics"
+    },
+    "market_risk": {
+      "empirical_var": 0.02773598981304303,
+      "parametric_var": 0.023315638632584193,
+      "monte_carlo_var": 0.027680590794753046,
+      "evt_var": 0.027919725837265947,
+      "empirical_es": 0.036611663579049374,
+      "parametric_es": 0.026787496026171836,
+      "ewma_var": 0.023239021739210934,
+      "ewma_es": 0.026718584552920206,
+      "kupiec": {
+        "hit_rate": 0.010033444816053512,
+        "lr": 0.00030370880992336424,
+        "p_value": 0.9860957754227722,
+        "n": 2691
+      },
+      "christoffersen": {
+        "lr": 0.5478159059452707,
+        "p_value": 0.7604020647893345,
+        "n": 2691,
+        "hit_rate": 0.010033444816053512,
+        "kupiec_lr": 0.00030370880992336424,
+        "kupiec_p": 0.9860957754227722,
+        "ind_lr": 0.5475121971353474,
+        "ind_p": 0.45933599446591566,
+        "n00": 2636.0,
+        "n01": 27.0,
+        "n10": 27.0,
+        "n11": 0.0
+      },
+      "sources": [
+        "lprtk/pyRisk",
+        "GianMarcoOddo/pyriskmgmt"
+      ],
+      "research_only": true,
+      "execution_claim": "paper_backtest"
+    }
+  },
+  "hold_overlay": {
+    "economic": {
+      "catalog": "hedge_lab_analytics",
+      "data_source": "parquet",
+      "research_only": true,
+      "execution_claim": "paper_backtest",
+      "sharpe": 0.5467385362236058,
+      "flag_high_sharpe": false,
+      "sortino": 0.7779317015741793,
+      "calmar": 0.26916325605252983,
+      "max_drawdown": -0.04685536575663085,
+      "cagr": 0.012611742810586968,
+      "ann_vol": 0.02342551245411613,
+      "n_returns": 2691,
+      "psr_vs_zero": 1.0,
+      "min_trl_days": 27.459556174567478,
+      "synthetic_not_promotable": false,
+      "information_ratio": -0.7276863461006242,
+      "active_ann_vol": 0.17545800326489192
+    },
+    "backtest": {
+      "total_return": 0.14320214524503405,
+      "sharpe": 0.5467385362235982,
+      "max_drawdown": -0.04685536575663096,
+      "mean_turnover": 0.009199527861795684,
+      "commission": 2749.866777604797,
+      "spread": 13749.333888023997,
+      "impact": 239.25344730671517,
+      "flag_high_sharpe": false,
+      "risk_gate_rejects": 107,
+      "n": 2691,
+      "source_note": "file",
+      "book_risk_overlay": {
+        "vol_target": 0.025,
+        "dd_limit": 0.05,
+        "es_limit": 0.006,
+        "tail_p": 0.01,
+        "lookback": 63,
+        "n_observe": 2692,
+        "n_halt": 1980,
+        "n_scaled": 696,
+        "last_scale": 0.0,
+        "mean_scale": 0.1269106277651083,
+        "sources": [
+          "lprtk/pyRisk",
+          "GianMarcoOddo/pyriskmgmt"
+        ],
+        "research_only": true,
+        "execution_claim": "paper_backtest"
+      }
+    },
+    "bootstrap": {
+      "status": "ok",
+      "n": 2691,
+      "n_boot": 641898,
+      "block": 21,
+      "workspace_gib_requested": 73.54145434591919,
+      "ram_total_gib": 127.6761360168457,
+      "sharpe_p05": 0.06610180708324771,
+      "sharpe_p50": 0.555494666909803,
+      "sharpe_p95": 1.0367817556350387,
+      "calmar_p05": 0.01715731668765494,
+      "calmar_p50": 0.26919647381295597,
+      "calmar_p95": 0.7849164028599567,
+      "catalog": "hedge_lab_analytics"
+    },
+    "market_risk": {
+      "empirical_var": 0.005110276841757595,
+      "parametric_var": 0.0033820945297579784,
+      "monte_carlo_var": 0.005156119725887587,
+      "evt_var": 0.00800332366967583,
+      "empirical_es": 0.007669863291809151,
+      "parametric_es": 0.00388214894923739,
+      "ewma_var": 2.76742424716232e-10,
+      "ewma_es": 3.167874629696681e-10,
+      "kupiec": {
+        "hit_rate": 0.010033444816053512,
+        "lr": 0.00030370880992336424,
+        "p_value": 0.9860957754227722,
+        "n": 2691
+      },
+      "christoffersen": {
+        "lr": 1.1938894376645806,
+        "p_value": 0.5504909740688999,
+        "n": 2691,
+        "hit_rate": 0.010033444816053512,
+        "kupiec_lr": 0.00030370880992336424,
+        "kupiec_p": 0.9860957754227722,
+        "ind_lr": 1.1935857288546572,
+        "ind_p": 0.27460746373151335,
+        "n00": 2637.0,
+        "n01": 26.0,
+        "n10": 26.0,
+        "n11": 1.0
+      },
+      "sources": [
+        "lprtk/pyRisk",
+        "GianMarcoOddo/pyriskmgmt"
+      ],
+      "research_only": true,
+      "execution_claim": "paper_backtest"
+    }
+  }
+}

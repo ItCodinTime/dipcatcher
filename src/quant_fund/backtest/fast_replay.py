@@ -42,7 +42,7 @@ try:
         market_risk_overlay_asof as _mro_asof,
     )
 except Exception:  # pragma: no cover - older lineage lacks the module
-    _mro_asof = None
+    _mro_asof = None  # type: ignore[assignment]
 
 
 def _order_costs(
@@ -54,9 +54,7 @@ def _order_costs(
     # total_cost validates inputs before the frictionless early
     # return — a non-finite delta must fail closed, not trade.
     if not math.isfinite(d) or not math.isfinite(px) or px <= 0:
-        raise ValueError(
-            "quantity must be finite and price must be finite and positive"
-        )
+        raise ValueError("quantity must be finite and price must be finite and positive")
     if cfg.frictionless:
         return 0.0, 0.0, 0.0, 0.0
     nt = abs(d) * px
@@ -150,9 +148,7 @@ def _bars_to_matrices(
     adv = _raw_col("adv")
     vol = _raw_col("vol_20")
     synthetic = (
-        "synthetic" in set(px["source"].drop_nulls().to_list())
-        if "source" in px.columns
-        else False
+        "synthetic" in set(px["source"].drop_nulls().to_list()) if "source" in px.columns else False
     )
     dates = sorted(set(px["event_time"].to_list()))
     assert len(dates) == n_dates
@@ -181,9 +177,7 @@ def run_backtest_fast(
     # replicate whichever semantics the deployed ``run_backtest`` implements.
     ref_carries = "risk_overlay" in inspect.signature(run_backtest).parameters
 
-    dates, dates_ns, sids, open_px, close_px, ctr, adv, vol, synthetic = _bars_to_matrices(
-        bars
-    )
+    dates, dates_ns, sids, open_px, close_px, ctr, adv, vol, synthetic = _bars_to_matrices(bars)
     n_dates = len(dates)
     n_assets = len(sids)
     sid_idx = {s: i for i, s in enumerate(sids)}
@@ -306,8 +300,7 @@ def run_backtest_fast(
         ]
         if stale:
             details = ", ".join(
-                f"{sids[a]}={int(mark_age[a]) if ever_marked[a] else 'unknown'}"
-                for a in stale
+                f"{sids[a]}={int(mark_age[a]) if ever_marked[a] else 'unknown'}" for a in stale
             )
             raise StaleValuationError(
                 "held position valuation is stale beyond the configured limit: " + details
@@ -411,8 +404,7 @@ def run_backtest_fast(
                 mv_bad
                 or any(
                     not math.isfinite(v)
-                    for v in (nav, price, current_w, gross_after, net_after,
-                              participation, vol_eff)
+                    for v in (nav, price, current_w, gross_after, net_after, participation, vol_eff)
                 )
                 or nav <= 0.0
                 or price <= 0.0

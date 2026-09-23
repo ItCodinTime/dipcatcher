@@ -26,7 +26,11 @@ from quant_fund.metrics.conformal import (
 )
 from quant_fund.metrics.cross_section import _date_keys, date_ic_series, decile_portfolios
 from quant_fund.metrics.evalues import bench_e_coverage, e_process, e_process_dm
-from quant_fund.metrics.inference import diebold_mariano, pairwise_diebold_mariano
+from quant_fund.metrics.inference import (
+    diebold_mariano,
+    overlap_aware_hac_lags,
+    pairwise_diebold_mariano,
+)
 from quant_fund.metrics.probability import (
     acerbi_szekely_z1,
     acerbi_szekely_z2,
@@ -41,10 +45,12 @@ from quant_fund.metrics.probability import (
 from quant_fund.metrics.scoring import (
     coverage,
     crps_from_quantiles,
+    date_level_equal_weight,
     mean_crps_gaussian,
     mean_crps_student_t,
     mean_fissler_ziegel,
     mean_pinball,
+    nonoverlapping_origin_mask,
     pearson_ic,
     pinball_loss,
     pit_values,
@@ -84,7 +90,7 @@ from quant_fund.models.rl import run_linucb_panel
 from quant_fund.models.tail import DrawdownClassifier, HistoricalTail, ScaledHistoricalTail
 from quant_fund.models.weighted_conformal import WeightedSplitCQR
 from quant_fund.pipeline.dataset import design_matrix
-from quant_fund.pipeline.train import _fit_ranker, _make_ranker
+from quant_fund.pipeline.train import _fit_ranker, _label_horizon, _make_ranker, _predict_ranker
 from quant_fund.portfolio.interval_risk import (
     bench_interval_caps,
     cap_from_interval,
@@ -92,7 +98,7 @@ from quant_fund.portfolio.interval_risk import (
     interval_refs,
 )
 from quant_fund.validation.cpcv import combinatorial_purged_cv
-from quant_fund.validation.walk_forward import walk_forward
+from quant_fund.validation.walk_forward import timestamp_ns, walk_forward
 
 
 def _holdout(n: int, frac: float = 0.3) -> tuple[slice, slice]:
@@ -364,28 +370,62 @@ def oos_rank_scores(
     x: NDArray[np.float64],
     y: NDArray[np.float64],
     dates: NDArray[Any],
+    ids: NDArray[Any] | None = None,
+    *,
+    horizon_bars: int = 1,
+    feature_names: list[str] | None = None,
 ) -> NDArray[np.float64]:
+    """Purged walk-forward OOS scores. ``horizon_bars`` is the label horizon.
+
+    Expanding vs rolling follows ``config.validation.scheme``. A 5- or 20-bar
+    forward label reaches ``horizon_bars`` sessions past its decision date, so
+    purging must use that horizon, not 1.
+    """
     times = sorted(set(dates.tolist()))
     folds = walk_forward(
-        times, config.validation, horizon_bars=1, embargo_bars=config.embargo_bars()
+        times,
+        config.validation,
+        horizon_bars=int(horizon_bars),
+        embargo_bars=config.embargo_bars(),
     )
     pred = np.full(len(y), np.nan, dtype=float)
+    date_ns = timestamp_ns(dates)
     if not folds:
         cut = max(len(times) - 40, len(times) // 2)
-        tr = np.isin(dates, times[:cut])
-        te = np.isin(dates, times[cut:])
+        tr = np.isin(date_ns, timestamp_ns(times[:cut]))
+        te = np.isin(date_ns, timestamp_ns(times[cut:]))
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr])
-        pred[te] = model.predict(x[te])
+        _fit_ranker(
+            model,
+            model_name,
+            x[tr],
+            y[tr],
+            dates[tr],
+            None if ids is None else ids[tr],
+            features=feature_names,
+        )
+        pred[te] = _predict_ranker(
+            model, model_name, x[te], dates[te], None if ids is None else ids[te]
+        )
         return pred
     for fold in folds:
-        tr = np.isin(dates, np.array(fold.train_times, dtype=object))
-        te = np.isin(dates, np.array(fold.test_times, dtype=object))
+        tr = np.isin(date_ns, timestamp_ns(fold.train_times))
+        te = np.isin(date_ns, timestamp_ns(fold.test_times))
         if not tr.any() or not te.any():
             continue
         model = _make_ranker(model_name, config)
-        _fit_ranker(model, model_name, x[tr], y[tr], dates[tr])
-        pred[te] = model.predict(x[te])
+        _fit_ranker(
+            model,
+            model_name,
+            x[tr],
+            y[tr],
+            dates[tr],
+            None if ids is None else ids[tr],
+            features=feature_names,
+        )
+        pred[te] = _predict_ranker(
+            model, model_name, x[te], dates[te], None if ids is None else ids[te]
+        )
     return pred
 
 
@@ -399,6 +439,10 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
     ]
     n_names = frame["security_id"].n_unique() if "security_id" in frame.columns else 8
     n_buckets = 5 if n_names < 20 else 10
+    horizon = _label_horizon(label, default=1)
+    n_dates_all = frame["event_time"].n_unique() if "event_time" in frame.columns else 0
+    # Overlapping h-bar labels make the date IC series serially dependent.
+    hac = overlap_aware_hac_lags(int(n_dates_all), int(horizon)) if n_dates_all else None
     for name, fset, wanted, raw_col in specs:
         if raw_col is not None:
             col = raw_col if raw_col in frame.columns else "planted_signal"
@@ -412,12 +456,14 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
             feats = available_features(frame.columns, wanted)
             if not feats:
                 continue
-            x, y, dates, _, _ = design_matrix(frame, label, feats)
-            scores = oos_rank_scores("ridge", config, x, y, dates)
+            x, y, dates, used, _ = design_matrix(frame, label, feats)
+            scores = oos_rank_scores(
+                "ridge", config, x, y, dates, horizon_bars=horizon, feature_names=used
+            )
         mask = np.isfinite(scores) & np.isfinite(y)
-        ic = date_ic_series(scores[mask], y[mask], dates[mask], min_names=5)
+        ic = date_ic_series(scores[mask], y[mask], dates[mask], min_names=5, hac_lags=hac)
         dec = decile_portfolios(
-            scores[mask], y[mask], dates[mask], n_buckets=n_buckets, min_names=5
+            scores[mask], y[mask], dates[mask], n_buckets=n_buckets, min_names=5, hac_lags=hac
         )
         rows.append(
             {
@@ -441,6 +487,64 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
                 "ic_dates": [str(date) for date in ic.dates],
             }
         )
+    public_feats = available_features(frame.columns, PUBLIC_FEATURES)
+    if public_feats:
+        x_pub, y_pub, dates_pub, _, ids_pub = design_matrix(frame, label, public_feats)
+        n_dates_pub = len({str(d) for d in dates_pub.tolist()})
+        # Tiny CI panels skip the paper universe. A serious panel (enough
+        # dates and names for managed-portfolio estimators) always runs it.
+        run_paper = n_dates_pub >= 80 and n_names >= 12
+        if run_paper:
+            for model_name in config.train.paper_rankers:
+                row_name = f"{model_name}_public"
+                try:
+                    scores = oos_rank_scores(
+                        model_name,
+                        config,
+                        x_pub,
+                        y_pub,
+                        dates_pub,
+                        ids_pub,
+                        horizon_bars=horizon,
+                        feature_names=public_feats,
+                    )
+                except (ValueError, np.linalg.LinAlgError):
+                    continue
+                mask = np.isfinite(scores) & np.isfinite(y_pub)
+                if int(mask.sum()) < 5:
+                    continue
+                ic = date_ic_series(
+                    scores[mask], y_pub[mask], dates_pub[mask], min_names=5, hac_lags=hac
+                )
+                dec = decile_portfolios(
+                    scores[mask],
+                    y_pub[mask],
+                    dates_pub[mask],
+                    n_buckets=n_buckets,
+                    min_names=5,
+                    hac_lags=hac,
+                )
+                rows.append(
+                    {
+                        "name": row_name,
+                        "feature_set": "public",
+                        "engine": model_name,
+                        "mean_ic": ic.mean_pearson,
+                        "mean_rank_ic": ic.mean_spearman,
+                        "t_ic": ic.t_pearson,
+                        "p_ic": ic.p_pearson,
+                        "icir": ic.icir_pearson,
+                        "n_dates": ic.n_dates,
+                        "n_folds": ic.n_dates,
+                        "decile_monotonicity": dec.monotonicity,
+                        "ls_mean": dec.mean_ls,
+                        "ls_t": dec.t_ls,
+                        "ls_p": dec.p_ls,
+                        "decile_means": dec.mean_returns,
+                        "ic_series": [float(v) for v in ic.pearson.tolist()],
+                        "ic_dates": [str(date) for date in ic.dates],
+                    }
+                )
     # Pairwise Diebold–Mariano on -IC series across rankers. Align by the
     # intersection of date keys, never by positional truncation: different
     # feature sets can have different missing-date patterns.
@@ -516,24 +620,54 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if label not in need or "vol_20" not in need:
         return {}
     sub = frame.select(["event_time", *need]).drop_nulls().sort("event_time")
-    y = sub[label].to_numpy().astype(float)
-    roll = np.clip(sub["vol_20"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None)
+    dates_d, y_d = date_level_equal_weight(
+        sub["event_time"].to_numpy(), sub[label].to_numpy().astype(float)
+    )
+    _, roll_d = date_level_equal_weight(
+        sub["event_time"].to_numpy(), sub["vol_20"].to_numpy().astype(float) ** 2
+    )
     if "vol_ewma" in sub.columns:
-        ewma = np.clip(
-            sub["vol_ewma"].to_numpy().astype(float) ** 2, config.train.qlike_floor, None
+        _, ewma_d = date_level_equal_weight(
+            sub["event_time"].to_numpy(), sub["vol_ewma"].to_numpy().astype(float) ** 2
         )
     else:
-        ewma = roll
-    _, te = _holdout(y.size)
-    yy = np.clip(y[te], config.train.qlike_floor, None)
-    q_roll = qlike(yy, roll[te], config.train.qlike_floor)
-    q_ewma = qlike(yy, ewma[te], config.train.qlike_floor)
-    loss_e = (np.sqrt(yy) - np.sqrt(ewma[te])) ** 2
-    loss_r = (np.sqrt(yy) - np.sqrt(roll[te])) ** 2
-    dm = diebold_mariano(loss_e, loss_r, name_a="ewma", name_b="rolling")
+        ewma_d = roll_d
+    if dates_d.size == 0 or dates_d.size != roll_d.size or dates_d.size != ewma_d.size:
+        return {}
+    horizon = _label_horizon(label)
+    _, te = _holdout(int(dates_d.size))
+    yy = np.clip(y_d[te], config.train.qlike_floor, None)
+    roll_te = np.clip(roll_d[te], config.train.qlike_floor, None)
+    ewma_te = np.clip(ewma_d[te], config.train.qlike_floor, None)
+    q_roll = qlike(yy, roll_te, config.train.qlike_floor)
+    q_ewma = qlike(yy, ewma_te, config.train.qlike_floor)
+    loss_e = (np.sqrt(yy) - np.sqrt(ewma_te)) ** 2
+    loss_r = (np.sqrt(yy) - np.sqrt(roll_te)) ** 2
+    dm_lags = overlap_aware_hac_lags(int(yy.size), horizon)
+    dm = diebold_mariano(loss_e, loss_r, lags=dm_lags, name_a="ewma", name_b="rolling")
     # Research-only Choe–Ramdas e-process on the same loss differential (Wave4 helper).
     # Never a live capital / promotion claim — diagnostic keys only.
     ep = e_process_dm(loss_e, loss_r)
+    keep = nonoverlapping_origin_mask(np.arange(int(yy.size), dtype=int), horizon)
+    if int(keep.sum()) >= 1:
+        q_roll_non = qlike(yy[keep], roll_te[keep], config.train.qlike_floor)
+        q_ewma_non = qlike(yy[keep], ewma_te[keep], config.train.qlike_floor)
+        dm_non = diebold_mariano(
+            loss_e[keep],
+            loss_r[keep],
+            lags=overlap_aware_hac_lags(int(keep.sum()), 1),
+            name_a="ewma",
+            name_b="rolling",
+        )
+        dm_non_preferred = dm_non.preferred
+        dm_non_p = dm_non.p_value
+        dm_non_stat = dm_non.statistic
+    else:
+        q_roll_non = float("nan")
+        q_ewma_non = float("nan")
+        dm_non_preferred = "inconclusive"
+        dm_non_p = float("nan")
+        dm_non_stat = float("nan")
     return {
         "qlike_ewma": q_ewma,
         "qlike_rolling": q_roll,
@@ -543,6 +677,16 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         "e_dm_final": float(ep["e_final"]),  # type: ignore[arg-type]
         "e_dm_reject": bool(ep["reject"]),
         "e_dm_n": int(cast(Any, ep["n"])),
+        "scoring_scope": "date_level_equal_weight",
+        "horizon_bars": int(horizon),
+        "dm_lags": int(dm.lags),
+        "n_dates": int(yy.size),
+        "n_origins_nonoverlapping": int(keep.sum()),
+        "qlike_ewma_nonoverlapping": q_ewma_non,
+        "qlike_rolling_nonoverlapping": q_roll_non,
+        "dm_preferred_nonoverlapping": dm_non_preferred,
+        "dm_p_nonoverlapping": dm_non_p,
+        "dm_stat_nonoverlapping": dm_non_stat,
         "research_only": True,  # no live_pnl_claim key (pnl token forbidden)
     }
 
@@ -993,6 +1137,12 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     cqr = SplitCQR(alpha).calibrate(y[cal], q_cal[:, 0], q_cal[:, 1])
     lo_c, hi_c = cqr.predict_sets(q_te[:, 0], q_te[:, 1])
     cqr_m = set_metrics(y[te], lo_c, hi_c)
+    cqr_miss = 1.0 - covered(y[te], lo_c, hi_c)
+    cqr_miss = cqr_miss[np.isfinite(cqr_miss)]
+    if cqr_miss.size >= 10:
+        cqr_rate, cqr_lr, cqr_kp = kupiec_pof(cqr_miss, alpha)
+    else:
+        cqr_rate, cqr_lr, cqr_kp = float("nan"), float("nan"), float("nan")
     qr_m: dict[str, float] | None = None
     if 80 <= int(tr.stop - tr.start) <= 4000:
         try:
@@ -1207,6 +1357,9 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
             "median_width": cqr_m.median_width,
             "qhat": cqr.qhat,
             "n": cqr_m.n,
+            "miss_rate": cqr_rate,
+            "kupiec_lr": cqr_lr,
+            "kupiec_p": cqr_kp,
         },
         "aci": {
             "coverage": aci_m.coverage,
@@ -1444,8 +1597,9 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
     if y_cal.size < 2 or y_te.size < 8:
         return {}
     jp = JackknifePlus(alpha).fit(y_cal / sc_cal)
-    # predict_interval scales only the score half-width; the LOO location term
-    # must stay unscaled (manual lo_z * sc_te would scale it too).
+    # Residual was fit in y/vol space. predict_interval must convert both the
+    # LOO location and the scores back to return units via sc_te. Scaling only
+    # the half-width was a unit bug (Jackknife+ coverage ~0.07 vs 1-2α).
     lo, hi = jp.predict_interval(np.zeros_like(y_te), sc_te)
     metrics = set_metrics(y_te, lo, hi)
     hits = 1.0 - covered(y_te, lo, hi)
@@ -1455,6 +1609,7 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
     else:
         rate, lr, kp = float("nan"), float("nan"), float("nan")
     floor = jackknife_plus_coverage_level(alpha)
+    loc = jp.loo_loc_
     return {
         "target": split["label"],
         "alpha": alpha,
@@ -1462,6 +1617,12 @@ def bench_jackknife_plus(frame: pl.DataFrame, config: AppConfig) -> dict[str, An
         "mean_width": metrics.mean_width,
         "median_width": metrics.median_width,
         "coverage_floor": floor,
+        "meets_coverage_floor": bool(
+            np.isfinite(metrics.coverage) and metrics.coverage + 1e-12 >= floor
+        ),
+        "mean_loo_loc": float(np.mean(loc)) if loc is not None and loc.size else float("nan"),
+        "mean_abs_y_te": float(np.mean(np.abs(y_te))) if y_te.size else float("nan"),
+        "mean_scale_te": float(np.mean(sc_te)) if sc_te.size else float("nan"),
         "coverage_identity": "1-2*alpha",
         "coverage_guarantee_scope": "marginal_exchangeable",
         "coverage_guarantee_claim": (

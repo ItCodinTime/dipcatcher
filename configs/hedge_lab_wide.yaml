@@ -1,0 +1,15 @@
+# Wide public file tape (Wave 147): ~400 current US large/mid caps + SPY.
+# Yahoo session-close, vendor-adjusted, static sector map. Not SIP. Not a PIT
+# constituent vintage (survivorship-biased). Not a live claim. blend_weight 0.
+# Inherits hedge_lab rolling 1y daily-CS window (Wave 150).
+inherit: hedge_lab.yaml
+data:
+  source: parquet
+  parquet_path: data/file_us_wide/raw
+  root: data/file_us_wide
+  benchmark_id: SPY
+train:
+  ranking_target: future_idio_return_5
+universe:
+  top_n_adv: 400
+  min_history_bars: 60

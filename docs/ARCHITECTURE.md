@@ -37,6 +37,10 @@ Z_t = \{\mu_t, F_t, \alpha_t, s_t, \sigma_t, \Sigma_t, \pi_t^{\text{regime}}, \t
 \]
 
 The optimizer consumes \(Z_t\). No forecast engine may bypass the risk gate.
+robinhood+ (ADR-023) is a core K-line engine and a stamped challenger:
+default ``blend_weight`` is 0 until it beats ridge on a causal SYNTHETIC
+card (date-level IC, pinball/CRPS, Diebold–Mariano — no Sharpe). Fusion
+still wraps any blended signal and the risk gate still applies.
 
 ## Package layout
 
@@ -53,7 +57,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `features` | Deterministic PIT-safe feature families |
 | `labels` | Horizon targets for return, risk, tail |
 | `validation` | Walk-forward, purge/embargo, CPCV, DSR/PSR |
-| `models` | Eight forecast engines + calibration |
+| `models` | Forecast engines (ranking, alpha, distribution, vol, covariance, regime, tail, liquidity) plus **robinhood+** (Kronos-derived K-line foundation engine) and calibration |
 | `fusion` | Transparent then optional learned stacking |
 | `portfolio` | CVXPY optimizer, constraints, risk, attribution |
 | `execution` | Costs, impact, Almgren–Chriss, schedules |

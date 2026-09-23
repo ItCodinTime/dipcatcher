@@ -19,7 +19,7 @@ def test_documented_family_counts_match_catalog() -> None:
     expected = len(BENCHMARK_FAMILY_ORDER)
     mismatches = []
     for path in _doc_paths():
-        for match in _FAMILY_COUNT.finditer(path.read_text()):
+        for match in _FAMILY_COUNT.finditer(path.read_text(encoding="utf-8")):
             if int(match.group(1)) != expected:
                 mismatches.append(f"{path.relative_to(_REPO_ROOT)}: {match.group(0)} != {expected}")
     assert not mismatches, mismatches

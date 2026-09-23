@@ -98,7 +98,11 @@ def optimize_mean_variance(
         constraints.append(cp.abs(f.T @ w) <= cons.factor_abs_max)
 
     obj: cp.Maximize | cp.Minimize
-    if config.optimizer.mode == "cvar" and scenarios is not None:
+    if config.optimizer.mode == "cvar":
+        if scenarios is None:
+            raise ValueError(
+                "scenarios are required when optimizer.mode is cvar; refusing mean-variance fallback"
+            )
         sc = np.asarray(scenarios, dtype=float)
         if sc.ndim != 2 or sc.shape[1] != n or sc.shape[0] == 0 or not np.isfinite(sc).all():
             raise ValueError(

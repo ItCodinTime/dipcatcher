@@ -1,0 +1,138 @@
+{
+  "asset": "SOLUSDT",
+  "bars_sha256": "33267199e2115b25e76504f902b955545324688f0631b66264f836a7bb55246e",
+  "freq": "4h",
+  "horizon": 18,
+  "live_pnl_claim": false,
+  "lookback": 90,
+  "metrics": {
+    "bolt_small": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.06171119510113228,
+      "path_rankic_se": 0.03101894003856837,
+      "ret_rankic": -0.13458682874254158,
+      "vol_mae": 0.004249690326089763,
+      "vol_r2": -0.969665787470618
+    },
+    "chronos2": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.035356914364370634,
+      "path_rankic_se": 0.030810927635710222,
+      "ret_rankic": -0.09782908698985544,
+      "vol_mae": 0.004202869966876631,
+      "vol_r2": -0.9479928529241746
+    },
+    "dip_blend": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.021253798650566917,
+      "path_rankic_se": 0.0353512552357228,
+      "ret_rankic": -0.01660596228846987,
+      "vol_mae": 0.0026569294077479076,
+      "vol_r2": 0.11560140747267977
+    },
+    "dip_empirical": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.003551508417597916,
+      "path_rankic_se": 0.03537195144778812,
+      "ret_rankic": -0.0018569095212169022,
+      "vol_mae": 0.002552567452690662,
+      "vol_r2": 0.13802833044432328
+    },
+    "dip_empirical_long": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.029190326922534406,
+      "path_rankic_se": 0.03533237527601751,
+      "ret_rankic": 0.06891409904554495,
+      "vol_mae": 0.002747168508189076,
+      "vol_r2": 0.0612465683365615
+    },
+    "dip_ewma_emp": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.008946587455687285,
+      "path_rankic_se": 0.035368774201374395,
+      "ret_rankic": -0.032460360670674114,
+      "vol_mae": 0.002471979476538993,
+      "vol_r2": 0.086692949427562
+    },
+    "dip_ewma_t": {
+      "n_origins": 0,
+      "path_rankic_mean": NaN,
+      "path_rankic_se": NaN,
+      "ret_rankic": NaN,
+      "vol_mae": 0.0024472415726137942,
+      "vol_r2": 0.009365185099546869
+    },
+    "dip_fhs": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0272735721250752,
+      "path_rankic_se": 0.03533748011403674,
+      "ret_rankic": 0.018225091389904333,
+      "vol_mae": 0.002572674959509731,
+      "vol_r2": -0.1738917455855813
+    },
+    "dip_garch_t": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.0006585328213391802,
+      "path_rankic_se": 0.03537252532281552,
+      "ret_rankic": -0.055568172979699765,
+      "vol_mae": 0.0027221825079314513,
+      "vol_r2": -0.2955376969037191
+    },
+    "dip_gauss": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.003551508417597916,
+      "path_rankic_se": 0.03537195144778812,
+      "ret_rankic": -0.0018569095212169022,
+      "vol_mae": 0.002552567452690662,
+      "vol_r2": 0.13802833044432328
+    },
+    "dip_gmm_k": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.029190326922534406,
+      "path_rankic_se": 0.03533237527601751,
+      "ret_rankic": 0.06891409904554495,
+      "vol_mae": 0.0027447594059588428,
+      "vol_r2": 0.06145321133286907
+    },
+    "dip_lgbm_q": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.018664932392898244,
+      "path_rankic_se": 0.035356127157736644,
+      "ret_rankic": 0.041826242513805706,
+      "vol_mae": 0.0025180152397815394,
+      "vol_r2": 0.010622949010528737
+    },
+    "dip_student_t": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.00524571965480331,
+      "path_rankic_se": 0.035371249172397416,
+      "ret_rankic": -0.04239291547683863,
+      "vol_mae": 0.0028254080590248056,
+      "vol_r2": 0.06865896087415202
+    },
+    "kronos_small": {
+      "n_origins": 300,
+      "path_rankic_mean": 0.022650831530787445,
+      "path_rankic_se": 0.028994773750800125,
+      "ret_rankic": 0.02534872609695663,
+      "vol_mae": 0.004049632048377338,
+      "vol_r2": -0.86464155577474
+    },
+    "timesfm": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.018568861754094234,
+      "path_rankic_se": 0.03172327524823576,
+      "ret_rankic": -0.049404993388815426,
+      "vol_mae": 0.0042370632062145586,
+      "vol_r2": -0.9626514230238976
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 11275.28643989563,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

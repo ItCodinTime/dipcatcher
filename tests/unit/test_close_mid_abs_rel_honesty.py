@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from quant_fund.cli.main import app
@@ -36,10 +35,36 @@ def test_soft_verify_flags_divergence() -> None:
     assert "mean_effective_spread_diverges_from_mean_quoted_spread" in errs
 
 
-def test_northset_cli_echoes_both_means() -> None:
-    config = Path("configs/research.yaml")
-    if not config.exists():
-        pytest.skip("configs/research.yaml missing")
+def test_northset_cli_echoes_both_means(tmp_path: Path) -> None:
+    # This test exercises CLI wiring and receipt labels, not the full 36×504
+    # research sweep. Keep the fixture bounded so canonical CI cannot spend
+    # minutes rebuilding a heavyweight synthetic session book for two strings.
+    data_root = tmp_path / "data"
+    config = tmp_path / "northset-test.yaml"
+    config.write_text(
+        "\n".join(
+            [
+                "runtime:",
+                "  mode: research",
+                "data:",
+                f"  root: {str(data_root).replace(chr(92), '/')}",
+                "  source: synthetic",
+                "  synthetic_n_assets: 4",
+                "  synthetic_n_days: 24",
+                "  synthetic_seed: 5",
+                "northset:",
+                "  require_adjusted_ohlc: false",
+                "  min_names: 3",
+                "  use_session_l2: false",
+                "  sweep_n_boot: 50",
+                "  sweep_n_permutations: 50",
+                "  sweep_n_folds: 2",
+                "  sweep_min_events: 10",
+                "  sweep_min_dates: 10",
+                "",
+            ]
+        )
+    )
     result = CliRunner().invoke(app, ["northset", "--config", str(config)])
     assert result.exit_code == 0, result.output
     assert "mean_effective_spread=" in result.output

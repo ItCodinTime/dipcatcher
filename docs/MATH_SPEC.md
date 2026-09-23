@@ -164,9 +164,18 @@ Default \(\lambda=0.94\) (RiskMetrics daily), overridable.
 
 The GARCH subsystem is fitted to the causal decimal return series \(r_t\), never to
 `future_realized_var_h`. In the current panel trainer, the univariate series is an
-ordered, date-level equal-weight mean of finite `ret_1` values across assets; panel
-rows are never concatenated into a synthetic time series. A production asset-specific
-GARCH requires a separate per-asset fit and artifact namespace. For numerical stability
+ordered, date-level equal-weight mean of finite `ret_1` values across assets on the
+gold panel; those assets are PIT-universe members (Wave 108). Training
+`panel()` fail-closes if cached gold keys sit outside the current universe
+artifact (Wave 109). Panel rows are never
+concatenated into a synthetic time series. Per-security GARCH lives in a
+separate namespace: `garch_name_forecasts_asof` clones the date-level
+`vol_garch.joblib` specification and refits each name on that name's
+strictly prior `ret_1` (Wave 112). Those forecasts stamp
+`series_scope=security_level_ret_1` and do not replace the market overlay,
+`vol_20`, or `max_predicted_vol`. Walk-forward QLIKE/density for that
+namespace is `garch_name_walk_forward` (Wave 114). Duplicate
+`(security_id, event_time)` keys fail closed. For numerical stability
 `arch` receives \(100r_t\), so its conditional variance is in percent-squared units and
 is divided by \(10000\) at the API boundary. QLIKE is evaluated on decimal variance,
 not sigma.
@@ -179,8 +188,12 @@ For symmetric GARCH(\(p,q\)):
 \]
 
 GJR adds \(\sum_i\gamma_i I(\varepsilon_{t-i}<0)\varepsilon_{t-i}^2\), while EGARCH
-models log variance and handles positivity in log space. The supported innovation
-families are Gaussian, standardized Student-t, and skewed Student-t.
+models log variance and handles positivity in log space. APARCH (Ding–Granger–Engle)
+raises the innovation and lagged volatility to a positive power \(\delta\) with
+an asymmetry coefficient \(\gamma\in(-1,1)\); FIGARCH (Baillie–Bollerslev–Mikkelsen)
+adds a fractional-integration parameter \(d\in(0,1)\) with orders \(p,q\in\{0,1\}\).
+The supported innovation families are Gaussian, standardized Student-t, and
+skewed Student-t.
 
 `GARCHVol.forecast(horizon=h)` returns a deterministic origin-indexed path of
 per-future-bar decimal variances and sigmas. `cumulative_variance` is the sum of
@@ -189,12 +202,139 @@ realized-variance label. Predictive quantiles and PIT values use the fitted
 innovation distribution and are bounded to \([0,1]\) for valid inputs.
 
 The fit gate checks finite parameters, finite positive conditional volatility,
-optimizer convergence, and full-order persistence. For GARCH and GJR the
-persistence diagnostic is \(\sum_i\alpha_i+\sum_j\beta_j+\frac12\sum_i\gamma_i\);
-EGARCH is not subjected to this symmetric persistence formula. Short, constant,
-non-converged, non-finite, or non-stationary fits fail closed to a sample-sigma
-fallback with an explicit diagnostic reason. This fallback is a safety mechanism,
-not evidence of model superiority.
+optimizer convergence, and specification-appropriate persistence. For GARCH,
+GJR, and APARCH the persistence diagnostic is
+\(\sum_i\alpha_i+\sum_j\beta_j\) (GJR adds \(\frac12\sum_i\gamma_i\)); APARCH
+also requires \(\delta>0\). FIGARCH requires \(0<d<1\) and is not subjected to
+the symmetric GARCH persistence formula. EGARCH is not subjected to that
+formula either. Short, constant, non-converged, non-finite, or non-stationary
+fits fail closed to a sample-sigma fallback with an explicit diagnostic reason.
+`arch` cannot recurse EGARCH or APARCH analytically beyond one step, so
+`forecast(horizon>1)` uses a seeded simulation for those specs rather than
+repeating the one-step value. This fallback is a safety mechanism, not evidence
+of model superiority.
+
+When `vol_realized_garch.joblib` is present, `forecast_asof` and
+`optimize_asof` prefer the causal Parkinson Realized GARCH one-step market
+variance (Wave 118) with the same fail-closed OHLC / scope / high-frequency-RV
+contract as paper/backtest `check_order` (Wave 117). `MarketState.market_risk_overlay`
+stamps `realized_garch` versus `garch` so the covariance overlay cannot be
+mistaken for return-only GARCH. When that artifact is absent,
+`vol_garch.joblib` still supplies the return-only overlay: `forecast_asof`
+refits this specification on
+the date-level equal-weight `ret_1` series with `event_time` strictly before the
+decision origin and attaches the one-step market variance to `MarketState`.
+When `available_time` is present, unpublished restatements
+(`available_time > asof`) cannot enter that history even if their event time is
+earlier; null availability among otherwise usable rows fails closed. When
+`silver/universe.parquet` is present the overlay series is restricted to
+current PIT members, so paper/backtest execution bars cannot let ineligible
+names move the market vol gate. The process-local as-of cache is keyed by a
+digest of the full causal history, not the terminal observation alone, and
+by the SHA-256 of `vol_garch.joblib` bytes rather than mtime or a partial
+spec tuple (Wave 113). The ridge ranker cache is keyed the same way on
+`ranker_ridge.joblib` bytes (Wave 121), so an in-place rewrite that keeps
+mtime cannot reuse stale alpha.
+`optimize_asof` then scales the trailing name-covariance so that the equal-weight
+portfolio variance matches that overlay level when `optimizer.covariance` is
+the default Ledoit–Wolf path or named `oas` / `ledoit_wolf_nonlinear` / `sample`. Named `optimizer.covariance=dcc_gaussian` uses
+Engle (2002) one-step \(H_{t+1}\) instead and does not apply this overlay
+(Wave 124). Named `optimizer.covariance=dcc_student_t` uses the Wave 126
+Student-t DCC one-step matrix the same way (Wave 127) and must not silently
+run Gaussian DCC or Ledoit–Wolf. Named `optimizer.covariance=adcc` uses the
+Wave 128 scalar CES ADCC one-step matrix the same way (Wave 129) and must
+not silently run Gaussian DCC, Student-t DCC, or Ledoit–Wolf. Named `optimizer.covariance=ewma` uses one-step RiskMetrics \(H_{t+1}\) (Wave 130) and must not silently run DCC or Ledoit–Wolf. Named `optimizer.covariance=oas` uses trailing Chen–Wiesel–Eldar–Hero OAS plus the overlay (Wave 131) and must not silently run Ledoit–Wolf, sample, EWMA, or DCC. Named `optimizer.covariance=ledoit_wolf_nonlinear` uses trailing analytical 2020 nonlinear shrinkage plus the overlay (Wave 140) and must not silently run 2004 linear Ledoit–Wolf, OAS, sample, EWMA, or DCC. Named `optimizer.covariance=sample` uses trailing unbiased sample covariance plus the overlay (Wave 132) and must not silently run Ledoit–Wolf, OAS, EWMA, or DCC. Named `optimizer.covariance=ccc` uses Bollerslev (1990) one-step \(H_{t+1}=D_{t+1} R D_{t+1}\) (Wave 134) and must not silently run Gaussian DCC, Student-t DCC, scalar ADCC, or Ledoit–Wolf. That DCC sample is the trailing contiguous complete-case window
+(Wave 125): holes are not concatenated, and an incomplete asof row fails
+closed so \(z_t\) cannot be dropped from advertised \(H_{t+1}\). That trailing
+matrix is itself
+PIT-filtered: when `available_time` is present, unpublished restatements
+(`available_time > asof`) cannot enter Ledoit–Wolf, OAS, or sample covariance, and
+null availability among usable `ret_1` rows fails closed (Wave 119). The
+`/risk/portfolio` research diagnostic uses the same trailing-return helper
+and the same overlay scale (Wave 120), stamping `market_risk_overlay` so
+unscaled Ledoit–Wolf cannot be mistaken for the optimizer's risk object. A
+present Realized GARCH artifact still fail-closes on missing OHLC rather than
+reporting unscaled sample risk. Frames without
+`available_time` keep the legacy event-time path. Paper and backtest `check_order`
+compare `max_predicted_vol` to the same causal one-step Parkinson Realized GARCH
+sigma when `vol_realized_garch.joblib` is present (Wave 117–118); otherwise they
+use this return-only GARCH overlay when `vol_garch.joblib` is present.
+Per-name `vol_20` remains the impact/cost sigma and the fallback when no
+artifact or no strictly-prior history exists. The overlay is not a
+substitute for `vol_20`. Per-security causal forecasts are a separate
+`garch_name_forecasts_asof` namespace with `series_scope=security_level_ret_1`
+(Wave 112) and are not wired into `check_order`. A present artifact whose
+`series_scope` is not `date_level_equal_weight_cross_section` fails closed.
+
+Walk-forward GARCH QLIKE is scored on that same date-level object: the one
+forecast per origin is compared with the equal-weight cross-section of
+`future_realized_var_h`, not with concatenated name-level rows. When
+`available_time` is present, each origin refits on returns observable at that
+origin rather than on a pre-aggregated series that already includes unpublished
+restatements. Primary
+`qlike` uses a Hansen–Lunde nonoverlapping origin subsample (stride \(h\) on
+the session index) so consecutive \(h\)-bar realized windows are not
+double-counted; `qlike_overlapping_dates` remains the diagnostic on every
+origin. The volatility bench collapses holdout losses to one observation per
+date and uses Hansen–Hodrick HAC lags of at least \(h-1\) for Diebold–Mariano.
+This is overlap-aware scoring honesty, not a live-performance or per-name
+GARCH claim.
+
+The advertised one-step predictive density is scored separately on date-level
+equal-weight \(r_t\) at each origin (Wave 105). The fit uses returns with
+event time strictly before the origin; the scored realization is that origin's
+date-level `ret_1`, never `future_realized_var_h`. Primary `log_score_one_step`
+is the Gneiting–Raftery logarithmic score (higher is better) and
+`crps_one_step` is a proper CRPS loss; `ignorance_one_step` is the negative
+log-score. Gaussian CRPS uses the closed form; t/skew-t CRPS is a quantile
+Riemann approximation from the fitted `arch` ppf because GARCH Student-t is
+variance-standardized. PIT KS is a calibration diagnostic only (PITs remain
+serially dependent under volatility clustering). Companion `*_qlike_origins`
+keys reuse the Hansen–Lunde stride so density diagnostics can be compared on
+the same origin subset as QLIKE. Missing origin `ret_1` fails closed. This is
+not a live-performance or per-name GARCH claim.
+
+Name-level walk-forward QLIKE/density is a separate namespace (Wave 114).
+`garch_name_walk_forward` clones the training GARCH specification and refits
+each `security_id` on that name's strictly prior `ret_1`. Primary `qlike`
+pools the union of per-name Hansen–Lunde nonoverlapping origins; it never
+equal-weight collapses names within a date. Date-level `overlap_aware_qlike`
+still rejects within-date forecast disagreement, so a name-level forecast
+cannot be scored as a market overlay. One-step log-score, CRPS, and PIT KS
+use that name's origin `ret_1` (evaluation vintage), never
+`future_realized_var_h` and never the cross-section mean. Metrics stamp
+`scoring_scope=security_level_ret_1` and do not replace `vol_20`,
+`max_predicted_vol`, or date-level `train_volatility` scores. Missing origin
+`ret_1`, empty prior history, and duplicate `(security_id, event_time)` keys
+fail closed. This is not a live-performance claim.
+
+Log-linear Realized GARCH (Hansen–Huang–Shek 2012) is a separate Gaussian
+namespace. The return equation is the usual \(r_t=\mu+\sqrt{h_t}z_t\). Variance
+and measurement equations are
+
+\[
+\log h_t=\omega+\beta\log h_{t-1}+\gamma\log x_{t-1},
+\]
+
+\[
+\log x_t=\xi+\varphi\log h_t+\tau_1 z_t+\tau_2(z_t^2-1)+u_t.
+\]
+
+The realized measure \(x_t\) is one-day Parkinson variance from daily OHLC,
+not intraday RV and never a silent \(r_t^2\) substitute. Persistence is
+\(\beta+\gamma\varphi<1\). One-step \(h_{t+1}\) is deterministic given the last
+observable \(x_t\); multi-step paths use the plugin \(\mathbb{E}[\log x]=\xi+\varphi\log h\)
+and stamp `multi_step_method=expected_log_variance_plugin`.
+`realized_garch_market_forecast_asof` clones `vol_realized_garch.joblib` and
+refits on date-level equal-weight `ret_1` paired with same-name Parkinson,
+with the same PIT `available_time` / universe contract as the return-only
+overlay. `forecast_asof` / `optimize_asof` and paper/backtest `check_order`
+prefer that one-step Parkinson sigma when the artifact is present (Wave 118);
+return-only GARCH remains the fallback overlay, and per-name `vol_20`
+remains the impact/cost sigma. A present Realized GARCH artifact whose
+`series_scope` is wrong, that claims high-frequency RV, or whose panel
+lacks daily OHLC fails closed rather than substituting \(r_t^2\). Missing
+OHLC fail closed.
 
 ## HAR-RV (Corsi)
 
@@ -204,6 +344,10 @@ not evidence of model superiority.
 
 When daily RV is unavailable, close-to-close squared log return proxies RV. Log-RV regression is used when `volatility.har_log: true`.
 
+## Sample covariance
+
+Unbiased Pearson sample covariance (`np.cov(..., ddof=1)`) on the listwise-complete trailing window. The public matrix is trailing (`covariance_object=trailing`, `sample=listwise_complete`), not sequential one-step \(H_{t+1}\). Interior holes are dropped; an incomplete asof row is omitted rather than fail-closed. Params stamp `family=sample`, `spec=unbiased_sample`, and `ddof=1`. `/models` lists `sample` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=sample` (Wave 132) and apply the GARCH/RGARCH overlay (trailing sample has no \(D_{t+1}\)). The named path must not silently size as Ledoit–Wolf, OAS, EWMA, Gaussian DCC, Student-t DCC, or scalar ADCC. When \(T>N\) the estimator stays sample rather than switching to Ledoit–Wolf. The default Ledoit–Wolf path stays Ledoit–Wolf when \(T\le N\) (Wave 139) rather than silently switching to this unbiased spec. Factor stays unwired. This is not matrix AG-DCC and does not invent high-frequency RV.
+
 ## Ledoit–Wolf shrinkage
 
 sklearn `LedoitWolf` shrinks the sample covariance \(S\) toward \(\mu I\):
@@ -212,11 +356,60 @@ sklearn `LedoitWolf` shrinks the sample covariance \(S\) toward \(\mu I\):
 \Sigma = (1-\delta)S + \delta \mu I, \qquad \mu = \mathrm{tr}(S)/N
 \]
 
-This is the 2004 linear formula, not nonlinear shrinkage (Ledoit–Wolf 2017). Nonlinear shrinkage is deferred.
+This is the 2004 linear formula, not nonlinear spectral shrinkage. Named `optimizer.covariance=ledoit_wolf_nonlinear` is the 2020 analytical formula (Wave 140) and must not silently size as this 2004 path. The public matrix is trailing and listwise-complete (`covariance_object=trailing`, `sample=listwise_complete`), not sequential one-step \(H_{t+1}\). Interior holes are dropped; an incomplete asof row is omitted rather than fail-closed. Params stamp `family=ledoit_wolf`, `spec=ledoit_wolf_2004_linear`, and the fitted shrinkage intensity. `/models` lists `ledoit_wolf` among implemented covariance estimators and the default optimizer path. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=ledoit_wolf` (default) and apply the GARCH/RGARCH overlay (trailing shrinkage has no \(D_{t+1}\)). When \(T\le N\) the estimator stays Ledoit–Wolf (Wave 139) rather than silently switching to unbiased sample. Named `sample` remains the explicit sample path. Generic `shrinkage` stays unknown. This does not invent high-frequency RV or wire factor covariance.
+
+## Analytical nonlinear Ledoit–Wolf shrinkage
+
+Ledoit–Wolf (2020, *Annals of Statistics*) analytical nonlinear shrinkage maps each sample eigenvalue through a kernel estimate of the limiting spectral density and its Hilbert transform (bandwidth \(n^{-1/3}\), \(n\) the effective sample size after demeaning). This is the closed-form successor to QuEST, not numerical QuEST inversion (Ledoit–Wolf 2017 RFS) and not 2004 linear shrinkage toward \(\mu I\). Sample covariance uses \(1/n\) on the centered trailing window, not unbiased `ddof=1`. When \(T\le N\) the singular-case formula is used rather than switching to sample or 2004 linear shrinkage. Effective sample size after demeaning must be at least 12. The public matrix is trailing and listwise-complete (`covariance_object=trailing`, `sample=listwise_complete`), not sequential one-step \(H_{t+1}\). Interior holes are dropped; an incomplete asof row is omitted rather than fail-closed. Params stamp `family=ledoit_wolf_nonlinear`, `spec=ledoit_wolf_2020_analytical`, `demean=true`, `n_eff`, `concentration`, and `bandwidth`. `/models` lists `ledoit_wolf_nonlinear` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=ledoit_wolf_nonlinear` (Wave 140) and apply the GARCH/RGARCH overlay (trailing shrinkage has no \(D_{t+1}\)). The named path must not silently size as 2004 linear Ledoit–Wolf, OAS, sample, EWMA, or DCC. Generic `shrinkage` / `ledoit_wolf_2017` / `quest` stay unknown so analytical 2020 cannot masquerade as 2004 linear or as QuEST. Default remains trailing Ledoit–Wolf 2004 plus the overlay. Factor stays unwired. This does not invent high-frequency RV.
+
+## Oracle Approximating Shrinkage
+
+sklearn `OAS` (Chen, Wiesel, Eldar, Hero 2010) is a linear shrinkage estimator of the sample covariance toward \(\mu I\). It is not Ledoit–Wolf 2004 and not nonlinear spectral shrinkage. The public matrix is trailing and listwise-complete (`covariance_object=trailing`, `sample=listwise_complete`), not sequential one-step \(H_{t+1}\). Interior holes are dropped; an incomplete asof row is omitted rather than fail-closed. Params stamp `family=oas`, `spec=chen_wiesel_eldar_hero_2010`, and the fitted shrinkage intensity. `/models` lists `oas` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=oas` (Wave 131) and apply the GARCH/RGARCH overlay (trailing shrinkage has no \(D_{t+1}\)). The named path must not silently size as Ledoit–Wolf, nonlinear Ledoit–Wolf, sample, EWMA, Gaussian DCC, Student-t DCC, or scalar ADCC. When \(T\le N\) the estimator stays OAS rather than switching to sample. Generic `shrinkage` stays unknown. Default remains trailing Ledoit–Wolf plus the overlay. This is not matrix AG-DCC and does not invent high-frequency RV.
+
+## RiskMetrics EWMA covariance
+
+One-step RiskMetrics recursion on decimal returns:
+
+\[
+H_{t+1}=\lambda H_t+(1-\lambda)r_t r_t'
+\]
+
+with \(\lambda\in[0,1)\) from `features.ewma_lambda` (default \(0.94\)). The public matrix is \(H_{t+1}\) that includes asof \(r_t\), not in-sample last \(H_t\) that re-applies \(r_{t-1}\) and drops \(r_t\). The estimation sample is the trailing contiguous complete-case window ending at the last row (same sequential honesty as DCC Wave 125): listwise deletion must not concatenate non-adjacent days, and an incomplete terminal row fails closed. Params stamp `family=ewma`, `spec=jpmorgan_riskmetrics_1996`, `covariance_object=one_step_ahead`, `horizon=1`, and `sample=trailing_complete_window`. `/models` lists `ewma` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=ewma` (Wave 130) and must not overlay GARCH/RGARCH (the EWMA recursion already supplies \(H_{t+1}\)) or silently size as sample, Ledoit–Wolf, OAS, Gaussian DCC, Student-t DCC, or scalar ADCC. Generic `dcc` stays unknown. Default remains trailing Ledoit–Wolf plus the overlay. This is not matrix AG-DCC and does not invent high-frequency RV.
+
+## CCC (Bollerslev 1990)
+
+Two-stage Constant Conditional Correlation. Stage 1 is univariate Gaussian
+GARCH(1,1) via `arch` / `GARCHVol`, the same stage-1 contract as Gaussian DCC.
+Stage 2 is the constant correlation of standardized residuals:
+
+\[
+R=\mathrm{corr}(z),\qquad H_{t+1}=D_{t+1} R D_{t+1}.
+\]
+
+There is no \(Q\) recursion and no \(a,b\) QML: this is not Gaussian DCC with
+\(a=b=0\) fitted by Engle QML. `ccc` does not call `dcc_gaussian`,
+`dcc_student_t`, or `adcc`. \(D_{t+1}\) is the univariate GARCH one-step
+sigma, not in-sample last \(\sigma_t\). The estimation sample is the trailing
+contiguous complete-case window. Params stamp `family=ccc`,
+`spec=bollerslev_1990_ccc`, `dist=normal`, `asymmetric=false`,
+`dynamic_correlation=false`, `covariance_object=one_step_ahead`, `horizon=1`,
+and `sample=trailing_complete_window`. `/models` lists it among implemented
+covariance estimators and named optimizer paths. `optimize_asof` /
+`/risk/portfolio` use this matrix when `optimizer.covariance=ccc` (Wave 134)
+and must not overlay GARCH/RGARCH (CCC already supplies \(D_{t+1}\)) or
+silently size as Gaussian DCC, Student-t DCC, scalar ADCC, or Ledoit–Wolf.
+Generic `dcc` stays unknown. Named `agdcc` is diagonal CES AG-DCC
+(Wave 136); named `agdcc_full` is unrestricted CES AG-DCC (Wave 138)
+and must not silently size as diagonal AG-DCC. This does not invent
+high-frequency RV.
 
 ## DCC(1,1)
 
-Two-stage Engle (2002). Stage 1: univariate GARCH via `arch`. Standardized residuals \(z_t\). Stage 2:
+Two-stage Engle (2002). Stage 1: univariate Gaussian GARCH(1,1) via `arch` /
+`GARCHVol` on each name's decimal returns (Wave 116). Standardized residuals
+\(z_t\) are the fitted GARCH innovations, not RiskMetrics EWMA. A failed,
+short, zero-variance, or fallback univariate fit fails closed rather than
+silently substituting EWMA residuals. Stage 2:
 
 \[
 Q_t = (1-a-b)\bar Q + a z_{t-1}z_{t-1}^\top + b Q_{t-1}
@@ -226,7 +419,41 @@ Q_t = (1-a-b)\bar Q + a z_{t-1}z_{t-1}^\top + b Q_{t-1}
 R_t = \mathrm{diag}(Q_t)^{-1/2} Q_t \mathrm{diag}(Q_t)^{-1/2}, \qquad H_t = D_t R_t D_t
 \]
 
-Parameters \(a,b>0\), \(a+b<1\) are estimated by QML on the correlation likelihood. Implemented in-house (ADR-004).
+Parameters \(a,b>0\), \(a+b<1\) are estimated by QML on the correlation likelihood. Implemented in-house (ADR-004). The public matrix is the one-step-ahead Engle object \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) (Wave 123): \(Q_{t+1}\) uses the last standardized residual \(z_t\), and \(D_{t+1}\) is the univariate GARCH one-step sigma, not in-sample last \(\sigma_t\). The estimation sample is the trailing contiguous complete-case window ending at the last row (Wave 125): listwise deletion must not concatenate non-adjacent days, and an incomplete terminal row fails closed so advertised \(H_{t+1}\) cannot drop asof \(z_t\). Params stamp `family=dcc_gaussian`, `dist=normal`, `asymmetric=false`, `covariance_object=one_step_ahead`, `horizon=1`, and `sample=trailing_complete_window`. Student-t DCC (Wave 126) uses the same Engle \(Q\) recursion, one-step \(H_{t+1}\), and trailing complete window. Stage 1 is univariate Student-t GARCH(1,1). Stage 2 QML uses the covariance Student-t correlation likelihood with a single \(ν>2\) (scale \(((ν-2)/ν)R\) so \(\mathrm{Var}(z)=R\)). Params stamp `family=dcc_student_t`, `dist=student_t`, `spec=engle_2002_student_t_dcc`, and `nu`. \(ν\le 2\) fails closed. Scalar Cappiello–Engle–Sheppard ADCC is a separate catalog estimator (Wave 128); `adcc` must not silently run Gaussian or Student-t DCC. `optimize_asof` / `/risk/portfolio` use Gaussian DCC when `optimizer.covariance=dcc_gaussian` (Wave 124), Student-t DCC when `optimizer.covariance=dcc_student_t` (Wave 127), scalar CES ADCC when `optimizer.covariance=adcc` (Wave 129), RiskMetrics EWMA when `optimizer.covariance=ewma` (Wave 130), Bollerslev CCC when `optimizer.covariance=ccc` (Wave 134), and diagonal CES AG-DCC when `optimizer.covariance=agdcc` (Wave 136), and unrestricted CES AG-DCC when `optimizer.covariance=agdcc_full` (Wave 138); those named paths do not apply the GARCH/RGARCH overlay to \(H_{t+1}\) and must not silently substitute for each other or for Ledoit–Wolf. Named `optimizer.covariance=oas` is trailing Chen OAS plus the overlay (Wave 131), not a one-step DCC/EWMA path. Named `optimizer.covariance=sample` is trailing unbiased sample covariance plus the overlay (Wave 132) and must not silently size as Ledoit–Wolf, OAS, EWMA, or DCC. Ambiguous aliases (`gaussian`, `normal`, `t`, `student_t`) are rejected. Generic `dcc` stays unknown. The default remains trailing Ledoit–Wolf plus the overlay. Bollerslev (1990) CCC is a separate catalog estimator (Wave 133) and named optimizer path (Wave 134); `ccc` must not silently run Gaussian DCC, Student-t DCC, or ADCC. Diagonal CES AG-DCC is a separate catalog estimator (Wave 135) and named optimizer path (Wave 136); `agdcc` must not silently run scalar ADCC, Gaussian DCC, CCC, unrestricted AG-DCC, or Ledoit–Wolf. Unrestricted full-matrix AG-DCC is a catalog estimator (Wave 137) and named optimizer path (Wave 138); `agdcc_full` must not silently run diagonal AG-DCC, scalar ADCC, Gaussian DCC, CCC, or Ledoit–Wolf. Factor stays unwired.
+
+## Scalar ADCC (Cappiello–Engle–Sheppard 2006)
+
+Two-stage scalar ADCC. Stage 1 is univariate Gaussian GARCH(1,1) via `arch` / `GARCHVol`, the same stage-1 contract as Gaussian DCC. Stage 2 QML estimates \(a,b,g\) on
+
+\[
+n_t = I[z_t < 0]\odot z_t, \qquad \bar N = \mathbb{E}[n_t n_t^\top]
+\]
+
+\[
+Q_t = (1-a-b)\bar Q - g\bar N + a z_{t-1}z_{t-1}^\top + b Q_{t-1} + g n_{t-1}n_{t-1}^\top
+\]
+
+with \(R_t\) and \(H_t\) as in Engle DCC. Positive-definiteness uses \(a,b,g\ge 0\) and \(a+b+\kappa g<1\), where \(\kappa=\lambda_{\max}(\bar Q^{-1/2}\bar N\bar Q^{-1/2})\). This is not Gaussian DCC with an `asymmetric` stamp: `adcc` does not call `dcc_gaussian`. The public matrix is one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) on the trailing contiguous complete-case window. Params stamp `family=adcc`, `spec=cappiello_engle_sheppard_2006`, `dist=normal`, `asymmetric=true`, `g`, and `kappa`. `/models` lists it among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=adcc` (Wave 129) and must not silently size as Gaussian DCC, Student-t DCC, CCC, diagonal AG-DCC, or Ledoit–Wolf. This is a scalar CES correlation spec, not diagonal AG-DCC and not high-frequency RV.
+
+## Diagonal AG-DCC (Cappiello–Engle–Sheppard 2006)
+
+Two-stage diagonal AG-DCC. Stage 1 is univariate Gaussian GARCH(1,1) via `arch` / `GARCHVol`. Stage 2 QML estimates diagonal \(A=\mathrm{diag}(a)\), \(B=\mathrm{diag}(b)\), \(G=\mathrm{diag}(g)\) on
+
+\[
+Q_t = (\bar Q - A\bar Q A - B\bar Q B - G\bar N G) + A z_{t-1}z_{t-1}^\top A + B Q_{t-1} B + G n_{t-1}n_{t-1}^\top G
+\]
+
+with \(n_t=I[z_t<0]\odot z_t\) and \(\bar N=\mathbb{E}[n_t n_t^\top]\) as in scalar ADCC. Equal diagonals \(A=\sqrt{a}I\), \(B=\sqrt{b}I\), \(G=\sqrt{g}I\) recover the scalar CES recursion; heterogeneous diagonals do not. This is not scalar ADCC with a `parameterization` stamp: `agdcc` does not call `adcc`. Positive-definiteness uses \(a,b,g\ge 0\) and a positive-definite intercept. The public matrix is one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) on the trailing contiguous complete-case window. Params stamp `family=agdcc`, `spec=cappiello_engle_sheppard_2006_diagonal_agdcc`, `parameterization=diagonal`, `dist=normal`, and `asymmetric=true`. `/models` lists `agdcc` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=agdcc` (Wave 136) and must not overlay GARCH/RGARCH (AG-DCC already supplies \(D_{t+1}\)) or silently size as scalar ADCC, Gaussian DCC, CCC, unrestricted AG-DCC, or Ledoit–Wolf. Unrestricted full-matrix AG-DCC (`agdcc_full`) is a separate catalog estimator (Wave 137) and named optimizer path (Wave 138). This does not invent high-frequency RV or wire factor covariance.
+
+## Unrestricted AG-DCC (Cappiello–Engle–Sheppard 2006)
+
+Two-stage unrestricted AG-DCC. Stage 1 is univariate Gaussian GARCH(1,1) via `arch` / `GARCHVol`. Stage 2 QML estimates unrestricted matrices \(A,B,G\) on
+
+\[
+Q_t = (\bar Q - A\bar Q A^\top - B\bar Q B^\top - G\bar N G^\top) + A z_{t-1}z_{t-1}^\top A^\top + B Q_{t-1} B^\top + G n_{t-1}n_{t-1}^\top G^\top
+\]
+
+with \(n_t=I[z_t<0]\odot z_t\) and \(\bar N=\mathbb{E}[n_t n_t^\top]\) as in scalar ADCC. Diagonal \(A,B,G\) recover Wave 135 diagonal AG-DCC; nonzero off-diagonals do not. This is not diagonal AG-DCC with a `parameterization` stamp: `agdcc_full` does not call `agdcc`, `adcc`, `dcc_gaussian`, `dcc_student_t`, or `ccc`. Positive-definiteness uses a positive-definite intercept and spectral radius of \(A\otimes A+B\otimes B+G\otimes G\) strictly below one. The public matrix is one-step \(H_{t+1}=D_{t+1}R_{t+1}D_{t+1}\) on the trailing contiguous complete-case window. Params stamp `family=agdcc_full`, `spec=cappiello_engle_sheppard_2006_full_agdcc`, `parameterization=full`, `dist=normal`, and `asymmetric=true`. `/models` lists `agdcc_full` among implemented covariance estimators and named optimizer paths. `optimize_asof` / `/risk/portfolio` use this matrix when `optimizer.covariance=agdcc_full` (Wave 138) and must not overlay GARCH/RGARCH (AG-DCC already supplies \(D_{t+1}\)) or silently size as diagonal AG-DCC, scalar ADCC, Gaussian DCC, CCC, or Ledoit–Wolf. This does not invent high-frequency RV or wire factor covariance.
 
 ## PSD repair
 
@@ -743,3 +970,623 @@ Northset `amihud_mean` / `mean_true_range` / volume_over_range ICs are `research
 ### VPIN family (Northset)
 
 Daily `vpin_proxy` → `vpin_mean` / H32; session-book `|ofi_sum|/|ofi|_abs_sum` → `session_book_vpin_mean` / H43; `session_bulk_vpin` is candle-volume VPIN without an H-id. DATA_CONTRACTS **session_book_vpin_mean vs vpin_mean**.
+
+## robinhood+ (Kronos K-line engine)
+
+Two-stage K-line language model (Shi et al., 2025). Split-adjusted
+OHLCV+amount \(x_t\in\mathbb{R}^6\) is z-scored on the causal lookback,
+projected by a seeded orthonormal map \(W\), L2-normalized, and quantized
+to bipolar bits. Coarse tokens \(s1\) use the first \(b_1\) bits; fine
+tokens \(s2\) use the remaining \(b_2\) bits (LSB-first, matching Kronos
+BSQ). The default decoder samples \(s1_{t+1}\mid(s1_t,s2_t)\) then
+\(s2_{t+1}\mid(s1_t,s2_t,s1_{t+1})\) from Laplace-smoothed lookback
+counts (temperature + nucleus). Decode inverts bits \(\to\) latent
+\(\to\) \(W^\top\) \(\to\) denormalize and repairs the OHLC identity
+\(\mathrm{high}\ge\max(\mathrm{open},\mathrm{close})\),
+\(\mathrm{low}\le\min(\mathrm{open},\mathrm{close})\).
+
+Horizon simple returns use the last lookback close \(P_t\) and the
+sampled close at step \(h\):
+
+\[
+\hat R_{t,t+h}^{(m)} = \frac{\hat P_{t+h}^{(m)}}{P_t}-1
+\]
+
+Expected return, quantiles, and \(\mathbb{P}(\hat R>0)\) are sample
+moments over \(m=1,\ldots,M\) paths. Only horizons \(h\le\) `pred_len`
+are emitted. Bars with `event_time` (and `available_time` when present)
+after the decision clock are excluded. This is a research-lab path
+forecast, not a live P&L claim.
+
+## Kelly–Malamud–Zhou random Fourier ridge (`rff`)
+
+JoF 2024 equation (20) (NBER w30217 eq. 21) maps standardized public
+cross-sectional features \(G\) to paired random Fourier features
+
+\[
+S_i = \bigl[\sin(\gamma\omega_i'G),\;\cos(\gamma\omega_i'G)\bigr]',
+\quad \omega_i\sim\mathrm{i.i.d.}\,N(0,I),\;\gamma=2.
+\]
+
+\(P\) is even (`train.rff_n_features`). Columns of \(S\) are standardized
+on the training sample (NBER footnote 36); the JoF display omits
+\(P^{-1/2}\) because that scale is absorbed by column standardization
+and \(z\). Ridge uses the paper's parameterization, not sklearn
+`alpha`:
+
+\[
+\hat\beta(z)=\bigl(zI+T^{-1}S'S\bigr)^{-1}T^{-1}S'R.
+\]
+
+When \(P>T\), the dual \(\beta=S'(SS'+zTI)^{-1}y\) is used. \(z=0\) is
+ridgeless (minimum-norm interpolator). **Deviation:** the paper is
+time-series market timing on 15 macro predictors; Dipcatcher stacks the
+cross-sectional panel and treats \(T\) as the number of finite
+stock-date rows. Scores are \(\hat y=\bar R+S_{\mathrm{oos}}'\hat\beta\).
+No Sharpe in metadata. Walk-forward is the existing purged date folds.
+
+## Kozak–Nagel–Santosh SDF ridge (`sdf_ridge`)
+
+Managed portfolios \(F_t=n_t^{-1}Z_t'r_t\) from lagged public CS
+features and the ranking label. KNS (22):
+
+\[
+\hat b=(\Sigma+zI)^{-1}\mu,\qquad \mu=\bar F,\;\Sigma=\widehat{\mathrm{Cov}}(F).
+\]
+
+In PC space the shrinkage factor on OLS is \(d_j/(d_j+z)\), which is
+stronger for small eigenvalues — that *is* the extra shrinkage, not a
+second hyperparameter. Stock scores are \(Z\hat b\). Dates are required.
+**Deviation:** KNS estimate a monthly SDF on characteristic-managed
+factors; here \(r_t\) is the ranking target (e.g. 5-day excess), not a
+tradable monthly excess return.
+
+## Kelly–Pruitt–Su IPCA (`ipca`)
+
+Restricted IPCA (\(\Gamma_\alpha=0\)):
+
+\[
+r_{t+1}=Z_t\Gamma f_{t+1}+\varepsilon_{t+1},\qquad \Gamma'\Gamma=I_K.
+\]
+
+ALS alternates FOC (6) \(f_{t+1}=(\Gamma'Z_t'Z_t\Gamma)^{-1}\Gamma'Z_t'r_{t+1}\)
+and FOC (7) \(\mathrm{vec}(\Gamma)=( \sum_t f_t f_t'\otimes Z_t'Z_t)^{-1}\sum_t (f_t\otimes Z_t')r_{t+1}\)
+until \(\max|\Delta\Gamma|<10^{-6}\) (default). Identification: thin QR,
+diagonal descending \(\mathrm{Cov}(f)\), non-negative mean \(f\).
+Initialization: leading eigenvectors of \(\sum_t x_t x_t'\) with
+\(x_t=Z_t'r_{t+1}\). Restricted predictor is \(Z\Gamma\mu_f\). Catalog
+Unrestricted IPCA (`ipca_alpha`) jointly estimates \((\Gamma_\alpha,\Gamma)\)
+with augmented factors \(F_{\mathrm{aug},t}=(1,f_t)'\):
+
+\[
+r_{t+1}=Z_t\Gamma_\alpha+Z_t\Gamma f_{t+1}+\varepsilon_{t+1},\qquad
+\mathrm{vec}(\Gamma_{\mathrm{aug}})=\Bigl(\sum_t F_{\mathrm{aug},t}F_{\mathrm{aug},t}'\otimes Z_t'Z_t\Bigr)^{-1}\sum_t\bigl(F_{\mathrm{aug},t}\otimes Z_t'\bigr)r_{t+1}.
+\]
+
+ALS warm-starts from the restricted solution, then alternates
+\(f_t=(\Gamma'Z_t'Z_t\Gamma)^{-1}\Gamma'Z_t'(r_t-Z_t\Gamma_\alpha)\) with the
+packed \(\Gamma_{\mathrm{aug}}=[\Gamma_\alpha\mid\Gamma]\) FOC until
+\(\max|\Delta\Gamma|,|\Delta\Gamma_\alpha|<10^{-6}\). Identification
+(QR, descending \(\mathrm{Cov}(f)\), non-negative mean \(f\)) is applied
+to \(\Gamma\) only. Predictor \(Z(\Gamma_\alpha+\Gamma\mu_f)\). Default
+\(K=3\). Dates are required. **Deviation:** instruments are the public
+CS-z columns, not the paper's 36 firm characteristics split into level
+and deviation. No bootstrap pricing test. Research diagnostic, not a
+live SDF claim.
+
+## Kozak–Nagel–Santosh SDF elastic net (`sdf_en`)
+
+KNS (28) minimizes the HJ-distance plus \(\ell_2\) and \(\ell_1\):
+
+\[
+\hat b=\arg\min_b\,(\mu-\Sigma b)'\Sigma^{-1}(\mu-\Sigma b)+\gamma_2\|b\|_2^2+\gamma_1\|b\|_1.
+\]
+
+Implemented as ISTA on the equivalent smooth gradient \(2\Sigma b-2\mu+2\gamma_2 b\)
+with soft-thresholding. **Deviation:** fixed \(\gamma_1,\gamma_2\)
+(`sdf_en_l1`, `sdf_en_l2`), not LARS-EN with Sharpe-prior \(\kappa\).
+If ISTA returns the zero vector (typical when \(\gamma_1\) dwarfs
+\(\|\mu\|\)), the ranker retries at \(\gamma_1=0\) rather than emit a
+constant score.
+
+## Lettau–Pelger RP-PCA (`rp_pca`)
+
+On the \(T\times L\) managed-portfolio matrix \(X\),
+
+\[
+S_{\mathrm{RP}}=\tfrac1T X'X+\gamma\bar X\bar X',\qquad \gamma=-1\text{ is covariance PCA}.
+\]
+
+Default \(\gamma=10\) (over-weight means). Loadings \(\Lambda\) are the
+leading \(K\) eigenvectors; scores \(Z\Lambda\mu_f\). **Deviation:**
+applied to characteristic-managed portfolios of public CS features, not
+the paper's characteristic-sorted test assets. No Sharpe of the factors
+is stored.
+
+## Giglio–Xiu three-pass (`gx3pass`)
+
+Pass 1: PCA of managed-portfolio returns. Pass 2: \(\lambda_{\mathrm{PCA}}=V_K'\mu\).
+Pass 3: each managed column on the PCs yields \(\eta_j\); characteristic
+premium \(\eta_j'\lambda_{\mathrm{PCA}}\). Scores \(Z\hat\gamma\).
+**Deviation:** test assets are the \(L\) managed portfolios, not a large
+equity-portfolio panel. Weak-factor caveats of PCA remain.
+
+## Freyberger–Neuhierl–Weber adaptive group LASSO (`fnw`)
+
+Date-level rank transform of each characteristic to \((0,1)\). Quadratic
+spline basis (FNW 4): \(1,c,c^2,\max(c-t_l,0)^2\) with equally spaced
+knots. Two-step adaptive group LASSO (5)–(7) then OLS on selected spline
+groups. **Deviation:** one global intercept (not \(p_1=1\) inside every
+group); \(\lambda\) is configured (`fnw_lam`), not Yuan–Lin BIC. If the
+adaptive step selects no characteristic, OLS is run on every spline group
+rather than scoring a constant intercept.
+
+## Feng–Giglio–Xiu / BCH double selection (`ds_lasso`)
+
+Columns are standardized (same as PCR / alasso). LASSO of \(y\) on \(Z\),
+then LASSO of each selected column on the rest; OLS on the union.
+sklearn coordinate descent uses the Gram matrix (\(p\times p\)), not the
+naive \(n\)-path. **Deviation:** stock-level ranking label, not a
+Fama–MacBeth test of a new traded factor. Post-selection OLS is the
+prediction map. Unstandardized pooled OLS on mixed-scale CS columns
+produced \(|\hat\beta|\sim10^{-13}\) (a constant score) on the 5-day tape.
+
+## Fama–MacBeth (`fm`)
+
+For each date \(t\) with enough names,
+
+\[
+r_{i,t}=a_t+Z_{i,t}\lambda_t+e_{i,t},\qquad
+\hat\lambda=\frac1T\sum_t\hat\lambda_t.
+\]
+
+Scores are \(Z\hat\lambda\) (the intercept does not rank). **Deviation:**
+one pooled window per walk-forward fold, not overlapping monthly FM with
+Newey–West on \(\lambda_t\). Public CS-z columns, not the original FM
+market-beta specification.
+
+## Gu–Kelly–Xiu PCR (`pcr`) and PLS (`pls`)
+
+NBER w25398 / RFS 2020. Column-standardize \(Z\). PCR takes the leading
+\(K\) right singular vectors \(\Omega_K\) of \(Z\) and OLS of \(y\) on
+\(Z\Omega_K\). PLS is sklearn SIMPLS (de Jong 1993), the GKX
+implementation; Kelly–Pruitt (2015) show PLS is 3PRF without second-pass
+intercepts. Default \(K=3\). **Deviation:** \(K\) is configured
+(`pcr_n_factors`, `pls_n_factors`), not validation-tuned; Huber loss is
+not used on these two linear reducers. Neural nets stay blocked (ADR-007).
+
+## Kelly–Pruitt three-pass regression filter (`tprf`)
+
+JoE 2015 Table 1 with Table 2 automatic proxies. Predictors are
+column-standardized. Proxy 1 is the target \(y\); proxy \(k\) is the
+residual of the \((k-1)\)-proxy 3PRF. Pass 1: each characteristic on the
+proxies (with intercept). Pass 2: each row's characteristic vector on
+\(\hat\Phi\) (with intercept). Pass 3: \(y\) on \(\hat F\). OOS uses
+frozen \(\hat\Phi\) and \(\hat\beta\). **Deviation:** the paper's \(T\times N\)
+is calendar time by many predictors; here rows are stacked stock-dates and
+\(N\) is the public CS width (same stacked-\(T\) adaptation as VoC).
+
+## Gu–Kelly–Xiu GBRT (`gbrt`)
+
+Shallow Huber gradient-boosted trees (GKX Algorithm 4 / GBRT+H):
+`max_depth=2`, shrinkage \(\nu=\) `gbrt_learning_rate`, \(B=\)
+`gbrt_n_estimators`, subsample 0.8. **Deviation:** hyperparameters are
+configured, not validation-path tuned; this is not the paper's 94-characteristic
+monthly CRSP panel. Random forests are omitted (same tree class). Neural
+nets are not implemented (ADR-007). Linear GKX autoencoder remains IPCA.
+
+## Kelly–Malamud–Pedersen principal portfolios (`pp`)
+
+JoF 2023 / NBER w27388. Own-signal \(S=Z\hat\beta_{\mathrm{OLS}}\).
+Unbalanced-panel estimator
+
+\[
+\hat\Pi=\mathrm{average}_t\, r_t S_t'
+\]
+
+over names present on that date (\(r_t\) is the already-aligned ranking
+label). Rank-\(K\) SVD \(\hat\Pi_K=U_K\Lambda_K V_K'\). Date-\(t\) scores
+are \(\hat\Pi_K S_t\) in name order; names unseen in training keep the
+own-signal. **Deviation:** \(S\) is the pooled OLS fitted value, not a
+single characteristic such as momentum; PEPs/PAPs (symmetric vs
+antisymmetric split) are not stored as separate book weights. This does
+not size the book.
+
+## Rapach–Strauss–Zhou combination (`combo`)
+
+Equal-weight average of \(L\) univariate OLS forecasts
+\(\hat r^{(j)}=a_j+Z_{\cdot j}b_j\). **Deviation:** Rapach et al. combine
+equity-premium time-series models; here each “model” is a public CS
+characteristic. Intercepts do not change cross-sectional rank.
+
+## Zou adaptive LASSO (`alasso`)
+
+Columns are standardized. First-stage OLS weights
+\(w_j=|\hat\beta_j^{\mathrm{OLS}}|^\gamma/\max_k|\hat\beta_k^{\mathrm{OLS}}|^\gamma\)
+(\(\gamma=1\)), floored at \(10^{-3}\) so a near-zero slope cannot divide
+its column by \(10^{-8}\) and stall coordinate descent. LASSO on
+\(Z_{\cdot j}/w_j\), then \(\hat\beta_j=\hat\theta_j/w_j\). The L1 step
+uses Gram-precomputed coordinate descent (same \(p\times p\) path as
+`ds_lasso`); the naive \(n\)-path could not finish an expanding 5-day
+horse race. **Deviation:**
+\(\lambda=\)`alasso_alpha`\(\cdot\sigma_y\) (target-sd units, see below), not
+BIC/CV; one pooled window per fold, not Zou’s oracle-rate asymptotics as
+a live claim.
+
+## \(\ell_1\) penalties in target-sd units (Wave 147)
+
+`ds_lasso_alpha`, `alasso_alpha`, and `fnw_lam` are quoted in units of the
+regressand’s standard deviation: the absolute penalty passed to the
+solver is \(\alpha\,\hat\sigma_y\) (for the FGX treatment LASSOs of
+\(Z_{\cdot j}\) on \(Z_{\cdot -j}\), \(\alpha\,\hat\sigma_{Z_j}\)). A fixed
+absolute \(\alpha=0.01\) is mild on a unit-variance test target and
+zeroes every coefficient on a 5-day idiosyncratic return with
+\(\sigma_y\approx0.03\), which silently turned `fnw` and `ds_lasso` into
+their OLS fallbacks on the file tape. The knobs did not change; their
+units did.
+
+## Public bar-characteristic zoo (Wave 147)
+
+`PUBLIC_FEATURES` is 43 columns, all functions of OHLCV, sector, and
+membership at or before \(t\): CS-z of returns / momentum (5, 20, 60,
+126, 12-1, 20-skip-5, residual 20), reversal and \(z\) vs MA20,
+overnight vs intraday returns (1 and 20 sessions), MAX / MIN 20,
+realized skew / kurtosis 20, volatility (20, 60, EWMA, Parkinson,
+Garman–Klass, vol-of-vol, downside, 20/60 ratio), trailing 60-session
+OLS beta and idiosyncratic vol vs the benchmark, liquidity
+(Amihud 20 / 60, ADV, dollar volume, relative volume, turnover proxy,
+volume vol, ADV 20/60 ratio, log price), plus rank-space `cs_pct`
+reversal and overnight. Long-lookback columns
+(`mom_126`, `mom_12_1`, `high_52w_prox`) take the cross-sectional
+neutral value 0 when unavailable (GKX median-fill); every other null
+drops the row.
+
+Robust cross-sectional \(z\) is \((x-\mathrm{med})/(1.4826\,\mathrm{MAD})\).
+When more than half the cross-section shares one value MAD is exactly 0;
+the previous \(10^{-12}\) floor produced \(|z|\sim10^{11}\)
+(`cs_z_high_52w_prox`, `cs_z_ret_overnight` on the 55-name tape) and
+destroyed every OLS-based ranker. The scale now falls back to the group
+standard deviation, then to “no dispersion → \(z=0\)”. Feature set
+version `features.v4`.
+
+Walk-forward purging for an \(h\)-bar label uses `horizon_bars=h`, and
+date-IC HAC lags are `overlap_aware_hac_lags(n_dates, h)`, so a 5-day
+label is not scored as if it were 1-day.
+
+## Pooled ridge in date units (Wave 149)
+
+sklearn `Ridge` minimises un-normalised RSS \(+\alpha\|b\|^2\). On a
+stacked tape \(n\sim10^5\), \(\alpha=1\) is OLS. When dates are passed,
+\(y\) is date-demeaned and \(\alpha_{\mathrm{used}}=\alpha T\) so the
+pooled Gram is \(X'X+T\alpha I\), the sum of date-level `Ridge(α)`
+problems. Unit tests that omit dates keep \(\alpha\) unchanged.
+
+## Ridge Fama–MacBeth (`fm_ridge`)
+
+Per-date CS ridge (intercept dropped from the score), then
+\(\hat\lambda=\mathrm{mean}_t\hat\lambda_t\). OLS FM skips a date unless
+\(N_t\ge p+2\); ridge runs at \(N_t\ge 8\). This is the identified
+small-\(N\) cousin of `fm`.
+
+## Classic signed characteristics (`classic`)
+
+Fixed signs, no estimated slopes: \(+\) reversal, skip-momentum,
+residual momentum, 12-1, 52-week-high proximity, Amihud; \(-\) MAX,
+idio vol. If feature names are omitted, equal weight (unit tests). If
+names are passed and none match, the ranker raises. Not OOS-tuned.
+
+## Short-horizon daily CS (`reversal`, `classic_st`, `ridge_st`, `fm_st`, `combo_ic_st`)
+
+A priori daily/weekly subset, not the monthly zoo. `reversal` is
+Jegadeesh \(+\mathrm{cs\_z\_reversal\_1}\) only. `classic_st` signs:
+\(+\mathrm{cs\_z\_reversal\_1}\), \(-\mathrm{cs\_z\_ret\_5}\) (Lehmann
+weekly reversal), \(+\mathrm{cs\_z\_mom\_skip\_5\_20}\),
+\(+\mathrm{cs\_z\_idio\_mom\_20}\), \(-\mathrm{cs\_z\_max\_ret\_20}\),
+\(-\mathrm{cs\_z\_idio\_vol\_60}\). `ridge_st` / `fm_st` / `combo_ic_st`
+estimate slopes on `SHORT_HORIZON_FEATURES` (12 daily/weekly columns).
+Signs and the column mask are frozen before OOS.
+
+## IC-weighted combination (`combo_ic`)
+
+Rapach univariate OLS forecasts weighted by \(\max(\overline{\mathrm{IC}}_j,0)\)
+computed on the **train** dates of the fold. If every train IC is
+negative, equal weight. Not a holdout IC weight.
+
+## Discounted MSFE combination (`combo_msfe`)
+
+Rapach–Strauss–Zhou discounted MSFE weights on univariate CS OLS.
+Within each train fold, the last 25% of dates are a nested holdout
+(in-sample MSE if the fold is too short). Univariate OLS is fit on the
+inner train; date-level MSE on the nested holdout is discounted with
+\(\theta=0.99\). Combination weights are \(w_j \propto 1/\mathrm{MSFE}_j\).
+Slopes used at predict-time are refit on the full train fold. Not OOS-tuned.
+
+## Rolling daily-CS walk-forward (hedge_lab)
+
+`configs/hedge_lab.yaml` uses `validation.scheme: rolling` with
+`train_bars: 252`. Daily reversal is short-memory; expanding 10-year
+pooled fits on 54 names mixed decaying premia into champion ridge.
+Wide tape inherits the same window. Champion remains public ridge until
+pairwise DM of \(-\mathrm{IC}\) plus White RC / SPA / StepM promote a
+challenger. `blend_weight` 0.
+
+## Sign-flip mirror books
+
+Let \(r\) be the frictionless dollar-neutral long-short of a score. The
+mirror is \(-r\). Sharpe is odd:
+\(\mathrm{SR}(-r)=-\mathrm{SR}(r)\). It is also leverage-invariant
+(\(c\neq 0\), rf = 0): \(\mathrm{SR}(c r)=\mathrm{sign}(c)\,\mathrm{SR}(r)\).
+Modeled spread / commission / impact \(c_t\ge 0\) are even, so both
+books realize \(r-c\) and \(-r-c\). Their Sharpes no longer sum to
+zero; the sum is typically negative. A 5% drawdown halt
+(`dd_limit=0.05`) cannot coexist with \(-150\%\) total return on the
+same path. Nested anti-univariate (lowest train date IC) is the same
+search as best-train IC after the sign flip. `hedge-lab --mirror`
+negates `target_weight`. **Wave 152:** discarded as a book; diagnostic
+only. Not a live P&L claim. `blend_weight` 0.
+
+## Size / vol residual ridge (`ridge_neut`)
+
+Within each decision date, OLS-residualize every non-control public
+column on `cs_z_adv`, `cs_z_log_price`, and `cs_z_vol_20`, then fit
+date-demeaned T-ridge. The transform uses only that date's
+cross-section. A priori neutralization, not OOS-tuned. Challenger only;
+champion remains public ridge.
+
+## quant-models engines
+
+`quant_fund.quant_models` ports
+[davidalmeida90/quant-models](https://github.com/davidalmeida90/quant-models)
+and the README sibling repos as research engines (ADR-033).
+
+Black–Scholes–Merton with yield \(q\):
+
+\[
+d_1=\frac{\ln(S/K)+(r-q+\sigma^2/2)\tau}{\sigma\sqrt{\tau}},\quad
+d_2=d_1-\sigma\sqrt{\tau}
+\]
+
+\[
+C=Se^{-q\tau}N(d_1)-Ke^{-r\tau}N(d_2)
+\]
+
+Implied vol is Brent on that price inside the no-arbitrage bounds.
+Greeks are the raw BSM derivatives; desk scaling is `greeks.SCALE`
+(vega per vol point, theta per calendar day). Time derivatives are
+\(\partial/\partial t=-\partial/\partial\tau\). CRR uses
+\(u=e^{\sigma\sqrt{\Delta t}}\), \(d=1/u\),
+\(p=(e^{(r-q)\Delta t}-d)/(u-d)\); American nodes take
+\(\max(\text{continuation},\text{intrinsic})\). Heston is the
+Albrecher little-trap CF, \(P_1,P_2\) by trapezoid. SVI is Gatheral
+raw \(w(k)=a+b(\rho(k-m)+\sqrt{(k-m)^2+\sigma^2})\); butterfly uses
+the Gatheral–Jacquier \(g(k)\ge 0\). NSS zeros:
+
+\[
+y(\tau)=\beta_0+\beta_1\frac{1-e^{-\tau/\lambda_1}}{\tau/\lambda_1}
++\beta_2\left(\frac{1-e^{-\tau/\lambda_1}}{\tau/\lambda_1}
+-e^{-\tau/\lambda_1}\right)
++\beta_3\left(\frac{1-e^{-\tau/\lambda_2}}{\tau/\lambda_2}
+-e^{-\tau/\lambda_2}\right)
+\]
+
+HRP is Lopez de Prado (2016): single-linkage on
+\(\sqrt{(1-\rho)/2}\), quasi-diagonalize, recursive bisection with
+inverse-variance cluster variance. GEX per contract, dealer sign
+(calls \(+\), puts \(-\), an assumption):
+
+\[
+\mathrm{GEX}=\mathrm{sign}\cdot\gamma\cdot\mathrm{OI}\cdot 100\cdot S^2\cdot 0.01
+\]
+
+Last-hour rule: previous-close net GEX \(<0\) → go *with* the
+open-to-15:30 return; GEX \(>0\) → fade (optional). No overnight, no
+broker. TSMOM: \(\mathrm{sign}(\sum_{t-L}^{t-s} r)\cdot
+\sigma_{\mathrm{target}}/(\sigma\sqrt{252})\). GKX OOS \(R^2\):
+\(1-\sum(y-\hat y)^2/\sum y^2\). Krauss window: trailing-date logistic
+on public features predicting above-median next-day idio. Discrete
+delta-hedge error is gamma × rebalance gap when
+\(\sigma_{\mathrm{realised}}=\sigma_{\mathrm{implied}}\). Not a live
+P&L claim. `blend_weight` 0. Neural vol / deep hedging remain
+ADR-007.
+
+## Lightspeed engines
+
+`quant_fund.lightspeed` ports
+[cosmic-hydra/lightspeed](https://github.com/cosmic-hydra/lightspeed)
+as research engines (ADR-034). No Alpaca.
+
+SMA-seeded EMA on signal close \(C_t\), seed at bar \(n-1\):
+
+\[
+\mathrm{EMA}_n=\mathrm{SMA}_n,\quad
+\mathrm{EMA}_t=\alpha C_t+(1-\alpha)\mathrm{EMA}_{t-1},\quad
+\alpha=\frac{2}{n+1}
+\]
+
+Frozen `tqqq-long-full-v1`: \(n_{\mathrm{fast}}=20\),
+\(n_{\mathrm{slow}}=180\). Gap
+\(( \mathrm{EMA}^{\mathrm{fast}}_t-\mathrm{EMA}^{\mathrm{slow}}_t)/C_t\).
+If `flatten_when_fast_below_slow` and the gap is negative, TQQQ
+weight is 0 and the residual is SGOV. Otherwise the raw risk
+sleeve is \(\mathrm{clip}(\mathrm{vol\_budget}/\hat\sigma^{\mathrm{QQQ}}_t,0,0.98)\)
+with `vol_budget` 10 (saturates at `max_tqqq` in a confirmed
+LONG). Rebalance every 5 sessions; `signal_delay_sessions` 1
+shifts the executable weight: \(w_t\leftarrow w_{t-1}\) for the
+first delay bar, then \(w_t\leftarrow w^{\mathrm{raw}}_{t-d}\).
+
+Frozen nautica / stock-momentum: score
+\(C_t/C_{t-63}-1\) (`mom_blend` 1), eligible only if score \(>0\)
+and \(C_t>\mathrm{SMA}_{200}\). Crash: a held name with
+\(C_t/C_{t-10}-1\le-0.2\) is flattened. Top-1, vol size
+\(\mathrm{clip}(0.6/\hat\sigma_i,0,0.95)\), residual SGOV,
+delay 1, 10 bp.
+
+AFML metalabel (López de Prado 2018): expanding-window logistic
+\(P(\text{side correct}\mid\text{signal})\). Multiplier
+\(\mathbf{1}\{P\ge\tau\}\max(2P-1,0)\in[0,1]\). Reduce-only.
+
+CS challenger `nautica`: a priori \(+1\) on `cs_z_mom_60`. No
+estimated slopes. Champion remains public ridge. `blend_weight` 0.
+Not a live P&L claim.
+
+## Discrete HMM (Jurafsky & Martin SLP3 Appendix A)
+
+`quant_fund.hmm` implements the discrete first-order HMM from
+https://web.stanford.edu/~jurafsky/slp3/A.pdf (Eisner ice-cream
+running example). This is not `hmmlearn`'s Gaussian regime model.
+
+\[
+\alpha_1(j)=\pi_j b_j(o_1),\quad
+\alpha_t(j)=\sum_i \alpha_{t-1}(i)a_{ij}b_j(o_t),\quad
+P(O\mid\lambda)=\sum_i \alpha_T(i)
+\]
+
+\[
+v_t(j)=\max_i v_{t-1}(i)a_{ij}b_j(o_t)
+\]
+
+Backward: \(\beta_T(i)=1\),
+\(\beta_t(i)=\sum_j a_{ij}b_j(o_{t+1})\beta_{t+1}(j)\).
+Baum–Welch re-estimates \(A,B,\pi\) from \(\gamma_t(j)=\alpha_t(j)\beta_t(j)/P(O)\)
+and \(\xi_t(i,j)=\alpha_t(i)a_{ij}b_j(o_{t+1})\beta_{t+1}(j)/P(O)\).
+CLI: `dipcatcher hmm eisner`. Research only.
+
+## Causal risk-controlled gates (ADR-036)
+
+Book-level size $s_t$ applied to return $r_{t+1}$ is a function of
+$\{r_1,\ldots,r_t\}$ only (delay 1). Constant leverage leaves Sharpe
+unchanged when rf $=0$:
+
+\[
+\mathrm{SR}(c\,r)=\mathrm{sign}(c)\,\mathrm{SR}(r),\qquad c\neq 0.
+\]
+
+Vol targeting (Moreira–Muir 2017) is *time-varying* leverage
+$s_t=\mathrm{clip}(\sigma^\star/\hat\sigma_t,0,s_{\max})$. It can change
+Sharpe if expected return does not scale 1:1 with vol. It cannot mint
+Sharpe 5 from IC $\approx 0$. Jointly, $\sigma^\star=0.025$ and
+Sharpe 5 imply excess return $\approx 12.5\%$/year ($\sim 3.4\times$,
+not $10\times$). $10\times$ at 2.5% vol needs Sharpe $\sim 10$.
+
+Fractional Kelly (Thorp), rf $=0$:
+
+\[
+f^\star=\frac{\mu}{\sigma^2},\qquad
+s^{\mathrm{Kelly}}_t=\mathrm{clip}(\kappa f^\star_t,0,1).
+\]
+
+Negative $\mu$ is clipped to 0 (ADR-032). CRC size: calibrate
+Angelopoulos–Bates–Malik–Jordan (2022) on losses vs a 0 bound; $\hat\lambda_t$
+is the smallest expansion with CRC statistic $\le\alpha$. Then
+$s^{\mathrm{CRC}}_t=\min(1,\hat\lambda_t/\widehat{\mathrm{ES}}_t)$.
+ES halt: $s^{\mathrm{ES}}_t=\min(1,\mathrm{ES}^\star/\widehat{\mathrm{ES}}_t)$.
+Crash: trailing $L$-bar wealth change $\le c$ (nautica $-20\%$/10d) $\to 0$.
+StepM size: expanding-window Romano–Wolf (2005) on the book's returns vs 0;
+if column 0 is not rejected, $s_{t+1}=0$. Drawdown halt flattens after
+peak-to-trough $\le -\delta$ and stays cash; remaining-budget mode scales
+by $(\delta-\mathrm{DD}_t)/\delta$.
+
+CS challengers `tsmom` / `vme` / `krauss` are a priori or fold-fit on
+`PUBLIC_FEATURES`. Champion remains public ridge. `blend_weight` 0.
+Not a live P&L claim. Holdout confirmation (`dipcatcher ls confirm`)
+splits already-causal date ICs at 2024-12-31 / 2025-01-02; it does
+not retune and does not move the champion.
+
+Directional (not CS-idio) Moskowitz 12–1 long-only / Antonacci GEM /
+top-k long books live in `hedge_lab.directional`. Delay 1, monthly
+rebalance, costs on turnover. They are not CS rankers.
+
+
+
+## Canon-wave conventions (metrics/models canon 2026-09)
+
+- Loss sign convention: risk functions take *losses* (positive = bad) in
+  `metrics.risk_parametric`/`metrics.extremes`; `metrics.drawdown` takes
+  simple *returns* and computes the drawdown path internally.
+- VaR/ES quantile `alpha` in (0.5, 1) is enforced everywhere; ES is the
+  mean of the tail beyond VaR (`metrics.extremes.gpd_var_es`,
+  `risk_parametric.student_t_var_es` use the analytic tail formulas;
+  Cornish–Fisher ES uses quadrature over the probability axis).
+- Warmup semantics: `features.indicators` and `features.cycles` return
+  NaN-padded outputs so a feature at index t only ever uses data <= t.
+- Hawkes compensator residuals are computed in transformed time
+  (`point_process.hawkes_compensator`); under the fitted model they are
+  Exp(1) — use `hawkes_residuals` + `metrics.serial`/KS checks.
+- `bocpd_gaussian` reports the posterior run-length distribution;
+  `cp_prob[t] = P(r_t = 0)` is the exact changepoint probability, not a
+  thresholded alarm.
+- `eigenvalue_clip` preserves trace while zeroing noise dispersion;
+  `detone_cov` removes the top eigencomponents entirely.
+- `cvar_minimization` solves the Rockafellar–Uryasev LP exactly on the
+  empirical scenario set (HiGHS); reported CVaR is recomputed from the
+  empirical tail at the returned weights.
+- Bandit `update` semantics: EXP3 requires update(arm) to match the arm
+  returned by the immediately preceding select (importance weighting).
+
+- metrics.regression OLS returns residuals + pinv(X'X); HC0-HC4 and
+  Newey-West HAC covariances share the bread-meat-bread form; CUSUM uses
+  standardized recursive residuals with BDE 5% lines (a=0.948*sqrt(m));
+  CUSUMSQ uses the Kolmogorov asymptotic bound 1.36*sqrt(2/m); quantile
+  regression solves the exact LP via HiGHS; 2SLS residuals are computed
+  on ORIGINAL regressors (not fitted), Sargan J = n*R2 of resid on Z.
+- models.factor_models fama_macbeth returns per-period gammas and
+  Shanken-inflated SEs; bai_ng_factors runs on the RAW panel (demeaned,
+  not standardized) since IC penalties assume common sigma_e^2.
+- models.filters: hp_filter solves the exact sparse ridge system;
+  baxter_king/corbae_ouliaris return NaN-free vs burn-in conventions
+  respectively (BK NaN-pads k at both ends, CO uses full-period DFT);
+  hamilton_filter residuals are MA(h-1) by construction.
+- models.realized: bipower_variation is jump-robust IV; TSRV uses
+  K ~ n^(2/3) price grids (price-level noise only); preaveraged_rv uses
+  g=min(x,1-x) with psi1=1, psi2=1/12; lee_mykland thresholds via the
+  Gumbel double-exponential law; bns_jump_test uses the Huang-Tauchen
+  max(1, TPQ/BV^2) normalization.
+- models.var_coint: johansen_test/vecm_fit solve the GENERALIZED
+  eigenproblem |lam*S11 - S10 S00^-1 S01| = 0 via scipy.linalg.eigh
+  (symmetric A, spd B) — never eigvalsh on the nonsymmetric product;
+  Johansen CVs are MHM (1999) 5% asymptotic with a constant shift for
+  det=1; diebold_yilmaz uses generalized (Pesaran-Shin) FEVD so it is
+  ordering-invariant; spread_half_life returns inf for rho >= 1 or <= 0.
+- features.liquidity: FHT and LOT map zero-return frequency to cost
+  via normal quantiles; effective_tick follows Holden's incremental
+  probability weighting (upward-biased on exact grids by design).
+- metrics.distribution: lilliefors uses a seeded parametric bootstrap
+  (exact for estimated-parameter KS); medcouple is the O(n^2) naive form;
+  qn_scale uses c = 1/(sqrt2*Phi^-1(5/8)) = 2.2219.
+- models.decomposition: SSA Hankelizes each rank-1 SVD component;
+  ssa_forecast uses the vertical-eigenvector linear recurrence; emd
+  sifting uses cubic-spline envelopes with endpoint inclusion and stops
+  on monotone residue; hilbert_spectrum reports IMF1 only.
+- metrics.calibration2: murphy_decomposition equals REL-RES+UNC up
+  to within-bin dispersion; winkler_interval_score = width + pinball
+  penalties; variogram_score is Scheuerer-Hamill p=0.5 default.
+- models.mixture: t-mixture ECM uses E[ln u] = psi((nu+d)/2) -
+  ln((nu+delta)/2), NOT ln E[u]; nu bounded to [3,300]; BIC counts nu.
+- models.pairs: gatev SSD on normalized prices; cointegration_screen
+  delegates to engle_granger; ou_optimal_bands is a grid approximation
+  of the Leung-Li stopping problem, research-grade only.
+
+
+## Wave 3 conventions
+
+- `fit_markov_switching_*` return `filtered`, `smoothed` (Kim), transition matrix
+  `P`, and per-state parameters; rows of `P` sum to 1 and `P[i,j] = P(s_t=j | s_{t-1}=i)`.
+- FIGARCH variance uses the truncated BBM lambda recursion with
+  `lambda_1 = d + phi - beta`, `lambda_k = beta*lambda_{k-1} + pi_k - phi*pi_{k-1}`.
+- APARCH news function is `(|e| - gamma*e)^delta`; positive `gamma` = leverage
+  asymmetry (bad news raises vol more).
+- `clark_west_test` expects the forecast-difference series `f_null - f_alt`
+  passed as `preds_alt`; the adjusted loss is `e_null^2 - e_alt^2 + (f_diff)^2`.
+- `fluctuation_test` returns sup of rolling-window DM-type stats; GR(2010)
+  asymptotic two-sided critical values ~3.18 (10%) / ~3.68 (5%).
+- `hsic` uses a seeded permutation null (no parametric approximation);
+  `chatterjee_xi` uses the rank statistic `1 - 3*sum|r_{i+1}-r_i|/(n^2-1)`.
+- `mutual_information_knn` implements KSG estimator 1 with Chebyshev balls and
+  strict `eps` marginal counts; returns `mi` in nats.
+- `basel_zone` uses the fixed green<=4/yellow<=9/red>=10 table only for the
+  canonical 99%/250-day case; otherwise exact binomial-tail cutoffs.
+- `arellano_bond` is one-step difference GMM with block-diagonal per-period
+  instrument matrices (levels y_{t-2},...,y_{t-1-maxlag}); `sargan_J` uses the
+  instrument-covariance weight matrix.
+- `fit_cox_ph` uses Breslow tie handling and reports Harrell's concordance.
+- Lo (1991) R/S band [0.809, 1.862] on `Q/sqrt(n)` rejects short memory.

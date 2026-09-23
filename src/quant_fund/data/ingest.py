@@ -11,9 +11,11 @@ import polars as pl
 from quant_fund.config.models import AppConfig
 from quant_fund.data.adapters.parquet import ParquetMarketProvider
 from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
-from quant_fund.data.corporate_actions import adjust_prices
+from quant_fund.data.corporate_actions import adjust_prices, apply_listing_actions
 from quant_fund.data.lake import Lake
+from quant_fund.data.security_master import attach_master_attributes
 from quant_fund.data.sources import SourceAdapter, get_source
+from quant_fund.data.universe import build_membership_panel
 
 
 class PublicMarketProvider:
@@ -122,14 +124,28 @@ def ingest(config: AppConfig) -> dict[str, Path]:
         if not actions.is_empty()
         else adjust_prices(bars, pl.DataFrame())
     )
+    silver = apply_listing_actions(
+        silver, actions, include_delisted=config.universe.include_delisted
+    )
     if not master.is_empty() and "sector" in master.columns:
-        silver = silver.join(
-            master.select(["security_id", "sector", "industry", "exchange"]),
-            on="security_id",
-            how="left",
-        )
+        silver = attach_master_attributes(silver, master)
+    timestamps = (
+        silver.get_column("event_time").unique().sort().to_list() if not silver.is_empty() else []
+    )
+    universe = (
+        build_membership_panel(silver, master, timestamps, config.universe, actions=actions)
+        if timestamps
+        else pl.DataFrame()
+    )
     paths["silver"] = lake.write_parquet(silver, "silver/bars.parquet")
-    frames = {"bars": bars, "actions": actions, "master": master, "silver": silver}
+    paths["universe"] = lake.write_parquet(universe, "silver/universe.parquet")
+    frames = {
+        "bars": bars,
+        "actions": actions,
+        "master": master,
+        "silver": silver,
+        "universe": universe,
+    }
     manifest = {
         "schema_version": 1,
         "source": str(config.data.source),

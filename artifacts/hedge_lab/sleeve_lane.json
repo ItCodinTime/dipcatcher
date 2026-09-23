@@ -1,0 +1,150 @@
+{
+  "protocol_id": "dipcatcher.sota.v2",
+  "holdout_start": "2025-01-02",
+  "promote": false,
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "live_pnl_claim": false,
+  "sleeves": [
+    "topk5_12_1",
+    "hmm_gate_topk",
+    "linear_sleeve",
+    "xlk_lead"
+  ],
+  "benchmark": "spy",
+  "cards": [
+    {
+      "name": "spy",
+      "full": {
+        "sharpe": 0.7933908504184785,
+        "cagr": 0.13331274684340166,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 2.6971652589331456,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.7580221470521844,
+        "cagr": 0.1269760571516394,
+        "max_drawdown": -0.3410474689324393,
+        "total_return": 1.8447723761560137,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.9827323659775414,
+        "cagr": 0.1664337806773748,
+        "max_drawdown": -0.18998904129505,
+        "total_return": 0.29963482840371225,
+        "n_returns": 429
+      }
+    },
+    {
+      "name": "topk5_12_1",
+      "full": {
+        "sharpe": 1.034922009019956,
+        "cagr": 0.3027873374006611,
+        "max_drawdown": -0.39005180993602284,
+        "total_return": 14.857913199547404,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.9558277690989895,
+        "cagr": 0.26194915742032054,
+        "max_drawdown": -0.39005180993602284,
+        "total_return": 6.650948836512061,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.3813569740251148,
+        "cagr": 0.534384279002478,
+        "max_drawdown": -0.30760915462293326,
+        "total_return": 1.0726727545046226,
+        "n_returns": 429
+      }
+    },
+    {
+      "name": "hmm_gate_topk",
+      "full": {
+        "sharpe": 0.8236008692285929,
+        "cagr": 0.15039357010535404,
+        "max_drawdown": -0.23827958829079487,
+        "total_return": 3.322637087467644,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 1.0289339635434662,
+        "cagr": 0.1752945239425001,
+        "max_drawdown": -0.1806185001640217,
+        "total_return": 3.1068172324621015,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.2462763746753487,
+        "cagr": 0.030542846357006992,
+        "max_drawdown": -0.22350254088971166,
+        "total_return": 0.05255160938247161,
+        "n_returns": 429
+      }
+    },
+    {
+      "name": "linear_sleeve",
+      "full": {
+        "sharpe": 1.0093254631588433,
+        "cagr": 0.29072968443572567,
+        "max_drawdown": -0.3823824014335935,
+        "total_return": 13.389739657659584,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.9474261909221459,
+        "cagr": 0.25766131883051746,
+        "max_drawdown": -0.3823824014335935,
+        "total_return": 6.42655349943905,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 1.2848072359165545,
+        "cagr": 0.47483502443087544,
+        "max_drawdown": -0.30760915462293326,
+        "total_return": 0.937606678353085,
+        "n_returns": 429
+      }
+    },
+    {
+      "name": "xlk_lead",
+      "full": {
+        "sharpe": 0.21075713145765604,
+        "cagr": 0.021548402647447062,
+        "max_drawdown": -0.3433337315447509,
+        "total_return": 0.24951455899668384,
+        "n_returns": 2633
+      },
+      "selection": {
+        "sharpe": 0.1984582323985231,
+        "cagr": 0.019509163661447726,
+        "max_drawdown": -0.31652237760234536,
+        "total_return": 0.1841020193612175,
+        "n_returns": 2204
+      },
+      "holdout": {
+        "sharpe": 0.2879417705657784,
+        "cagr": 0.032089537738851925,
+        "max_drawdown": -0.1742001671423189,
+        "total_return": 0.05524231744047836,
+        "n_returns": 429
+      }
+    }
+  ],
+  "holdout_vs_spy": {
+    "reality_check_p": 0.08891108891108891,
+    "spa_p_consistent": 0.12387612387612387
+  },
+  "policy": {
+    "action_counts": {
+      "cash": 74,
+      "spy": 17,
+      "topk": 2543
+    },
+    "live_pnl_claim": false
+  },
+  "note": "HMM and the linear sleeve are fit only on dates before the holdout. The lead rule has no estimated weights. promote stays false; these are books, not a CS-ranker alias. blend_weight stays 0."
+}

@@ -1,0 +1,5 @@
+inherit: base.yaml
+runtime:
+  mode: backtest
+costs:
+  frictionless: false

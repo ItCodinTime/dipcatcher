@@ -6,7 +6,7 @@ Dipcatcher is Artificial Hedge's **proprietary research lab**. It measures forec
 
 | Family | Scientific scores |
 |---|---|
-| Ranking | Date-level IC / RankIC, HAC t, decile monotonicity |
+| Ranking | Date-level IC / RankIC, HAC t, decile monotonicity. Public-feature challengers: `rff`, `rff_ridgeless`, `sdf_ridge`, `sdf_en`, `ipca`, `ipca_alpha`, `rp_pca`, `fnw`, `gx3pass`, `ds_lasso`, `fm`, `fm_ridge`, `pcr`, `pls`, `tprf`, `gbrt`, `pp`, `combo`, `combo_ic`, `alasso`, `classic` (ADR-026/027/028/029/030). Sign-flip mirror books (ADR-032) are paper diagnostics: costs do not flip. Champion remains public ridge until a non-SYNTHETIC card wins. Pairwise DM is on −IC, not Sharpe. |
 | Alpha | Holdout MSE vs historical mean, Pearson IC |
 | Volatility | QLIKE, Diebold–Mariano |
 | Distribution | Pinball, CRPS, interval coverage, crossing, PIT KS (raw Gaussian + vol-scaled Gaussian / Student-t / standardized empirical residuals); 1d and 5d scored as separate keys |
@@ -29,6 +29,7 @@ Dipcatcher is Artificial Hedge's **proprietary research lab**. It measures forec
 | Portfolio conformal | One CQR set per date for the scalar book return (w^\top r) |
 | Northset | OHLC / book / session identities; candle geometry + CLV; Parkinson / Garman–Klass / Rogers–Satchell / Yang–Zhang / overnight-split QLIKE; Kyle λ, Roll, Corwin–Schultz, Abdi–Ranaldo, Amihud, OFI, VPIN; liquidity sweeps; date-level ICs; BNS jumps |
 | CPCV audit | Combinatorial purged/embargoed date folds; integrity only, no return claim |
+| robinhood+ (optional) | Kronos-derived K-line path IC on split-adjusted OHLCV; hierarchical tokens + autoregression; not a live claim |
 
 ## What is not a lab headline
 

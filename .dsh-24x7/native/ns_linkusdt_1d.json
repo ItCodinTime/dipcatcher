@@ -1,0 +1,50 @@
+{
+  "asset": "LINKUSDT",
+  "bars_sha256": "e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512",
+  "freq": "1d",
+  "horizon": 12,
+  "live_pnl_claim": false,
+  "lookback": 40,
+  "metrics": {
+    "dip_conf_t": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.13437746654575308,
+      "path_rankic_se": 0.035728971580125654,
+      "ret_rankic": -0.22869365215169057,
+      "vol_mae": 0.01479389875463325,
+      "vol_r2": 0.0015763148015438544
+    },
+    "dip_qar": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.006315717346909343,
+      "path_rankic_se": 0.036559779279133,
+      "ret_rankic": -0.08488138757097301,
+      "vol_mae": 0.014770403747323793,
+      "vol_r2": -0.0051266994019194545
+    },
+    "dip_regime": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.06653654023263796,
+      "path_rankic_se": 0.03635922695278112,
+      "ret_rankic": -0.24784675385282057,
+      "vol_mae": 0.015283769726238284,
+      "vol_r2": -0.03300096167132871
+    },
+    "dip_skt": {
+      "n_origins": 300,
+      "path_rankic_mean": -0.09350741140347968,
+      "path_rankic_se": 0.03616082090605352,
+      "ret_rankic": -0.32371026344737164,
+      "vol_mae": 0.015910018222604076,
+      "vol_r2": -0.04416448964923725
+    }
+  },
+  "n_origins": 300,
+  "protocol": "kronos-paper App.D (arXiv:2508.02739)",
+  "runtime_s": 438.7672350406647,
+  "samples": 8,
+  "schema": "native_eval.v1",
+  "script_sha256": "5c1f61daa46c42dc9e76cc92e0345a100db7351c82fc799c91bb2cd912a78539",
+  "seed": 7,
+  "test_start": "2024-07-01 00:00:00+00:00"
+}

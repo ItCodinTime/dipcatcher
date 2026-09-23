@@ -1,5 +1,9 @@
-import cProfile, pstats, sys, io
+import cProfile
+import io
+import pstats
+import sys
 from pathlib import Path
+
 sys.path.insert(0, r"D:\dipcatcher\src")
 sys.path.insert(0, r"D:\dipcatcher\scripts")
 import incumbent_bench_vectorbt as B

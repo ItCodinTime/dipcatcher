@@ -1,5 +1,12 @@
 """Splice canonical-tokenizer Kronos forecasts into matched evaluation shards.
 
+The main ``d1_``/``h4_`` runs scored ``kronos_small`` with
+``Kronos-Tokenizer-2k``, which is not the upstream pairing for Kronos-small
+(the Kronos README pairs it with ``Kronos-Tokenizer-base``) and degraded its
+forecasts roughly 3x. The ``d1fix_``/``h4fix_`` runs re-scored ``kronos_small``
+with the canonical tokenizer under the same protocol and seed; this script
+splices that corrected column into the original shards.
+
 All pairs are validated before any output is written. Challenger CRPS and
 pinball arrays must match exactly, including missing-value locations; bars,
 asset identities, and evaluation settings must also agree. Corrected model
@@ -7,9 +14,10 @@ and tokenizer hashes replace the original hashes, and source-file hashes bind
 each transformation to its inputs. Legacy shards have no origin timestamps:
 their positional alignment is checked, but is not presented as timestamp proof.
 
-Four-hour ``.cc.npz`` outputs exclude ``dip_student_t`` uniformly and disclose
-coverage and any subsequent complete-case row filtering. They retain the
-correction's provenance.
+Four-hour ``.cc.npz`` outputs exclude ``dip_student_t`` uniformly (it fails on
+flat 4h windows on several assets, so it leaves the whole 4h comparison set)
+and disclose coverage and any subsequent complete-case row filtering. They
+retain the correction's provenance.
 
 Use ``--output-dir`` to preserve historical outputs, or ``--check-only`` to
 validate the complete fleet without writing anything.
@@ -174,6 +182,16 @@ def complete_case(data: dict[str, Any]) -> dict[str, Any]:
         )
         for i, name in enumerate(out["names"])
     }
+    extra_incomplete = [
+        name
+        for name, count in coverage.items()
+        if name != "dip_student_t" and count < len(out["aids"])
+    ]
+    if extra_incomplete:
+        print(
+            f"WARN: complete-case subset drops rows for additional incomplete "
+            f"columns {extra_incomplete}; counts disclosed in metadata"
+        )
     keep = [i for i, name in enumerate(out["names"]) if name != "dip_student_t"]
     crps, pin = out["crps"][:, keep], out["pin"][:, keep]
     finite = np.isfinite(crps).all(axis=1) & np.isfinite(pin).all(axis=(1, 2))

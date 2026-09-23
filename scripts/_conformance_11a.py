@@ -1,17 +1,19 @@
 """Bitwise conformance: run_backtest vs run_backtest_fast on the real 11-asset
 workload, plus latency medians for both. Remote-only diagnostic."""
-import sys, time, json
-from pathlib import Path
+import json  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import numpy as np
-import polars as pl
+import numpy as np  # noqa: E402
+import polars as pl  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from quant_fund.backtest.engine import run_backtest
-from quant_fund.backtest.fast_replay import run_backtest_fast
-from quant_fund.config.models import AppConfig, CostConfig, RiskGateConfig
+from quant_fund.backtest.engine import run_backtest  # noqa: E402
+from quant_fund.backtest.fast_replay import run_backtest_fast  # noqa: E402
+from quant_fund.config.models import AppConfig, CostConfig, RiskGateConfig  # noqa: E402
 
 INIT_NAV = 1_000_000.0
 SMA_WINDOW = 20
@@ -75,9 +77,11 @@ else:
 
 ts_ref, ts_fast = [], []
 for _ in range(6):
-    t0 = time.perf_counter(); run_backtest(bars, weights, cfg, initial_nav=INIT_NAV)
+    t0 = time.perf_counter()
+    run_backtest(bars, weights, cfg, initial_nav=INIT_NAV)
     ts_ref.append(time.perf_counter() - t0)
-    t0 = time.perf_counter(); run_backtest_fast(bars, weights, cfg, initial_nav=INIT_NAV)
+    t0 = time.perf_counter()
+    run_backtest_fast(bars, weights, cfg, initial_nav=INIT_NAV)
     ts_fast.append(time.perf_counter() - t0)
 
 out = {

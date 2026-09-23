@@ -1,0 +1,34 @@
+# Second-market file tape (Stooq UK). Same protocol, different exchange.
+inherit: base.yaml
+runtime:
+  mode: research
+data:
+  source: parquet
+  parquet_path: data/file_uk/raw
+  root: data/file_uk
+  benchmark_id: SHEL
+train:
+  ranking_target: future_idio_return_1
+  ridge_alpha: 0.3
+universe:
+  min_price: 1.0
+  min_adv: 100000.0
+  min_history_bars: 60
+  top_n_adv: 50
+  exchanges: ["XLON"]
+validation:
+  scheme: expanding
+  train_bars: 252
+  val_bars: 63
+  test_bars: 63
+  embargo_bars: 5
+robinhood_plus:
+  enabled: true
+  lookback: 32
+  pred_len: 5
+  sample_count: 4
+  variant: mini
+  blend_weight: 0.0
+  allow_network: false
+fusion:
+  skip_intervals: true

@@ -1,7 +1,338 @@
 # Day grind progress
 
 ## INFLIGHT
-(none — #111–#120 GREEN)
+(none — Day Wave 140 GREEN)
+
+
+## Day Wave 140 — named analytical nonlinear Ledoit–Wolf path (2026-09-19)
+- GREEN: catalog `ledoit_wolf_nonlinear` stamps `family=ledoit_wolf_nonlinear` / `ledoit_wolf_2020_analytical` / trailing listwise identity; analytical 2020 spectral map, not 2004 linear and not QuEST
+- GREEN: named `optimize_asof` / `/risk/portfolio` path plus overlay; family / 2004-spec mismatch fail closed; short/failed fits fail closed rather than Ledoit–Wolf 2004; `T<=N` stays nonlinear; `ledoit_wolf_2017` / `quest` stay unknown
+- pytest: `test_optimize_ledoit_wolf_nonlinear` + `test_covariance` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; factor stays unwired (no PIT factor panel); numerical QuEST (2017) remains unspecified
+
+
+## Day Wave 139 — default Ledoit–Wolf stays Ledoit–Wolf when T≤N (2026-09-19)
+- GREEN: catalog `ledoit_wolf` stamps `family=ledoit_wolf` / `ledoit_wolf_2004_linear` / trailing listwise identity; `ledoit_wolf_cov` returns that repaired matrix
+- GREEN: default `optimize_asof` / `/risk/portfolio` stays Ledoit–Wolf when \(T\le N\) rather than silently switching to sample; overlay still applies; family mismatch fails closed; short/failed default fits stay the homoskedastic proxy; this is not nonlinear LW 2017
+- pytest: `test_optimize_ledoit_wolf` + `test_covariance` + `test_optimize_oas` + `test_optimize_sample` + `test_optimize_ewma` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; factor stays unwired (no PIT factor panel); nonlinear Ledoit–Wolf 2017 remains deferred
+
+
+## Day Wave 138 — named unrestricted CES AG-DCC optimize_asof path (2026-09-19)
+- GREEN: `optimizer.covariance=agdcc_full` is a named `optimize_asof` / `/risk/portfolio` path; consumes Wave 137 CES unrestricted AG-DCC \(H_{t+1}\); no GARCH/RGARCH overlay; stamps `family=agdcc_full` / `cappiello_engle_sheppard_2006_full_agdcc`
+- GREEN: does not call `agdcc` / `adcc` / `dcc_gaussian` / `dcc_student_t` / `ccc`; family mismatch / short / failed fits fail closed rather than Ledoit–Wolf; generic `dcc` stays unknown; this is unrestricted CES AG-DCC, not diagonal AG-DCC
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; factor stays unwired (no PIT factor panel)
+
+
+## Day Wave 137 — unrestricted CES AG-DCC catalog estimator (2026-09-19)
+- GREEN: `agdcc_full` is two-stage Gaussian GARCH + CES (2006) unrestricted AG-DCC QML (`A,B,G` full; diagonals recover Wave 135); stamps `family=agdcc_full` / `spec=cappiello_engle_sheppard_2006_full_agdcc` / `parameterization=full`; shares one-step \(H_{t+1}\) and trailing complete-window honesty
+- GREEN: catalog lists it as implemented; does not call `agdcc` / `adcc` / `dcc_gaussian` / `dcc_student_t` / `ccc`; `optimize_asof` stays unwired (`unwired_optimizer_covariance:agdcc_full`) rather than silently running diagonal AG-DCC or Ledoit–Wolf
+- pytest: `test_dcc` + `test_config` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; `optimizer.covariance=agdcc_full` is still unwired; factor stays unwired
+
+
+## Day Wave 136 — named diagonal CES AG-DCC optimize_asof path (2026-09-19)
+- GREEN: `optimizer.covariance=agdcc` is a named `optimize_asof` / `/risk/portfolio` path; consumes Wave 135 CES diagonal AG-DCC \(H_{t+1}\); no GARCH/RGARCH overlay; stamps `family=agdcc` / `cappiello_engle_sheppard_2006_diagonal_agdcc`
+- GREEN: does not call `adcc` / `dcc_gaussian` / `dcc_student_t` / `ccc`; family mismatch / short / failed fits fail closed rather than Ledoit–Wolf; generic `dcc` stays unknown; unrestricted `agdcc_full` stays unspecified; this is diagonal CES AG-DCC, not scalar ADCC
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; unrestricted full-matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 135 — diagonal CES AG-DCC catalog estimator (2026-09-19)
+- GREEN: `agdcc` is two-stage Gaussian GARCH + CES (2006) diagonal AG-DCC QML (`A,B,G` diagonal; equal diagonals recover scalar ADCC); stamps `family=agdcc` / `spec=cappiello_engle_sheppard_2006_diagonal_agdcc` / `parameterization=diagonal`; shares one-step \(H_{t+1}\) and trailing complete-window honesty
+- GREEN: catalog lists it as implemented; does not call `adcc` / `dcc_gaussian` / `dcc_student_t`; `optimize_asof` stays unwired (`unwired_optimizer_covariance:agdcc`) rather than silently running scalar ADCC or Ledoit–Wolf; unrestricted `agdcc_full` stays unspecified
+- pytest: `test_dcc` + `test_config` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; `optimizer.covariance=agdcc` is still unwired; unrestricted full-matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 134 — named Bollerslev CCC optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=ccc` is a named `optimize_asof` / `/risk/portfolio` path; consumes Wave 133 Bollerslev CCC \(H_{t+1}\); no GARCH/RGARCH overlay; stamps `family=ccc` / `bollerslev_1990_ccc`
+- GREEN: does not call `dcc_gaussian` / `dcc_student_t` / `adcc`; family mismatch / short / failed fits fail closed rather than Ledoit–Wolf; generic `dcc` stays unknown; this is constant \(R\), not Engle DCC
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 133 — Bollerslev CCC catalog estimator (2026-09-18)
+- GREEN: `ccc` is two-stage Gaussian GARCH + Bollerslev (1990) constant \(R=\mathrm{corr}(z)\); stamps `family=ccc` / `spec=bollerslev_1990_ccc` / `dynamic_correlation=false`; shares one-step \(H_{t+1}=D_{t+1} R D_{t+1}\) and trailing complete-window honesty
+- GREEN: catalog lists it as implemented; does not call `dcc_gaussian` / `dcc_student_t` / `adcc`; `optimize_asof` stays unwired (`unwired_optimizer_covariance:ccc`) rather than silently running Engle DCC or Ledoit–Wolf
+- pytest: `test_dcc` + `test_config` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; `optimizer.covariance=ccc` is still unwired; matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 132 — named unbiased sample optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=sample` is a named `optimize_asof` / `/risk/portfolio` path; trailing unbiased (`ddof=1`) sample covariance plus the GARCH/RGARCH overlay; stamps `family=sample` / `unbiased_sample` / `covariance_object=trailing`
+- GREEN: listwise-complete (not sequential \(H_{t+1}\)); when \(T>N\) stays sample rather than Ledoit–Wolf; does not call Ledoit–Wolf, OAS, EWMA, or DCC; short / failed fits fail closed; factor stays unwired
+- pytest: `test_optimize_sample` + `test_covariance` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 131 — named Chen OAS optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=oas` is a named `optimize_asof` / `/risk/portfolio` path; trailing Chen–Wiesel–Eldar–Hero (2010) linear shrinkage plus the GARCH/RGARCH overlay; stamps `family=oas` / `chen_wiesel_eldar_hero_2010` / `covariance_object=trailing`
+- GREEN: listwise-complete (not sequential \(H_{t+1}\)); when \(T\le N\) stays OAS rather than sample; does not call Ledoit–Wolf, sample, EWMA, or DCC; short / failed fits fail closed; sample / factor stay unwired
+- pytest: `test_optimize_oas` + `test_covariance` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; matrix AG-DCC is not implemented; factor stays unwired
+
+
+## Day Wave 130 — named RiskMetrics EWMA optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=ewma` is a named `optimize_asof` / `/risk/portfolio` path; one-step RiskMetrics \(H_{t+1}=\lambda H_t+(1-\lambda)r_t r_t'\) on the trailing complete-case window; no GARCH/RGARCH overlay; stamps `family=ewma` / `jpmorgan_riskmetrics_1996`
+- GREEN: last return enters \(H_{t+1}\); incomplete terminal / stitched holes fail closed; does not call DCC or Ledoit–Wolf; short / failed fits fail closed rather than sample; sample / factor stay unwired
+- pytest: `test_optimize_ewma` + `test_covariance` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; matrix AG-DCC is not implemented
+
+
+## Day Wave 129 — named scalar ADCC optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=adcc` is a named `optimize_asof` / `/risk/portfolio` path; consumes Wave 128 CES scalar ADCC \(H_{t+1}\); no GARCH/RGARCH overlay; stamps `family=adcc` / `cappiello_engle_sheppard_2006`
+- GREEN: does not call `dcc_gaussian` / `dcc_student_t`; family mismatch / short / failed fits fail closed rather than Ledoit–Wolf; generic `dcc` stays unknown; this is scalar CES ADCC, not matrix AG-DCC
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; matrix AG-DCC is not implemented
+
+
+## Day Wave 128 — Cappiello–Engle–Sheppard scalar ADCC (2026-09-18)
+- GREEN: `adcc` is two-stage Gaussian GARCH + CES (2006) scalar QML (`n_t=I[z_t<0]⊙z_t`, \(a+b+\kappa g<1\)); stamps `family=adcc` / `spec=cappiello_engle_sheppard_2006` / `asymmetric=true`; shares one-step \(H_{t+1}\) and trailing complete-window honesty
+- GREEN: catalog lists it as implemented; does not call `dcc_gaussian` / `dcc_student_t`; `optimize_asof` stays unwired (`unwired_optimizer_covariance:adcc`) rather than silently running Engle DCC or Ledoit–Wolf
+- pytest: `test_dcc` + `test_config`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; `optimizer.covariance=adcc` is still unwired; matrix AG-DCC is not implemented
+
+
+## Day Wave 127 — named Student-t DCC optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=dcc_student_t` is a named `optimize_asof` / `/risk/portfolio` path; consumes Wave 126 two-stage Student-t DCC \(H_{t+1}\); no GARCH/RGARCH overlay; stamps `family=dcc_student_t` / `engle_2002_student_t_dcc`
+- GREEN: does not call `dcc_gaussian`; family mismatch / short / failed fits fail closed rather than Ledoit–Wolf; ambiguous `t` / `student_t` aliases rejected; ADCC remains unspecified
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; ADCC remains unspecified (named fail-closed only)
+
+
+## Day Wave 126 — Student-t DCC likelihood (2026-09-18)
+- GREEN: `dcc_student_t` is two-stage Student-t GARCH + covariance-t QML (`student_t_corr_nll`, \(ν>2\)); stamps `family=dcc_student_t` / `dist=student_t`; shares one-step \(H_{t+1}\) and trailing complete-window honesty
+- GREEN: catalog lists it as implemented; `optimize_asof` stays unwired (`unwired_optimizer_covariance:dcc_student_t`) rather than silently running Gaussian DCC or Ledoit–Wolf; ADCC remains unspecified
+- pytest: `test_dcc` + `test_config` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; ADCC remains unspecified; `optimizer.covariance=dcc_student_t` is still unwired
+
+
+## Day Wave 125 — DCC trailing complete-window honesty (2026-09-18)
+- GREEN: `dcc_gaussian` estimates on the trailing contiguous complete-case window; incomplete terminal `z_t` fails closed; holes are not concatenated into a sequential QML sample
+- GREEN: named `optimize_asof` / `/risk/portfolio` path shares that contract; trailing return pivots sort by `event_time`; Ledoit–Wolf/sample still listwise-delete
+- pytest: `test_dcc` + `test_optimize_dcc` + `test_covariance` + `test_api_fail_closed_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain unspecified (named fail-closed only)
+
+
+## Day Wave 124 — named Gaussian DCC optimize_asof path (2026-09-18)
+- GREEN: `optimizer.covariance=dcc_gaussian` is a named `optimize_asof` / `/risk/portfolio` path; default remains Ledoit–Wolf plus GARCH/RGARCH overlay
+- GREEN: DCC \(H_{t+1}\) is not overlay-scaled; Student-t / ADCC / generic `dcc` / unwired catalog estimators fail closed; short DCC fits do not fall back to Ledoit–Wolf
+- pytest: `test_optimize_dcc` + `test_dcc` + `test_config` + `test_api_fail_closed_branches` + `test_garch_forecast_asof` + `test_optimize_w_prev_fused`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain unspecified (named fail-closed only)
+
+
+## Day Wave 123 — one-step-ahead Gaussian DCC (2026-09-18)
+- GREEN: `dcc_gaussian` returns Engle \(H_{t+1}\) (`covariance_object=one_step_ahead`); \(Q_{t+1}\) uses \(z_t\); \(D_{t+1}\) is univariate GARCH one-step sigma, not in-sample last \(\sigma_t\)
+- GREEN: failed one-step univariate forecast fails closed; Student-t / ADCC remain named fail-closed; optimizer covariance still Ledoit–Wolf
+- pytest: `test_dcc` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain unspecified (named fail-closed only); optimizer covariance is still Ledoit–Wolf
+
+
+## Day Wave 122 — named fail-closed DCC specs (2026-09-18)
+- GREEN: `dcc_student_t` / `adcc` / `require_implemented_dcc_spec` fail closed (`unspecified_dcc_spec:*`) rather than silently running Engle (2002) Gaussian DCC
+- GREEN: `dcc_gaussian` stamps `family=dcc_gaussian` / `asymmetric=false`; `/models` lists `dcc_gaussian` implemented and `dcc_student_t`/`adcc` unspecified (no generic `dcc`)
+- pytest: `test_dcc` + `test_covariance`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain unspecified (named fail-closed only)
+
+
+## Day Wave 121 — ranker cache content digest (2026-09-18)
+- GREEN: `_load_ranker_cached` keys `ranker_ridge.joblib` by SHA-256 bytes, not mtime; same-mtime rewrite cannot reuse stale alpha
+- GREEN: missing artifact still returns None (momentum heuristic remains the explicit no-model path); GARCH/RGARCH digest contract unchanged
+- pytest: `test_ranker_forecast_cache` + `test_garch_forecast_asof` + `test_garch_contract` + `test_optimize_w_prev_fused`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain open (MATH_SPEC still Gaussian DCC)
+
+
+## Day Wave 120 — /risk/portfolio overlay identity (2026-09-18)
+- GREEN: `/risk/portfolio` scales trailing Ledoit–Wolf with `apply_market_variance_overlay_to_covariance` (same GARCH/RGARCH overlay as `optimize_asof`); stamps `market_risk_overlay`
+- GREEN: present RGARCH artifact fail-closes on missing OHLC rather than reporting unscaled sample risk; no-artifact path stamps overlay null
+- pytest: `test_api_fail_closed_branches` + `test_garch_forecast_asof` + `test_realized_garch`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain open (MATH_SPEC still Gaussian DCC)
+
+
+## Day Wave 119 — optimizer covariance available_time PIT (2026-09-18)
+- GREEN: `filter_trailing_returns_asof` drops unpublished `available_time > asof` restatements from `optimize_asof` trailing Ledoit–Wolf/sample covariance and `/risk/portfolio`; null availability among usable `ret_1` fails closed
+- GREEN: Wave 111 overlay scale was already PIT-clean; relative name-covariance can no longer leak the same restatement; legacy frames without `available_time` unchanged
+- pytest: `test_data_pit` + `test_garch_forecast_asof` + `test_api_fail_closed_branches` + `test_optimize_w_prev_fused` + `test_garch_risk_gate`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain open (MATH_SPEC still Gaussian DCC)
+
+
+## Day Wave 118 — Realized GARCH forecast/optimize overlay (2026-09-18)
+- GREEN: `forecast_asof` / `optimize_asof` prefer causal `realized_garch_market_forecast_asof` when `vol_realized_garch.joblib` is present; `MarketState.market_risk_overlay` stamps `realized_garch` vs `garch`; Parkinson daily OHLC only
+- GREEN: present RGARCH artifact fail-closes on missing OHLC rather than falling back to GARCH; covariance overlay uses the same market variance as `check_order`; per-name `vol_20` unchanged
+- pytest: `test_realized_garch` + `test_garch_forecast_asof` + `test_garch_name_forecasts` + `test_realized_garch_risk_gate` + `test_garch_risk_gate` + `test_schemas_edges`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain open (MATH_SPEC still Gaussian DCC)
+
+
+## Day Wave 117 — Realized GARCH check_order overlay (2026-09-18)
+- GREEN: paper/backtest `check_order` uses causal `realized_garch_market_forecast_asof` for `max_predicted_vol` when `vol_realized_garch.joblib` is present; Parkinson daily OHLC only; `intraday_realized_variance=false`
+- GREEN: present RGARCH artifact fail-closes on missing OHLC / wrong scope / HF-RV claim rather than falling back to GARCH; metrics stamp `realized_garch_risk_overlay_dates`; `forecast_asof` / `vol_20` unchanged
+- pytest: `test_realized_garch_risk_gate` + `test_garch_risk_gate` + `test_realized_garch`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Student-t DCC / ADCC remain open
+
+
+## Day Wave 116 — DCC stage-1 arch GARCH (2026-09-18)
+- GREEN: `dcc_gaussian` stage-1 fits univariate Gaussian GARCH(1,1) via `arch` / `GARCHVol`; standardized residuals feed stage-2 QML; params stamp `stage1=garch`
+- GREEN: failed/short/zero-variance univariate fits fail closed; EWMA is not a silent substitute (ADR-004 / MATH_SPEC); last \(H_t\) does not replace overlay / `vol_20` / `max_predicted_vol`
+- pytest: `test_dcc` + `test_covariance` + `test_garch_contract`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: high-frequency RV remains unavailable; Realized GARCH is still not wired into `check_order` (closed Wave 117)
+
+
+## Day Wave 115 — Realized GARCH on daily Parkinson (2026-09-18)
+- GREEN: `RealizedGARCHVol` / `realized_garch_market_forecast_asof` fit Hansen–Huang–Shek log-linear RGARCH on date-level `ret_1` paired with one-day Parkinson from daily OHLC; `intraday_realized_variance=false`
+- GREEN: does not replace `vol_garch` overlay / `vol_20` / `max_predicted_vol`; missing OHLC and unpublished restatements fail closed or drop rather than substituting \(r_t^2\)
+- pytest: `test_realized_garch` + `test_garch_forecast_asof` + `test_garch_contract` + `test_pipeline_training`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: DCC stage-1 still uses EWMA rather than `arch` GARCH (ADR-004 / MATH_SPEC); high-frequency RV remains unavailable
+
+
+## Day Wave 114 — name-level GARCH walk-forward QLIKE/density (2026-09-18)
+- GREEN: `garch_name_walk_forward` / `name_level_qlike` score per-name expanding GARCH OOS; Hansen–Lunde stride is per name; density target is that name's origin `ret_1`
+- GREEN: date-level `overlap_aware_qlike` still fail-closes on within-date forecast disagreement; name scores do not replace overlay / `vol_20` / `max_predicted_vol`
+- pytest: `test_garch_name_walk_forward` + `test_garch_density_calibration` + `test_overlap_aware_scoring` + `test_garch_name_forecasts`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: realized-GARCH
+
+
+## Day Wave 113 — GARCH spec-cache content digest (2026-09-18)
+- GREEN: `_load_garch_spec_cached` / as-of overlays key `vol_garch.joblib` by SHA-256 bytes, not mtime; mean/power replacements cannot reuse a stale overlay
+- GREEN: `garch_name_forecasts_asof` uses the same artifact digest; history digest (Wave 110) unchanged
+- pytest: `test_garch_forecast_asof` + `test_garch_name_forecasts` + `test_garch_risk_gate`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: realized-GARCH; name-level walk-forward QLIKE/density
+
+
+## Day Wave 112 — per-security GARCH namespace (2026-09-18)
+- GREEN: `garch_name_forecasts_asof` refits the date-level spec per name on strictly prior PIT-observable `ret_1`; `series_scope=security_level_ret_1`
+- GREEN: does not replace `vol_20` / market overlay / `max_predicted_vol`; duplicate keys and blank ids fail closed
+- pytest: `test_garch_name_forecasts` + `test_garch_forecast_asof`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: realized-GARCH; name-level walk-forward QLIKE/density (spec-cache digest closed in Wave 113)
+
+
+## Day Wave 111 — GARCH overlay available_time PIT (2026-09-18)
+- GREEN: `garch_market_forecast_asof` / `_garch_return_history(asof=)` drop `available_time > asof` restatements from the date-level equal-weight series; null availability fails closed
+- GREEN: walk-forward GARCH OOS refits on the same PIT-observable history when the panel carries `available_time`; density target remains the origin outcome
+- pytest: `test_garch_forecast_asof` + `test_train_walk_forward_branches` + `test_garch_risk_gate`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 110 — GARCH overlay PIT membership + history digest (2026-09-18)
+- GREEN: `garch_market_forecast_asof` restricts the market overlay series to current `silver/universe.parquet` members; empty universe / missing security_id fail closed; missing universe keeps the caller frame
+- GREEN: as-of cache keyed by full causal history digest; earlier-return rewrites no longer hit a last-value cache
+- pytest: `test_garch_forecast_asof` + `test_garch_risk_gate`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 109 — gold panel load-time PIT membership (2026-09-18)
+- GREEN: `panel()` fail-closes when cached gold keys sit outside current `silver/universe.parquet`; missing universe beside gold cannot silently train
+- GREEN: gold cache key includes universe digest; extra membership rows allowed; late asof still cannot validate an earlier gold bar
+- pytest: `test_gold_universe_membership` + `test_panel_cache` + `test_data_pit` cached-panel; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 108 — gold/CS consume PIT universe membership (2026-09-18)
+- GREEN: gold features/labels persist only PIT-universe members; CS ranks, market aggregates, and idio-label means exclude ineligible names; name-level rolling history still uses silver
+- GREEN: empty/duplicate/invalid membership fails closed; late membership asof cannot rewrite earlier bars; paper/backtest CLI feature panels consume the same universe artifact
+- pytest: `test_gold_universe_membership` + universe/gold/forecast/paper short-panel suites; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 107 — delist/ticker_change on production panel (2026-09-18)
+- GREEN: ingest applies PIT-visible `delist`/`ticker_change` to silver bars and writes `silver/universe.parquet`; leftover post-delist prints cannot remain on the production panel
+- GREEN: `membership_asof` consumes listing actions; late delist/ticker_change cannot rewrite pre-availability membership/symbol; `include_delisted=False` excludes on announcement; blank `new_ticker` fails closed
+- pytest: `test_corporate_actions_edges` + `test_universe_edges` + `test_parquet_adapter_edges` + `test_data_pit` + `test_synthetic_pipeline`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 106 — APARCH/FIGARCH variance specs (2026-09-18)
+- GREEN: causal `GARCHVol` / `garch_vol` accept APARCH and FIGARCH; FIGARCH p,q ∈ {0,1}; APARCH δ>0; FIGARCH 0<d<1 rather than GARCH α+β; APARCH multi-step uses seeded simulation like EGARCH
+- GREEN: config rejects unknown vol and FIGARCH order>1; density/QLIKE overlay still clones the persisted spec and refits on strictly prior `ret_1`
+- pytest: `test_garch_configurable` + `test_garch_contract` + `test_garch_density_calibration` + `test_garch_forecast_asof` + `test_garch_risk_gate` + `test_garch_benchmark` + `test_train_walk_forward_branches`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; realized-GARCH remains open
+
+
+## Day Wave 105 — GARCH one-step density calibration (2026-09-18)
+- GREEN: walk-forward GARCH scores one-step date-level `ret_1` log-score, CRPS, and PIT KS beside overlap-aware QLIKE; density target is not `future_realized_var_h` and is not cumulative-variance-as-Gaussian
+- GREEN: fitted t/skew-t use standardized `arch` log-likelihood; fallback remains explicit Gaussian; missing origin `ret_1` fails closed
+- pytest: `test_garch_density_calibration` + `test_train_walk_forward_branches` + `test_garch_contract` + `test_garch_forecast_asof` + `test_garch_risk_gate`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; APARCH/FIGARCH remain open
+
+
+## Day Wave 104 — overlap-aware multi-horizon vol scoring (2026-09-18)
+- GREEN: GARCH walk-forward primary QLIKE is date-level equal-weight realized variance on nonoverlapping *h*-step origins; name-broadcast QLIKE is no longer the scored object; overlapping-date QLIKE is diagnostic
+- GREEN: `bench_volatility` date-collapses holdout QLIKE/DM and uses Hansen–Hodrick lags ≥ *h*-1; stamps nonoverlapping companions
+- pytest: `test_overlap_aware_scoring` + `test_train_walk_forward_branches` + `test_bench_volatility_eprocess` + `test_bench_dm_wired`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; APARCH/FIGARCH; CRPS/log-score calibration remain open
+
+
+## Day Wave 103 — check_order GARCH market overlay (2026-09-18)
+- GREEN: paper/backtest `check_order` gates `max_predicted_vol` on the causal date-level GARCH one-step market sigma when `vol_garch.joblib` is present; per-name `vol_20` remains impact/cost sigma and the no-artifact fallback
+- GREEN: wrong `series_scope` and artifact-without-`ret_1` fail closed; late returns on/after the decision origin cannot change the gate; SimulatedBroker costs still use name-level `sigma`
+- pytest: `test_garch_risk_gate` + `test_risk_gate` + `test_simulated_broker` + `test_risk_gate_backtest` + `test_garch_forecast_asof`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: per-security GARCH namespace; APARCH/FIGARCH; overlap-aware multi-horizon scoring remain open
+
+
+## Day Wave 102 — causal GARCH market overlay (2026-09-18)
+- GREEN: `forecast_asof` consumes `vol_garch.joblib` as a date-level equal-weight market overlay; clones the spec and refits on `ret_1` strictly before asof (persisted full-sample fit cannot leak)
+- GREEN: per-security `vol_20` unchanged; GARCH one-step variance stamped on `MarketState` + diagnostics; wrong `series_scope` fails closed
+- GREEN: `optimize_asof` scales trailing name-covariance so equal-weight market variance matches the causal GARCH level (PSD-repaired) and persists overlay columns
+- pytest: `test_garch_forecast_asof` + `test_garch_contract` + `test_skip_intervals_flag` + `test_forecast_intervals` + `test_train_walk_forward_branches` + `test_optimize_w_prev_fused`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: paper/backtest `check_order` still uses per-name `vol_20` rather than the GARCH market overlay; per-security GARCH namespace / APARCH/FIGARCH remain open
+
+
+## Day Wave 101 — security-master PIT/schema fail-closed (2026-09-18)
+- GREEN: parquet `get_security_master` fail-closed on missing identity/PIT columns, blank ticker/source, ingested-before-available timestamps, inverted `valid_to`, and duplicate `(security_id, valid_from)` / `(ticker, valid_from)`
+- GREEN: `FrameSecurityMaster.asof`/`record` ignore late `available_time` restatements; `snapshot_asof` / `attach_master_attributes` keep one observable vintage so universe/ingest cannot leak or explode bars
+- GREEN: synthetic master now carries PIT fields; file ingest fixture is contract-complete; late `valid_from` before `available_time` remains a legal restatement
+- pytest: `test_parquet_adapter_edges` + `test_security_master_lake_edges` + `test_universe_edges` + `test_data_pit` + `test_synthetic_adapter_edges` + `test_features_labels`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: GARCH walk-forward artifact still not wired into `forecast_asof`/risk consumers
+
+
+## Day Wave 98 — corporate-action contract fail-closed (2026-09-18)
+- GREEN: parquet `get_corporate_actions` fail-closed on missing `action_type`, unknown types, impossible PIT, non-positive split factors, negative dividend amounts, and duplicate `(security_id, event_time, action_type)`
+- GREEN: `attach_dividends` sums same-day cash+special onto one bar (no row explosion); `cumulative_split_factors` rejects non-positive/non-finite factors
+- GREEN: late `available_time` still cannot rewrite pre-availability split/dividend history
+- pytest: `test_corporate_actions_edges` + `test_parquet_adapter_edges` + `test_data_pit` + `test_features_labels`; ruff/mypy clean on touch set
+- Research/infrastructure only — no live broker / vendor MD / live_pnl_claim
+- Next gap left on the table: GARCH walk-forward artifact still not wired into `forecast_asof`/risk consumers; security-master file adapter still has no PIT/schema gate
 
 
 ## Residual #67 — export tuple completeness (2026-09-16 IST, re-verified post Mac reconnect)
@@ -1619,3 +1950,101 @@
 - Local env quirk found: lgbm deadlocks in libomp (lgbm stubbed for repro).
 - PROOF.md gained "Adversarial verification" section; receipts in
   .dsh-24x7/evidence-sota-local-repro-btc.*.
+## 2026-09-21 — research canon wave (D:\dipcatcher, remote session)
+
+- GREEN: 22 new modules + 19 test files, ~257 new unit tests all passing
+  remotely under .venv (Python 3.12.10).
+- Modules: metrics/{serial, extremes, entropy, fractal, hac,
+  risk_parametric, drawdown}; validation/fdr; models/{fracdiff,
+  state_space, point_process, changepoint, rmt, ensemble, bandits,
+  copula}; labels/barriers; features/{bars, indicators, cycles};
+  portfolio/allocators; execution/impact.
+- Verification: ruff check clean (src+tests, incl. autofix of leftover
+  tests/tests import blocks); ruff format applied to new files; mypy
+  clean on all 22 new modules; targeted pytest green.
+- Honesty preserved: pure numpy/scipy diagnostics, fail-closed
+  ValueErrors, docstring citations, no live-PnL/Sharpe claims.
+- Note: repo-wide `ruff format --check` has ~80 pre-existing unformatted
+  files predating this wave (untouched); new files conform.
+- No commits made; authored in /tmp on controller, synced via scp.
+
+wave-2 canon expansion (remote, D:\dipcatcher):
+- metrics/regression.py: OLS+HC/HAC covariances, DW/BG/BP/White/RESET/GQ,
+  CUSUM/CUSUMSQ, VIF/Cook, Theil-Sen/Huber/quantile reg, 2SLS + Sargan J.
+- models/factor_models.py: Fama-MacBeth+Shanken, FF sorts, PCA+Bai-Ng,
+  residualization, Jensen alpha.
+- models/filters.py: HP (exact sparse), BK, CF asymmetric, Hamilton 2018,
+  Beveridge-Nelson, Corbae-Ouliaris DFT bandpass.
+- models/realized.py: RV/BV/tripower, BNS jump test, Lee-Mykland, TSRV,
+  realized kernel, pre-averaging, semivariance, RV bands.
+- models/var_coint.py: VAR+IC, GIRF/OIRF, GFEVD, Diebold-Yilmaz,
+  Engle-Granger, Johansen (generalized eig), VECM, Granger matrix.
+- features/liquidity.py: Amivest, LOT, FHT, Pastor-Stambaugh, Hasbrouck,
+  Glosten-Harris, Holden effective tick, turnover vol.
+- metrics/distribution.py: SW/AD/CvM/Lilliefors(MC)/K2/Pearson battery,
+  Mardia MVN, medcouple, Qn.
+- models/decomposition.py: SSA+R-forecast, EMD, Hilbert-Huang, median trend.
+- metrics/calibration2.py: Murphy decomp, Winkler IS, Dawid-Sebastiani,
+  Hosmer-Lemeshow, reliability bins, variogram, pinball, spread-skill.
+- models/mixture.py: EM Gaussian/t mixtures (correct E[ln u] ECM), BIC.
+- models/pairs.py: Gatev SSD, EG screen, z-score stats, OU bands, quality.
+- tests: 11 new unit files, 126 tests green remotely.
+- verification: ruff check clean on all wave-2 files; ruff format applied;
+  mypy clean on all 11 modules; no commits.
+
+- Wave 3 (12 modules, ~125 tests, remote-verified on D:\dipcatcher):
+  regime_switch (Hamilton EM + Kim smoother), garch_ext (APARCH QMLE,
+  FIGARCH BBM recursion, Engle-Ng NIC), forecast_eval (HLN, Clark-West,
+  Giacomini-White Wald, ENC, GR fluctuation), bootstrap (Mammen/Rademacher
+  wild, pairs, Buhlmann sieve, Politis-Romano subsampling, circular blocks),
+  panel (LLC, IPS, Fisher-ADF, Hadri, Pesaran CD), dependence (dCor, HSIC
+  permutation, MMD, Chatterjee xi, KSG kNN MI), kernel (exact GP w/
+  marginal-likelihood hyperparameter fit, kernel ridge, kernel PCA),
+  event_study (market model, CAR, Patell, Corrado rank, BMP), var_backtest
+  (Kupiec, Christoffersen ind/CC, TUFF, Basel zones), long_memory (GPH,
+  local Whittle, Whittle ARFIMA, Lo R/S), survival (KM+Greenwood,
+  Nelson-Aalen, Mantel log-rank, Cox PH Breslow+Harrell C), dynamic_panel
+  (Anderson-Hsiao IV, Arellano-Bond one-step GMM + Sargan J + AR2).
+
+
+## Canon wave 4 (12 modules, 108 tests) — DONE
+
+- models/nonlinear_filters.py — EKF, UKF (alpha/beta/kappa sigma points), bootstrap particle filter with N_eff + systematic resampling
+- metrics/es_backtest.py — Acerbi-Szekely Z_2, McNeil-Frey exceedance-residual bootstrap, unconditional/conditional ES backtests
+- models/spectral.py — Welch, Daniell smoothing, Thomson multitaper (DPSS adaptive weights), magnitude-squared coherence
+- metrics/density_forecast.py — PIT, PIT histogram, Berkowitz LR (mu/sigma/AR1), PIT autocorrelation
+- models/nowcasting.py — MIDAS-beta, Almon weights, equal-weight regression seed for optimizer, bridge equations
+- models/panel_coint.py — Kao ADF, Pedroni 7-stat panel/group cointegration
+- models/momentum.py — Jegadeesh-Titman portfolios, 52-week-high, residual momentum, TSMOM vol-scaled positions
+- models/hedging.py — Ederington min-variance h*, hedge effectiveness (variance reduction), basis-risk diagnostics
+- models/ccm.py — Sugihara convergent cross-mapping (library-size convergence) + S-map with theta=0 special case
+- models/diffusion_index.py — Stock-Watson PC factors + h-step-ahead AR-augmented diffusion-index regression
+- models/rough_vol.py — q-moment Hurst regression, Gatheral variance-curve nu estimate, fractional OU sim via fGn Cholesky
+- models/options.py — BSM calls/puts, full greeks, Brent implied vol with arbitrage-bound validation
+
+Gates: 108 tests green; ruff check clean; ruff format applied; mypy clean on all 12 files.
+
+
+## Canon wave 5 (13 modules, 82 tests) — DONE
+
+- models/sabr.py — Hagan (2002) SABR implied vol (vectorized, ATM limit), cubic alpha solve, least-squares fit, two-step rho/nu smile decomposition, shifted SABR
+- models/jump_diffusion.py — Merton (1976) Poisson-weighted BSM series, put parity, exact grid simulation, log-moment analytics, Kou double-exponential sim
+- models/threshold.py — Tong SETAR(2;p;d) CLS fit, Hansen (1999) sup-F bootstrap test, recursive forecast
+- models/trade_sign.py — tick rule, Lee-Ready quote-rule signing, Easley-LdP-O'Hara bulk volume classification, signed-volume aggregation
+- models/market_making.py — Avellaneda-Stoikov reservation price, optimal half-spread, quotes, arrival-intensity calibration, inventory bounds
+- models/information_share.py — Hasbrouck (1995) IS bounds via VECM + Cholesky orderings, Gonzalo-Granger weights
+- models/bayesian.py — conjugate NIG Bayesian OLS (Zellner g-prior default), Student-t predictive, subset-enumerated BMA with PIP
+- models/robust_cov.py — FastMCD (C-steps + reweight), OGK, Stahel-Donoho projection outlyingness
+- models/mfdfa.py — Kantelhardt MF-DFA Fq(s), h(q), tau(q), Legendre singularity spectrum
+- models/wavelets.py — MODWT (Haar/D4/LA8) pyramid, additive MRA, per-scale variance, wavelet correlation
+- models/term_structure.py — Nelson-Siegel/Svensson loading matrices + fits, Diebold-Li two-step + AR(1) forecast
+- models/duration.py — Engle-Russell EACD/WACD QMLE, psi paths, residual whiteness diagnostics, simulation
+- metrics/direction.py — Pesaran-Timmermann directional test, 2x2 confusion, rank-based directional AUC
+
+Gates: 82 tests green; ruff check clean; ruff format applied; mypy clean on all 13 files.
+
+- Wave 6 (estimation canon): 13 modules — models/{sparse,caviar,garch_midas,gas,gmm_est,discrete,arma,smoothers,poet,glasso,functional,seasonal}.py + metrics/vol_eval.py; ~66 unit tests green; ruff/mypy clean. AIC overfit behavior documented in test_arma; Andersen-Bollerslev R2 bound respected in test_vol_eval.
+
+
+- Wave 7 (vol/credit/selection canon): 12 modules — models/{egarch,har,dcc,stoch_vol,count,ordered,qar,dfm,fractional,kmv}.py + metrics/{purged_cv,feature_select}.py; 54 unit tests green; ruff/mypy clean. Notable: ordered.py cutpoint sizing bug caught by prob-sum invariant; dfm stationary-init uses solve_discrete_lyapunov.
+

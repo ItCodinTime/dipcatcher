@@ -121,7 +121,7 @@ def main() -> int:
         dest = args.outdir / f"{sym.replace('^','').lower()}_1d.parquet"
         try:
             df = to_frame(fetch_chart(sym), sym)
-        except Exception as e:  # noqa: BLE001 - retry once then record failure
+        except Exception:  # noqa: BLE001 - retry once then record failure
             time.sleep(2.0)
             try:
                 df = to_frame(fetch_chart(sym), sym)

@@ -229,13 +229,15 @@ def test_backtest_records_decision_price_and_is(tmp_path) -> None:
             "source": ["file"] * 3,
         }
     )
-    w = _weights([(T0, "A", 1.0)])
+    w = _weights([(T0, "A", 1.0), (T0 + timedelta(days=1), "A", 0.0)])
     result = run_backtest(bars, w, cfg, initial_nav=100_000.0)
     assert "decision_price" in result.fills.columns
     assert result.fills["decision_price"][0] == pytest.approx(100.0)
     is_rep = result.metrics["implementation_shortfall"]
     assert is_rep is not None
-    assert is_rep["n_fills"] == 2  # entry at next open + exit when weights lapse
+    # entry at next open + exit on the explicit zero target row (rebalance
+    # grids carry the last target; a lapse is not a flatten instruction).
+    assert is_rep["n_fills"] == 2
     buy = [s for s in is_rep["by_side"] if s["side_sign"] == 1.0][0]
     # exec at next open 102 vs decision 100 -> adverse drift on the entry
     assert buy["total_is"] > 0

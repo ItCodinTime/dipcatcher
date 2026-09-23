@@ -1,0 +1,253 @@
+{
+  "catalog": "hedge_lab_analytics",
+  "protocol_id": "dipcatcher.sota.v2",
+  "slate_id": "dipcatcher.sota.v2.lanes",
+  "protocol_sha256": "6007e652f2d7974de8fddef3e904be2a25c28e7a68ff8f9b69b8c8e00b538eb2",
+  "slate_sha256": "35123173415cd281f0a4c191f45c0b87d14ddd537229c3d337223857703e5390",
+  "slate_file": "configs/sota_protocol_v2_lanes.yaml",
+  "parent_slate": "configs/sota_protocol_v2.yaml",
+  "lane": 5,
+  "lane_name": "pit_universe_rebuild",
+  "config": "configs/hedge_lab_wide.yaml",
+  "feature_set": "public",
+  "benchmark": "ridge",
+  "selection_end": "2024-12-31",
+  "holdout_start": "2025-01-02",
+  "scheme": "rolling",
+  "train_bars": 252,
+  "val_bars": 63,
+  "test_bars": 63,
+  "embargo_bars": 5,
+  "n_boot": 2000,
+  "alpha": 0.05,
+  "one_way_cost": 0.001,
+  "data_source": "parquet",
+  "synthetic_not_promotable": false,
+  "research_only": true,
+  "live_pnl_claim": false,
+  "execution_claim": "paper_backtest",
+  "champion": "ridge",
+  "blend_weight": 0.0,
+  "label": "future_idio_return_1",
+  "horizon_bars": 1,
+  "tape": "file_us_wide",
+  "universe": "silver/universe.parquet",
+  "engines": [
+    "ridge",
+    "gbrt"
+  ],
+  "best_tree": "gbrt",
+  "selection_mean_ic": {
+    "gbrt": 0.006988147395530339,
+    "lambdarank": 0.0009585609681302064,
+    "xgboost": -0.003504861517833483
+  },
+  "lane1_fingerprint": "051708870de3302b",
+  "fingerprint": "8a6469f9f2d91bfb",
+  "features": [
+    "cs_z_mom_20",
+    "cs_z_reversal_1",
+    "cs_z_ret_5",
+    "cs_z_ret_20",
+    "cs_z_mom_5",
+    "cs_z_mom_60",
+    "cs_pct_mom_20",
+    "cs_pct_reversal_1",
+    "cs_pct_ret_overnight",
+    "sector_relative_mom_20",
+    "cs_z_z_vs_ma20",
+    "cs_z_ret_overnight",
+    "cs_z_ret_open_close",
+    "cs_z_ret_overnight_20",
+    "cs_z_ret_intraday_20",
+    "cs_z_max_ret_20",
+    "cs_z_min_ret_20",
+    "cs_z_skew_20",
+    "cs_z_kurt_20",
+    "cs_z_vol_20",
+    "cs_z_vol_60",
+    "cs_z_vol_ewma",
+    "cs_z_vol_parkinson",
+    "cs_z_vol_garman_klass",
+    "cs_z_vol_of_vol",
+    "cs_z_downside_vol_20",
+    "cs_z_vol_ratio_20_60",
+    "cs_z_beta_60",
+    "cs_z_idio_vol_60",
+    "cs_z_idio_mom_20",
+    "cs_z_mom_skip_5_20",
+    "cs_z_amihud",
+    "cs_z_amihud_60",
+    "cs_z_adv",
+    "cs_z_dollar_volume",
+    "rel_volume",
+    "cs_z_turnover_proxy",
+    "cs_z_volume_vol",
+    "cs_z_adv_ratio_20_60",
+    "cs_z_log_price",
+    "cs_z_mom_126",
+    "cs_z_mom_12_1",
+    "cs_z_high_52w_prox"
+  ],
+  "n_dates": 2633,
+  "pit_rebuild": {
+    "gold_rebuilt": true,
+    "n_feature_rows": 1053600,
+    "n_label_rows": 1053600,
+    "feature_set_version": [
+      "features.v4"
+    ]
+  },
+  "windows": {
+    "full": {
+      "n_dates": 1134,
+      "hac_lags": 15,
+      "cs_ic": [
+        {
+          "name": "ridge",
+          "mean_ic": 0.0012808081060145986,
+          "t_ic": 0.23385405021492436,
+          "p_ic": 0.8151405335185541,
+          "n_dates": 1134,
+          "window_start": null,
+          "window_end": null,
+          "hac_lags": 15
+        },
+        {
+          "name": "gbrt",
+          "mean_ic": 0.0010574463320163518,
+          "t_ic": 0.24996756877257215,
+          "p_ic": 0.8026577435331181,
+          "n_dates": 1134,
+          "window_start": null,
+          "window_end": null,
+          "hac_lags": 15
+        }
+      ],
+      "gates": {
+        "dm": {
+          "gbrt": {
+            "statistic": 0.04648852779740071,
+            "p_value": 0.9629290701881544,
+            "preferred": "ridge",
+            "mean_loss_diff": 0.00022336177399824645,
+            "lags": 15
+          }
+        },
+        "reality_check_p": 0.5077461269365318,
+        "spa_p_consistent": 0.5077461269365318,
+        "spa_p_lower": 0.5077461269365318,
+        "spa_p_upper": 0.4897551224387806,
+        "stepm_rejected": [],
+        "stepm_adjusted_p": {
+          "gbrt": 0.5077461269365318
+        },
+        "n_boot": 2000,
+        "hac_lags": 15,
+        "promote": false,
+        "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+      }
+    },
+    "selection": {
+      "n_dates": 945,
+      "hac_lags": 14,
+      "cs_ic": [
+        {
+          "name": "ridge",
+          "mean_ic": 0.0008575145183772058,
+          "t_ic": 0.1367843635631557,
+          "p_ic": 0.8912304093354593,
+          "n_dates": 945,
+          "window_start": null,
+          "window_end": "2024-12-31",
+          "hac_lags": 14
+        },
+        {
+          "name": "gbrt",
+          "mean_ic": 0.001040829551989254,
+          "t_ic": 0.2160526600649035,
+          "p_ic": 0.8289933750780797,
+          "n_dates": 945,
+          "window_start": null,
+          "window_end": "2024-12-31",
+          "hac_lags": 14
+        }
+      ],
+      "gates": {
+        "dm": {
+          "gbrt": {
+            "statistic": -0.033672166216553404,
+            "p_value": 0.9731456926778936,
+            "preferred": "gbrt",
+            "mean_loss_diff": -0.0001833150336120455,
+            "lags": 14
+          }
+        },
+        "reality_check_p": 0.48375812093953025,
+        "spa_p_consistent": 0.48375812093953025,
+        "spa_p_lower": 0.48375812093953025,
+        "spa_p_upper": 0.49775112443778113,
+        "stepm_rejected": [],
+        "stepm_adjusted_p": {
+          "gbrt": 0.48375812093953025
+        },
+        "n_boot": 2000,
+        "hac_lags": 14,
+        "promote": false,
+        "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+      }
+    },
+    "holdout": {
+      "n_dates": 189,
+      "hac_lags": 8,
+      "cs_ic": [
+        {
+          "name": "ridge",
+          "mean_ic": 0.003397276044201561,
+          "t_ic": 0.30248140524240924,
+          "p_ic": 0.7626195039356042,
+          "n_dates": 189,
+          "window_start": "2025-01-02",
+          "window_end": null,
+          "hac_lags": 8
+        },
+        {
+          "name": "gbrt",
+          "mean_ic": 0.0011405302321518453,
+          "t_ic": 0.133203626683349,
+          "p_ic": 0.894174814651419,
+          "n_dates": 189,
+          "window_start": "2025-01-02",
+          "window_end": null,
+          "hac_lags": 8
+        }
+      ],
+      "gates": {
+        "dm": {
+          "gbrt": {
+            "statistic": 0.2078219378853811,
+            "p_value": 0.8355929591263,
+            "preferred": "ridge",
+            "mean_loss_diff": 0.002256745812049713,
+            "lags": 8
+          }
+        },
+        "reality_check_p": 0.5887056471764118,
+        "spa_p_consistent": 0.5887056471764118,
+        "spa_p_lower": 0.5887056471764118,
+        "spa_p_upper": 0.5022488755622189,
+        "stepm_rejected": [],
+        "stepm_adjusted_p": {
+          "gbrt": 0.5887056471764118
+        },
+        "n_boot": 2000,
+        "hac_lags": 8,
+        "promote": false,
+        "note": "promote is True only if some challenger wins pairwise DM of -IC vs ridge at 5% and White RC / SPA / StepM all reject the no-skill null. This runner never writes a champion alias."
+      }
+    }
+  },
+  "decision_window": "holdout",
+  "promote": false,
+  "note": "Wide-tape PIT membership (ADV-ranked, names enter and exit) is survivorship-honest within the vendor pool; the pool itself is still vendor-surviving. One tree, picked on selection-window IC before the holdout was scored. Champion stays public ridge; blend_weight stays 0 unless promote. Not live P&L."
+}

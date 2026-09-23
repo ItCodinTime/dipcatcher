@@ -131,7 +131,7 @@ def write_report(path: Path, title: str, sections: dict[str, Any], *, synthetic:
         else:
             lines.append(str(body))
         lines.append("")
-    path.write_text("\n".join(lines))
+    path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
 

@@ -328,9 +328,15 @@ def readiness(config_path: str = "configs/research.yaml") -> JSONResponse:
 def models() -> dict[str, Any]:
     import importlib.util
 
+    from quant_fund.models.covariance import (
+        IMPLEMENTED_COVARIANCE_SPECS,
+        IMPLEMENTED_OPTIMIZER_COVARIANCE_SPECS,
+        UNSPECIFIED_COVARIANCE_SPECS,
+    )
+
     availability = {
         name: importlib.util.find_spec(name) is not None
-        for name in ("xgboost", "lightgbm", "arch", "hmmlearn", "cvxpy")
+        for name in ("xgboost", "lightgbm", "arch", "hmmlearn", "cvxpy", "torch")
     }
     return {
         "ranking": [
@@ -341,11 +347,59 @@ def models() -> dict[str, Any]:
             "lightgbm",
             "lambdarank",
             "xendcg",
+            "rff",
+            "rff_ridgeless",
+            "sdf_ridge",
+            "sdf_en",
+            "ipca",
+            "ipca_alpha",
+            "rp_pca",
+            "fnw",
+            "gx3pass",
+            "ds_lasso",
+            "fm",
+            "pcr",
+            "pls",
+            "tprf",
+            "gbrt",
+            "pp",
+            "combo",
+            "alasso",
+            "classic",
+            "fm_ridge",
+            "combo_ic",
+            "reversal",
+            "classic_st",
+            "ridge_st",
+            "ridge_neut",
+            "fm_st",
+            "combo_ic_st",
+            "combo_msfe",
+            "krauss",
+            "tsmom",
+            "vme",
+            "nautica",
+            "neural",
+            "ensemble",
         ],
         "distribution": ["empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"],
         "volatility": ["rolling", "ewma", "garch", "har", "xgboost", "lightgbm"],
-        "covariance": ["sample", "ewma", "ledoit_wolf", "factor", "dcc"],
+        "covariance": list(IMPLEMENTED_COVARIANCE_SPECS),
+        "covariance_unspecified": list(UNSPECIFIED_COVARIANCE_SPECS),
+        "optimizer_covariance": list(IMPLEMENTED_OPTIMIZER_COVARIANCE_SPECS),
         "regime": ["single_state", "threshold", "hmm"],
+        "kline_foundation": ["robinhood_plus"],
+        "robinhood_plus": {
+            "display": "robinhood+",
+            "derived_from": "Kronos (Shi et al., 2025, arXiv:2508.02739, MIT)",
+            "backends": ["numpy", "torch"],
+            "core_engine": True,
+            "sizes_book": False,
+            "blend_weight": 0.0,
+            "affiliation": (
+                "internal Dipcatcher engine name; not affiliated with Robinhood Markets, Inc."
+            ),
+        },
         "backend_availability": availability,
         "catalog_claim": "implemented_or_optional_backend; availability is environment-specific",
     }
@@ -411,13 +465,40 @@ def regime() -> dict[str, Any]:
 
 @app.get("/risk/portfolio")
 def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]:
-    """Return as-of covariance risk for the persisted target portfolio."""
+    """Return as-of covariance risk for the persisted target portfolio.
+
+    Trailing covariance follows the same named ``optimizer.covariance`` path
+    ``optimize_asof`` uses. Default Ledoit–Wolf 2004 is scaled by the causal
+    GARCH/RGARCH market overlay and stays Ledoit–Wolf when T<=N rather than
+    switching to sample. Named ``dcc_gaussian``, ``dcc_student_t``,
+    ``adcc``, ``ccc``, ``agdcc``, ``agdcc_full``, and ``ewma`` use one-step
+    H_{t+1} and do not overlay that matrix. Named ``oas`` uses trailing
+    Chen OAS plus that overlay and must not silently size as Ledoit–Wolf,
+    sample, EWMA, or DCC. Named ``sample`` uses trailing unbiased sample
+    covariance plus that overlay and must not silently size as Ledoit–Wolf,
+    OAS, EWMA, or DCC. The sequential sample is the trailing contiguous
+    complete-case window; an incomplete asof row fails closed. Those named
+    paths are distinct. Named ``agdcc`` must not silently size as scalar
+    ADCC or unrestricted AG-DCC. Named ``agdcc_full`` must not silently
+    size as diagonal AG-DCC. Factor stays unwired. A present Realized
+    GARCH artifact still fail-closes on missing OHLC rather than reporting
+    unscaled sample risk.
+    """
     import numpy as np
     import polars as pl
 
-    from quant_fund.models.covariance import ledoit_wolf_cov, repair_psd
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+    from quant_fund.models.covariance import (
+        IMPLEMENTED_OPTIMIZER_NAMED_SPECS,
+        IMPLEMENTED_OPTIMIZER_ONE_STEP_SPECS,
+        require_implemented_optimizer_covariance,
+    )
+    from quant_fund.models.realized_garch import REALIZED_GARCH_MEASURE
     from quant_fund.pipeline.dataset import panel
+    from quant_fund.pipeline.forecast import estimate_optimizer_covariance_asof
     from quant_fund.portfolio.optimizer import component_risk
+    from quant_fund.schemas.errors import PointInTimeError
+    from quant_fund.schemas.forecast import MARKET_RISK_OVERLAY_REALIZED_GARCH
 
     cfg = _load_cfg(config_path)
     weights_path = Path(cfg.data.root) / "gold" / "target_weights.parquet"
@@ -457,12 +538,19 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
     if weights.select(["event_time", "security_id"]).is_duplicated().any():
         raise HTTPException(422, "target-weight artifact contains duplicate identity rows")
     asof = weights["event_time"].max()
+    if not isinstance(asof, datetime):
+        raise HTTPException(422, "target-weight artifact event_time must be datetime")
     # Build the weight vector from the latest as-of slice only: a multi-date
     # panel would duplicate security ids and misalign against the covariance.
     weights = weights.filter(pl.col("event_time") == asof)
     ids = [str(value) for value in weights["security_id"].to_list()]
     w = np.asarray(weights["target_weight"].to_list(), dtype=float)
-    frame = panel(cfg).filter(pl.col("event_time") <= asof)
+    overlay_frame = panel(cfg)
+    frame = overlay_frame.filter(pl.col("event_time") <= asof)
+    try:
+        frame = filter_trailing_returns_asof(frame, asof)
+    except PointInTimeError as exc:
+        raise HTTPException(422, str(exc)) from exc
     if "ret_1" not in frame.columns:
         return _stamp_research_honesty(
             {
@@ -477,7 +565,8 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
         on="security_id", index="event_time", values="ret_1"
     )
     cols = [sid for sid in ids if sid in wide.columns]
-    if len(cols) < 2:
+    estimator = require_implemented_optimizer_covariance(cfg.optimizer.covariance)
+    if estimator not in IMPLEMENTED_OPTIMIZER_NAMED_SPECS and len(cols) < 2:
         return _stamp_research_honesty(
             {
                 "status": "UNMEASURED",
@@ -487,9 +576,9 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
                 "claim": "research_only",
             }
         )
-    mat = wide.select(cols).to_numpy().astype(float)
-    mat = mat[np.isfinite(mat).all(axis=1)]
-    if mat.shape[0] < 2:
+    mat = wide.select(cols).to_numpy().astype(float) if cols else np.empty((0, 0))
+    mat = mat[np.isfinite(mat).all(axis=1)] if mat.size else mat
+    if estimator not in IMPLEMENTED_OPTIMIZER_NAMED_SPECS and mat.shape[0] < 2:
         return _stamp_research_honesty(
             {
                 "status": "UNMEASURED",
@@ -499,31 +588,70 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
                 "claim": "research_only",
             }
         )
-    sigma, _ = repair_psd(ledoit_wolf_cov(mat), cfg.train.psd_eigen_tol)
-    col_idx = [ids.index(sid) for sid in cols]
-    mcr, cr, predicted_vol = component_risk(w[col_idx], sigma)
-    return _stamp_research_honesty(
-        {
-            "status": "MEASURED",
-            "asof": str(asof),
-            "observations": int(mat.shape[0]),
-            "securities": len(cols),
-            "predicted_volatility": predicted_vol,
-            "gross": float(np.abs(w).sum()),
-            "net": float(w.sum()),
-            "components": [
-                {
-                    "security_id": sid,
-                    "weight": float(w[i]),
-                    "marginal_risk": float(mcr[j]),
-                    "risk_contribution": float(cr[j]),
-                }
-                for j, (sid, i) in enumerate(zip(cols, col_idx, strict=True))
-            ],
-            "source": str(weights_path),
-            "claim": "research_only",
+    try:
+        estimate = estimate_optimizer_covariance_asof(cfg, overlay_frame, asof, cols, frame)
+    except (PointInTimeError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if estimate.unmeasured_reason is not None:
+        reasons = {
+            "no_ret_1": "point-in-time return history is unavailable",
+            "fewer_than_two_securities": (
+                "fewer than two securities have point-in-time return history"
+            ),
+            "insufficient_finite_rows": "insufficient finite return observations for covariance",
+            "estimation_failed": "insufficient finite return observations for covariance",
         }
-    )
+        return _stamp_research_honesty(
+            {
+                "status": "UNMEASURED",
+                "reason": reasons.get(
+                    estimate.unmeasured_reason,
+                    "insufficient finite return observations for covariance",
+                ),
+                "asof": str(asof),
+                "source": str(weights_path),
+                "claim": "research_only",
+            }
+        )
+    sigma = estimate.sigma
+    col_idx = [ids.index(sid) for sid in estimate.security_ids]
+    mcr, cr, predicted_vol = component_risk(w[col_idx], sigma)
+    payload: dict[str, Any] = {
+        "status": "MEASURED",
+        "asof": str(asof),
+        "observations": int(estimate.n_obs),
+        "securities": len(estimate.security_ids),
+        "predicted_volatility": predicted_vol,
+        "gross": float(np.abs(w).sum()),
+        "net": float(w.sum()),
+        "covariance_estimator": estimate.estimator,
+        "covariance_object": estimate.covariance_object,
+        "covariance_spec": estimate.spec,
+        "market_risk_overlay": estimate.market_overlay,
+        "components": [
+            {
+                "security_id": sid,
+                "weight": float(w[i]),
+                "marginal_risk": float(mcr[j]),
+                "risk_contribution": float(cr[j]),
+            }
+            for j, (sid, i) in enumerate(zip(estimate.security_ids, col_idx, strict=True))
+        ],
+        "source": str(weights_path),
+        "claim": "research_only",
+    }
+    if estimate.estimator in IMPLEMENTED_OPTIMIZER_ONE_STEP_SPECS:
+        payload["covariance_horizon"] = 1
+    overlay = estimate.overlay
+    overlay_kind = estimate.market_overlay
+    if overlay is not None and overlay_kind is not None:
+        payload["garch_market_sigma"] = float(overlay.sigma)
+        payload["garch_market_variance"] = float(overlay.variance)
+        payload["garch_series_scope"] = overlay.series_scope
+        if overlay_kind == MARKET_RISK_OVERLAY_REALIZED_GARCH:
+            payload["realized_measure"] = REALIZED_GARCH_MEASURE
+            payload["intraday_realized_variance"] = False
+    return _stamp_research_honesty(payload)
 
 
 @app.get("/portfolio/target")
@@ -747,7 +875,7 @@ def drift(config_path: str = "configs/research.yaml") -> dict[str, Any]:
 
 
 @app.get("/doctor")
-def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, str]:
+def doctor_endpoint(config_path: str = "configs/research.yaml") -> dict[str, Any]:
     return doctor(str(resolve_allowed_config_path(config_path)))
 
 

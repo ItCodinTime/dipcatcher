@@ -1,5 +1,8 @@
 """Profile run_backtest_fast on the 11-asset workload."""
-import sys, cProfile, pstats, io
+import cProfile
+import io
+import pstats
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -8,8 +11,8 @@ import polars as pl
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from quant_fund.backtest.fast_replay import run_backtest_fast
-from quant_fund.config.models import AppConfig, CostConfig, RiskGateConfig
+from quant_fund.backtest.fast_replay import run_backtest_fast  # noqa: E402
+from quant_fund.config.models import AppConfig, CostConfig, RiskGateConfig  # noqa: E402
 
 SIDS = ["adausdt", "avaxusdt", "bnbusdt", "btcusdt", "dogeusdt", "ethusdt",
         "linkusdt", "ltcusdt", "solusdt", "trxusdt", "xrpusdt"]

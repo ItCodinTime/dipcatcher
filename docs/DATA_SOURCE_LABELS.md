@@ -10,7 +10,7 @@ fallback adapter.
 | Label | Meaning |
 |---|---|
 | **SYNTHETIC** | Planted-factor / simulator panel. Recovering IC, coverage, or bandit regret is an **engine correctness** test. Never a production promotion input. |
-| **public / file** | Features built from the configured non-synthetic adapter (parquet, etc.). Scores are scientific (proper rules) still, not a live-P&L claim. |
+| **public / file** | Features built from the configured non-synthetic adapter (parquet, Stooq session-close tape, etc.). Scores are scientific (proper rules) still, not a live-P&L claim. Session-close `available_time` is not a SIP vintage. |
 | **public sources** | Registered open/public feeds collected explicitly via `dipcatcher collect` (Binance klines, FRED/ALFRED, US Treasury, CFTC COT, FINRA short volume, World Bank, BEA, GDELT, SEC EDGAR, NASDAQ ITCH sample, FI-2010) or routed through `data.source` for bar-capable feeds. Point-in-time stamped (`event_time`/`available_time`/`ingested_time`, `source`, `revision_id`) with a per-collection JSON receipt (sha256, rows, provenance). Still research evidence — never a live-P&L claim. Optional-library feeds (`ccxt`, `cryptofeed`, `openbb`) require an explicit payload and are never imported implicitly. |
 
 ## Where the label appears

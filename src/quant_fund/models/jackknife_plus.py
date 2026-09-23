@@ -188,9 +188,16 @@ class JackknifePlus(JoblibMixin):
         scores = self.scores_
         if loc is None or scores is None:
             raise RuntimeError("jackknife+ model has incomplete fitted state")
+        # ``scale`` is the test-time unit conversion for a residual fitted in
+        # standardized space (y / vol). Both the LOO location and the residual
+        # scores live in that space; multiplying only the half-width leaves the
+        # band centered at a dimensionless loc (often O(0.1–1)) while y is a
+        # daily return (O(0.01)). That unit mismatch is a receipt-integrity
+        # bug, not a conformal miss: coverage collapses toward 0.
         half = scores[None, :] * sc[:, None]
-        qlo = mid[:, None] + loc[None, :] - half
-        qhi = mid[:, None] + loc[None, :] + half
+        loc_y = loc[None, :] * sc[:, None]
+        qlo = mid[:, None] + loc_y - half
+        qhi = mid[:, None] + loc_y + half
         return _jackknife_plus_quantiles(qlo, qhi, self.alpha)
 
     def metadata(self) -> ModelMeta:

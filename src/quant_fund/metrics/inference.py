@@ -97,6 +97,25 @@ def grouped_mean_tstat(
     return mu + float(target), t, p, int(means.size)
 
 
+def overlap_aware_hac_lags(n: int, horizon_bars: int) -> int:
+    """HAC lag for overlapping *h*-step loss differentials (Hansen–Hodrick).
+
+    Uses at least ``horizon_bars - 1`` lags so an *h*-bar realized window is not
+    treated as an independent daily observation, and never fewer lags than the
+    existing Newey–West cubic-root default. Research-diagnostic only.
+    """
+    if isinstance(n, bool) or not isinstance(n, int) or int(n) < 0:
+        raise ValueError("n must be a non-negative integer")
+    if isinstance(horizon_bars, bool) or not isinstance(horizon_bars, int) or int(horizon_bars) < 1:
+        raise ValueError("horizon_bars must be a positive integer")
+    hansen_hodrick = int(horizon_bars) - 1
+    sample = int(n)
+    if sample < 3:
+        return hansen_hodrick
+    default = max(1, int(np.floor(1.5 * float(sample) ** (1.0 / 3.0))))
+    return int(max(default, hansen_hodrick))
+
+
 def two_way_clustered_mean_tstat(
     values: Array,
     cluster_a: Array,

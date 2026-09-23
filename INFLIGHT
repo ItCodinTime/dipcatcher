@@ -24,3 +24,68 @@ detail: |
     ranking data-snooping hypothesis is **H99** (documented headroom).
   Lane B (other session, observed): northset cluster-robust inference + H46–H51.
 note: no commits made.
+
+---
+owner: devin (research canon wave)
+slice: WORLD-CLASS RESEARCH CANON — 22 modules across metrics/models/
+  labels/features/portfolio/execution
+status: COMPLETE + VERIFIED 2026-09-21
+detail: |
+  Implemented and remotely verified on D:\dipcatcher (.venv, py3.12.10):
+  - metrics: serial dependence battery (Lo-MacKinlay VR, Chow-Denning,
+    Wright rank/sign, runs, Ljung-Box, ARCH-LM, JB, arch.unitroot
+    ADF/KPSS/PP/ZA); EVT (Hill/Pickands/Dekkers, GPD POT, GEV, return
+    levels, tail dependence, extremogram); entropy (Shannon/ApEn/SampEn/
+    permutation/LZ/spectral/transfer); fractal (Hurst R/S, DFA, Katz/
+    Higuchi/Sevcik); HAC (Newey-West, QS, Andrews bw, AM prewhiten);
+    parametric risk (Cornish-Fisher, Student-t, dispatcher); drawdown
+    risk (DaR/CDaR, Omega, Kappa, ulcer, pain, Burke, tail ratio,
+    expected max DD).
+  - validation/fdr: BH, BY, Holm, Hochberg, Bonferroni, Sidak, Storey.
+  - models: fracdiff (AFML ch.5); state_space (Kalman filter/smoother,
+    local level/trend MLE, dynamic hedge ratio, OU MLE/half-life);
+    point_process (Hawkes exp-kernel MLE, branching ratio, compensator
+    residuals, thinning sim); changepoint (BOCPD Gaussian, CUSUM,
+    Page-Hinkley, binary segmentation, optimal partitioning); rmt
+    (Marchenko-Pastur, eigenclip, detone, absorption ratio, effective
+    rank, IPR, eigenmode risk shares); ensemble (Bates-Granger, GR,
+    median, trimmed, rolling IMSE); bandits (UCB1, eps-greedy, Thompson
+    Bernoulli/Gaussian, EXP3, Bayes-UCB, simulator); copula (Gaussian/t/
+    Clayton/Gumbel fit+sim, Kendall inversion, tail dependence).
+  - labels/barriers: cUSUM events, triple barrier, meta-labels, trend
+    scanning, uniqueness/decay/return weights, sequential bootstrap.
+  - features: information-driven bars (tick/volume/dollar/imbalance/run);
+    ~50-indicator TA canon; cycle/spectral filters (Goertzel, FFT
+    dominant cycle, Hilbert IF, Ehlers SuperSmoother/roofing/bandpass).
+  - portfolio/allocators: HRP, ERC, IVP, max diversification,
+    Black-Litterman, Kelly, CVaR LP, vol targeting.
+  - execution/impact: sqrt/power impact, propagator, Perold IS
+    decomposition, POV schedule, VWAP/arrival slippage.
+  - tests: 19 new unit files, ~257 tests green remotely.
+  - verification: ruff check clean; new files ruff-formatted; mypy clean
+    on all new modules; no commits.
+  - docs: RESEARCH_REFERENCES.md canon-wave section; MATH_SPEC notes;
+    day_grind_progress entry.
+note: authored in controller /tmp due to local disk exhaustion; all work
+  synced to and verified on ah-remote D:\dipcatcher only. Pre-existing
+  repo-wide format debt (~80 files) and tests/tests leftover tree noted,
+  untouched beyond autofixed import sorting.
+
+  - wave-2 canon: metrics/regression, models/factor_models, models/filters,
+    models/realized, models/var_coint, features/liquidity,
+    metrics/distribution, models/decomposition, metrics/calibration2,
+    models/mixture, models/pairs — 126 tests green, ruff+mypy clean.
+
+[wave3] 12 canon modules landed + tested on D:\dipcatcher: MS-regression/Kim,
+APARCH/FIGARCH, OOS forecast-test battery (CW/HLN/GW/ENC/GR), wild/pairs/sieve
+bootstrap + subsampling, panel unit-root/CD battery (LLC/IPS/Fisher/Hadri/CD),
+nonlinear dependence (dCor/HSIC/MMD/xi/KSG), GP/krr/kPCA, event-study battery
+(Patell/Corrado/BMP), VaR backtests (Kupiec/Christoffersen/TUFF/Basel),
+long-memory d estimators (GPH/lW/Whittle/Lo R/S), survival (KM/NA/logrank/Cox),
+dynamic panels (AH/AB+Sargan). mypy+ruff clean. Docs appended.
+
+canon wave 4: 12 modules, 108 tests, all gates green; cumulative ~57 research modules / ~610 canon tests on this checkout
+
+canon wave 5: 13 modules, 82 tests, all gates green; cumulative ~70 research modules / ~695 canon tests on this checkout
+wave6-estimation-canon
+wave7-vol-credit-selection

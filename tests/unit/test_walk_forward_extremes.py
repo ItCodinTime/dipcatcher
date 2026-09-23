@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime, timedelta
 
+import numpy as np
 import pytest
 
 from quant_fund.config.models import ValidationConfig
@@ -12,7 +13,9 @@ from quant_fund.validation.walk_forward import (
     Fold,
     assert_no_label_overlap,
     fold_ic_stability,
+    row_mask_for_times,
     session_index,
+    timestamp_ns,
     walk_forward,
 )
 
@@ -126,3 +129,15 @@ def test_fold_ic_stability_empty_nan_single_complements_happy_path() -> None:
     below = fold_ic_stability([0.01, -0.02], min_ic=0.05)
     assert below["n_folds"] == 2
     assert below["stability"] == 0.0
+
+
+def test_row_mask_for_times_matches_datetime64_and_python() -> None:
+    times = [datetime(2020, 1, 2) + timedelta(days=i) for i in range(8)]
+    dates = np.repeat(np.array(times, dtype="datetime64[ns]"), 3)
+    wanted = times[2:5]
+    mask = row_mask_for_times(dates, wanted)
+    assert int(mask.sum()) == 9
+    assert mask.tolist() == np.isin(timestamp_ns(dates), timestamp_ns(wanted)).tolist()
+    python_dates = np.array(times * 3, dtype=object)
+    assert int(row_mask_for_times(python_dates, wanted).sum()) == 9
+    assert int(row_mask_for_times(dates, []).sum()) == 0

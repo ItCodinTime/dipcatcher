@@ -1,0 +1,586 @@
+"""Volatility forecasts: rolling, EWMA, GARCH, HAR-RV, trees."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+from numpy.typing import NDArray
+from sklearn.linear_model import LinearRegression
+
+from quant_fund.models.base import JoblibMixin, ModelMeta
+from quant_fund.models.ranking import _finite
+
+
+class RollingVol(JoblibMixin):
+    def __init__(self, window: int = 20) -> None:
+        self.window = window
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> RollingVol:
+        return self
+
+    def predict_from_returns(self, log_returns: NDArray[np.float64]) -> NDArray[np.float64]:
+        r = np.asarray(log_returns, dtype=float)
+        out = np.full_like(r, np.nan)
+        for i in range(self.window, r.size + 1):
+            out[i - 1] = np.std(r[i - self.window : i], ddof=1)
+        return out
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        # last column assumed to be trailing vol already
+        return x[:, -1]
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(family="volatility", name="rolling", version="v1")
+
+
+def ewma_variance(log_returns: NDArray[np.float64], lam: float = 0.94) -> NDArray[np.float64]:
+    """RiskMetrics-style recursive variance. Fail-closed on invalid ``lam`` / empty series."""
+    if not np.isfinite(lam) or not 0.0 <= lam <= 1.0:
+        raise ValueError("lam must be finite and between 0 and 1")
+    r = np.asarray(log_returns, dtype=float).reshape(-1)
+    if r.size == 0:
+        raise ValueError("log_returns must be non-empty")
+    var = np.empty_like(r)
+    var[0] = r[0] ** 2
+    for t in range(1, r.size):
+        var[t] = lam * var[t - 1] + (1.0 - lam) * r[t - 1] ** 2
+    return var
+
+
+class EWMAVol(JoblibMixin):
+    def __init__(self, lam: float = 0.94) -> None:
+        if not np.isfinite(lam) or not 0.0 <= lam <= 1.0:
+            raise ValueError("lam must be finite and between 0 and 1")
+        self.lam = lam
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> EWMAVol:
+        return self
+
+    def predict_from_returns(self, log_returns: NDArray[np.float64]) -> NDArray[np.float64]:
+        return np.sqrt(ewma_variance(log_returns, self.lam))
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        return x[:, -1]
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(family="volatility", name="ewma", version="v1", extra={"lambda": self.lam})
+
+
+_ALLOWED_GARCH_VOLS = {
+    "garch": ("GARCH", 0),
+    "egarch": ("EGARCH", 0),
+    "gjr": ("GARCH", 1),
+    "aparch": ("APARCH", 1),
+    "figarch": ("FIGARCH", 0),
+}
+_ALLOWED_GARCH_DISTS = {"normal", "t", "skewt"}
+# Explicit provenance labels used by the training/forecast lifecycle.  A date-level
+# fit is shared across the panel; a security-level fit is fit independently per
+# security.  Keep these stable because they are persisted in model metadata.
+GARCH_DATE_LEVEL_SCOPE = "date_level_equal_weight_cross_section"
+GARCH_SECURITY_LEVEL_SCOPE = "security_level_return_series"
+_GARCH_SCALE = 100.0
+_GARCH_VARIANCE_FLOOR = 1e-16
+
+
+class GARCHVol(JoblibMixin):
+    """Causal univariate GARCH-family volatility model.
+
+    The model is fitted to *decimal returns*, not to a forward realized
+    variance label.  Returns are converted to percent units only at the
+    ``arch`` boundary and forecast variances are converted back to decimal
+    squared units.  ``forecast`` is the explicit probabilistic API; ``predict``
+    remains a compatibility adapter returning the current-origin sigma.
+
+    ``vol`` selects symmetric GARCH, EGARCH, or GJR-GARCH and ``dist`` selects
+    normal, Student-t, or skewed Student-t innovations.  Failed, non-finite,
+    non-converged, or too-short fits fail closed to a documented sample-sigma
+    fallback and expose the reason through diagnostics attributes.
+    """
+
+    def __init__(
+        self,
+        p: int = 1,
+        q: int = 1,
+        dist: str = "normal",
+        vol: str = "garch",
+        *,
+        min_obs: int = 50,
+        mean: str = "Constant",
+        power: float = 2.0,
+        series_scope: str = "univariate_return_series",
+    ) -> None:
+        if isinstance(p, bool) or isinstance(q, bool) or not isinstance(p, int) or not isinstance(q, int):
+            raise ValueError("p and q must be integers")
+        if isinstance(dist, bool) or not isinstance(dist, str):
+            raise ValueError("dist must be a string")
+        if isinstance(vol, bool) or not isinstance(vol, str):
+            raise ValueError("vol must be a string")
+        dist_key = dist.lower()
+        vol_key = vol.lower()
+        if dist_key not in _ALLOWED_GARCH_DISTS:
+            raise ValueError(f"dist must be one of {sorted(_ALLOWED_GARCH_DISTS)}")
+        if vol_key not in _ALLOWED_GARCH_VOLS:
+            raise ValueError(f"vol must be one of {sorted(_ALLOWED_GARCH_VOLS)}")
+        if vol_key == "figarch" and (p > 1 or q > 1):
+            raise ValueError("FIGARCH p and q must each be 0 or 1")
+        if vol_key != "figarch" and (p < 1 or q < 1):
+            raise ValueError("p and q must be positive integers")
+        if isinstance(min_obs, bool) or not isinstance(min_obs, int) or min_obs < 2:
+            raise ValueError("min_obs must be an integer >= 2")
+        if mean not in {"Constant", "Zero"}:
+            raise ValueError("mean must be 'Constant' or 'Zero'")
+        if not np.isfinite(power) or power <= 0.0:
+            raise ValueError("power must be finite and positive")
+        if not isinstance(series_scope, str) or not series_scope.strip():
+            raise ValueError("series_scope must be a non-empty string")
+        self.p = int(p)
+        self.q = int(q)
+        self.dist = dist_key
+        self.vol = vol_key
+        self.min_obs = min_obs
+        self.mean = mean
+        self.power = float(power)
+        self.series_scope = series_scope.strip()
+        self.result: Any = None
+        self.last_sigma: float = 0.01
+        self.n_obs = 0
+        self.fit_status = "unfitted"
+        self.converged = False
+        self.fallback_reason: str | None = None
+        self.returns_scale = "decimal_returns_to_percent"
+        self._returns_percent = np.empty(0, dtype=float)
+
+    def _fallback(self, returns_percent: NDArray[np.float64], reason: str) -> GARCHVol:
+        self.result = None
+        self.converged = False
+        self.fit_status = "fallback"
+        self.fallback_reason = reason
+        if returns_percent.size > 1:
+            sigma = float(np.std(returns_percent, ddof=1) / _GARCH_SCALE)
+            self.last_sigma = sigma if np.isfinite(sigma) and sigma > 0.0 else 0.01
+        else:
+            self.last_sigma = 0.01
+        return self
+
+    @staticmethod
+    def _param_values(params: Any, prefix: str) -> list[float]:
+        try:
+            keys = list(params.index)
+            return [float(params[key]) for key in keys if str(key).startswith(prefix)]
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return []
+
+    def _spec_inadmissible_reason(self, params: Any) -> str | None:
+        """Return a conservative reason when fitted variance parameters are invalid."""
+        if self.vol == "aparch":
+            delta = self._param_values(params, "delta")
+            if not delta or not np.isfinite(delta[0]) or not 0.0 < delta[0] <= 4.0:
+                return "invalid_aparch_delta"
+            alpha = sum(self._param_values(params, "alpha["))
+            beta = sum(self._param_values(params, "beta["))
+            gamma = sum(self._param_values(params, "gamma["))
+            if alpha + beta + 0.5 * gamma >= 1.0:
+                return "nonstationary_persistence"
+        elif self.vol == "figarch":
+            d = self._param_values(params, "d")
+            if not d or not np.isfinite(d[0]) or not 0.0 < d[0] < 1.0:
+                return "invalid_fractional_d"
+        return None
+
+    def fit_returns(self, returns: NDArray[np.float64]) -> GARCHVol:
+        """Fit directly on a causal decimal-return series."""
+        values = np.asarray(returns, dtype=float).reshape(-1)
+        return self.fit(np.empty((values.size, 0)), values, returns=values)
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> GARCHVol:
+        """Fit on causal returns; pass ``returns=`` when ``y`` is a label.
+
+        ``y`` is retained in the protocol for compatibility with other models.
+        Training code with a forward target must pass the historical return
+        series explicitly as ``returns=``; silently treating a variance target
+        as returns is prohibited by the pipeline contract.
+        """
+        if "returns" not in kwargs:
+            raise ValueError(
+                "returns= must be supplied explicitly; y may be a forward label and "
+                "cannot be used as a GARCH likelihood input"
+            )
+        from arch import arch_model
+
+        raw = kwargs.pop("returns")
+        try:
+            values = np.asarray(raw, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            return self._fallback(np.empty(0), "invalid_returns")
+        finite = values[np.isfinite(values)]
+        self.n_obs = int(finite.size)
+        returns_percent = finite * _GARCH_SCALE
+        self._returns_percent = returns_percent.copy()
+        if finite.size < self.min_obs:
+            return self._fallback(returns_percent, "insufficient_observations")
+        if np.std(returns_percent) <= 0.0 or not np.isfinite(np.std(returns_percent)):
+            return self._fallback(returns_percent, "zero_variance")
+        arch_vol, o = _ALLOWED_GARCH_VOLS[self.vol]
+        try:
+            am = arch_model(
+                returns_percent,
+                vol=arch_vol,  # type: ignore[arg-type]
+                p=self.p,
+                o=o,
+                q=self.q,
+                dist=self.dist,  # type: ignore[arg-type]
+                mean=self.mean,  # type: ignore[arg-type]
+                power=self.power,
+                rescale=False,
+            )
+            result = am.fit(disp="off", show_warning=False)
+            flag = int(getattr(result, "convergence_flag", 0))
+            cond_vol = np.asarray(result.conditional_volatility, dtype=float).reshape(-1)
+            if flag != 0:
+                return self._fallback(returns_percent, f"nonconvergence:{flag}")
+            if cond_vol.size == 0 or not np.isfinite(cond_vol).all() or cond_vol[-1] <= 0.0:
+                return self._fallback(returns_percent, "invalid_conditional_volatility")
+            params = result.params
+            if not np.isfinite(np.asarray(params, dtype=float)).all():
+                return self._fallback(returns_percent, "nonfinite_parameters")
+            inadmissible = self._spec_inadmissible_reason(params)
+            if inadmissible is not None:
+                return self._fallback(returns_percent, inadmissible)
+            alpha = sum(self._param_values(params, "alpha["))
+            beta = sum(self._param_values(params, "beta["))
+            gamma = sum(self._param_values(params, "gamma["))
+            persistence = alpha + beta + (0.5 * gamma if self.vol == "gjr" else 0.0)
+            if self.vol in {"garch", "gjr"} and persistence >= 1.0:
+                return self._fallback(returns_percent, "nonstationary_persistence")
+        except Exception as exc:
+            return self._fallback(returns_percent, f"fit_error:{type(exc).__name__}")
+        self.result = result
+        self.converged = True
+        self.fit_status = "fitted"
+        self.fallback_reason = None
+        self.last_sigma = float(cond_vol[-1] / _GARCH_SCALE)
+        return self
+
+    def in_sample_sigma_and_z(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return fitted in-sample decimal sigma and standardized residuals.
+
+        The returned arrays correspond to the finite return observations used by
+        :meth:`fit_returns`.  Sigma is in decimal-return units, while ``z`` is
+        dimensionless and uses the fitted conditional mean and volatility.  A
+        fallback remains deterministic and explicit rather than exposing the
+        percent-scaled ``arch`` internals.
+        """
+        returns = np.asarray(self._returns_percent, dtype=float).reshape(-1) / _GARCH_SCALE
+        if returns.size == 0 or self.result is None:
+            raise ValueError("GARCHVol requires a successful fit for in-sample diagnostics")
+        if self.result is not None:
+            sigma = np.asarray(self.result.conditional_volatility, dtype=float).reshape(-1) / _GARCH_SCALE
+            if sigma.size != returns.size or not np.isfinite(sigma).all() or np.any(sigma <= 0.0):
+                raise ValueError("fitted conditional volatility is invalid")
+            mean = self._mean_decimal()
+        else:
+            sigma = np.full(returns.size, max(float(self.last_sigma), np.finfo(float).eps))
+            mean = float(np.mean(returns)) if self.mean != "Zero" else 0.0
+        z = (returns - mean) / np.maximum(sigma, np.finfo(float).eps)
+        if not np.isfinite(z).all():
+            raise ValueError("standardized residuals are invalid")
+        return sigma, z
+
+    def forecast(
+        self,
+        horizon: int = 1,
+        *,
+        method: str = "analytic",
+        simulations: int = 1000,
+        quantiles: tuple[float, ...] | None = None,
+        seed: int | None = None,
+    ) -> dict[str, Any]:
+        """Return horizon-indexed decimal variance, sigma and optional quantiles.
+
+        Each element is the conditional variance of the corresponding future
+        return.  ``cumulative_variance`` is supplied for an h-bar realized
+        variance target under the usual zero autocovariance approximation.
+        """
+        if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon < 1:
+            raise ValueError("horizon must be a positive integer")
+        if method not in {"analytic", "simulation", "bootstrap"}:
+            raise ValueError("method must be analytic, simulation, or bootstrap")
+        if simulations < 1:
+            raise ValueError("simulations must be positive")
+        if self.result is None:
+            variance = np.full(horizon, max(self.last_sigma**2, _GARCH_VARIANCE_FLOOR))
+            out: dict[str, Any] = {
+                "variance": variance,
+                "sigma": np.sqrt(variance),
+                "cumulative_variance": np.cumsum(variance),
+                # Fallbacks use an explicitly Gaussian predictive law.  Keep the
+                # requested specification separate so consumers cannot mistake a
+                # t/skew-t request for calibrated non-Gaussian tail forecasts.
+                "distribution": "normal",
+                "requested_distribution": self.dist,
+                "horizon": horizon,
+                "mean": self._mean_decimal(),
+                "fit_status": self.fit_status,
+            }
+            if quantiles is not None:
+                levels = np.asarray(quantiles, dtype=float)
+                if levels.ndim != 1 or np.any((levels <= 0.0) | (levels >= 1.0)):
+                    raise ValueError("quantiles must lie strictly between 0 and 1")
+                from scipy.stats import norm
+
+                out["quantiles"] = (
+                    self.last_sigma * norm.ppf(levels)[None, :] + self._mean_decimal()
+                )
+            return out
+        # arch cannot analytically recurse EGARCH, APARCH, or FIGARCH beyond
+        # one step. Use deterministic simulation rather than returning an
+        # exception or silently substituting a repeated one-step value.
+        forecast_method = method
+        if self.vol in {"egarch", "aparch", "figarch"} and horizon > 1 and method == "analytic":
+            forecast_method = "simulation"
+        random_state = np.random.RandomState(0 if seed is None else seed)
+        forecast = self.result.forecast(
+            horizon=horizon,
+            method=forecast_method,
+            simulations=simulations,
+            random_state=random_state,
+            reindex=False,
+        )
+        variance_percent = np.asarray(forecast.variance, dtype=float)
+        variance = np.asarray(variance_percent[-1], dtype=float).reshape(-1) / (_GARCH_SCALE**2)
+        variance = np.maximum(variance[:horizon], _GARCH_VARIANCE_FLOOR)
+        out = {
+            "variance": variance,
+            "sigma": np.sqrt(variance),
+            "cumulative_variance": np.cumsum(variance),
+            "distribution": self.dist,
+            "requested_distribution": self.dist,
+            "horizon": horizon,
+            "fit_status": self.fit_status,
+            "mean": self._mean_decimal(),
+        }
+        if quantiles is not None:
+            levels = np.asarray(quantiles, dtype=float)
+            if levels.ndim != 1 or np.any((levels <= 0.0) | (levels >= 1.0)):
+                raise ValueError("quantiles must lie strictly between 0 and 1")
+            distribution = self.result.model.distribution
+            names = distribution.parameter_names()
+            params = [float(self.result.params[name]) for name in names]
+            standardized = np.asarray(distribution.ppf(levels, params), dtype=float)
+            out["quantiles"] = (
+                self._mean_decimal() + np.sqrt(variance)[:, None] * standardized[None, :]
+            )
+        return out
+
+    def _mean_decimal(self) -> float:
+        if self.result is None or self.mean == "Zero":
+            return 0.0
+        try:
+            return float(self.result.params["mu"]) / _GARCH_SCALE
+        except (KeyError, TypeError, ValueError):
+            return 0.0
+
+    def pit(
+        self, returns: NDArray[np.float64], sigma: NDArray[np.float64] | None = None
+    ) -> NDArray[np.float64]:
+        """Evaluate predictive PIT values for returns and supplied sigmas."""
+        values = np.asarray(returns, dtype=float).reshape(-1)
+        scales = (
+            np.full(values.size, self.last_sigma)
+            if sigma is None
+            else np.asarray(sigma, dtype=float).reshape(-1)
+        )
+        if values.size != scales.size:
+            raise ValueError("returns and sigma must have the same length")
+        valid = np.isfinite(values) & np.isfinite(scales) & (scales > 0.0)
+        out = np.full(values.size, np.nan)
+        if self.result is None:
+            from scipy.stats import norm
+
+            out[valid] = norm.cdf((values[valid] - self._mean_decimal()) / scales[valid])
+            return np.clip(out, 0.0, 1.0)
+        distribution = self.result.model.distribution
+        names = distribution.parameter_names()
+        params = [float(self.result.params[name]) for name in names]
+        standardized = (values[valid] - self._mean_decimal()) / scales[valid]
+        out[valid] = distribution.cdf(standardized, params)
+        return np.clip(out, 0.0, 1.0)
+
+    def log_density(
+        self, returns: NDArray[np.float64], sigma: NDArray[np.float64] | None = None
+    ) -> NDArray[np.float64]:
+        """Evaluate one-step predictive log density in decimal-return units."""
+        values = np.asarray(returns, dtype=float).reshape(-1)
+        scales = (
+            np.full(values.size, self.last_sigma)
+            if sigma is None
+            else np.asarray(sigma, dtype=float).reshape(-1)
+        )
+        if values.size != scales.size:
+            raise ValueError("returns and sigma must have the same length")
+        out = np.full(values.size, np.nan, dtype=float)
+        valid = np.isfinite(values) & np.isfinite(scales) & (scales > 0.0)
+        if not np.any(valid):
+            return out
+        if self.result is None:
+            standardized = (values[valid] - self._mean_decimal()) / scales[valid]
+            out[valid] = (
+                -0.5 * standardized**2
+                - np.log(scales[valid])
+                - 0.5 * np.log(2.0 * np.pi)
+            )
+            return out
+        distribution = self.result.model.distribution
+        names = distribution.parameter_names()
+        params = np.asarray([float(self.result.params[name]) for name in names], dtype=float)
+        residuals_percent = (values[valid] - self._mean_decimal()) * _GARCH_SCALE
+        sigma_percent = scales[valid] * _GARCH_SCALE
+        scored = distribution.loglikelihood(
+            params,
+            residuals_percent,
+            np.square(sigma_percent),
+            individual=True,
+        )
+        # arch evaluates the density in percent-return units; the decimal-return
+        # density includes the positive Jacobian log(100).
+        out[valid] = np.asarray(scored, dtype=float).reshape(-1) + np.log(_GARCH_SCALE)
+        return out
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return a small JSON/joblib-safe audit record for the fitted model."""
+        return {
+            "n_obs": int(self.n_obs),
+            "fit_status": self.fit_status,
+            "converged": bool(self.converged),
+            "fallback_reason": self.fallback_reason,
+            "returns_scale": self.returns_scale,
+            "variance_units": "decimal_squared",
+            "p": int(self.p),
+            "q": int(self.q),
+            "dist": self.dist,
+            "vol": self.vol,
+            "series_scope": getattr(self, "series_scope", "univariate_return_series"),
+        }
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Compatibility adapter: current-origin sigma for each requested row."""
+        n = int(np.asarray(x).shape[0])
+        return np.full(n, float(self.forecast(horizon=1)["sigma"][0]))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="volatility",
+            name=f"{self.vol}{self.p}-{self.q}_{self.dist}",
+            version="v2",
+            extra={
+                "p": self.p,
+                "q": self.q,
+                "dist": self.dist,
+                "vol": self.vol,
+                "series_scope": getattr(self, "series_scope", "univariate_return_series"),
+            },
+        )
+
+
+class HARVol(JoblibMixin):
+    def __init__(self, use_log: bool = True) -> None:
+        self.use_log = use_log
+        self.model = LinearRegression()
+        self.fitted = False
+
+    @staticmethod
+    def har_design(rv: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Build HAR regressors available immediately before each target time.
+
+        Row ``t`` forecasts realized volatility at ``t`` using ``rv[t-1]`` and
+        trailing averages ending at ``t-1``.  The prior implementation included
+        ``rv[t]`` in every row, making in-sample forecasts contemporaneously
+        leak their target.
+        """
+        values = np.asarray(rv, dtype=float).reshape(-1)
+        n = values.size
+        lagged = np.full(n, np.nan)
+        if n > 1:
+            lagged[1:] = values[:-1]
+
+        def trailing_mean(window: int) -> NDArray[np.float64]:
+            result = np.full(n, np.nan)
+            for t in range(window, n):
+                result[t] = np.mean(lagged[t - window + 1 : t + 1])
+            return result
+
+        return np.column_stack([np.ones(n), lagged, trailing_mean(5), trailing_mean(22)])
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> HARVol:
+        """Fit on the declared, origin-time volatility feature matrix.
+
+        ``train_volatility`` supplies the five-column volatility feature contract.
+        The previous implementation ignored those features and rebuilt regressors
+        from the forward target ``y``.  Besides creating a feature-count mismatch at
+        prediction time, that made the model use future observations as regressors.
+        HAR's standalone lag builder remains available for callers that explicitly
+        construct a causal HAR design, but the estimator itself is a normal
+        supervised model: fit and predict consume the same ``x`` schema.
+        """
+        features = np.asarray(x, dtype=float)
+        target = np.asarray(y, dtype=float).reshape(-1)
+        if features.ndim != 2:
+            raise ValueError("x must be a two-dimensional feature matrix")
+        if features.shape[0] != target.size:
+            raise ValueError("x and y must have the same number of rows")
+        mask = np.isfinite(features).all(axis=1) & np.isfinite(target)
+        if mask.sum() < 10:
+            return self
+        response = np.log(np.clip(target, 1e-12, None)) if self.use_log else target
+        self.model.fit(features[mask], response[mask])
+        self.fitted = True
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        features = np.asarray(x, dtype=float)
+        if features.ndim != 2:
+            raise ValueError("x must be a two-dimensional feature matrix")
+        if not self.fitted:
+            return np.full(features.shape[0], np.nan)
+        pred = self.model.predict(features)
+        if self.use_log:
+            pred = np.exp(pred)
+        return np.asarray(pred, dtype=float)
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="volatility",
+            name="har_rv",
+            version="v2",
+            extra={"input_contract": "supervised_volatility_features"},
+        )
+
+
+class TreeVol(JoblibMixin):
+    def __init__(self, backend: str = "lightgbm", seed: int = 42) -> None:
+        self.backend = backend
+        if backend == "xgboost":
+            from xgboost import XGBRegressor
+
+            self.model = XGBRegressor(
+                n_estimators=80, max_depth=3, n_jobs=1, random_state=seed, verbosity=0
+            )
+        else:
+            from lightgbm import LGBMRegressor
+
+            self.model = LGBMRegressor(
+                n_estimators=80, num_leaves=15, random_state=seed, verbosity=-1
+            )
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> TreeVol:
+        xx, yy, _ = _finite(x, y)
+        self.model.fit(xx, yy)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        return np.asarray(self.model.predict(x), dtype=float)
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(family="volatility", name=f"{self.backend}_vol", version="v1")

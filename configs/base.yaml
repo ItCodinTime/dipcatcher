@@ -81,6 +81,21 @@ promotion:
   min_cost_adjusted_spread: 0.0
   max_turnover: 5.0
   require_leakage_pass: true
+# Kronos-derived K-line foundation engine (ADR-023). Numpy backend is default;
+# torch + Hub weights are opt-in and never downloaded by CI.
+robinhood_plus:
+  enabled: true
+  backend: numpy
+  decoder: hierarchical_markov
+  variant: mini
+  lookback: 64
+  pred_len: 20
+  sample_count: 8
+  s1_bits: 5
+  s2_bits: 5
+  # Challenger until it beats ridge on causal SYNTHETIC IC (ADR-023).
+  blend_weight: 0.0
+  allow_network: false
 northset:
   n_book_levels: 5
   n_session_candles: 8

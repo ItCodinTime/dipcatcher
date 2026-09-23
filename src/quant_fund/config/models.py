@@ -51,6 +51,30 @@ class GarchVolSpec(str, Enum):
     GARCH = "garch"
     EGARCH = "egarch"
     GJR = "gjr"
+    APARCH = "aparch"
+    FIGARCH = "figarch"
+
+
+class RobinhoodPlusBackend(str, Enum):
+    """K-line foundation backends. Torch is the optional [nn] extra."""
+
+    NUMPY = "numpy"
+    TORCH = "torch"
+
+
+class RobinhoodPlusDecoder(str, Enum):
+    """NumPy decoders for hierarchical K-line tokens."""
+
+    HIERARCHICAL_MARKOV = "hierarchical_markov"
+    TRANSFORMER = "transformer"
+
+
+class RobinhoodPlusVariant(str, Enum):
+    """Kronos zoo sizes. Numpy uses the same names for research-scale maps."""
+
+    MINI = "mini"
+    SMALL = "small"
+    BASE = "base"
 
 
 class RuntimeConfig(StrictConfigModel):
@@ -179,47 +203,6 @@ class CostConfig(StrictConfigModel):
         return self
 
 
-class PerpConfig(StrictConfigModel):
-    """USDT-M perpetual margin/funding mechanics for the perp backtest book.
-
-    These fields are deliberately separate from CostConfig: funding is a
-    *cashflow*, not a transaction cost, and margin/liquidation have no spot
-    analog. Defaults are conservative (Binance large-cap maintenance margin
-    is ~0.4-1% tier-dependent; liquidation fee approximates the insurance-fund
-    charge on force-closed notional).
-    """
-
-    max_leverage: float = 3.0
-    maint_margin_ratio: float = 0.005
-    liquidation_fee_bps: float = 100.0
-    liquidation_on_wick: bool = True
-    funding_enabled: bool = True
-    fill_delay_bars: int = 0
-    funding_spike_multiplier: float = 1.0
-    periods_per_year_override: float | None = None
-    bar_seconds_hint: int | None = None
-
-    @model_validator(mode="after")
-    def valid_perp_bounds(self) -> PerpConfig:
-        if not np.isfinite(self.max_leverage) or self.max_leverage <= 0:
-            raise ValueError("max_leverage must be finite and positive")
-        if not np.isfinite(self.maint_margin_ratio) or not 0 < self.maint_margin_ratio < 1:
-            raise ValueError("maint_margin_ratio must be in (0, 1)")
-        for name in ("liquidation_fee_bps", "funding_spike_multiplier"):
-            value = float(getattr(self, name))
-            if not np.isfinite(value) or value < 0:
-                raise ValueError(f"{name} must be finite and non-negative")
-        if self.fill_delay_bars < 0:
-            raise ValueError("fill_delay_bars must be non-negative")
-        if self.periods_per_year_override is not None and (
-            not np.isfinite(self.periods_per_year_override) or self.periods_per_year_override <= 0
-        ):
-            raise ValueError("periods_per_year_override must be finite and positive")
-        if self.bar_seconds_hint is not None and self.bar_seconds_hint <= 0:
-            raise ValueError("bar_seconds_hint must be positive")
-        return self
-
-
 class ExecutionConfig(StrictConfigModel):
     fill: FillConvention = FillConvention.NEXT_OPEN
     allow_close_auction: bool = False
@@ -331,6 +314,28 @@ class OptimizerConfig(StrictConfigModel):
     solver: str = "CLARABEL"
     mode: str = "mean_variance"
     risk_aversion: float = 1.0
+    # Named covariance path for optimize_asof / /risk/portfolio. Default stays
+    # trailing Ledoit–Wolf 2004 plus the GARCH/RGARCH overlay. dcc_gaussian,
+    # dcc_student_t, adcc, ccc, agdcc, agdcc_full, and ewma are explicit
+    # one-step paths. oas, ledoit_wolf_nonlinear, and sample are explicit
+    # trailing paths plus the overlay. Generic dcc and catalog estimators
+    # that are not optimizer-wired (factor) fail closed rather than
+    # silently substituting. Named ledoit_wolf_nonlinear is analytical
+    # 2020 spectral shrinkage and must not silently size as 2004 linear
+    # Ledoit–Wolf. Named agdcc is diagonal CES AG-DCC; named agdcc_full
+    # is unrestricted CES AG-DCC and must not silently size as diagonal
+    # AG-DCC. Scalar CES ADCC is not diagonal AG-DCC. CCC is Bollerslev
+    # constant correlation, not Engle DCC.
+    covariance: str = "ledoit_wolf"
+
+    @field_validator("covariance")
+    @classmethod
+    def implemented_optimizer_covariance(cls, value: object) -> str:
+        from quant_fund.models.covariance import require_implemented_optimizer_covariance
+
+        if not isinstance(value, str):
+            raise ValueError("optimizer covariance must be a non-empty string")
+        return require_implemented_optimizer_covariance(value)
 
     @model_validator(mode="after")
     def valid_optimizer_bounds(self) -> OptimizerConfig:
@@ -547,6 +552,66 @@ class TrainConfig(StrictConfigModel):
     lgbm_num_leaves: int = 15
     ridge_alpha: float = 1.0
     elasticnet_l1: float = 0.5
+    rff_n_features: int = 256
+    rff_gamma: float = 2.0
+    rff_z: float = 1.0
+    sdf_ridge_z: float = 1.0
+    sdf_en_l2: float = 1.0
+    sdf_en_l1: float = 0.05
+    ipca_n_factors: int = 3
+    ipca_max_iter: int = 50
+    ipca_tol: float = 1e-6
+    rp_pca_n_factors: int = 3
+    rp_pca_gamma: float = 10.0
+    gx_n_factors: int = 3
+    fnw_n_intervals: int = 4
+    fnw_lam: float = 0.05
+    ds_lasso_alpha: float = 0.01
+    pcr_n_factors: int = 3
+    pls_n_factors: int = 3
+    tprf_n_factors: int = 3
+    gbrt_n_estimators: int = 40
+    gbrt_max_depth: int = 2
+    gbrt_learning_rate: float = 0.1
+    pp_n_factors: int = 3
+    alasso_alpha: float = 0.01
+    fm_ridge_alpha: float = 1.0
+    paper_rankers: list[str] = Field(
+        default_factory=lambda: [
+            "reversal",
+            "classic_st",
+            "classic",
+            "nautica",
+            "tsmom",
+            "vme",
+            "krauss",
+            "ridge_st",
+            "ridge_neut",
+            "fm_st",
+            "combo_ic_st",
+            "combo_ic",
+            "combo_msfe",
+            "combo",
+            "fm_ridge",
+            "fm",
+            "pcr",
+            "pls",
+            "ds_lasso",
+            "alasso",
+            "gx3pass",
+            "rp_pca",
+            "sdf_ridge",
+            "sdf_en",
+            "tprf",
+            "pp",
+            "rff",
+            "rff_ridgeless",
+            "ipca",
+            "ipca_alpha",
+            "gbrt",
+            "fnw",
+        ]
+    )
     n_hmm_states: int = 3
     garch_p: int = 1
     garch_q: int = 1
@@ -574,19 +639,97 @@ class TrainConfig(StrictConfigModel):
             "n_hmm_states",
             "garch_p",
             "garch_q",
+            "ipca_n_factors",
+            "ipca_max_iter",
+            "pcr_n_factors",
+            "pls_n_factors",
+            "tprf_n_factors",
+            "gbrt_n_estimators",
+            "gbrt_max_depth",
+            "pp_n_factors",
         ):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be positive")
-        for name in ("ridge_alpha", "elasticnet_l1", "qlike_floor", "psd_eigen_tol"):
+        for name in (
+            "ridge_alpha",
+            "elasticnet_l1",
+            "qlike_floor",
+            "psd_eigen_tol",
+            "rff_z",
+            "sdf_ridge_z",
+            "sdf_en_l2",
+            "sdf_en_l1",
+            "fnw_lam",
+            "ds_lasso_alpha",
+            "gbrt_learning_rate",
+            "alasso_alpha",
+            "fm_ridge_alpha",
+        ):
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
+        for name in ("rp_pca_n_factors", "gx_n_factors", "fnw_n_intervals"):
+            if getattr(self, name) < 1:
+                raise ValueError(f"{name} must be positive")
+        if self.fnw_n_intervals < 2:
+            raise ValueError("fnw_n_intervals must be >= 2")
+        if not np.isfinite(self.rp_pca_gamma) or self.rp_pca_gamma < -1.0:
+            raise ValueError("rp_pca_gamma must be finite and >= -1")
+        if not np.isfinite(self.gbrt_learning_rate) or self.gbrt_learning_rate <= 0:
+            raise ValueError("gbrt_learning_rate must be finite and positive")
+        allowed = {
+            "rff",
+            "rff_ridgeless",
+            "sdf_ridge",
+            "sdf_en",
+            "ipca",
+            "ipca_alpha",
+            "rp_pca",
+            "fnw",
+            "gx3pass",
+            "ds_lasso",
+            "fm",
+            "pcr",
+            "pls",
+            "tprf",
+            "gbrt",
+            "pp",
+            "combo",
+            "alasso",
+            "classic",
+            "fm_ridge",
+            "combo_ic",
+            "reversal",
+            "classic_st",
+            "ridge_st",
+            "ridge_neut",
+            "fm_st",
+            "combo_ic_st",
+            "combo_msfe",
+            "nautica",
+            "tsmom",
+            "vme",
+            "krauss",
+        }
+        unknown = [name for name in self.paper_rankers if name not in allowed]
+        if unknown:
+            raise ValueError(f"unknown paper_rankers {unknown!r}")
+        if self.rff_n_features < 2 or self.rff_n_features % 2 != 0:
+            raise ValueError("rff_n_features must be an even integer >= 2")
+        if not np.isfinite(self.rff_gamma) or self.rff_gamma <= 0:
+            raise ValueError("rff_gamma must be finite and positive")
+        if not np.isfinite(self.ipca_tol) or self.ipca_tol <= 0:
+            raise ValueError("ipca_tol must be finite and positive")
         if not 0 <= self.elasticnet_l1 <= 1:
             raise ValueError("elasticnet_l1 must be in [0, 1]")
         if self.qlike_floor <= 0 or self.psd_eigen_tol <= 0:
             raise ValueError("qlike_floor and psd_eigen_tol must be positive")
         if self.auto_min_oos_rows < 1:
             raise ValueError("auto_min_oos_rows must be positive")
+        if self.garch_vol == GarchVolSpec.FIGARCH and (
+            self.garch_p not in (0, 1) or self.garch_q not in (0, 1)
+        ):
+            raise ValueError("FIGARCH garch_p and garch_q must be 0 or 1")
         return self
 
 
@@ -761,6 +904,43 @@ class KillSwitchConfig(StrictConfigModel):
     allow_auto_flatten: bool = False
 
 
+class PerpConfig(StrictConfigModel):
+    """Perpetual-futures carry backtest settings (``run_carry_backtest``)."""
+
+    periods_per_year_override: float | None = None
+    bar_seconds_hint: float | None = None
+    funding_enabled: bool = True
+    # Stress multiplier applied to observed funding rates (1.0 = use as-is).
+    funding_spike_multiplier: float = 1.0
+    max_leverage: float = 3.0
+    liquidation_on_wick: bool = True
+    maint_margin_ratio: float = 0.05
+    liquidation_fee_bps: float = 50.0
+    fill_delay_bars: int = 0
+
+    @model_validator(mode="after")
+    def valid_perp_settings(self) -> PerpConfig:
+        if self.periods_per_year_override is not None and (
+            not np.isfinite(self.periods_per_year_override) or self.periods_per_year_override <= 0
+        ):
+            raise ValueError("perp.periods_per_year_override must be finite and positive")
+        if self.bar_seconds_hint is not None and (
+            not np.isfinite(self.bar_seconds_hint) or self.bar_seconds_hint <= 0
+        ):
+            raise ValueError("perp.bar_seconds_hint must be finite and positive")
+        for name in ("funding_spike_multiplier", "liquidation_fee_bps"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value < 0:
+                raise ValueError(f"perp.{name} must be finite and non-negative")
+        if not np.isfinite(self.max_leverage) or self.max_leverage <= 0:
+            raise ValueError("perp.max_leverage must be finite and positive")
+        if not np.isfinite(self.maint_margin_ratio) or not 0.0 < self.maint_margin_ratio < 1.0:
+            raise ValueError("perp.maint_margin_ratio must be finite and in (0, 1)")
+        if self.fill_delay_bars < 0:
+            raise ValueError("perp.fill_delay_bars must be non-negative")
+        return self
+
+
 class NorthsetConfig(StrictConfigModel):
     """Order-book + candlestick research slice (ADR-021)."""
 
@@ -849,6 +1029,57 @@ class NorthsetConfig(StrictConfigModel):
         return self
 
 
+class RobinhoodPlusConfig(StrictConfigModel):
+    """Kronos-derived K-line foundation engine (robinhood+). ADR-023."""
+
+    enabled: bool = True
+    backend: RobinhoodPlusBackend = RobinhoodPlusBackend.NUMPY
+    decoder: RobinhoodPlusDecoder = RobinhoodPlusDecoder.HIERARCHICAL_MARKOV
+    variant: RobinhoodPlusVariant = RobinhoodPlusVariant.MINI
+    lookback: int = 64
+    pred_len: int = 20
+    sample_count: int = 8
+    s1_bits: int = 5
+    s2_bits: int = 5
+    temperature: float = 1.0
+    top_p: float = 0.9
+    max_context: int = 512
+    clip: float = 5.0
+    # Default 0: numpy Markov lost the SYNTHETIC ridge champion/challenger card.
+    # An engine that cannot beat the baseline must not size the book (ADR-023).
+    blend_weight: float = 0.0
+    allow_network: bool = False
+    tokenizer_path: str | None = None
+    model_path: str | None = None
+
+    @model_validator(mode="after")
+    def valid_robinhood_plus(self) -> RobinhoodPlusConfig:
+        if self.lookback < 2:
+            raise ValueError("robinhood_plus.lookback must be at least 2")
+        if self.pred_len < 1:
+            raise ValueError("robinhood_plus.pred_len must be positive")
+        if self.sample_count < 1:
+            raise ValueError("robinhood_plus.sample_count must be positive")
+        if self.s1_bits < 1 or self.s2_bits < 1:
+            raise ValueError("robinhood_plus s1_bits/s2_bits must be positive")
+        if self.s1_bits + self.s2_bits > 16:
+            raise ValueError("robinhood_plus codebook bits must be <= 16 for the numpy backend")
+        if self.max_context < 1:
+            raise ValueError("robinhood_plus.max_context must be positive")
+        for name in ("temperature", "clip"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError(f"robinhood_plus.{name} must be finite and positive")
+        if not np.isfinite(self.top_p) or not 0.0 < self.top_p <= 1.0:
+            raise ValueError("robinhood_plus.top_p must be finite and in (0, 1]")
+        if not np.isfinite(self.blend_weight) or not 0.0 <= self.blend_weight <= 1.0:
+            raise ValueError("robinhood_plus.blend_weight must be finite and in [0, 1]")
+        if self.backend is RobinhoodPlusBackend.TORCH and self.allow_network:
+            # Hub downloads are explicit; CI and default research stay offline.
+            pass
+        return self
+
+
 class AppConfig(StrictConfigModel):
     """Fully resolved experiment configuration."""
 
@@ -874,6 +1105,7 @@ class AppConfig(StrictConfigModel):
     kill_switch: KillSwitchConfig = Field(default_factory=KillSwitchConfig)
     paper: PaperConfig = Field(default_factory=PaperConfig)
     northset: NorthsetConfig = Field(default_factory=NorthsetConfig)
+    robinhood_plus: RobinhoodPlusConfig = Field(default_factory=RobinhoodPlusConfig)
     inherit: str | None = None
 
     def embargo_bars(self) -> int:

@@ -1,0 +1,3205 @@
+{
+  "artifact_sha256": {
+    "kronos_small": "ec0ef7fc2c84ae572119d71a4d251c466c58a419d7fa6068d8f2cf1713ede50b",
+    "kronos_small_tokenizer": "fbe595b16f2ea8a29635cd6734c1b9d646463900c1baad41be1af4f92e116f35"
+  },
+  "bar_interval_ns": 86400000000000,
+  "bars_sha256": {
+    "adausdt_1d.parquet": "59b5ec1a9076065bbedc3e14e49e59ee5f3781646721710dffca0aeab093a3f2",
+    "avaxusdt_1d.parquet": "40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359",
+    "bnbusdt_1d_deep.parquet": "313b3e6b0bf57e7466cdddcc2140cc09cdeeabda43f088b6b978cdb056213aff",
+    "btcusdt_1d_deep.parquet": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+    "dogeusdt_1d.parquet": "a8a8005ee958a265c313ac6ee3da9f0dacf1e1d7be95b7496bb5a58d687bf7c7",
+    "ethusdt_1d_deep.parquet": "3a98525bc28b1d88c3ddbe2d3a5d5d395d222310d026c7f4ea742b0c2bfbe089",
+    "linkusdt_1d.parquet": "e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512",
+    "ltcusdt_1d.parquet": "ce5bd0ab9540792895940afae9e0934db0eaf0e221bf3ae7bd3d1e89ce361b3a",
+    "solusdt_1d_deep.parquet": "30241c88ad9ad82c18c1ad45a064b87ca7cc1e2180c4d9f4bf19837bb12bbcae",
+    "trxusdt_1d.parquet": "9eb8c62328057e0eef19013be9e435b585d880a9ebe14a6f59bc1cc14427d3f3",
+    "xrpusdt_1d_deep.parquet": "542e6fa82a63a5489dd04f8b369e55d57529f3946a2f9dfc8717ece99ff60c6f"
+  },
+  "bootstrap_sensitivity": [],
+  "challengers": [
+    "dip_gauss",
+    "dip_student_t",
+    "dip_ewma_t",
+    "dip_empirical",
+    "dip_empirical_long",
+    "dip_garch_t",
+    "dip_fhs",
+    "dip_ewma_emp",
+    "dip_lgbm_q",
+    "dip_blend",
+    "dip_gmm_k",
+    "dip_skt",
+    "dip_qar",
+    "dip_conf_t",
+    "dip_regime",
+    "dip_stack"
+  ],
+  "common_sample": {
+    "mean_crps": {
+      "dip_blend": 0.01569769455525156,
+      "dip_conf_t": 0.01569535886276794,
+      "dip_empirical": 0.015702827510324546,
+      "dip_empirical_long": 0.015847797543324264,
+      "dip_ewma_emp": 0.01575888571263496,
+      "dip_ewma_t": 0.01586694967102669,
+      "dip_fhs": 0.015621292085869033,
+      "dip_garch_t": 0.015631121284080802,
+      "dip_gauss": 0.01604982560070401,
+      "dip_gmm_k": 0.015874777818547625,
+      "dip_lgbm_q": 0.016099677603085196,
+      "dip_qar": 0.01578420784117565,
+      "dip_regime": 0.01573410316476726,
+      "dip_skt": 0.015835251197816716,
+      "dip_stack": 0.01582541215289614,
+      "dip_student_t": 0.015707161422686158,
+      "kronos_small": 0.023836632766702313
+    },
+    "mean_pinball": {
+      "dip_blend": {
+        "0.05": 0.0032170665918231575,
+        "0.5": 0.010473218239888709,
+        "0.95": 0.003913268848267523
+      },
+      "dip_conf_t": {
+        "0.05": 0.003169408714211294,
+        "0.5": 0.010472818271862269,
+        "0.95": 0.0039221777810546435
+      },
+      "dip_empirical": {
+        "0.05": 0.0031646627601972636,
+        "0.5": 0.010474553067665907,
+        "0.95": 0.003919464232828741
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0033332746322845843,
+        "0.5": 0.010439465603122498,
+        "0.95": 0.004011678877352373
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0031249041099009043,
+        "0.5": 0.010504889925433379,
+        "0.95": 0.0039571666441636805
+      },
+      "dip_ewma_t": {
+        "0.05": 0.003496013001649625,
+        "0.5": 0.010453611927484686,
+        "0.95": 0.003824106666574221
+      },
+      "dip_fhs": {
+        "0.05": 0.0031626158854972807,
+        "0.5": 0.010438574315877535,
+        "0.95": 0.0037812601262322
+      },
+      "dip_garch_t": {
+        "0.05": 0.0032419997549017797,
+        "0.5": 0.010440155210021685,
+        "0.95": 0.0037852580733043276
+      },
+      "dip_gauss": {
+        "0.05": 0.0033751061510824223,
+        "0.5": 0.010469534442946857,
+        "0.95": 0.003930260180015645
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0033921380714722264,
+        "0.5": 0.010442376736427686,
+        "0.95": 0.004069603671444568
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0032024140968870815,
+        "0.5": 0.010920325576720916,
+        "0.95": 0.0039617238099252045
+      },
+      "dip_qar": {
+        "0.05": 0.0032633658502892134,
+        "0.5": 0.010466866266015723,
+        "0.95": 0.0038254737185764646
+      },
+      "dip_regime": {
+        "0.05": 0.003263610161468483,
+        "0.5": 0.010442065305176388,
+        "0.95": 0.0038886556413029777
+      },
+      "dip_skt": {
+        "0.05": 0.003344095629283821,
+        "0.5": 0.010439517897554224,
+        "0.95": 0.004001369312120418
+      },
+      "dip_stack": {
+        "0.05": 0.0032798851056650823,
+        "0.5": 0.01043610614628089,
+        "0.95": 0.0039073434151244875
+      },
+      "dip_student_t": {
+        "0.05": 0.0032838393358934365,
+        "0.5": 0.010480469489435998,
+        "0.95": 0.003926679825982112
+      },
+      "kronos_small": {
+        "0.05": 0.005627688358520257,
+        "0.5": 0.01601130060842338,
+        "0.95": 0.005667749246953569
+      }
+    },
+    "n_rows": 3300
+  },
+  "config": {
+    "garch_window": 750,
+    "inference_seed": 7,
+    "lookback": 400,
+    "merged_parts": 11,
+    "n_boot": 1000,
+    "origins_per_asset": 300,
+    "samples_per_origin": 16,
+    "seed": 7,
+    "target_specs": {
+      "kronos_small": {
+        "kind": "kronos",
+        "model_dir": "data\\models\\Kronos-small"
+      }
+    },
+    "targets": [
+      "kronos_small"
+    ],
+    "taus": [
+      0.05,
+      0.5,
+      0.95
+    ],
+    "window": 250
+  },
+  "coverage": {
+    "dip_blend": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_conf_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_empirical": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_empirical_long": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_ewma_emp": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_ewma_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_fhs": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_garch_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_gauss": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_gmm_k": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_lgbm_q": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_qar": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_regime": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_skt": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_stack": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "dip_student_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    },
+    "kronos_small": {
+      "coverage_fraction": 1.0,
+      "emitted": 3300,
+      "finite_crps": 3300,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "ADAUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "AVAXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "DOGEUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LINKUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "LTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "TRXUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 3300,
+      "scored_all_metrics": 3300
+    }
+  },
+  "created_at": "2026-09-22T15:36:55.455001+00:00",
+  "diebold_mariano": {},
+  "disclaimer": "Causal walk-forward evaluation on public Binance klines with proper scores only. Not a live-trading or deployability claim.",
+  "effect_sizes": {
+    "status": "unavailable"
+  },
+  "implementation_sha256": {
+    "inference.py": "bfb0833cebd60e46d7ba4b96ea3d00d04a503ab14cd95ea89e0708430bd2c86a",
+    "snooping.py": "c6342ecb2a5f527deba60aacdfb272d7e07e631b79ef4c1e448a598009a264a3",
+    "sota_eval_kronos.py": "da47894c63df430fe149b2e5ce1129381d1a59054dcb2ab1e1796645a1e4092f",
+    "sota_evidence.py": "45fa0f73e268c7df18f7e8ea8a8e02d60cc057d41989d8854bd189602f98f824"
+  },
+  "inference": {
+    "bar_interval_ns": 86400000000000,
+    "first_target_time_ns": 1764028800000000000,
+    "last_target_time_ns": 1789862400000000000,
+    "method": "equal_weight_asset_loss_by_target_time",
+    "n_assets": 11,
+    "n_balanced_times": 300,
+    "n_excluded_times": 0,
+    "n_observations": 0,
+    "n_target_times": 300,
+    "reason": "unverified_scoring_contract",
+    "scope": "conditional_on_balanced_complete_observations",
+    "status": "unavailable"
+  },
+  "inference_mean_crps": {
+    "dip_blend": null,
+    "dip_conf_t": null,
+    "dip_empirical": null,
+    "dip_empirical_long": null,
+    "dip_ewma_emp": null,
+    "dip_ewma_t": null,
+    "dip_fhs": null,
+    "dip_garch_t": null,
+    "dip_gauss": null,
+    "dip_gmm_k": null,
+    "dip_lgbm_q": null,
+    "dip_qar": null,
+    "dip_regime": null,
+    "dip_skt": null,
+    "dip_stack": null,
+    "dip_student_t": null,
+    "kronos_small": null
+  },
+  "legacy_scores_require_rerun": true,
+  "live_pnl_claim": false,
+  "losses_file": "merge_d1fix_aug2.losses.npz",
+  "losses_sha256": "3ba03a253dc34f7d3ed6f041b5f41825f4118b22411f745677fc2668d908c6e1",
+  "mcs_included": {},
+  "mcs_p_values": {},
+  "mcs_status": "unavailable",
+  "mean_crps_per_asset": {
+    "ADAUSDT": {
+      "dip_blend": 0.021322658800121064,
+      "dip_conf_t": 0.02130760626522545,
+      "dip_empirical": 0.02130939190912634,
+      "dip_empirical_long": 0.021300031356981535,
+      "dip_ewma_emp": 0.02147748790264518,
+      "dip_ewma_t": 0.021674233544564835,
+      "dip_fhs": 0.0211990700340402,
+      "dip_garch_t": 0.02126108728429206,
+      "dip_gauss": 0.021517957948559006,
+      "dip_gmm_k": 0.02129756365464921,
+      "dip_lgbm_q": 0.021839603780577442,
+      "dip_qar": 0.021216004799377627,
+      "dip_regime": 0.021340293293029645,
+      "dip_skt": 0.021279670771546945,
+      "dip_stack": 0.021310813137121437,
+      "dip_student_t": 0.021365355103848575,
+      "kronos_small": 0.03968518714561963
+    },
+    "AVAXUSDT": {
+      "dip_blend": 0.01964055463868567,
+      "dip_conf_t": 0.01965548714818919,
+      "dip_empirical": 0.019657908318432695,
+      "dip_empirical_long": 0.01993374517277901,
+      "dip_ewma_emp": 0.019710635712042516,
+      "dip_ewma_t": 0.019728856013540467,
+      "dip_fhs": 0.019660259324520667,
+      "dip_garch_t": 0.019614225095237612,
+      "dip_gauss": 0.020012639892297335,
+      "dip_gmm_k": 0.019938467036875258,
+      "dip_lgbm_q": 0.020264028994333383,
+      "dip_qar": 0.019827393107449524,
+      "dip_regime": 0.019827584124340252,
+      "dip_skt": 0.019902496411439763,
+      "dip_stack": 0.019816892964436755,
+      "dip_student_t": 0.019638429511964324,
+      "kronos_small": 0.038530836268064125
+    },
+    "BNBUSDT": {
+      "dip_blend": 0.012093777222973895,
+      "dip_conf_t": 0.012095713280769586,
+      "dip_empirical": 0.012103926419247924,
+      "dip_empirical_long": 0.012094684859832555,
+      "dip_ewma_emp": 0.01215019835450802,
+      "dip_ewma_t": 0.01218839526286716,
+      "dip_fhs": 0.011905297825511309,
+      "dip_garch_t": 0.01189783527278518,
+      "dip_gauss": 0.01249879375140035,
+      "dip_gmm_k": 0.012101601716777814,
+      "dip_lgbm_q": 0.0122891336540457,
+      "dip_qar": 0.011996377999545109,
+      "dip_regime": 0.011954676854264988,
+      "dip_skt": 0.012085080790848302,
+      "dip_stack": 0.012042875981892897,
+      "dip_student_t": 0.012090151067257086,
+      "kronos_small": 0.018985927965108104
+    },
+    "BTCUSDT": {
+      "dip_blend": 0.012145453916039077,
+      "dip_conf_t": 0.012151333549697316,
+      "dip_empirical": 0.012151747596862618,
+      "dip_empirical_long": 0.012108993786691776,
+      "dip_ewma_emp": 0.012263995158932664,
+      "dip_ewma_t": 0.012304074737058555,
+      "dip_fhs": 0.012029056582650549,
+      "dip_garch_t": 0.012067999316005587,
+      "dip_gauss": 0.012278536522580421,
+      "dip_gmm_k": 0.012119961523538473,
+      "dip_lgbm_q": 0.012404260473047995,
+      "dip_qar": 0.012091525440984104,
+      "dip_regime": 0.012064940582397482,
+      "dip_skt": 0.012111541438693762,
+      "dip_stack": 0.012099003889917468,
+      "dip_student_t": 0.012143792273776011,
+      "kronos_small": 0.016394751299162968
+    },
+    "DOGEUSDT": {
+      "dip_blend": 0.01783376115070961,
+      "dip_conf_t": 0.01782703651316862,
+      "dip_empirical": 0.017841670783676968,
+      "dip_empirical_long": 0.018210860363961964,
+      "dip_ewma_emp": 0.017704275877755082,
+      "dip_ewma_t": 0.017943152077912226,
+      "dip_fhs": 0.017984276702382385,
+      "dip_garch_t": 0.017951940919125383,
+      "dip_gauss": 0.0183595267828835,
+      "dip_gmm_k": 0.018254498866494627,
+      "dip_lgbm_q": 0.018136531964016257,
+      "dip_qar": 0.01814737714908209,
+      "dip_regime": 0.017942364281799687,
+      "dip_skt": 0.018197543942870372,
+      "dip_stack": 0.018104093920871898,
+      "dip_student_t": 0.017850460714675356,
+      "kronos_small": 0.025634517825098888
+    },
+    "ETHUSDT": {
+      "dip_blend": 0.01675311558010212,
+      "dip_conf_t": 0.016754141069632394,
+      "dip_empirical": 0.016763009165874063,
+      "dip_empirical_long": 0.016762751305266103,
+      "dip_ewma_emp": 0.01689257723788188,
+      "dip_ewma_t": 0.0170288972995981,
+      "dip_fhs": 0.016597017072785592,
+      "dip_garch_t": 0.01665084289552582,
+      "dip_gauss": 0.017211611608150344,
+      "dip_gmm_k": 0.01680331973265503,
+      "dip_lgbm_q": 0.01709193250513987,
+      "dip_qar": 0.016756817487987172,
+      "dip_regime": 0.016745398931986254,
+      "dip_skt": 0.01677965114970923,
+      "dip_stack": 0.01678933956084253,
+      "dip_student_t": 0.01676508857371663,
+      "kronos_small": 0.020003420062761387
+    },
+    "LINKUSDT": {
+      "dip_blend": 0.01821505275234884,
+      "dip_conf_t": 0.018208811750252022,
+      "dip_empirical": 0.018221014344596102,
+      "dip_empirical_long": 0.018422529355561008,
+      "dip_ewma_emp": 0.0182678957345336,
+      "dip_ewma_t": 0.018283835258324145,
+      "dip_fhs": 0.018064256227817325,
+      "dip_garch_t": 0.018118267528227316,
+      "dip_gauss": 0.01855252875674006,
+      "dip_gmm_k": 0.018435504840737707,
+      "dip_lgbm_q": 0.01887399997532291,
+      "dip_qar": 0.01836310616531706,
+      "dip_regime": 0.01831094032483278,
+      "dip_skt": 0.01840179626335176,
+      "dip_stack": 0.018332536699802848,
+      "dip_student_t": 0.018221696368673417,
+      "kronos_small": 0.023278421082100972
+    },
+    "LTCUSDT": {
+      "dip_blend": 0.013775028888765866,
+      "dip_conf_t": 0.013776222565404415,
+      "dip_empirical": 0.013785381086048201,
+      "dip_empirical_long": 0.014014181755414764,
+      "dip_ewma_emp": 0.01378540037035257,
+      "dip_ewma_t": 0.013964704718048303,
+      "dip_fhs": 0.013721335430849392,
+      "dip_garch_t": 0.013667245320288271,
+      "dip_gauss": 0.014353556912097476,
+      "dip_gmm_k": 0.014048315734707655,
+      "dip_lgbm_q": 0.014183019614485624,
+      "dip_qar": 0.014007216050373212,
+      "dip_regime": 0.01382322130620898,
+      "dip_skt": 0.013997821796051154,
+      "dip_stack": 0.013927555407847472,
+      "dip_student_t": 0.013772599506010449,
+      "kronos_small": 0.0210037309154654
+    },
+    "SOLUSDT": {
+      "dip_blend": 0.01792573905535642,
+      "dip_conf_t": 0.01791711486857047,
+      "dip_empirical": 0.017926993370903338,
+      "dip_empirical_long": 0.018110275514474226,
+      "dip_ewma_emp": 0.01802469014225275,
+      "dip_ewma_t": 0.017902084112419347,
+      "dip_fhs": 0.0177235089319521,
+      "dip_garch_t": 0.017824895210613128,
+      "dip_gauss": 0.01811769592955335,
+      "dip_gmm_k": 0.01814119843525654,
+      "dip_lgbm_q": 0.018560022127523196,
+      "dip_qar": 0.018118066132104354,
+      "dip_regime": 0.01799279493798838,
+      "dip_skt": 0.018107064589624463,
+      "dip_stack": 0.018013726805779957,
+      "dip_student_t": 0.01793732728419477,
+      "kronos_small": 0.029893379206449945
+    },
+    "TRXUSDT": {
+      "dip_blend": 0.006414426092753849,
+      "dip_conf_t": 0.006411302184198931,
+      "dip_empirical": 0.006418978755920859,
+      "dip_empirical_long": 0.006694363211888666,
+      "dip_ewma_emp": 0.006441906958419378,
+      "dip_ewma_t": 0.0064789834289534195,
+      "dip_fhs": 0.0064795119162752695,
+      "dip_garch_t": 0.006424783876821836,
+      "dip_gauss": 0.006560986129684685,
+      "dip_gmm_k": 0.006742075423922739,
+      "dip_lgbm_q": 0.006545628709089598,
+      "dip_qar": 0.006617424712035663,
+      "dip_regime": 0.006507250771379323,
+      "dip_skt": 0.006677930867934539,
+      "dip_stack": 0.006991732926085105,
+      "dip_student_t": 0.006415024790804454,
+      "kronos_small": 0.00793175409824537
+    },
+    "XRPUSDT": {
+      "dip_blend": 0.01655507200991078,
+      "dip_conf_t": 0.016544178295338944,
+      "dip_empirical": 0.016551080862880898,
+      "dip_empirical_long": 0.016673356293715302,
+      "dip_ewma_emp": 0.016628679389660946,
+      "dip_ewma_t": 0.017039229928007053,
+      "dip_fhs": 0.016470622895774573,
+      "dip_garch_t": 0.01646321140596663,
+      "dip_gauss": 0.017084247373797608,
+      "dip_gmm_k": 0.01674004903840883,
+      "dip_lgbm_q": 0.016908291836355165,
+      "dip_qar": 0.016484977208676255,
+      "dip_regime": 0.016565669404212103,
+      "dip_skt": 0.01664716515391358,
+      "dip_stack": 0.016650962387259216,
+      "dip_student_t": 0.01657885045462666,
+      "kronos_small": 0.02086103456564861
+    }
+  },
+  "mean_crps_pooled": {
+    "dip_blend": 0.01569769455525156,
+    "dip_conf_t": 0.01569535886276794,
+    "dip_empirical": 0.015702827510324546,
+    "dip_empirical_long": 0.015847797543324264,
+    "dip_ewma_emp": 0.01575888571263496,
+    "dip_ewma_t": 0.01586694967102669,
+    "dip_fhs": 0.015621292085869033,
+    "dip_garch_t": 0.015631121284080802,
+    "dip_gauss": 0.01604982560070401,
+    "dip_gmm_k": 0.015874777818547625,
+    "dip_lgbm_q": 0.016099677603085196,
+    "dip_qar": 0.01578420784117565,
+    "dip_regime": 0.01573410316476726,
+    "dip_skt": 0.015835251197816716,
+    "dip_stack": 0.01582541215289614,
+    "dip_student_t": 0.015707161422686158,
+    "kronos_small": 0.023836632766702313
+  },
+  "mean_pinball_per_asset": {
+    "ADAUSDT": {
+      "dip_blend": {
+        "0.05": 0.003887143762969812,
+        "0.5": 0.014320970020354385,
+        "0.95": 0.00528496021456346
+      },
+      "dip_conf_t": {
+        "0.05": 0.0037946363628126875,
+        "0.5": 0.014308601041231465,
+        "0.95": 0.005195822760600566
+      },
+      "dip_empirical": {
+        "0.05": 0.003793655320674658,
+        "0.5": 0.01431281300776124,
+        "0.95": 0.005179382524985468
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0038619579107161666,
+        "0.5": 0.014309978894518197,
+        "0.95": 0.005227189397668413
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0038647957332037844,
+        "0.5": 0.014303893103016259,
+        "0.95": 0.005519747554555929
+      },
+      "dip_ewma_t": {
+        "0.05": 0.004531799181119205,
+        "0.5": 0.014459840085077448,
+        "0.95": 0.005230061896181001
+      },
+      "dip_fhs": {
+        "0.05": 0.003788462119996474,
+        "0.5": 0.014304702383412445,
+        "0.95": 0.005265926201613231
+      },
+      "dip_garch_t": {
+        "0.05": 0.004017278745824396,
+        "0.5": 0.014335142257156394,
+        "0.95": 0.005270076942109217
+      },
+      "dip_gauss": {
+        "0.05": 0.004067963569212128,
+        "0.5": 0.014341126143747983,
+        "0.95": 0.0052829998951167785
+      },
+      "dip_gmm_k": {
+        "0.05": 0.003989978473807197,
+        "0.5": 0.014328901661136312,
+        "0.95": 0.0052437211213912874
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0040084839296985805,
+        "0.5": 0.014779073670610371,
+        "0.95": 0.005701412956114272
+      },
+      "dip_qar": {
+        "0.05": 0.00385983412053265,
+        "0.5": 0.014448406958813343,
+        "0.95": 0.004904732792757406
+      },
+      "dip_regime": {
+        "0.05": 0.004010056940736002,
+        "0.5": 0.014262539408123422,
+        "0.95": 0.0052974065111121215
+      },
+      "dip_skt": {
+        "0.05": 0.003926681678446082,
+        "0.5": 0.014328320227788049,
+        "0.95": 0.005208234915474046
+      },
+      "dip_stack": {
+        "0.05": 0.0039454263087419835,
+        "0.5": 0.014288882349355691,
+        "0.95": 0.005196959298501681
+      },
+      "dip_student_t": {
+        "0.05": 0.004038419426656801,
+        "0.5": 0.014347163782595368,
+        "0.95": 0.005401564144509413
+      },
+      "kronos_small": {
+        "0.05": 0.009297659700514898,
+        "0.5": 0.027097787672252984,
+        "0.95": 0.00887005726953889
+      }
+    },
+    "AVAXUSDT": {
+      "dip_blend": {
+        "0.05": 0.003891547070370307,
+        "0.5": 0.013172735597319206,
+        "0.95": 0.005024730221522605
+      },
+      "dip_conf_t": {
+        "0.05": 0.003853943742330578,
+        "0.5": 0.01321908248193353,
+        "0.95": 0.005012901705976085
+      },
+      "dip_empirical": {
+        "0.05": 0.0038303637872028106,
+        "0.5": 0.013218870344213644,
+        "0.95": 0.004989072008329984
+      },
+      "dip_empirical_long": {
+        "0.05": 0.004057006259410642,
+        "0.5": 0.013071469656968645,
+        "0.95": 0.005043775084648129
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.003925170500989114,
+        "0.5": 0.013210208169722126,
+        "0.95": 0.0051387894706435445
+      },
+      "dip_ewma_t": {
+        "0.05": 0.004178565877651969,
+        "0.5": 0.01312210181584898,
+        "0.95": 0.004848268959048388
+      },
+      "dip_fhs": {
+        "0.05": 0.0038829181302083484,
+        "0.5": 0.013072105529317242,
+        "0.95": 0.004924907232732399
+      },
+      "dip_garch_t": {
+        "0.05": 0.003991475736042177,
+        "0.5": 0.013097683606458672,
+        "0.95": 0.004939630701505363
+      },
+      "dip_gauss": {
+        "0.05": 0.0040618089152536785,
+        "0.5": 0.01309693200286113,
+        "0.95": 0.005052811096956871
+      },
+      "dip_gmm_k": {
+        "0.05": 0.004187676093980159,
+        "0.5": 0.013078541662210003,
+        "0.95": 0.005096755158358552
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.003884711461928972,
+        "0.5": 0.013503253039626897,
+        "0.95": 0.0053955395455954295
+      },
+      "dip_qar": {
+        "0.05": 0.003992649326818988,
+        "0.5": 0.013124890039856642,
+        "0.95": 0.0047445269591030684
+      },
+      "dip_regime": {
+        "0.05": 0.003952024280088332,
+        "0.5": 0.01312076825305669,
+        "0.95": 0.00503488515475055
+      },
+      "dip_skt": {
+        "0.05": 0.004135615570776367,
+        "0.5": 0.013083378428242271,
+        "0.95": 0.00504236312659286
+      },
+      "dip_stack": {
+        "0.05": 0.004003147338693506,
+        "0.5": 0.013102329161512547,
+        "0.95": 0.0049564997213560604
+      },
+      "dip_student_t": {
+        "0.05": 0.003945789103748293,
+        "0.5": 0.013131860707957717,
+        "0.95": 0.005052521937439622
+      },
+      "kronos_small": {
+        "0.05": 0.008133865816559208,
+        "0.5": 0.0265440773826284,
+        "0.95": 0.009230549795981318
+      }
+    },
+    "BNBUSDT": {
+      "dip_blend": {
+        "0.05": 0.002761877755487711,
+        "0.5": 0.008082743344704619,
+        "0.95": 0.0029409837615862943
+      },
+      "dip_conf_t": {
+        "0.05": 0.00274798702853022,
+        "0.5": 0.008094220962441598,
+        "0.95": 0.0029609596750158535
+      },
+      "dip_empirical": {
+        "0.05": 0.0027480414814228605,
+        "0.5": 0.008094221543820597,
+        "0.95": 0.0029625001952861374
+      },
+      "dip_empirical_long": {
+        "0.05": 0.002802815555424257,
+        "0.5": 0.008057443714193098,
+        "0.95": 0.0029412348319597845
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0027110496585092706,
+        "0.5": 0.00818543289665371,
+        "0.95": 0.0029219365811224366
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0027959511043096946,
+        "0.5": 0.008038968651019173,
+        "0.95": 0.002990807234149814
+      },
+      "dip_fhs": {
+        "0.05": 0.0025621799367876964,
+        "0.5": 0.008060988120383063,
+        "0.95": 0.0028047964699046105
+      },
+      "dip_garch_t": {
+        "0.05": 0.0025126608478378146,
+        "0.5": 0.008050817085201374,
+        "0.95": 0.002755371913632303
+      },
+      "dip_gauss": {
+        "0.05": 0.0028928777807116536,
+        "0.5": 0.008080665285545451,
+        "0.95": 0.0029762331846686705
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0028504076579539293,
+        "0.5": 0.008047157932173248,
+        "0.95": 0.002944981470703777
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.002781878520332416,
+        "0.5": 0.008438449564624249,
+        "0.95": 0.00275449168395796
+      },
+      "dip_qar": {
+        "0.05": 0.0026565399041010435,
+        "0.5": 0.008050696685710432,
+        "0.95": 0.002860488290705788
+      },
+      "dip_regime": {
+        "0.05": 0.0026628897798779225,
+        "0.5": 0.008050228668765293,
+        "0.95": 0.002850370458908944
+      },
+      "dip_skt": {
+        "0.05": 0.00280306965835323,
+        "0.5": 0.008047315728917566,
+        "0.95": 0.0028927056659321018
+      },
+      "dip_stack": {
+        "0.05": 0.0026888986170705916,
+        "0.5": 0.008059025794826013,
+        "0.95": 0.002838920146351883
+      },
+      "dip_student_t": {
+        "0.05": 0.0027850867835782687,
+        "0.5": 0.008083102900584593,
+        "0.95": 0.002928518282151937
+      },
+      "kronos_small": {
+        "0.05": 0.00477026033960815,
+        "0.5": 0.012509029822103602,
+        "0.95": 0.005062280623641333
+      }
+    },
+    "BTCUSDT": {
+      "dip_blend": {
+        "0.05": 0.0026070065825420344,
+        "0.5": 0.00807158226205385,
+        "0.95": 0.0030681720358346253
+      },
+      "dip_conf_t": {
+        "0.05": 0.002591563257844803,
+        "0.5": 0.008067776626883674,
+        "0.95": 0.003116784932551045
+      },
+      "dip_empirical": {
+        "0.05": 0.002591147820097541,
+        "0.5": 0.008067780000934359,
+        "0.95": 0.0031161770619771816
+      },
+      "dip_empirical_long": {
+        "0.05": 0.002541858569634937,
+        "0.5": 0.008059044498688673,
+        "0.95": 0.0029624953148460788
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0025144691315830236,
+        "0.5": 0.008136604200582858,
+        "0.95": 0.003040765315272624
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0028611254213444805,
+        "0.5": 0.0080442231345694,
+        "0.95": 0.0028810474808079883
+      },
+      "dip_fhs": {
+        "0.05": 0.0025136269870332144,
+        "0.5": 0.008055874267732329,
+        "0.95": 0.002800881717670577
+      },
+      "dip_garch_t": {
+        "0.05": 0.002561423056559263,
+        "0.5": 0.008062722017809797,
+        "0.95": 0.0028751211940475133
+      },
+      "dip_gauss": {
+        "0.05": 0.002686143860464218,
+        "0.5": 0.008061644444997396,
+        "0.95": 0.0029813605403539787
+      },
+      "dip_gmm_k": {
+        "0.05": 0.002550340151864375,
+        "0.5": 0.008060535997782,
+        "0.95": 0.0029612879067201815
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.002588887590901135,
+        "0.5": 0.008473783349090514,
+        "0.95": 0.0029328538003405404
+      },
+      "dip_qar": {
+        "0.05": 0.0025186511716000755,
+        "0.5": 0.00806169020522946,
+        "0.95": 0.0028089424343712773
+      },
+      "dip_regime": {
+        "0.05": 0.0025419794210928006,
+        "0.5": 0.008065227951553233,
+        "0.95": 0.002911345385105461
+      },
+      "dip_skt": {
+        "0.05": 0.0025376362260295603,
+        "0.5": 0.00805880327309892,
+        "0.95": 0.002972750318214462
+      },
+      "dip_stack": {
+        "0.05": 0.0025222114541629884,
+        "0.5": 0.008062742650976522,
+        "0.95": 0.0029188386572059364
+      },
+      "dip_student_t": {
+        "0.05": 0.0026146078774157704,
+        "0.5": 0.008071309996215097,
+        "0.95": 0.0030413333486933314
+      },
+      "kronos_small": {
+        "0.05": 0.005107620498447225,
+        "0.5": 0.010683441743121695,
+        "0.95": 0.003791932627176007
+      }
+    },
+    "DOGEUSDT": {
+      "dip_blend": {
+        "0.05": 0.003627212632575579,
+        "0.5": 0.01174966692232412,
+        "0.95": 0.004659240608335844
+      },
+      "dip_conf_t": {
+        "0.05": 0.0034894178362337267,
+        "0.5": 0.011738200172282444,
+        "0.95": 0.004711478410209473
+      },
+      "dip_empirical": {
+        "0.05": 0.003466326805454624,
+        "0.5": 0.011748948273864622,
+        "0.95": 0.004714993629841734
+      },
+      "dip_empirical_long": {
+        "0.05": 0.003865592443547281,
+        "0.5": 0.01168847961124022,
+        "0.95": 0.004822081859144627
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0034726749925031034,
+        "0.5": 0.01164547952752104,
+        "0.95": 0.004538056918537842
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0038941741427272847,
+        "0.5": 0.011719430389299727,
+        "0.95": 0.004418047686972791
+      },
+      "dip_fhs": {
+        "0.05": 0.00367366717951431,
+        "0.5": 0.011690777784619783,
+        "0.95": 0.004829714174670422
+      },
+      "dip_garch_t": {
+        "0.05": 0.003803229614308688,
+        "0.5": 0.011690029977059858,
+        "0.95": 0.004822183050805234
+      },
+      "dip_gauss": {
+        "0.05": 0.003843637868382796,
+        "0.5": 0.011743884059221365,
+        "0.95": 0.004685844220413055
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0039015965272881626,
+        "0.5": 0.011714083117652638,
+        "0.95": 0.004939825905188101
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.003557637393723271,
+        "0.5": 0.012025820572607567,
+        "0.95": 0.004618636492923514
+      },
+      "dip_qar": {
+        "0.05": 0.003881175541050815,
+        "0.5": 0.011719442376651332,
+        "0.95": 0.004646114467610831
+      },
+      "dip_regime": {
+        "0.05": 0.00370504995384595,
+        "0.5": 0.011660647442221702,
+        "0.95": 0.004723844182938655
+      },
+      "dip_skt": {
+        "0.05": 0.003850114446508993,
+        "0.5": 0.01169740632728042,
+        "0.95": 0.004825527756123995
+      },
+      "dip_stack": {
+        "0.05": 0.0037644496922319705,
+        "0.5": 0.011659728497304454,
+        "0.95": 0.004716383000452121
+      },
+      "dip_student_t": {
+        "0.05": 0.003750484796691221,
+        "0.5": 0.01176991750958505,
+        "0.95": 0.0046725901183558485
+      },
+      "kronos_small": {
+        "0.05": 0.006583917083083427,
+        "0.5": 0.017254916609310434,
+        "0.95": 0.005225645386337653
+      }
+    },
+    "ETHUSDT": {
+      "dip_blend": {
+        "0.05": 0.003614499748550412,
+        "0.5": 0.010977237697935061,
+        "0.95": 0.004202102388420583
+      },
+      "dip_conf_t": {
+        "0.05": 0.0035813454369184425,
+        "0.5": 0.010961746553940156,
+        "0.95": 0.004216038149336104
+      },
+      "dip_empirical": {
+        "0.05": 0.0035817458545252083,
+        "0.5": 0.010961747452306875,
+        "0.95": 0.004216278504740137
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0036468200741853678,
+        "0.5": 0.010943912930089257,
+        "0.95": 0.00424989439259662
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.00339452195525402,
+        "0.5": 0.011021368975476882,
+        "0.95": 0.004509480580861435
+      },
+      "dip_ewma_t": {
+        "0.05": 0.003945953859243464,
+        "0.5": 0.010927242748344506,
+        "0.95": 0.004139886921340861
+      },
+      "dip_fhs": {
+        "0.05": 0.003547076925420449,
+        "0.5": 0.010944902817367218,
+        "0.95": 0.003982120279891469
+      },
+      "dip_garch_t": {
+        "0.05": 0.0035928441545321457,
+        "0.5": 0.010938672834644435,
+        "0.95": 0.004002497368177268
+      },
+      "dip_gauss": {
+        "0.05": 0.003763528418791715,
+        "0.5": 0.011017791980593774,
+        "0.95": 0.004196368806760364
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0036599358837915118,
+        "0.5": 0.01096118398683003,
+        "0.95": 0.004263815149310172
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0036522728387519856,
+        "0.5": 0.011491431139721413,
+        "0.95": 0.0043744593478381695
+      },
+      "dip_qar": {
+        "0.05": 0.003500771463582734,
+        "0.5": 0.010993147469354661,
+        "0.95": 0.004225602170888457
+      },
+      "dip_regime": {
+        "0.05": 0.003665422094726825,
+        "0.5": 0.010971649318434614,
+        "0.95": 0.004234562077121556
+      },
+      "dip_skt": {
+        "0.05": 0.0036494128584831816,
+        "0.5": 0.010954322083358337,
+        "0.95": 0.004240522607034151
+      },
+      "dip_stack": {
+        "0.05": 0.0035967840687071845,
+        "0.5": 0.010952246835670811,
+        "0.95": 0.004189961579151332
+      },
+      "dip_student_t": {
+        "0.05": 0.00366071923659592,
+        "0.5": 0.011013726529594047,
+        "0.95": 0.004201087204997401
+      },
+      "kronos_small": {
+        "0.05": 0.004145825475473594,
+        "0.5": 0.013714449247716037,
+        "0.95": 0.003952340297250322
+      }
+    },
+    "LINKUSDT": {
+      "dip_blend": {
+        "0.05": 0.003539469287512134,
+        "0.5": 0.012306229840001098,
+        "0.95": 0.004500118173967325
+      },
+      "dip_conf_t": {
+        "0.05": 0.003498484671578825,
+        "0.5": 0.012305683489660824,
+        "0.95": 0.004515327987264124
+      },
+      "dip_empirical": {
+        "0.05": 0.0034935377113852026,
+        "0.5": 0.012310109568870752,
+        "0.95": 0.004514224276638489
+      },
+      "dip_empirical_long": {
+        "0.05": 0.003730525307099118,
+        "0.5": 0.01224464050107558,
+        "0.95": 0.00464121901940292
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0034252522309020116,
+        "0.5": 0.012425089390174608,
+        "0.95": 0.0046394290275439745
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0038218341190358112,
+        "0.5": 0.012248793789623949,
+        "0.95": 0.004410963827342105
+      },
+      "dip_fhs": {
+        "0.05": 0.0034789231629928493,
+        "0.5": 0.012242642622337726,
+        "0.95": 0.004385472622007192
+      },
+      "dip_garch_t": {
+        "0.05": 0.003631970116463088,
+        "0.5": 0.012244012970393525,
+        "0.95": 0.004377080938239666
+      },
+      "dip_gauss": {
+        "0.05": 0.0037138281845826705,
+        "0.5": 0.012296456150497194,
+        "0.95": 0.0045123667239942745
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0037920847581823245,
+        "0.5": 0.012234932002654426,
+        "0.95": 0.004748462800454887
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0033806699971921537,
+        "0.5": 0.012860489914634078,
+        "0.95": 0.004775713416202109
+      },
+      "dip_qar": {
+        "0.05": 0.0036599688152290488,
+        "0.5": 0.012226997423605128,
+        "0.95": 0.00454231065378633
+      },
+      "dip_regime": {
+        "0.05": 0.0036736178484251575,
+        "0.5": 0.012262698535266445,
+        "0.95": 0.004472886171251227
+      },
+      "dip_skt": {
+        "0.05": 0.003760960133940038,
+        "0.5": 0.012236249839910113,
+        "0.95": 0.004621734134941475
+      },
+      "dip_stack": {
+        "0.05": 0.0036576386503474516,
+        "0.5": 0.012255741284305533,
+        "0.95": 0.004450817121652279
+      },
+      "dip_student_t": {
+        "0.05": 0.00364045706950604,
+        "0.5": 0.012304884384757263,
+        "0.95": 0.004527887667200439
+      },
+      "kronos_small": {
+        "0.05": 0.004406907024982115,
+        "0.5": 0.014837007578695908,
+        "0.95": 0.007198063584061825
+      }
+    },
+    "LTCUSDT": {
+      "dip_blend": {
+        "0.05": 0.002994561188354825,
+        "0.5": 0.009212986108189145,
+        "0.95": 0.003365016608242234
+      },
+      "dip_conf_t": {
+        "0.05": 0.0029666966739043533,
+        "0.5": 0.009212205169456924,
+        "0.95": 0.0033508159784972546
+      },
+      "dip_empirical": {
+        "0.05": 0.0029647773317417916,
+        "0.5": 0.009211143649045513,
+        "0.95": 0.0033531352230369606
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0032208974007405964,
+        "0.5": 0.009175259713067374,
+        "0.95": 0.0036635789054152317
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.002891194545968536,
+        "0.5": 0.00914820497121827,
+        "0.95": 0.0032837096969297744
+      },
+      "dip_ewma_t": {
+        "0.05": 0.003211351641032943,
+        "0.5": 0.009130831313330496,
+        "0.95": 0.0034106157394776203
+      },
+      "dip_fhs": {
+        "0.05": 0.0029995740893901976,
+        "0.5": 0.009173397427584263,
+        "0.95": 0.0032579683829582103
+      },
+      "dip_garch_t": {
+        "0.05": 0.0029531028607150153,
+        "0.5": 0.00916574011633224,
+        "0.95": 0.0032183891800296976
+      },
+      "dip_gauss": {
+        "0.05": 0.0032200966788760404,
+        "0.5": 0.009211762294802295,
+        "0.95": 0.0035454109045715567
+      },
+      "dip_gmm_k": {
+        "0.05": 0.003413478579750203,
+        "0.5": 0.00916838125108465,
+        "0.95": 0.0037404242150246344
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.002805566374281899,
+        "0.5": 0.009687002677395338,
+        "0.95": 0.003311021778795202
+      },
+      "dip_qar": {
+        "0.05": 0.003106956159270344,
+        "0.5": 0.00920797549196988,
+        "0.95": 0.0035156270974502045
+      },
+      "dip_regime": {
+        "0.05": 0.0031065000075081177,
+        "0.5": 0.00917759463920676,
+        "0.95": 0.0032698024076870864
+      },
+      "dip_skt": {
+        "0.05": 0.0032393852146342717,
+        "0.5": 0.009170102467970266,
+        "0.95": 0.003581765352362328
+      },
+      "dip_stack": {
+        "0.05": 0.0031075520765754205,
+        "0.5": 0.00915576001336094,
+        "0.95": 0.003419852535082558
+      },
+      "dip_student_t": {
+        "0.05": 0.0030292099435296578,
+        "0.5": 0.009213635536362601,
+        "0.95": 0.003377951994456551
+      },
+      "kronos_small": {
+        "0.05": 0.0061590940904247184,
+        "0.5": 0.014118350553925086,
+        "0.95": 0.00442002819649202
+      }
+    },
+    "SOLUSDT": {
+      "dip_blend": {
+        "0.05": 0.0035594492813086796,
+        "0.5": 0.012095186320712817,
+        "0.95": 0.004072119839767444
+      },
+      "dip_conf_t": {
+        "0.05": 0.003472138611850526,
+        "0.5": 0.01209789016749224,
+        "0.95": 0.0040783711602899505
+      },
+      "dip_empirical": {
+        "0.05": 0.00347245447155833,
+        "0.5": 0.012097888937102907,
+        "0.95": 0.004077991323801239
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0037025296099588547,
+        "0.5": 0.012104540253409925,
+        "0.95": 0.004176950894069754
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0034010615978950385,
+        "0.5": 0.012185453602504974,
+        "0.95": 0.004240328981311877
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0038540163159212376,
+        "0.5": 0.012066235461613797,
+        "0.95": 0.0038880425716679313
+      },
+      "dip_fhs": {
+        "0.05": 0.003359400636352189,
+        "0.5": 0.01209696777003485,
+        "0.95": 0.0038673369536772534
+      },
+      "dip_garch_t": {
+        "0.05": 0.0035961641272418145,
+        "0.5": 0.012096446977345259,
+        "0.95": 0.003885072582315457
+      },
+      "dip_gauss": {
+        "0.05": 0.003687001191102602,
+        "0.5": 0.012082484176362844,
+        "0.95": 0.004073041352212514
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0037277995880796583,
+        "0.5": 0.012083456680679937,
+        "0.95": 0.004297723854125368
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0036783721899663877,
+        "0.5": 0.01295662704351472,
+        "0.95": 0.004009644220642905
+      },
+      "dip_qar": {
+        "0.05": 0.0036881464190804945,
+        "0.5": 0.01217362252317625,
+        "0.95": 0.004076766595024526
+      },
+      "dip_regime": {
+        "0.05": 0.0036307029868532003,
+        "0.5": 0.01210186927240584,
+        "0.95": 0.0040458466066023106
+      },
+      "dip_skt": {
+        "0.05": 0.003703275528324194,
+        "0.5": 0.012086381856813917,
+        "0.95": 0.004227110622965025
+      },
+      "dip_stack": {
+        "0.05": 0.0036053603385568112,
+        "0.5": 0.012090301945376213,
+        "0.95": 0.004070772461922845
+      },
+      "dip_student_t": {
+        "0.05": 0.0036420695503568117,
+        "0.5": 0.0120978495522727,
+        "0.95": 0.004071535607562997
+      },
+      "kronos_small": {
+        "0.05": 0.006611073040105946,
+        "0.5": 0.020328082993273176,
+        "0.95": 0.00741665878311442
+      }
+    },
+    "TRXUSDT": {
+      "dip_blend": {
+        "0.05": 0.0015930750125868714,
+        "0.5": 0.004287422773659067,
+        "0.95": 0.0012188103635260678
+      },
+      "dip_conf_t": {
+        "0.05": 0.0015894982309185054,
+        "0.5": 0.004293957025104892,
+        "0.95": 0.0012083150654177688
+      },
+      "dip_empirical": {
+        "0.05": 0.001591292549831979,
+        "0.5": 0.004294920114694037,
+        "0.95": 0.0012116765464253402
+      },
+      "dip_empirical_long": {
+        "0.05": 0.001776727596446533,
+        "0.5": 0.004273685614550395,
+        "0.95": 0.0015793417119413574
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.001631350498601795,
+        "0.5": 0.004349096287079184,
+        "0.95": 0.001142326078734909
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0015705294717640534,
+        "0.5": 0.00430564893029546,
+        "0.95": 0.001282051912465923
+      },
+      "dip_fhs": {
+        "0.05": 0.0016614628432462752,
+        "0.5": 0.00426947193591715,
+        "0.95": 0.0013475738017691783
+      },
+      "dip_garch_t": {
+        "0.05": 0.0015676546930206738,
+        "0.5": 0.0042674966962210166,
+        "0.95": 0.0013236877802445546
+      },
+      "dip_gauss": {
+        "0.05": 0.001609954883338756,
+        "0.5": 0.004293941796257589,
+        "0.95": 0.0012467952624661378
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0018705439772541605,
+        "0.5": 0.004266534436861309,
+        "0.95": 0.0016311499674855623
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.001614826123779932,
+        "0.5": 0.004455027050246227,
+        "0.95": 0.0012503918844422408
+      },
+      "dip_qar": {
+        "0.05": 0.0016376271232619202,
+        "0.5": 0.004238135214696077,
+        "0.95": 0.0014797813529702066
+      },
+      "dip_regime": {
+        "0.05": 0.0016418603832855504,
+        "0.5": 0.004271957154478817,
+        "0.95": 0.00134926415062486
+      },
+      "dip_skt": {
+        "0.05": 0.0017636390100065152,
+        "0.5": 0.004268595997532157,
+        "0.95": 0.0016149629013090566
+      },
+      "dip_stack": {
+        "0.05": 0.001799876622777831,
+        "0.5": 0.004273405210136668,
+        "0.95": 0.0016803830927797061
+      },
+      "dip_student_t": {
+        "0.05": 0.0015994299728135646,
+        "0.5": 0.004281810404540889,
+        "0.95": 0.0012247686441084773
+      },
+      "kronos_small": {
+        "0.05": 0.0017557750884973596,
+        "0.5": 0.0054123355006915905,
+        "0.95": 0.001803230915504536
+      }
+    },
+    "XRPUSDT": {
+      "dip_blend": {
+        "0.05": 0.003311890187796366,
+        "0.5": 0.010928639751522438,
+        "0.95": 0.004709703115176277
+      },
+      "dip_conf_t": {
+        "0.05": 0.0032777840034015756,
+        "0.5": 0.010901637300057193,
+        "0.95": 0.004777139766442849
+      },
+      "dip_empirical": {
+        "0.05": 0.003277947228274891,
+        "0.5": 0.010901640851710427,
+        "0.95": 0.004778675266053484
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0034592902279666706,
+        "0.5": 0.010905666246546108,
+        "0.95": 0.004820706239183191
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.003142404363500245,
+        "0.5": 0.010942958055817279,
+        "0.95": 0.004554262880286138
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0037908418839957348,
+        "0.5": 0.01092641488330862,
+        "0.95": 0.004565379102862006
+      },
+      "dip_fhs": {
+        "0.05": 0.0033214827295280826,
+        "0.5": 0.01091248681594684,
+        "0.95": 0.004127163551659658
+      },
+      "dip_garch_t": {
+        "0.05": 0.0034341933513745,
+        "0.5": 0.010892942771615984,
+        "0.95": 0.004168727155241328
+      },
+      "dip_gauss": {
+        "0.05": 0.00357932631119039,
+        "0.5": 0.01093819053752842,
+        "0.95": 0.004679629992657901
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0033696770942428142,
+        "0.5": 0.01092243537164,
+        "0.95": 0.0048974928371277315
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0032732486452011654,
+        "0.5": 0.011452623321858695,
+        "0.95": 0.004454796782324899
+      },
+      "dip_qar": {
+        "0.05": 0.0033947043086532363,
+        "0.5": 0.010890524537109748,
+        "0.95": 0.004275318089673012
+      },
+      "dip_regime": {
+        "0.05": 0.003309608079713458,
+        "0.5": 0.010917537713427464,
+        "0.95": 0.004584998948229975
+      },
+      "dip_skt": {
+        "0.05": 0.0034152615966196024,
+        "0.5": 0.01090382064218443,
+        "0.95": 0.004787385032375098
+      },
+      "dip_stack": {
+        "0.05": 0.003387390994450165,
+        "0.5": 0.010897003866264413,
+        "0.95": 0.004541389951912966
+      },
+      "dip_student_t": {
+        "0.05": 0.003415958933935454,
+        "0.5": 0.010969903079330639,
+        "0.95": 0.004693719136327225
+      },
+      "kronos_small": {
+        "0.05": 0.004932573786026186,
+        "0.5": 0.013624827588938302,
+        "0.95": 0.0053744542373909306
+      }
+    }
+  },
+  "mean_pinball_pooled": {
+    "dip_blend": {
+      "0.05": 0.0032170665918231575,
+      "0.5": 0.010473218239888709,
+      "0.95": 0.003913268848267523
+    },
+    "dip_conf_t": {
+      "0.05": 0.003169408714211294,
+      "0.5": 0.010472818271862269,
+      "0.95": 0.0039221777810546435
+    },
+    "dip_empirical": {
+      "0.05": 0.0031646627601972636,
+      "0.5": 0.010474553067665907,
+      "0.95": 0.003919464232828741
+    },
+    "dip_empirical_long": {
+      "0.05": 0.0033332746322845843,
+      "0.5": 0.010439465603122498,
+      "0.95": 0.004011678877352373
+    },
+    "dip_ewma_emp": {
+      "0.05": 0.0031249041099009043,
+      "0.5": 0.010504889925433379,
+      "0.95": 0.0039571666441636805
+    },
+    "dip_ewma_t": {
+      "0.05": 0.003496013001649625,
+      "0.5": 0.010453611927484686,
+      "0.95": 0.003824106666574221
+    },
+    "dip_fhs": {
+      "0.05": 0.0031626158854972807,
+      "0.5": 0.010438574315877535,
+      "0.95": 0.0037812601262322
+    },
+    "dip_garch_t": {
+      "0.05": 0.0032419997549017797,
+      "0.5": 0.010440155210021685,
+      "0.95": 0.0037852580733043276
+    },
+    "dip_gauss": {
+      "0.05": 0.0033751061510824223,
+      "0.5": 0.010469534442946857,
+      "0.95": 0.003930260180015645
+    },
+    "dip_gmm_k": {
+      "0.05": 0.0033921380714722264,
+      "0.5": 0.010442376736427686,
+      "0.95": 0.004069603671444568
+    },
+    "dip_lgbm_q": {
+      "0.05": 0.0032024140968870815,
+      "0.5": 0.010920325576720916,
+      "0.95": 0.0039617238099252045
+    },
+    "dip_qar": {
+      "0.05": 0.0032633658502892134,
+      "0.5": 0.010466866266015723,
+      "0.95": 0.0038254737185764646
+    },
+    "dip_regime": {
+      "0.05": 0.003263610161468483,
+      "0.5": 0.010442065305176388,
+      "0.95": 0.0038886556413029777
+    },
+    "dip_skt": {
+      "0.05": 0.003344095629283821,
+      "0.5": 0.010439517897554224,
+      "0.95": 0.004001369312120418
+    },
+    "dip_stack": {
+      "0.05": 0.0032798851056650823,
+      "0.5": 0.01043610614628089,
+      "0.95": 0.0039073434151244875
+    },
+    "dip_student_t": {
+      "0.05": 0.0032838393358934365,
+      "0.5": 0.010480469489435998,
+      "0.95": 0.003926679825982112
+    },
+    "kronos_small": {
+      "0.05": 0.005627688358520257,
+      "0.5": 0.01601130060842338,
+      "0.95": 0.005667749246953569
+    }
+  },
+  "n_complete": 3300,
+  "n_dropped_incomplete": 0,
+  "n_rows": 3300,
+  "n_scored_per_asset": {
+    "ADAUSDT": 300,
+    "AVAXUSDT": 300,
+    "BNBUSDT": 300,
+    "BTCUSDT": 300,
+    "DOGEUSDT": 300,
+    "ETHUSDT": 300,
+    "LINKUSDT": 300,
+    "LTCUSDT": 300,
+    "SOLUSDT": 300,
+    "TRXUSDT": 300,
+    "XRPUSDT": 300
+  },
+  "quantile_completion": "trapezoid on dense grid; exponential tails outside native quantile grid",
+  "research_only": true,
+  "schema": "sota_eval.v4",
+  "score_table_scope": "available_per_model; use common_sample for paired comparisons",
+  "scoring_contract": "legacy_unverified",
+  "source_parts_sha256": {
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_adausdt_1d.aug.npz": "8b85abe64e077e3d51ac5a8d41fd0fd01fad88c47d71518f5f9251f2b697ac52",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_avaxusdt_1d.aug.npz": "ba7d1fe4d0728b58b531cac0b567966871a38ee762bc0632f3f4ccd7fa77ae46",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_bnbusdt_1d_deep.aug.npz": "43d141c4a6b1e08dd7be47d010e5ed85c5ac75e112161f908c8ee2d50ddcd0b2",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_btcusdt_1d_deep.aug.npz": "f05c9516a95de2fa1f9887eeb8d85c774d784fa8bed5930a2aaba86c0f1b791a",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_dogeusdt_1d.aug.npz": "3f79ceea6967c52f84c13845ad78c4b87198aa618764f5006beb814fde31284f",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_ethusdt_1d_deep.aug.npz": "4499fa30218a9ecc0388d3374d36888070eae5b57bdf475f13df13f556648449",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_linkusdt_1d.aug.npz": "993e3b0356a37b33e69d1f9c15e734f5bee4c81fe0ddb47cde7bcb6610eeee52",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_ltcusdt_1d.aug.npz": "02d48fcc1178305b5835b412313cc9b107906bb7358368f337f2767861a633d4",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_solusdt_1d_deep.aug.npz": "1af5ed9d6959f531fe8980b1a82c3c838a7fdaefc8eea8cb59d3cca65f7532af",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_trxusdt_1d.aug.npz": "217f84bb7444b5199a9981c472da1748fa767e202f07fe3eabd3fbbaec1913da",
+    "D:\\dipcatcher\\.dsh-24x7\\eval-full\\d1fix_xrpusdt_1d_deep.aug.npz": "8c559ef35467aff0b96a2df0389149d8f20e703942f2c573fb1a2563860ef710"
+  },
+  "spa": {},
+  "timestamp_source": "reconstructed_from_hash_verified_bars"
+}

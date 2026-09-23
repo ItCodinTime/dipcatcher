@@ -3,6 +3,7 @@
 - job: `24x7-9339a2c6-d6ca-40a0-9905-dfa37ff74c8d`
 - status: running; both proof bars remain unproven.
 - updated: 2026-09-19
+- merge note: merged across two workers — local job above (rounds through 2026-09-23) and codex-remote checkpoint job `24x7-18bdfaf2-ac63-4d1c-812f-4332016b2709` (status snapshot 2026-09-21, `D:\dipcatcher`); both narratives preserved.
 
 ## Current round
 
@@ -31,6 +32,14 @@ The paper/shadow reliability slice is implemented in `src/quant_fund/paper/ledge
 - `.dsh-24x7/evidence-paper-mypy-current-3.txt`: focused mypy passed for `ledger.py` and `loop.py`.
 - `.dsh-24x7/evidence-paper-benchmark-command-current-3.txt`: rerunnable benchmark captured 20 synthetic steps across 8 assets at 149.57637092976873 steps/s with 20 durable equity rows and broker cursor step 20.
 
+- `.dsh-24x7/benchmark-paper-loop.json` (codex-remote, `.venv\Scripts\python.exe scripts\benchmark_paper_loop.py --steps 40 --assets 12`): 40 steps in 1.552208 s (25.7697 steps/s), 960 orders, 40 equity rows, 480 position rows, 480 cash-ledger rows, broker state step 40, ledger schema valid. The report explicitly records `source=synthetic`, `simulated_only`, `live_pnl_claim=false`, and no matched incumbent workload.
+- `.dsh-24x7/benchmark-paper-loop-rgarch-20260921.json` (fresh non-overwriting rerun): 40 steps in 1.417356 s (28.2216 steps/s), 960 orders, 40 equity rows, 480 position rows, broker state step 40, ledger schema valid. Explicitly synthetic/simulated-only; cannot prove either bar.
+- Canonical Ruff on codex-remote passed: `.venv\Scripts\ruff.exe check src tests\unit tests\property tests\regression tests\end_to_end` → `All checks passed!`
+- Project-wide mypy on codex-remote passed: `.venv\Scripts\mypy.exe src\quant_fund` → `Success: no issues found in 197 source files` (fixes in `cs_papers.py`, `pipeline/doctor.py`, `research/sota_protocol.py`, `hedge_lab/runner.py`, `hedge_lab/lightspeed_book.py`).
+- Changed-area regression on codex-remote: 128 tests passed (one pre-existing Starlette/httpx deprecation warning); focused RGARCH gate file passes all 10 tests incl. causal overlay precedence + rejection accounting.
+- Independent protocol-honesty gate on codex-remote: 30 tests across GARCH, e-process/DM wiring, forbidden metrics, SOTA protocol, research-only claim invariants.
+- Security-tool availability on codex-remote (honest negative — no result claimed): `pip-audit unavailable`, `bandit unavailable`, `.venv\Scripts\python.exe -m pip check` cannot run (venv has no `pip` module).
+
 ## External comparison evidence
 
 Official references were fetched successfully for named public systems:
@@ -40,6 +49,12 @@ Official references were fetched successfully for named public systems:
 - Zipline Reloaded: https://zipline.ml4trading.io/
 
 These URLs establish comparison targets and documented product scope only. No fair head-to-head benchmark, published SOTA number, or live P&L evidence has been captured against them.
+Additional references recorded at the codex-remote checkpoint (2026-09-21):
+
+- Live URL checks returned HTTP 200 for Chronos (`https://arxiv.org/abs/2403.07815`), Moirai/Uni2TS (`https://arxiv.org/abs/2402.02592`), TimesFM (`https://arxiv.org/abs/2310.10688`), and GIPS (`https://www.gipsstandards.org/standards/`). Reference availability receipts only, not matched proof.
+- Industry references: QuantConnect live trading/reconciliation/risk docs, Alpaca paper/API docs, IBKR API docs, Trading Technologies algo/TCA/FIX docs, GIPS standards, FINRA Rule 5310, and FIX Protocol guidance. These establish benchmark dimensions and product surfaces, not audited comparable performance.
+- SOTA/protocol references: DeepLOB (arXiv:1808.03668), Chronos (arXiv:2403.07815 and Amazon repository), TimesFM (arXiv:2310.10688), Moirai/Uni2TS (arXiv:2402.02592 and Salesforce repository), CQR (arXiv:1905.03222), ACI (arXiv:2106.00170), White Reality Check (DOI 10.1111/1468-0262.00152), Hansen SPA (DOI 10.2139/ssrn.264569), Patton volatility comparison (DOI 10.1016/j.jeconom.2011.01.002), and realized-volatility protocol reference (DOI 10.1111/1468-0262.00418).
+- These references remain non-comparable until licensed PIT data, fixed chronological protocols, matched targets/horizons, cost/liquidity/borrow modeling, and immutable rerun receipts exist.
 
 Published SOTA comparison target (forecasting domain): Kronos — Shi et al. (2025), NeurIPS 2025, https://arxiv.org/abs/2508.02739 , https://github.com/shiyu-coder/Kronos , https://huggingface.co/NeoQuasar . Both public model sizes were evaluated zero-shot from pinned local artifacts against the lab's distribution forecasters on real Binance daily bars.
 
@@ -47,6 +62,17 @@ Published SOTA comparison target (forecasting domain): Kronos — Shi et al. (20
 - `.dsh-24x7/evidence-sota-eval-kronos-base.txt` / `.json`: Kronos-base (102M) pooled CRPS 0.0287; DM t = +9.2…+9.6, p < 1e-4; MCS @0.10 excludes Kronos again.
 - `.dsh-24x7/evidence-sota-eval-kronos-small.losses.npz`: raw loss matrix so inference (DM/SPA/MCS via `inference/snooping.py`) is rerunnable without the model.
 - `scripts/sota_eval_kronos.py`: the rerunnable harness — causal expanding windows, 16-draw Kronos ensemble, proper scores only, 450 origins across BTCUSDT/ETHUSDT/SOLUSDT, seed 7.
+
+
+## codex-remote checkpoint — 2026-09-21 (merge-retained)
+
+Status recorded then on `D:\dipcatcher` (job `24x7-18bdfaf2-ac63-4d1c-812f-4332016b2709`): goal active; `## Industry-grade` **UNPROVEN** — no licensed PIT vendor release/ingestion evidence, authenticated broker/API or FIX order/fill reconciliation, venue-specific TCA/liquidity/borrow/financing/failure measurements, independently measured production SLO/RTO/RPO, signed live authorization, or GIPS-verified performance record. `## SOTA` **UNPROVEN** at that time — local outputs were synthetic or paper-shadow diagnostics; no apples-to-apples real-data rerun vs DeepLOB/Chronos/TimesFM/Moirai/Uni2TS or a realized-volatility benchmark had completed (the eval fleets below landed afterward and produced the scoped-PROVEN status in `## Honest gate status`).
+
+- Canonical pytest discovery is explicit in root `pytest.ini`; the tracked `tests/tests` compatibility mirror is excluded from canonical collection; `pytest --collect-only -q` completes without duplicate-module errors (1,000+ tests listed). An earlier broad run with `testpaths = [tests]` produced 454 duplicate-module mismatches — stale config, invalid as evidence. The canonical non-network run was active as job `pwsh-20`.
+- A separate tracked nested `src/src/quant_fund` and `tests/tests` compatibility tree remains; preserved, not deleted; a provenance/maintenance risk because imports resolve to `src/quant_fund`. A nested `scripts/scripts` tree also requires reconciliation.
+- SOTA eval fleet (`sota_eval_kronos.py`) receipts landed 2026-09-21 ~23:00: `.dsh-24x7\eval-full\` — 11 daily assets × 300 origins + 5 4h assets (complete-case, `dip_student_t` excluded — its `scipy.stats.t.fit` fails on flat 4h windows) + Kronos seed-robustness runs (seeds 11/23). Published targets scored zero-shot: kronos_small (canonical `Kronos-Tokenizer-base` pairing via `d1fix_*`/`h4fix_*` rerun, spliced into `*.fixed.npz`), chronos2, bolt_small, timesfm. Challengers: 10 `dip_*` forecasters incl. garch_t, fhs, ewma_emp, lgbm_q, blend. Merged receipts `d1_merged.json` (3300 origins) / `h4_merged.json` (1500 origins): all four targets excluded from MCS @0.10 at both horizons; MCS retains only `dip_garch_t` + `dip_fhs`; SPA p_lower/p_cons = 0.0005 per target, p_upper ~0.46–0.51 disclosed. Inference rerunnable via `--merge-parts` without models.
+- Ops note: `Start-Process` children spawned from a session-0 (WMI/schtasks) parent hang at 1 thread/0 CPU on that box; spawn workers via `Invoke-CimMethod Win32_Process Create` with a `cmd /c ... > log 2> err` wrapper (see `scripts\spawn_staggered.ps1`); ssh-session process trees die on session teardown.
+- Next executable steps recorded then: collect `pwsh-20` canonical non-network pytest output and repair real failures; finish mypy fixes without weakening fail-closed behavior; run real-data-independent benchmark/protocol checks marked diagnostic-only; no `PROOF.md` `STATUS: PROVEN` without live URLs plus captured comparable command output and required external evidence.
 
 ## SOTA broadening round (remote `codex-remote` / `D:\dipcatcher`) — COMPLETE
 

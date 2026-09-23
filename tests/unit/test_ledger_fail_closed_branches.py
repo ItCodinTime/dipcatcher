@@ -397,6 +397,47 @@ def test_validate_ledger_schema_full_flow_ok(tmp_path: Path) -> None:
     assert report["live_pnl_claim"] is False
 
 
+
+def test_positive_cursor_requires_matching_equity_rows(tmp_path: Path) -> None:
+    root = _ledger_dir(tmp_path, "cursor-equity")
+    state = {
+        "run_id": "cursor-equity",
+        "schema_version": 2,
+        "step": 2,
+        "champion": {
+            "slot": "champion",
+            "cash": 1.0,
+            "shares": {},
+            "allow_capital": False,
+            "n_orders": 0,
+            "n_fills": 0,
+            "history": [],
+        },
+    }
+    (root / "broker_state.json").write_text(json.dumps(state))
+
+    missing = validate_ledger_schema(root)
+    assert "broker_state_step_requires_equity" in missing["errors"]
+
+    pl.DataFrame({"event_time": [], "nav": []}).write_parquet(root / "equity.parquet")
+    empty = validate_ledger_schema(root)
+    assert "broker_state_step_equity_empty" in empty["errors"]
+
+    pl.DataFrame({"event_time": [datetime(2026, 1, 1, tzinfo=UTC)], "nav": [1.0]}).write_parquet(
+        root / "equity.parquet"
+    )
+    mismatch = validate_ledger_schema(root)
+    assert "broker_state_step_equity_count_mismatch:step=2:rows=1" in mismatch["errors"]
+
+    pl.DataFrame(
+        {
+            "event_time": [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)],
+            "nav": [1.0, 1.01],
+        }
+    ).write_parquet(root / "equity.parquet")
+    coherent = validate_ledger_schema(root)
+    assert not any(error.startswith("broker_state_step_") for error in coherent["errors"])
+
 def _paper_cfg(tmp_path: Path):  # noqa: ANN202
     from quant_fund.config.loader import load_config
 

@@ -1,0 +1,154 @@
+{
+  "lab_id": "artificial_hedge.hedge_lab.v1",
+  "firm": "Artificial Hedge",
+  "product": "dipcatcher hedge lab",
+  "catalog": "hedge_lab_analytics",
+  "research_only": true,
+  "execution_claim": "paper_backtest",
+  "data_source": "parquet",
+  "synthetic_not_promotable": false,
+  "champion_alias": false,
+  "blend_weight": 0.0,
+  "n_rebalance_dates": 258,
+  "n_weight_rows": 12900,
+  "n_names": 55,
+  "economic": {
+    "catalog": "hedge_lab_analytics",
+    "data_source": "parquet",
+    "research_only": true,
+    "execution_claim": "paper_backtest",
+    "sharpe": 0.5467385362236058,
+    "flag_high_sharpe": false,
+    "sortino": 0.7779317015741793,
+    "calmar": 0.26916325605252983,
+    "max_drawdown": -0.04685536575663085,
+    "cagr": 0.012611742810586968,
+    "ann_vol": 0.02342551245411613,
+    "n_returns": 2691,
+    "psr_vs_zero": 1.0,
+    "min_trl_days": 27.459556174567478,
+    "synthetic_not_promotable": false,
+    "information_ratio": -0.7276863461006242,
+    "active_ann_vol": 0.17545800326489192
+  },
+  "research_twin": {
+    "family": "hedge_lab",
+    "lab_id": "artificial_hedge.hedge_lab.v1",
+    "research_only": true,
+    "execution_claim": "research_only",
+    "data_source": "parquet",
+    "synthetic_not_promotable": false,
+    "champion_alias": false,
+    "blend_weight": 0.0,
+    "n_rebalance_dates": 258,
+    "n_weight_rows": 12900,
+    "n_names": 55,
+    "n_returns": 2691
+  },
+  "market_risk": {
+    "empirical_var": 0.005110276841757595,
+    "parametric_var": 0.0033820945297579784,
+    "monte_carlo_var": 0.005156119725887587,
+    "evt_var": 0.00800332366967583,
+    "empirical_es": 0.007669863291809151,
+    "parametric_es": 0.00388214894923739,
+    "ewma_var": 2.76742424716232e-10,
+    "ewma_es": 3.167874629696681e-10,
+    "kupiec": {
+      "hit_rate": 0.010033444816053512,
+      "lr": 0.00030370880992336424,
+      "p_value": 0.9860957754227722,
+      "n": 2691
+    },
+    "christoffersen": {
+      "lr": 1.1938894376645806,
+      "p_value": 0.5504909740688999,
+      "n": 2691,
+      "hit_rate": 0.010033444816053512,
+      "kupiec_lr": 0.00030370880992336424,
+      "kupiec_p": 0.9860957754227722,
+      "ind_lr": 1.1935857288546572,
+      "ind_p": 0.27460746373151335,
+      "n00": 2637.0,
+      "n01": 26.0,
+      "n10": 26.0,
+      "n11": 1.0
+    },
+    "sources": [
+      "lprtk/pyRisk",
+      "GianMarcoOddo/pyriskmgmt"
+    ],
+    "research_only": true,
+    "execution_claim": "paper_backtest"
+  },
+  "backtest": {
+    "total_return": 0.14320214524503405,
+    "sharpe": 0.5467385362235982,
+    "max_drawdown": -0.04685536575663096,
+    "mean_turnover": 0.009199527861795684,
+    "commission": 2749.866777604797,
+    "spread": 13749.333888023997,
+    "impact": 239.25344730671517,
+    "flag_high_sharpe": false,
+    "risk_gate_rejects": 107,
+    "n": 2691,
+    "source_note": "file",
+    "book_risk_overlay": {
+      "vol_target": 0.025,
+      "dd_limit": 0.05,
+      "es_limit": 0.006,
+      "tail_p": 0.01,
+      "lookback": 63,
+      "n_observe": 2692,
+      "n_halt": 1980,
+      "n_scaled": 696,
+      "last_scale": 0.0,
+      "mean_scale": 0.1269106277651083,
+      "sources": [
+        "lprtk/pyRisk",
+        "GianMarcoOddo/pyriskmgmt"
+      ],
+      "research_only": true,
+      "execution_claim": "paper_backtest"
+    }
+  },
+  "bootstrap": {
+    "status": "ok",
+    "n": 2691,
+    "n_boot": 641898,
+    "block": 21,
+    "workspace_gib_requested": 73.54145434591919,
+    "ram_total_gib": 127.6761360168457,
+    "sharpe_p05": 0.06610180708324771,
+    "sharpe_p50": 0.555494666909803,
+    "sharpe_p95": 1.0367817556350387,
+    "calmar_p05": 0.01715731668765494,
+    "calmar_p50": 0.26919647381295597,
+    "calmar_p95": 0.7849164028599567,
+    "catalog": "hedge_lab_analytics"
+  },
+  "resources": {
+    "disk": {
+      "used_bytes": 301013624,
+      "projected_bytes": 301013624,
+      "budget_bytes": 107374182400,
+      "free_budget_bytes": 107073168776,
+      "used_gib": 0.2803407832980156
+    },
+    "payload_bytes": 301501497,
+    "ram": {
+      "total_bytes": 137091207168,
+      "available_bytes": 122588962816,
+      "headroom_bytes": 27418241433,
+      "workspace_bytes": 78964535329,
+      "total_gib": 127.6761360168457,
+      "available_gib": 114.16986846923828,
+      "workspace_gib": 73.54145434591919
+    },
+    "ram_claim": {
+      "status": "skipped"
+    }
+  },
+  "frictionless": false,
+  "note": "Sharpe/Calmar/Sortino are paper-book diagnostics on a session-close file tape with next-open fills and modeled costs. Not a live P&L claim. Not a research-family blob. blend_weight stays 0."
+}

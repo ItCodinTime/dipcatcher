@@ -5,31 +5,94 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import polars as pl
 from numpy.typing import NDArray
 from sklearn.linear_model import ElasticNet, Ridge
 from sklearn.preprocessing import StandardScaler
 
 from quant_fund.models.base import JoblibMixin, ModelMeta
 
-PUBLIC_FEATURES = [
+# Wave 149 public card: PIT bar-characteristic zoo, CS-standardized at each
+# decision date. Everything is a function of OHLCV / sector / membership at or
+# before ``event_time``. Core columns need <= 60 sessions of history and are
+# strict (a null drops the row). Long-lookback columns are neutral-filled.
+PUBLIC_FEATURES_CORE = [
+    # returns / momentum / reversal
     "cs_z_mom_20",
     "cs_z_reversal_1",
-    "cs_z_vol_20",
-    "cs_z_amihud",
     "cs_z_ret_5",
+    "cs_z_ret_20",
+    "cs_z_mom_5",
+    "cs_z_mom_60",
     "cs_pct_mom_20",
-    "rel_volume",
+    "cs_pct_reversal_1",
+    "cs_pct_ret_overnight",
     "sector_relative_mom_20",
+    "cs_z_z_vs_ma20",
+    # overnight vs intraday tug-of-war, lottery, realized moments
+    "cs_z_ret_overnight",
+    "cs_z_ret_open_close",
+    "cs_z_ret_overnight_20",
+    "cs_z_ret_intraday_20",
+    "cs_z_max_ret_20",
+    "cs_z_min_ret_20",
+    "cs_z_skew_20",
+    "cs_z_kurt_20",
+    # volatility family
+    "cs_z_vol_20",
+    "cs_z_vol_60",
+    "cs_z_vol_ewma",
+    "cs_z_vol_parkinson",
+    "cs_z_vol_garman_klass",
+    "cs_z_vol_of_vol",
+    "cs_z_downside_vol_20",
+    "cs_z_vol_ratio_20_60",
+    "cs_z_beta_60",
+    "cs_z_idio_vol_60",
+    "cs_z_idio_mom_20",
+    "cs_z_mom_skip_5_20",
+    # liquidity / size / price level
+    "cs_z_amihud",
+    "cs_z_amihud_60",
+    "cs_z_adv",
+    "cs_z_dollar_volume",
+    "rel_volume",
+    "cs_z_turnover_proxy",
+    "cs_z_volume_vol",
+    "cs_z_adv_ratio_20_60",
+    "cs_z_log_price",
 ]
+# Long-lookback characteristics (126 / 252 sessions). Gu–Kelly–Xiu (2020)
+# convention: a missing characteristic takes the cross-sectional median, which
+# is 0 for a robust z-score. Rows are kept; the column reads "no information".
+PUBLIC_FEATURES_LONG = [
+    "cs_z_mom_126",
+    "cs_z_mom_12_1",
+    "cs_z_high_52w_prox",
+]
+NEUTRAL_FILL_FEATURES: dict[str, float] = dict.fromkeys(PUBLIC_FEATURES_LONG, 0.0)
+PUBLIC_FEATURES = [*PUBLIC_FEATURES_CORE, *PUBLIC_FEATURES_LONG]
 ORACLE_FEATURES = [
     "cs_z_planted_signal",
 ]
+# Raw planted column plus the CS-z feature. Neither is a public K-line competitor.
+ORACLE_COLUMNS = ("planted_signal", "cs_z_planted_signal")
 DEFAULT_FEATURES = [*PUBLIC_FEATURES, *ORACLE_FEATURES]
 
 
 def available_features(columns: list[str], wanted: list[str] | None = None) -> list[str]:
     wanted = wanted or DEFAULT_FEATURES
     return [c for c in wanted if c in columns]
+
+
+def drop_oracle_columns(frame: pl.DataFrame) -> pl.DataFrame:
+    """Drop labeled SYNTHETIC oracle columns. Public-feature cards must call this.
+
+    ``planted_signal`` / ``cs_z_planted_signal`` recover the DGP by construction.
+    They are not a fair champion for Kronos / robinhood+.
+    """
+    drop = [name for name in ORACLE_COLUMNS if name in frame.columns]
+    return frame.drop(drop) if drop else frame
 
 
 def _finite(x: NDArray[np.float64], y: NDArray[np.float64] | None = None) -> Any:
@@ -67,15 +130,42 @@ class CompositeRanker(JoblibMixin):
         return ModelMeta(family="ranking", name="composite", version="v1", features=self.cols)
 
 
+def _demean_by_date(y: NDArray[np.float64], dates: NDArray[Any]) -> NDArray[np.float64]:
+    """Subtract the date-level mean so pooled fits target CS rank, not the date mean."""
+    y = np.asarray(y, dtype=float).copy()
+    keys = np.asarray(dates)
+    out = y
+    for key in np.unique(keys):
+        sl = keys == key
+        block = out[sl]
+        finite = np.isfinite(block)
+        if finite.any():
+            out[sl] = block - float(np.mean(block[finite]))
+    return out
+
+
 class RidgeRanker(JoblibMixin):
     def __init__(self, alpha: float = 1.0) -> None:
         self.alpha = alpha
         self.scaler = StandardScaler()
         self.model = Ridge(alpha=alpha)
+        self.alpha_used: float = float(alpha)
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> RidgeRanker:
-        xx, yy, _ = _finite(x, y)
+        xx, yy, mask = _finite(x, y)
+        dates = kwargs.get("dates")
+        alpha = float(self.alpha)
+        if dates is not None:
+            d = np.asarray(dates)[mask]
+            yy = _demean_by_date(yy, d)
+            # sklearn Ridge is un-normalized RSS + α||b||². Pooled α=1 is OLS
+            # on a 100k-row tape. Multiply by T so pooled shrinkage matches
+            # date-level Ridge(α) (Gram X'X + Tα I).
+            n_dates = int(len({str(k) for k in d.tolist()}))
+            alpha = alpha * float(max(n_dates, 1))
+        self.alpha_used = alpha
         self.scaler.fit(xx)
+        self.model.set_params(alpha=alpha)
         self.model.fit(self.scaler.transform(xx), yy)
         return self
 
@@ -84,7 +174,12 @@ class RidgeRanker(JoblibMixin):
         return self.model.predict(self.scaler.transform(x))
 
     def metadata(self) -> ModelMeta:
-        return ModelMeta(family="ranking", name="ridge", version="v1", extra={"alpha": self.alpha})
+        return ModelMeta(
+            family="ranking",
+            name="ridge",
+            version="v1",
+            extra={"alpha": self.alpha, "alpha_used": float(self.alpha_used)},
+        )
 
 
 class ElasticNetRanker(RidgeRanker):

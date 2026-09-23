@@ -1,0 +1,24 @@
+# =============================================================================
+# NOT A LIVE BROKER / PRODUCTION TRADING PROFILE.
+# =============================================================================
+# Historical name kept for path stability. This file is a *research-strict*
+# promotion-gate profile. It never enables live execution.
+#
+# Live trading requires BOTH runtime.mode: live AND runtime.allow_live: true,
+# plus a Phase-17 broker adapter that does not exist in this repo.
+# Prefer configs/research.yaml for benches and configs/backtest.yaml for fills.
+# =============================================================================
+inherit: base.yaml
+runtime:
+  mode: research
+  allow_live: false
+# Stricter evidence bars for champion consideration (still research-only).
+promotion:
+  min_mean_ic: 0.02
+  min_cost_adjusted_spread: 0.0
+  max_turnover: 2.0
+  require_leakage_pass: true
+# Keep kill switch halt-safe even if someone later flips mode without reading.
+kill_switch:
+  state: ENABLED
+  allow_auto_flatten: false

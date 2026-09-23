@@ -18,24 +18,28 @@ Dev / locked-holdout split via --holdout-frac / --holdout. Metrics
 annualized from measured bars-per-year. Receipt stamped research-only.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402
 
-import argparse
-import hashlib
-import json
-import sys
-from datetime import UTC, datetime
-from pathlib import Path
+import argparse  # noqa: E402
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import sys  # noqa: E402
+from datetime import UTC, datetime  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import numpy as np
-import polars as pl
+import numpy as np  # noqa: E402
+import polars as pl  # noqa: E402
 
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / "src"))
 
-from quant_fund.backtest.overlay import CompositeScaler, DrawdownGovernor, VolTargetScaler
-from quant_fund.backtest.perp_engine import run_perp_backtest
-from quant_fund.config import load_config
+from quant_fund.backtest.overlay import (  # noqa: E402
+    CompositeScaler,
+    DrawdownGovernor,
+    VolTargetScaler,
+)
+from quant_fund.backtest.perp_engine import run_perp_backtest  # noqa: E402
+from quant_fund.config import load_config  # noqa: E402
 
 
 def _sha256(path: Path) -> str:

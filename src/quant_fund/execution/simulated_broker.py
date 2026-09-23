@@ -167,6 +167,7 @@ class SimulatedBroker:
         price_age_bars: int | None = None,
         model_age_hours: float | None = None,
         decision_price: float | None = None,
+        market_predicted_vol: float | None = None,
         bar_open: float | None = None,
         bar_high: float | None = None,
         bar_low: float | None = None,
@@ -204,6 +205,12 @@ class SimulatedBroker:
             or float(adv_dollars) <= 0
             or not np.isfinite(float(sigma))
             or float(sigma) < 0
+            or (
+                market_predicted_vol is not None
+                and (
+                    not np.isfinite(float(market_predicted_vol)) or float(market_predicted_vol) < 0
+                )
+            )
         ):
             rec = OrderRecord(
                 order=order.model_copy(update={"status": OrderStatus.REJECTED}),
@@ -255,14 +262,13 @@ class SimulatedBroker:
             price_age_bars=price_age_bars,
             model_age_hours=model_age_hours,
             decision_price=decision_price,
+            market_predicted_vol=market_predicted_vol,
             keep_residual=order.limit_price is not None,
         )
 
     def _rest_order(self, order: Order) -> OrderRecord:
         """Park a working limit order in the book (no capital movement)."""
-        status = (
-            OrderStatus.PARTIAL if order.status is OrderStatus.PARTIAL else OrderStatus.ACKED
-        )
+        status = OrderStatus.PARTIAL if order.status is OrderStatus.PARTIAL else OrderStatus.ACKED
         acked = order.model_copy(update={"status": status})
         self.open_orders[order.order_id] = acked
         rec = OrderRecord(order=acked, reject_reason=None, slot=self.slot)
@@ -388,6 +394,7 @@ class SimulatedBroker:
         price_age_bars: int | None = None,
         model_age_hours: float | None = None,
         decision_price: float | None = None,
+        market_predicted_vol: float | None = None,
         keep_residual: bool = False,
         fill_time: datetime | None = None,
     ) -> OrderRecord:
@@ -442,6 +449,7 @@ class SimulatedBroker:
                 config=self.config,
                 price_age_bars=price_age_bars,
                 model_age_hours=model_age_hours,
+                market_predicted_vol=market_predicted_vol,
             )
         except RiskGateRejected as exc:
             self.reject_count += 1
@@ -602,9 +610,7 @@ class SimulatedBroker:
             "kill_state": self.kill.state,
             "last_marks": dict(self.last_marks),
             "initial_cash": float(self.initial_cash),
-            "open_orders": [
-                order.model_dump(mode="json") for order in self.open_orders.values()
-            ],
+            "open_orders": [order.model_dump(mode="json") for order in self.open_orders.values()],
         }
 
     @classmethod

@@ -13,6 +13,7 @@ from quant_fund.data.point_in_time import validate_feature_frame
 from quant_fund.data.universe import membership_asof
 from quant_fund.features.cross_sectional import apply_cross_sectional
 from quant_fund.features.engine import add_market_features
+from quant_fund.features.metadata import FEATURE_SET_VERSION
 from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.schemas.pit import assert_pit_safe
 
@@ -103,6 +104,13 @@ def test_file_source_ingest_builds_governed_lake_and_manifest(tmp_path: Path) ->
     pl.DataFrame(
         {
             "security_id": ["A"],
+            "ticker": ["AAA"],
+            "valid_from": [t0],
+            "valid_to": [None],
+            "available_time": [t0],
+            "ingested_time": [t0],
+            "source": ["vendor-file"],
+            "revision_id": ["v1"],
             "sector": ["technology"],
             "industry": ["software"],
             "exchange": ["TEST"],
@@ -121,6 +129,7 @@ def test_file_source_ingest_builds_governed_lake_and_manifest(tmp_path: Path) ->
     paths = ingest(config)
     assert paths["bars"].is_file()
     assert paths["silver"].is_file()
+    assert paths["universe"].is_file()
     manifest = paths["manifest"].read_text()
     assert '"source": "file"' in manifest
     assert '"rows": 2' in manifest
@@ -128,6 +137,86 @@ def test_file_source_ingest_builds_governed_lake_and_manifest(tmp_path: Path) ->
     silver = pl.read_parquet(paths["silver"])
     assert silver.height == 2
     assert silver["sector"].to_list() == ["technology", "technology"]
+
+
+def test_ingest_drops_visible_post_delist_bars_from_silver(tmp_path: Path) -> None:
+    """Leftover post-delist prints cannot remain on the production silver panel."""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    t1 = datetime(2020, 1, 3, tzinfo=UTC)
+    t2 = datetime(2020, 1, 4, tzinfo=UTC)
+    pl.DataFrame(
+        {
+            "event_time": [t0, t1, t2, t0, t1, t2],
+            "available_time": [t0, t1, t2, t0, t1, t2],
+            "ingested_time": [t0, t1, t2, t0, t1, t2],
+            "source": ["vendor-file"] * 6,
+            "revision_id": ["v1"] * 6,
+            "security_id": ["A", "A", "A", "B", "B", "B"],
+            "symbol": ["AAA", "AAA", "AAA", "BBB", "BBB", "BBB"],
+            "open": [10.0, 10.0, 10.0, 20.0, 20.0, 20.0],
+            "high": [11.0, 11.0, 11.0, 21.0, 21.0, 21.0],
+            "low": [9.0, 9.0, 9.0, 19.0, 19.0, 19.0],
+            "close": [10.0, 10.0, 10.0, 20.0, 20.0, 20.0],
+            "volume": [1e6, 1e6, 1e6, 1e6, 1e6, 1e6],
+        }
+    ).write_parquet(raw / "bars.parquet")
+    pl.DataFrame(
+        {
+            "event_time": [t1],
+            "available_time": [t1],
+            "ingested_time": [t1],
+            "source": ["vendor-file"],
+            "revision_id": ["v1"],
+            "security_id": ["A"],
+            "action_type": ["delist"],
+            "factor": [None],
+            "amount": [None],
+            "new_ticker": [None],
+        }
+    ).write_parquet(raw / "corporate_actions.parquet")
+    pl.DataFrame(
+        {
+            "security_id": ["A", "B"],
+            "ticker": ["AAA", "BBB"],
+            "valid_from": [t0, t0],
+            "valid_to": [None, None],
+            "available_time": [t0, t0],
+            "ingested_time": [t0, t0],
+            "source": ["vendor-file", "vendor-file"],
+            "revision_id": ["v1", "v1"],
+            "sector": ["technology", "technology"],
+            "industry": ["software", "software"],
+            "exchange": ["XNYS", "XNYS"],
+            "security_type": ["common_stock", "common_stock"],
+        }
+    ).write_parquet(raw / "security_master.parquet")
+    config = AppConfig.model_validate(
+        {
+            "data": {
+                "root": str(tmp_path / "lake"),
+                "source": "file",
+                "parquet_path": str(raw),
+            },
+            "universe": {
+                "min_price": 1.0,
+                "min_adv": 0.0,
+                "min_history_bars": 1,
+                "top_n_adv": None,
+                "exchanges": ["XNYS"],
+                "security_types": ["common_stock"],
+            },
+        }
+    )
+    paths = ingest(config)
+    silver = pl.read_parquet(paths["silver"]).sort(["security_id", "event_time"])
+    assert silver.filter(pl.col("security_id") == "A")["event_time"].to_list() == [t0, t1]
+    assert silver.filter(pl.col("security_id") == "B").height == 3
+    universe = pl.read_parquet(paths["universe"])
+    after = universe.filter(pl.col("asof") == t2)
+    assert "A" not in after["security_id"].to_list()
+    assert "B" in after["security_id"].to_list()
 
 
 def test_file_adapter_rejects_duplicate_bar_keys(tmp_path: Path) -> None:
@@ -256,6 +345,27 @@ def test_cs_transform_excludes_late_available_rows() -> None:
 
     t0_rows = out.filter(pl.col("event_time") == t0).sort("security_id")
     assert t0_rows["cs_pct_x"].to_list() == [0.5, None]
+
+
+def test_cs_z_falls_back_to_sd_when_mad_is_zero() -> None:
+    """More than half the names share one value: MAD=0 must not explode to ~1e10."""
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    df = pl.DataFrame(
+        {
+            "event_time": [t0] * 6,
+            "security_id": list("abcdef"),
+            "available_time": [t0] * 6,
+            "x": [0.0, 0.0, 0.0, 0.0, -0.10, -0.30],
+            "flat": [1.0] * 6,
+            "sector": ["s1"] * 3 + ["s2"] * 3,
+        }
+    )
+    out = apply_cross_sectional(df, ["x", "flat"], 0.0, sector="sector")
+    z = out["cs_z_x"].to_numpy()
+    assert float(abs(z).max()) < 10.0
+    assert z[-1] < z[-2] < 0.0
+    assert out["cs_z_flat"].to_list() == [0.0] * 6
+    assert float(out["cs_z_sector_x"].abs().max()) < 10.0
 
 
 def test_market_aggregates_exclude_late_available_rows() -> None:
@@ -403,6 +513,89 @@ def test_filter_available_all_future_returns_empty() -> None:
     assert out.height == 0
 
 
+def test_filter_trailing_returns_asof_legacy_without_available_time() -> None:
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "event_time": [t0],
+            "security_id": ["A"],
+            "ret_1": [0.01],
+        }
+    )
+    out = filter_trailing_returns_asof(frame, t0)
+    assert out.height == 1
+    assert out["ret_1"].to_list() == [0.01]
+
+
+def test_filter_trailing_returns_asof_drops_unpublished_restatement() -> None:
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    t1 = datetime(2020, 1, 3, tzinfo=UTC)
+    later = datetime(2020, 1, 4, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "event_time": [t0, t1],
+            "available_time": [t0, later],
+            "security_id": ["A", "A"],
+            "ret_1": [0.01, 0.90],
+        }
+    )
+    out = filter_trailing_returns_asof(frame, t1)
+    assert out.height == 1
+    assert out["ret_1"].to_list() == [0.01]
+
+
+def test_filter_trailing_returns_asof_keeps_boundary_publication() -> None:
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    t1 = datetime(2020, 1, 3, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "event_time": [t0, t1],
+            "available_time": [t0, t1],
+            "security_id": ["A", "A"],
+            "ret_1": [0.01, 0.02],
+        }
+    )
+    out = filter_trailing_returns_asof(frame, t1)
+    assert out.height == 2
+    assert out["ret_1"].to_list() == [0.01, 0.02]
+
+
+def test_filter_trailing_returns_asof_null_available_time_fails_closed() -> None:
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    frame = pl.DataFrame(
+        {
+            "event_time": [t0, t0],
+            "available_time": [t0, None],
+            "security_id": ["A", "B"],
+            "ret_1": [0.01, 0.02],
+        }
+    )
+    with pytest.raises(PointInTimeError, match="null available_time"):
+        filter_trailing_returns_asof(frame, t0)
+
+
+def test_filter_trailing_returns_asof_empty_frame_is_noop() -> None:
+    from quant_fund.data.point_in_time import filter_trailing_returns_asof
+
+    frame = pl.DataFrame(
+        {
+            "event_time": pl.Series([], dtype=pl.Datetime("us", "UTC")),
+            "available_time": pl.Series([], dtype=pl.Datetime("us", "UTC")),
+            "ret_1": pl.Series([], dtype=pl.Float64),
+        }
+    )
+    out = filter_trailing_returns_asof(frame, datetime(2020, 1, 2, tzinfo=UTC))
+    assert out.height == 0
+
+
 def test_validate_feature_frame_null_availability_fails() -> None:
     decision = datetime(2020, 1, 2, tzinfo=UTC)
     frame = pl.DataFrame(
@@ -528,7 +721,7 @@ def test_cached_panel_validation_uses_row_event_time(tmp_path: Path) -> None:
             "security_id": ["A", "A"],
             "event_time": times,
             "available_time": times,
-            "feature_set_version": ["features.v1", "features.v1"],
+            "feature_set_version": [FEATURE_SET_VERSION, FEATURE_SET_VERSION],
             "ret_1": [0.1, 0.2],
         }
     )
@@ -537,5 +730,9 @@ def test_cached_panel_validation_uses_row_event_time(tmp_path: Path) -> None:
     )
     features.write_parquet(root / "gold" / "features.parquet")
     labels.write_parquet(root / "gold" / "labels.parquet")
+    (root / "silver").mkdir(parents=True, exist_ok=True)
+    pl.DataFrame({"security_id": ["A", "A"], "asof": times}).write_parquet(
+        root / "silver" / "universe.parquet"
+    )
     config = AppConfig.model_validate({"data": {"root": str(root)}})
     assert panel(config).height == 2

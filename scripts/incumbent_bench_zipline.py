@@ -28,7 +28,6 @@ itself — so no fair benchmark exists here. Kept for the record.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import sys
@@ -36,7 +35,6 @@ import tempfile
 import time
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import polars as pl
 

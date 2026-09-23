@@ -2,15 +2,25 @@ from quant_fund.pipeline.dataset import build_gold, panel
 from quant_fund.pipeline.doctor import doctor
 from quant_fund.pipeline.forecast import (
     HISTORY_SORT_KEYS,
+    MARKET_RISK_OVERLAY_GARCH,
+    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+    apply_market_variance_overlay_to_covariance,
     build_causal_weight_panel,
     build_event_time_day_index,
     clear_forecast_caches,
     clear_wrappee_cache,
+    estimate_optimizer_covariance_asof,
     forecast_asof,
+    garch_market_forecast_asof,
+    garch_name_forecasts_asof,
     history_for_calibration,
     history_prefix_upto,
     history_upto,
+    market_risk_overlay_asof,
     optimize_asof,
+    overlay_covariance_with_garch_market,
+    realized_garch_market_forecast_asof,
+    resolve_market_variance_overlay_asof,
     resolve_wrappee_reselect_cached,
     slice_day,
     sort_for_history,
@@ -19,10 +29,12 @@ from quant_fund.pipeline.forecast import (
     wrappee_cal_fingerprint,
     wrappee_fit_cache_key,
 )
-from quant_fund.pipeline.train import train_family
+from quant_fund.pipeline.train import garch_name_walk_forward, train_family
 
 __all__ = [
     "HISTORY_SORT_KEYS",
+    "MARKET_RISK_OVERLAY_GARCH",
+    "MARKET_RISK_OVERLAY_REALIZED_GARCH",
     "build_causal_weight_panel",
     "build_event_time_day_index",
     "history_for_calibration",
@@ -40,7 +52,16 @@ __all__ = [
     "resolve_wrappee_reselect_cached",
     "doctor",
     "forecast_asof",
+    "garch_market_forecast_asof",
+    "garch_name_forecasts_asof",
+    "garch_name_walk_forward",
+    "apply_market_variance_overlay_to_covariance",
+    "market_risk_overlay_asof",
+    "estimate_optimizer_covariance_asof",
     "optimize_asof",
+    "overlay_covariance_with_garch_market",
     "panel",
+    "realized_garch_market_forecast_asof",
+    "resolve_market_variance_overlay_asof",
     "train_family",
 ]

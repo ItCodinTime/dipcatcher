@@ -35,6 +35,9 @@ def test_load_research_yaml() -> None:
     assert cfg.embargo_bars() >= 1
     assert cfg.northset.n_book_levels == 5
     assert cfg.northset.n_session_candles == 8
+    assert cfg.robinhood_plus.enabled is True
+    assert cfg.robinhood_plus.backend.value == "numpy"
+    assert cfg.robinhood_plus.blend_weight == 0.0
 
 
 def test_config_inheritance_cannot_escape_root(tmp_path: Path) -> None:
@@ -168,6 +171,10 @@ def test_train_config_rejects_invalid_hyperparameters() -> None:
         {"ridge_alpha": float("nan")},
         {"elasticnet_l1": 1.1},
         {"qlike_floor": 0.0},
+        {"rff_n_features": 5},
+        {"ipca_n_factors": 0},
+        {"tprf_n_factors": 0},
+        {"gbrt_learning_rate": 0.0},
     ):
         with pytest.raises(ValueError):
             TrainConfig.model_validate(payload)
@@ -183,7 +190,7 @@ def test_paper_config_rejects_invalid_simulation_settings() -> None:
         {"promote_min_steps": 0},
         {"ledger_subdir": " "},
         {"ledger_subdir": "../escape"},
-        {"ledger_subdir": "/tmp/paper"},
+        {"ledger_subdir": str(Path("C:/tmp/paper") if Path("C:/tmp/paper").is_absolute() else Path("/tmp/paper"))},
     ):
         with pytest.raises(ValueError):
             PaperConfig.model_validate(payload)
@@ -227,6 +234,67 @@ def test_optimizer_config_rejects_invalid_objectives() -> None:
             raise AssertionError("invalid optimizer config should fail")
         except ValueError:
             pass
+
+
+def test_optimizer_config_named_covariance_paths() -> None:
+    assert OptimizerConfig().covariance == "ledoit_wolf"
+    assert (
+        OptimizerConfig.model_validate({"covariance": "dcc_gaussian"}).covariance == "dcc_gaussian"
+    )
+    assert (
+        OptimizerConfig.model_validate({"covariance": "dcc_student_t"}).covariance
+        == "dcc_student_t"
+    )
+    assert OptimizerConfig.model_validate({"covariance": "adcc"}).covariance == "adcc"
+    assert OptimizerConfig.model_validate({"covariance": "ccc"}).covariance == "ccc"
+    assert (
+        OptimizerConfig.model_validate({"covariance": "bollerslev_1990_ccc"}).covariance == "ccc"
+    )
+    assert OptimizerConfig.model_validate({"covariance": "agdcc"}).covariance == "agdcc"
+    assert OptimizerConfig.model_validate({"covariance": "ag_dcc"}).covariance == "agdcc"
+    assert (
+        OptimizerConfig.model_validate({"covariance": "diagonal_agdcc"}).covariance == "agdcc"
+    )
+    assert OptimizerConfig.model_validate({"covariance": "agdcc_full"}).covariance == "agdcc_full"
+    assert OptimizerConfig.model_validate({"covariance": "full_agdcc"}).covariance == "agdcc_full"
+    assert (
+        OptimizerConfig.model_validate(
+            {"covariance": "cappiello_engle_sheppard_2006_full_agdcc"}
+        ).covariance
+        == "agdcc_full"
+    )
+    assert OptimizerConfig.model_validate({"covariance": "ewma"}).covariance == "ewma"
+    assert OptimizerConfig.model_validate({"covariance": "oas"}).covariance == "oas"
+    assert (
+        OptimizerConfig.model_validate({"covariance": "chen_wiesel_eldar_hero_2010"}).covariance
+        == "oas"
+    )
+    assert (
+        OptimizerConfig.model_validate({"covariance": "ledoit_wolf_nonlinear"}).covariance
+        == "ledoit_wolf_nonlinear"
+    )
+    assert (
+        OptimizerConfig.model_validate({"covariance": "nlshrink"}).covariance
+        == "ledoit_wolf_nonlinear"
+    )
+    assert (
+        OptimizerConfig.model_validate({"covariance": "ledoit_wolf_2020_analytical"}).covariance
+        == "ledoit_wolf_nonlinear"
+    )
+    assert OptimizerConfig.model_validate({"covariance": "sample"}).covariance == "sample"
+    assert (
+        OptimizerConfig.model_validate({"covariance": "unbiased_sample"}).covariance == "sample"
+    )
+    with pytest.raises(ValueError, match="unknown_optimizer_covariance"):
+        OptimizerConfig.model_validate({"covariance": "t"})
+    with pytest.raises(ValueError, match="unwired_optimizer_covariance:factor"):
+        OptimizerConfig.model_validate({"covariance": "factor"})
+    with pytest.raises(ValueError, match="unknown_dcc_spec:dcc"):
+        OptimizerConfig.model_validate({"covariance": "dcc"})
+    with pytest.raises(ValueError, match="unknown_dcc_spec:shrinkage"):
+        OptimizerConfig.model_validate({"covariance": "shrinkage"})
+    with pytest.raises(ValueError, match="analytical 2020, not QuEST 2017"):
+        OptimizerConfig.model_validate({"covariance": "ledoit_wolf_2017"})
 
 
 def test_validation_config_rejects_invalid_protocol() -> None:

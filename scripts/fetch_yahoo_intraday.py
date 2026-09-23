@@ -112,7 +112,7 @@ def main() -> int:
         dest = args.outdir / f"{sym.lower()}_1h.parquet"
         try:
             df = to_frame(fetch_chart(sym, args.range), sym)
-        except Exception as e:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             time.sleep(2.0)
             try:
                 df = to_frame(fetch_chart(sym, args.range), sym)

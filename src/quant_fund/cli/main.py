@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from quant_fund.config import dump_resolved, load_config
+from quant_fund.hmm.cli import hmm_app
 from quant_fund.pipeline.doctor import doctor as run_doctor
 from quant_fund.pipeline.train import train_family
 from quant_fund.utils.logging import configure_logging, get_logger
@@ -45,6 +46,7 @@ app = typer.Typer(
 )
 train_app = typer.Typer(help="Train a forecast family.")
 app.add_typer(train_app, name="train")
+app.add_typer(hmm_app, name="hmm")
 
 
 def _cfg(config: Path):

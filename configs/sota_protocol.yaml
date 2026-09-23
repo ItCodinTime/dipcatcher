@@ -1,0 +1,27 @@
+# Frozen SOTA scoring contract. Do not edit after a receipt cites protocol_sha256.
+# This file is not an AppConfig (no inherit). Load via SotaProtocol.
+
+protocol_id: dipcatcher.sota.v1
+frozen: true
+ranking_target: future_idio_return_1
+distribution_target: future_excess_return_5
+horizons: [1, 5]
+embargo_bars: 5
+n_asofs: 6
+lookback: 32
+pred_len: 5
+sample_count: 4
+variant: mini
+public_features_only: true
+synthetic_promotable: false
+champion_alias_on_synthetic: false
+holdout_last_year: false
+held_out_names: []
+second_market: stooq_uk
+tsfm_baselines:
+  - PatchTST
+  - iTransformer
+  - TimesFM
+  - Chronos
+  - Time-MoE
+  - DLinear

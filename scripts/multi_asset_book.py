@@ -372,7 +372,7 @@ def main() -> int:
     for name, fr in feats.items():
         feats_by_date[name] = {
             t: float(v)
-            for t, v in zip(fr["event_time"].to_list(), fr["close"].to_list())
+            for t, v in zip(fr["event_time"].to_list(), fr["close"].to_list(), strict=True)
         }
 
     all_times = sorted(set(bars["event_time"].to_list()))
