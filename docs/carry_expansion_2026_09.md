@@ -72,7 +72,7 @@ Sharpe-optimal alternative on the same expanded universe: `nw0.08×mx15`
 Aggressive variant `nw0.12×mx60` (+336% / $3.82M) passes all constraints but its
 holdout Sharpe drops to 1.08; kept off the podium.
 
-## Regime-scaled sizing (`rate_scale_*`, new champion v2)
+## Regime-scaled sizing (`rate_scale_*`)
 
 `basis_carry_hysteresis_weights` gained optional regime-scaling:
 `w = name_weight * clip(book_rate / rate_scale_ref, floor, cap)` where
@@ -80,28 +80,50 @@ holdout Sharpe drops to 1.08; kept off the podium.
 names. Upside-only mode (`floor=1.0`) never de-rates the flat book — it only
 adds exposure when funding dispersion is rich.
 
-Result: `rsr=20bp/d, cap=1.5, floor=1.0` on `nw0.11/mx60`:
+Champion v2: `rsr=20bp/d, cap=1.5, floor=1.0` on `nw0.11/mx60` scored
++356% / 25.3% CAGR / Sharpe 5.98 / DD −2.10% / $4.03M — superseded by v3 below.
+
+## Champion v3 — `enter=2bp/d, exit=0, lb=9, nw=0.12, mx=60, band=1.3, rsr=20bp/d, cap=1.5, floor=1.0`
+
+A 2bp/day entry bar (vs 1.5bp) is a sharp local optimum: high enough to keep
+the squeeze-prone tail out, low enough to keep ~60 qualifying names.
 
 | window | Sharpe | CAGR | total | max DD | funding_net |
 |--------|-------:|-----:|------:|-------:|------------:|
-| dev (283 elig.)    | 6.44 | 35.0% | +348% | −1.88% | $3.74M |
-| holdout (58 elig.) | 1.33 | 1.3%  | +2.2% | −1.70% | $0.07M |
-| full (57 elig.)    | 5.98 | 25.3% | **+356%** | −2.10% | **$4.03M** |
+| dev (283 elig.)    | 6.36 | 35.3% | +353% | −1.84% | $3.79M |
+| holdout (58 elig.) | 1.87 | 1.7%  | +2.9% | −0.98% | $0.07M |
+| full (57 elig.)    | 6.12 | 25.7% | **+365%** | **−1.53%** | **$4.09M** |
 
-2021 alone: **+134.9%**. Worst day −0.94% (2021-05-19). Zero liquidations;
-15 margin-rejects = the 3.0× leverage cap correctly clipping orders at the
-top of rich regimes (gross marks peaked 3.15×).
+Dominates v2 on every axis. Yearly: 2020 +37.4%, **2021 +132.7%**, 2022 +1.5%,
+2023 +11.5%, 2024 +25.3%, 2025 +2.8%. Worst day ever −0.96%; zero
+liquidations; 8 margin-rejects (leverage cap honestly clipping at peak
+dispersion; gross marks peaked 3.26×).
 
-Boundary map (all on this universe):
-- `floor<1.0` (bidirectional scaling) *lowers* full-window returns — it
-  de-rates the book in the regimes that compound hardest (+252% vs +356%).
-- `ref ≤ 18bp` or `cap ≥ 1.55` → liquidation cliff (per-name effective weight
-  > ~17% enters squeeze-liquidation territory). cap 1.5 = the last safe rung.
-- Holdout is invariant: the scale never exceeds 1.0 in the compressed
-  2025–26 regime — correct behavior (no yield, no leverage).
+## The frontier is mapped — v3 sits at the maximum
 
-Rejected alternative preserved: `ref20bp cap1.5 floor0.3` (bidirectional)
-scored holdout Sharpe 3.16 but gave up ~100pp of full-window return.
+Every adjacent config is strictly worse or inadmissible; the binding
+constraints are (a) baseline per-name weight ≤ ~0.12, (b) scaled weight
+`nw×cap ≤ ~0.165`, (c) admission quality `enter ≈ 2bp`, (d) breadth `mx 50–75`:
+
+| knob | values tried | outcome |
+|------|--------------|---------|
+| nw | 0.125–0.14 | liquidation (3–14 liqs, DD −18% to −69%) |
+| rsc | 1.55–2.0+ | liquidation cliff (cap 1.5 = last safe rung) |
+| rsr | ≤18bp, ≥22bp | cliff or flat-worse |
+| band | 1.15–1.8 | 1.3 optimal; ≥1.4 dev-ruins (drift balloons before rebalance) |
+| enter | 1.0–3.0bp | 2bp optimal; looser admits squeezers, tighter concentrates |
+| lb | 3–20 | 9 optimal; shorter whipsaws, longer rides through squeezes |
+| mx | 15–150 | plateau 50–75; mid zone (25–45) is the DD cliff |
+| floor | <1.0 | bidirectional scaling gives up ~100pp of full return |
+| vol-scaling (`vol_lookback`/`vol_ref`) | 10–40d, 3–5%/d | Sharpe-optimal variant below |
+
+## Vol-scaled sizing — Sharpe-optimal variant (not champion)
+
+`vol_lookback=20, vol_ref=3%/d` scales each name's weight by
+`min(1, vol_ref/vol_i)` — wild microcaps get diluted weight. Full-window:
+**Sharpe 6.81, DD −1.29%**, but only +201% total — it trades ~164pp of
+return for +0.69 Sharpe. Kept as a capability (not the return-max config)
+and worth revisiting if the mandate shifts from CAGR to risk-adjustment.
 
 ## Reproduce
 
