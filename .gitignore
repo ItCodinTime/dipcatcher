@@ -49,3 +49,4 @@ third_party/kronos_weights/
 
 data/models/
 data/binance_carry_8h*/
+data/arb_carry_book/**

@@ -225,6 +225,38 @@ Honest read on holdout: 1.68 vs Binance-only 4.35 — the multi-venue book held
 57 names (29 HL) into the Oct-2025 flash crash and paid some cross-venue
 basis; still positive (+6.9%), zero liquidations, DD −2.23%.
 
+## Cross-venue funding-spread arb — probed, best risk-adjusted sleeve, kept off the return podium
+
+`scripts/build_arb_book.py` synthesizes perp-perp pairs for the 119 coins
+listed on both HL and Binance perps, in both directions: `ARBX:X` (short HL
+perp / long Binance perp, collecting `r_HL − r_B`) and `ARBB:X` (the mirror).
+Daily net spread emitted only on days where BOTH venues produced funding —
+an unverifiable leg is a missing day, not a zero. Each pair is marked at its
+short-leg venue's wicks, so liquidation risk is modeled per venue.
+
+| book | dev Sharpe | dev total | holdout Sharpe | holdout total | full DD |
+|------|-----------:|----------:|---------------:|--------------:|--------:|
+| ARB standalone (238 sids) | **7.90** | +21.8% | **4.78** | +7.1% | **−0.55%** |
+
+Smoothest book ever measured here — but its absolute yield is a spread, not
+a rate, so it cannot drive headline returns under the shared gross cap:
+
+- Four-way merge (Binance+HL+ARB, v4 params): full **6.28 / 27.4% / +411% /
+  −1.62% / $4.35M** — slightly below Binance+HL's +425% (arb names rank by
+  spread and displace richer outright payers at the `mx` boundary), though
+  holdout improved 1.68 → 1.95.
+- Leverage-cap probe on B+HL (3.5×/4×/5×): zero change — the book never
+  requests above ~3.3× gross; the binding ceiling is `nw × scale × mx`, i.e.
+  the squeeze-liquidation frontier, which is fully mapped.
+- Honest caveat: the engine models the long leg as an unmargined "spot"
+  hedge; a real long perp on the hedge venue can be liquidated on >~33%
+  single-leg moves. Same-day cross-venue crashes leave the pair near flat so
+  the residual is venue margin management, not NAV — noted for production use.
+
+Verdict: **champion remains Binance+HL** (record +425% / 28.0% / $4.58M).
+The arb sleeve is the pick when the mandate is Sharpe/DD rather than CAGR —
+both artifacts are reproducible from `data/arb_carry_book/`.
+
 ## Reproduce
 
 ```

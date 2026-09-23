@@ -15,6 +15,7 @@ venues each marked at its own wicks for liquidation.
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
@@ -35,6 +36,10 @@ def main() -> int:
 
     perp = pl.read_parquet(DYDX / "perp_bars.parquet")
     fund = pl.read_parquet(DYDX / "funding.parquet")
+    # drop the live partial day: Binance bars end at yesterday's close, and a
+    # 1-day-newer union calendar would fail the still-listed eligibility check
+    today = datetime.now(tz=UTC).date()
+    perp = perp.filter(pl.col("event_time").dt.date() < today)
     bin_spot = _load("spot_bars.parquet")
     bin_ids = set(bin_spot["security_id"].unique())
 

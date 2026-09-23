@@ -105,6 +105,7 @@ def run_one(
     vr=0.04,
     rexp=0.0,
     ebp=None,
+    lev=None,
 ):
     w = basis_carry_hysteresis_weights(
         perp,
@@ -124,7 +125,10 @@ def run_one(
         enter_rate_by_prefix=ebp,
     )
     scaler = OverlayAdapter(**scaler_kw) if scaler_kw else None
-    res = run_carry_backtest(perp, spot, fund, w, make_cfg(), initial_nav=1e6, scaler=scaler)
+    cfg = make_cfg()
+    if lev is not None:
+        cfg.perp.max_leverage = lev
+    res = run_carry_backtest(perp, spot, fund, w, cfg, initial_nav=1e6, scaler=scaler)
     m = res.metrics
     keep = (
         "total_return",
