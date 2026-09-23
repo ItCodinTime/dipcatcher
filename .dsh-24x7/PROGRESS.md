@@ -511,3 +511,22 @@ h4f fleet complete (5/5, 300 origins, deep 4h). native-protocol fleet at
   levers: stock-breadth cross-section (grid-4 running), intraday book
   (intraday_book.py written: xrev/xgap/tmom/daymom sleeves, measured
   bars-per-year annualization, 2bps half-spread honest cost).
+
+## 2026-09-23 — lineage merge + Phase C completion (Devin)
+
+- GIT: local main merged origin/main (edec1ea: 119 conflicts — evidence
+  artifacts value-identical, source unioned; 0417f7f: +12 agent commits).
+  Second wave merged (9c44f69: PR#7). All pushed: origin/main = 6da2c10.
+- PHASE C COMPLETE: native crossover merged both frequencies.
+  MERGED_d1_native.json (3300 origins): dip_garch_t +0.0402 path RankIC #1.
+  MERGED_h4_native.json (1500 origins): kronos_small +0.0336 path /
+  +0.0655 ret RankIC #1 — split verdict, disclosed in EVAL_REPORT §4.3.
+- Merge-critical unit tests green (engine/institutional/garch/cli-api/
+  fast-replay/broker). Full suite running; 1 known env failure
+  (test_covariance DCC — arch 8.0.0 boundary fit on noise, both-lineage
+  identical code, not merge-caused).
+- Concurrent agent active in worktree: lane-* dirs + WIP engine/replay
+  edits left uncommitted; remote checkout D:\dipcatcher also has WIP —
+  its committed state (ebd3951) already on origin.
+- SOTA status unchanged: PROVEN on declared metric; crossover boundary
+  disclosed (no 4h trajectory-shape claim). Industry-grade: NOT PROVEN.
