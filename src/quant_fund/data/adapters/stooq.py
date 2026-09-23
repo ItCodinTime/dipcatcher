@@ -130,7 +130,7 @@ def fetch_stooq_csv(stooq_symbol: str, *, timeout: float = 30.0) -> str:
     """HTTP GET one Stooq daily CSV. Caller owns rate limits."""
     url = STOQ_URL.format(ticker=stooq_symbol)
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — explicit public CSV
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — explicit public CSV  # nosec B310
         body = resp.read()
     return body.decode("utf-8", errors="replace")
 

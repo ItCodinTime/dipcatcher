@@ -38,19 +38,25 @@ PRICE_SPACE = "split_adjusted"
 VARIANT_HUB = {
     "mini": {
         "tokenizer": "NeoQuasar/Kronos-Tokenizer-2k",
+        "tokenizer_rev": "26966d0035065a0cae0ebad7af8ece35bc1fb51c",
         "model": "NeoQuasar/Kronos-mini",
+        "model_rev": "f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
         "max_context": 2048,
         "params": "4.1M",
     },
     "small": {
         "tokenizer": "NeoQuasar/Kronos-Tokenizer-base",
+        "tokenizer_rev": "0e0117387f39004a9016484a186a908917e22426",
         "model": "NeoQuasar/Kronos-small",
+        "model_rev": "901c26c1332695a2a8f243eb2f37243a37bea320",
         "max_context": 512,
         "params": "24.7M",
     },
     "base": {
         "tokenizer": "NeoQuasar/Kronos-Tokenizer-base",
+        "tokenizer_rev": "0e0117387f39004a9016484a186a908917e22426",
         "model": "NeoQuasar/Kronos-base",
+        "model_rev": "2b554741eca47781b64468546e77fef3e85130e6",
         "max_context": 512,
         "params": "102.3M",
     },

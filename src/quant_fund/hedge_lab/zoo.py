@@ -32,8 +32,12 @@ def fetch_kronos_variant(variant: str = "small") -> dict[str, Any]:
     model = str(spec["model"])
     tok_dir = dest_root / tokenizer.rsplit("/", 1)[-1]
     model_dir = dest_root / model.rsplit("/", 1)[-1]
-    tok_path = snapshot_download(repo_id=tokenizer, local_dir=str(tok_dir))
-    model_path = snapshot_download(repo_id=model, local_dir=str(model_dir))
+    tok_path = snapshot_download(
+        repo_id=tokenizer, revision=str(spec["tokenizer_rev"]), local_dir=str(tok_dir)
+    )
+    model_path = snapshot_download(
+        repo_id=model, revision=str(spec["model_rev"]), local_dir=str(model_dir)
+    )
     return {
         "status": "ok",
         "variant": variant,
