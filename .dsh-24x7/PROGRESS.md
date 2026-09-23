@@ -568,3 +568,31 @@ h4f fleet complete (5/5, 300 origins, deep 4h). native-protocol fleet at
 - EVAL_REPORT: verified daily arena extended from deep-5 to all 11 v4
   assets; s23 replication recorded; provenance note added for the
   degraded kronos in the daily v2aug/mega-arena merges.
+
+## 2026-09-23 (cont.) — Industry-grade rubric: measure every gap
+
+- PROOF.md gained a **pre-registered production-readiness rubric**
+  (thresholds fixed before measuring): determinism, scale/stress,
+  clean-install, coverage, CI-green + the already-measured incumbent rows.
+- DETERMINISM — PASS, cross-platform: `run_backtest_fast` ×3 byte-identical
+  equity+fills sha256 on macOS arm64 AND Windows x64, and the two platforms
+  emit the *same* hashes (nav `6a376ad…`, fills `75fdf9b…` on 5a×3322 1d;
+  `8a2c5f1…`/`dc7ba24…` on 3a×4000 4h); bitwise-equal to `run_backtest`
+  reference on both. Receipts: `evidence-industry-stress-*{,-remote}.json`.
+- SCALE/STRESS — PASS: 15,179-row 1d and 12,000-row 4h workloads (3.3× the
+  incumbent bench) bitwise-equal to reference; peak RSS ≈ 400 MB;
+  mismatched-calendar 4h panel → identical typed `StaleValuationError` on
+  both paths (fail-closed at scale). Receipt `evidence-industry-failclosed-5a4h.json`.
+- CLEAN-INSTALL — PASS w/ disclosure: fresh clone @f27434c →
+  `uv sync --frozen --all-groups` + research/doctor/paper/verify-research
+  all exit 0. Gap recorded: 2 LFS gold parquets (~1.4GB,
+  `data/file_us_wide/gold/`) are unrecoverable pointers (missing on remote);
+  not on any eval path. Receipt `evidence-clean-install.json`.
+- CI ROOT-CAUSES found + fixed locally: (1) test jobs sync `--all-groups`
+  but torch lives in the `nn` *extra* → `ModuleNotFoundError: torch` —
+  fixed via `--all-extras`; (2) `MlflowClient.set_tags` removed in mlflow
+  3.x (unbounded `mlflow>=2.17` → 3.16) → `attach_artifact_identity` crash —
+  fixed with per-key `set_tag`. Pushed as PR #11
+  (`devin/industry-ci-fixes`). Concurrent agent's ruff-format PR #10 merged.
+- Remaining: coverage % (running), green CI on a complete run, then the
+  rubric verdict (status stays NOT PROVEN until all rows pass).

@@ -1,0 +1,37 @@
+{
+  "script": "_industry_stress.py",
+  "bars_files": [
+    "btcusdt_4h_deep.parquet",
+    "ethusdt_4h_deep.parquet",
+    "solusdt_4h_deep.parquet"
+  ],
+  "bars_rows": 12000,
+  "n_assets": 3,
+  "n_dates": 4000,
+  "weight_rows": 11943,
+  "research_only": true,
+  "live_pnl_claim": false,
+  "determinism": {
+    "reps": 3,
+    "identical": true,
+    "nav_sha256": "8a2c5f1ec4adc5a63c6be8491f75362cab6d4968ef7f0f67362159a4432afa3f",
+    "fills_sha256": "dc7ba242efc702071168027d2e0369dbe1966bf85e9c66cfbdb40546f9e4b0af",
+    "ms": [
+      456.7741000209935,
+      124.26050001522526,
+      79.5656000263989
+    ],
+    "ms_median": 124.26050001522526
+  },
+  "peak_rss_raw": 350453760.0,
+  "reference": {
+    "ms": 1132.2551000048406,
+    "nav_sha256": "8a2c5f1ec4adc5a63c6be8491f75362cab6d4968ef7f0f67362159a4432afa3f",
+    "fills_sha256": "dc7ba242efc702071168027d2e0369dbe1966bf85e9c66cfbdb40546f9e4b0af",
+    "n_nav": 3999,
+    "n_fills": 6188,
+    "nav_bitwise_equal": true,
+    "fills_equal": true
+  },
+  "peak_rss_final": 361259008.0
+}
