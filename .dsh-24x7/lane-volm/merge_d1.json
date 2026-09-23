@@ -1,0 +1,4052 @@
+{
+  "artifact_sha256": {
+    "bolt_small": "ce58a20c3e1a493fab7773a52af20cb1c9d2a39686715e3d8f9bb0a406a0af36",
+    "chronos2": "7149a83b2219bf45a3bf0b859943c2df532a779047627e1567a8842441d2fc15",
+    "kronos_small": "ec0ef7fc2c84ae572119d71a4d251c466c58a419d7fa6068d8f2cf1713ede50b",
+    "kronos_small_tokenizer": "49948cd4dda107e318179377438078d4cfd830575d585b33ef1764d5a5a2c1cc",
+    "timesfm": "ac3772eb06f2faf2bfb0cb132257a0880ffd8a307953349cdd479890a78c8a30"
+  },
+  "bar_interval_ns": 86400000000000,
+  "bars_sha256": {
+    "bnbusdt_1d_deep.parquet": "313b3e6b0bf57e7466cdddcc2140cc09cdeeabda43f088b6b978cdb056213aff",
+    "btcusdt_1d_deep.parquet": "343b998233f36591c9f87c8c159eb8b11b3ac66d988042826dd3e6f1e9855843",
+    "ethusdt_1d_deep.parquet": "3a98525bc28b1d88c3ddbe2d3a5d5d395d222310d026c7f4ea742b0c2bfbe089",
+    "solusdt_1d_deep.parquet": "30241c88ad9ad82c18c1ad45a064b87ca7cc1e2180c4d9f4bf19837bb12bbcae",
+    "xrpusdt_1d_deep.parquet": "542e6fa82a63a5489dd04f8b369e55d57529f3946a2f9dfc8717ece99ff60c6f"
+  },
+  "bootstrap_sensitivity": [
+    {
+      "block_length": 1.0,
+      "mcs_alpha": 0.1,
+      "mcs_included": {
+        "bolt_small": false,
+        "chronos2": false,
+        "dip_blend": true,
+        "dip_conf_t": true,
+        "dip_empirical": true,
+        "dip_empirical_long": false,
+        "dip_ewma_emp": true,
+        "dip_ewma_t": false,
+        "dip_fhs": true,
+        "dip_garch_t": true,
+        "dip_gauss": false,
+        "dip_gmm_k": false,
+        "dip_lgbm_q": false,
+        "dip_qar": true,
+        "dip_regime": true,
+        "dip_skt": false,
+        "dip_stack": true,
+        "dip_student_t": true,
+        "dip_volm": true,
+        "kronos_small": false,
+        "timesfm": false
+      },
+      "mcs_p_values": {
+        "bolt_small": 0.000999000999000999,
+        "chronos2": 0.000999000999000999,
+        "dip_blend": 0.3516483516483517,
+        "dip_conf_t": 0.3516483516483517,
+        "dip_empirical": 0.18681318681318682,
+        "dip_empirical_long": 0.024975024975024976,
+        "dip_ewma_emp": 0.3516483516483517,
+        "dip_ewma_t": 0.000999000999000999,
+        "dip_fhs": 1.0,
+        "dip_garch_t": 0.3516483516483517,
+        "dip_gauss": 0.000999000999000999,
+        "dip_gmm_k": 0.000999000999000999,
+        "dip_lgbm_q": 0.003996003996003996,
+        "dip_qar": 0.13186813186813187,
+        "dip_regime": 0.3516483516483517,
+        "dip_skt": 0.05194805194805195,
+        "dip_stack": 0.11388611388611389,
+        "dip_student_t": 0.3256743256743257,
+        "dip_volm": 0.13186813186813187,
+        "kronos_small": 0.000999000999000999,
+        "timesfm": 0.000999000999000999
+      },
+      "mcs_status": "computed",
+      "n_boot": 1000,
+      "n_observations": 300,
+      "resampling": "iid",
+      "seed": 7,
+      "spa": {
+        "bolt_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "chronos2": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "kronos_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "timesfm": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        }
+      }
+    },
+    {
+      "block_length": 5.0,
+      "mcs_alpha": 0.1,
+      "mcs_included": {
+        "bolt_small": false,
+        "chronos2": false,
+        "dip_blend": true,
+        "dip_conf_t": true,
+        "dip_empirical": true,
+        "dip_empirical_long": true,
+        "dip_ewma_emp": true,
+        "dip_ewma_t": false,
+        "dip_fhs": true,
+        "dip_garch_t": true,
+        "dip_gauss": false,
+        "dip_gmm_k": false,
+        "dip_lgbm_q": false,
+        "dip_qar": true,
+        "dip_regime": true,
+        "dip_skt": true,
+        "dip_stack": false,
+        "dip_student_t": true,
+        "dip_volm": true,
+        "kronos_small": false,
+        "timesfm": false
+      },
+      "mcs_p_values": {
+        "bolt_small": 0.000999000999000999,
+        "chronos2": 0.000999000999000999,
+        "dip_blend": 0.2757242757242757,
+        "dip_conf_t": 0.2757242757242757,
+        "dip_empirical": 0.2757242757242757,
+        "dip_empirical_long": 0.1068931068931069,
+        "dip_ewma_emp": 0.14085914085914086,
+        "dip_ewma_t": 0.006993006993006993,
+        "dip_fhs": 1.0,
+        "dip_garch_t": 0.2757242757242757,
+        "dip_gauss": 0.000999000999000999,
+        "dip_gmm_k": 0.025974025974025976,
+        "dip_lgbm_q": 0.005994005994005994,
+        "dip_qar": 0.17582417582417584,
+        "dip_regime": 0.2757242757242757,
+        "dip_skt": 0.13486513486513488,
+        "dip_stack": 0.0919080919080919,
+        "dip_student_t": 0.26873126873126874,
+        "dip_volm": 0.2037962037962038,
+        "kronos_small": 0.000999000999000999,
+        "timesfm": 0.000999000999000999
+      },
+      "mcs_status": "computed",
+      "n_boot": 1000,
+      "n_observations": 300,
+      "resampling": "stationary_block",
+      "seed": 7,
+      "spa": {
+        "bolt_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "chronos2": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "kronos_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "timesfm": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        }
+      }
+    },
+    {
+      "block_length": 10.0,
+      "mcs_alpha": 0.1,
+      "mcs_included": {
+        "bolt_small": false,
+        "chronos2": false,
+        "dip_blend": true,
+        "dip_conf_t": true,
+        "dip_empirical": true,
+        "dip_empirical_long": false,
+        "dip_ewma_emp": false,
+        "dip_ewma_t": false,
+        "dip_fhs": true,
+        "dip_garch_t": true,
+        "dip_gauss": false,
+        "dip_gmm_k": false,
+        "dip_lgbm_q": false,
+        "dip_qar": true,
+        "dip_regime": true,
+        "dip_skt": false,
+        "dip_stack": false,
+        "dip_student_t": true,
+        "dip_volm": true,
+        "kronos_small": false,
+        "timesfm": false
+      },
+      "mcs_p_values": {
+        "bolt_small": 0.000999000999000999,
+        "chronos2": 0.000999000999000999,
+        "dip_blend": 0.19480519480519481,
+        "dip_conf_t": 0.19480519480519481,
+        "dip_empirical": 0.19480519480519481,
+        "dip_empirical_long": 0.07092907092907093,
+        "dip_ewma_emp": 0.04995004995004995,
+        "dip_ewma_t": 0.01898101898101898,
+        "dip_fhs": 1.0,
+        "dip_garch_t": 0.19480519480519481,
+        "dip_gauss": 0.000999000999000999,
+        "dip_gmm_k": 0.023976023976023976,
+        "dip_lgbm_q": 0.000999000999000999,
+        "dip_qar": 0.14085914085914086,
+        "dip_regime": 0.16783216783216784,
+        "dip_skt": 0.08391608391608392,
+        "dip_stack": 0.056943056943056944,
+        "dip_student_t": 0.1888111888111888,
+        "dip_volm": 0.19480519480519481,
+        "kronos_small": 0.000999000999000999,
+        "timesfm": 0.000999000999000999
+      },
+      "mcs_status": "computed",
+      "n_boot": 1000,
+      "n_observations": 300,
+      "resampling": "stationary_block",
+      "seed": 7,
+      "spa": {
+        "bolt_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "chronos2": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "kronos_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "timesfm": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        }
+      }
+    },
+    {
+      "block_length": 20.0,
+      "mcs_alpha": 0.1,
+      "mcs_included": {
+        "bolt_small": false,
+        "chronos2": false,
+        "dip_blend": true,
+        "dip_conf_t": true,
+        "dip_empirical": true,
+        "dip_empirical_long": false,
+        "dip_ewma_emp": false,
+        "dip_ewma_t": false,
+        "dip_fhs": true,
+        "dip_garch_t": true,
+        "dip_gauss": false,
+        "dip_gmm_k": false,
+        "dip_lgbm_q": false,
+        "dip_qar": true,
+        "dip_regime": false,
+        "dip_skt": false,
+        "dip_stack": false,
+        "dip_student_t": true,
+        "dip_volm": true,
+        "kronos_small": false,
+        "timesfm": false
+      },
+      "mcs_p_values": {
+        "bolt_small": 0.000999000999000999,
+        "chronos2": 0.000999000999000999,
+        "dip_blend": 0.10989010989010989,
+        "dip_conf_t": 0.10989010989010989,
+        "dip_empirical": 0.10989010989010989,
+        "dip_empirical_long": 0.058941058941058944,
+        "dip_ewma_emp": 0.003996003996003996,
+        "dip_ewma_t": 0.015984015984015984,
+        "dip_fhs": 1.0,
+        "dip_garch_t": 0.10989010989010989,
+        "dip_gauss": 0.000999000999000999,
+        "dip_gmm_k": 0.030969030969030968,
+        "dip_lgbm_q": 0.000999000999000999,
+        "dip_qar": 0.10989010989010989,
+        "dip_regime": 0.06293706293706294,
+        "dip_skt": 0.061938061938061936,
+        "dip_stack": 0.04495504495504495,
+        "dip_student_t": 0.10789210789210789,
+        "dip_volm": 0.10989010989010989,
+        "kronos_small": 0.000999000999000999,
+        "timesfm": 0.000999000999000999
+      },
+      "mcs_status": "computed",
+      "n_boot": 1000,
+      "n_observations": 300,
+      "resampling": "stationary_block",
+      "seed": 7,
+      "spa": {
+        "bolt_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "chronos2": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "kronos_small": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        },
+        "timesfm": {
+          "p_consistent": 0.000999000999000999,
+          "p_lower": 0.000999000999000999,
+          "p_upper": 0.000999000999000999
+        }
+      }
+    }
+  ],
+  "challengers": [
+    "dip_gauss",
+    "dip_student_t",
+    "dip_ewma_t",
+    "dip_empirical",
+    "dip_empirical_long",
+    "dip_garch_t",
+    "dip_fhs",
+    "dip_ewma_emp",
+    "dip_lgbm_q",
+    "dip_blend",
+    "dip_gmm_k",
+    "dip_skt",
+    "dip_qar",
+    "dip_conf_t",
+    "dip_regime",
+    "dip_stack",
+    "dip_volm"
+  ],
+  "common_sample": {
+    "mean_crps": {
+      "bolt_small": 0.01785652917672459,
+      "chronos2": 0.016390364748051275,
+      "dip_blend": 0.01509463155687646,
+      "dip_conf_t": 0.015092496212801744,
+      "dip_empirical": 0.015099351483153767,
+      "dip_empirical_long": 0.015150012351995992,
+      "dip_ewma_emp": 0.015192028056647253,
+      "dip_ewma_t": 0.015292536267990042,
+      "dip_fhs": 0.014945100661734824,
+      "dip_garch_t": 0.014980956820179268,
+      "dip_gauss": 0.015438177037096414,
+      "dip_gmm_k": 0.01518122608932734,
+      "dip_lgbm_q": 0.015450728119222386,
+      "dip_qar": 0.015089552853859397,
+      "dip_regime": 0.01506469614216984,
+      "dip_skt": 0.015146100624557865,
+      "dip_stack": 0.015119181725138413,
+      "dip_student_t": 0.01510304193071423,
+      "dip_volm": 0.01516969256192672,
+      "kronos_small": 0.06423109123546229,
+      "timesfm": 0.015916885920613064
+    },
+    "mean_pinball": {
+      "bolt_small": {
+        "0.05": 0.004155120734115693,
+        "0.5": 0.011821578894356734,
+        "0.95": 0.0035531334271105366
+      },
+      "chronos2": {
+        "0.05": 0.0033438952609214532,
+        "0.5": 0.011057619390641387,
+        "0.95": 0.003791075909025885
+      },
+      "dip_blend": {
+        "0.05": 0.0031709447111370405,
+        "0.5": 0.010031077875385758,
+        "0.95": 0.003798616228157045
+      },
+      "dip_conf_t": {
+        "0.05": 0.003134163667709114,
+        "0.5": 0.010024654322162974,
+        "0.95": 0.003829858736727161
+      },
+      "dip_empirical": {
+        "0.05": 0.003134267371175766,
+        "0.5": 0.010024655757175033,
+        "0.95": 0.003830324470371636
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0032306628074340177,
+        "0.5": 0.010014121528585412,
+        "0.95": 0.0038302563345310858
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0030327013413483203,
+        "0.5": 0.01009436354620714,
+        "0.95": 0.0038533548677709023
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0034495777169629223,
+        "0.5": 0.010000616975771098,
+        "0.95": 0.00369303266216572
+      },
+      "dip_fhs": {
+        "0.05": 0.003060753443024326,
+        "0.5": 0.010014243958292859,
+        "0.95": 0.0035164597945607137
+      },
+      "dip_garch_t": {
+        "0.05": 0.0031394571075091075,
+        "0.5": 0.01000832033732337,
+        "0.95": 0.003537358042682774
+      },
+      "dip_gauss": {
+        "0.05": 0.003321775512452116,
+        "0.5": 0.010036155285005578,
+        "0.95": 0.0037813267753306857
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0032316320751864572,
+        "0.5": 0.010014953993821043,
+        "0.95": 0.003873060243597446
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0031949319570306173,
+        "0.5": 0.010562582883761917,
+        "0.95": 0.0037052491670208952
+      },
+      "dip_qar": {
+        "0.05": 0.0031517626534035164,
+        "0.5": 0.010033936284116111,
+        "0.95": 0.003649423516132612
+      },
+      "dip_regime": {
+        "0.05": 0.003162120472452841,
+        "0.5": 0.01002130258491729,
+        "0.95": 0.00372542469519365
+      },
+      "dip_skt": {
+        "0.05": 0.0032217311735619537,
+        "0.5": 0.010010128716874634,
+        "0.95": 0.003824094849304168
+      },
+      "dip_stack": {
+        "0.05": 0.0031601290945895482,
+        "0.5": 0.010012264218622793,
+        "0.95": 0.0037119765593089924
+      },
+      "dip_student_t": {
+        "0.05": 0.003223688476376445,
+        "0.5": 0.010047178411599415,
+        "0.95": 0.003787238715946578
+      },
+      "dip_volm": {
+        "0.05": 0.003105787301912719,
+        "0.5": 0.010083978886545174,
+        "0.95": 0.0036298510362831444
+      },
+      "kronos_small": {
+        "0.05": 0.011250052716947423,
+        "0.5": 0.04143292472014745,
+        "0.95": 0.01969988483208669
+      },
+      "timesfm": {
+        "0.05": 0.0035319745539188294,
+        "0.5": 0.01072238033955909,
+        "0.95": 0.0037096508545207615
+      }
+    },
+    "n_rows": 1500
+  },
+  "config": {
+    "garch_window": 750,
+    "inference_seed": 7,
+    "lookback": 400,
+    "merged_parts": 5,
+    "n_boot": 1000,
+    "origins_per_asset": 300,
+    "samples_per_origin": 16,
+    "seed": 7,
+    "target_specs": {
+      "bolt_small": {
+        "kind": "bolt",
+        "model_dir": "data\\models\\chronos-bolt-small"
+      },
+      "chronos2": {
+        "kind": "chronos2",
+        "model_dir": "data\\models\\chronos-2"
+      },
+      "kronos_small": {
+        "kind": "kronos",
+        "model_dir": "data\\models\\Kronos-small"
+      },
+      "timesfm": {
+        "kind": "timesfm",
+        "model_dir": "data\\models\\timesfm-2.5-200m-pytorch"
+      }
+    },
+    "targets": [
+      "kronos_small",
+      "chronos2",
+      "bolt_small",
+      "timesfm"
+    ],
+    "taus": [
+      0.05,
+      0.5,
+      0.95
+    ],
+    "window": 250
+  },
+  "coverage": {
+    "bolt_small": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "chronos2": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_blend": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_conf_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_empirical": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_empirical_long": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_ewma_emp": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_ewma_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_fhs": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_garch_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_gauss": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_gmm_k": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_lgbm_q": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_qar": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_regime": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_skt": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_stack": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_student_t": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "dip_volm": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "kronos_small": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    },
+    "timesfm": {
+      "coverage_fraction": 1.0,
+      "emitted": 1500,
+      "finite_crps": 1500,
+      "missing_or_failed": 0,
+      "per_asset": {
+        "BNBUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "BTCUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "ETHUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "SOLUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        },
+        "XRPUSDT": {
+          "coverage_fraction": 1.0,
+          "emitted": 300,
+          "finite_crps": 300,
+          "missing_or_failed": 0,
+          "requested": 300,
+          "scored_all_metrics": 300
+        }
+      },
+      "requested": 1500,
+      "scored_all_metrics": 1500
+    }
+  },
+  "created_at": "2026-09-23T11:27:55.952048+00:00",
+  "diebold_mariano": {
+    "bolt_small": {
+      "chronos2": {
+        "mean_loss_diff_target_minus_challenger": 0.0014661644286733133,
+        "n": 300,
+        "p_value": 0.010558999242909572,
+        "preferred": "chronos2",
+        "statistic": 2.5731765358266614
+      },
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.002761897619848129,
+        "n": 300,
+        "p_value": 2.795408929768382e-07,
+        "preferred": "dip_blend",
+        "statistic": 5.256737386507398
+      },
+      "dip_conf_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0027640329639228452,
+        "n": 300,
+        "p_value": 3.1305600654930186e-07,
+        "preferred": "dip_conf_t",
+        "statistic": 5.233936215415367
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.0027571776935708197,
+        "n": 300,
+        "p_value": 3.023778090984023e-07,
+        "preferred": "dip_empirical",
+        "statistic": 5.240932641213777
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.0027065168247285953,
+        "n": 300,
+        "p_value": 6.807355660516474e-07,
+        "preferred": "dip_empirical_long",
+        "statistic": 5.075397952098114
+      },
+      "dip_ewma_emp": {
+        "mean_loss_diff_target_minus_challenger": 0.0026645011200773353,
+        "n": 300,
+        "p_value": 1.3564839184348477e-07,
+        "preferred": "dip_ewma_emp",
+        "statistic": 5.400590103288434
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.002563992908734546,
+        "n": 300,
+        "p_value": 7.717209549865319e-08,
+        "preferred": "dip_ewma_t",
+        "statistic": 5.510798360998618
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.002911428514989763,
+        "n": 300,
+        "p_value": 1.6960818528380327e-08,
+        "preferred": "dip_fhs",
+        "statistic": 5.798932389549878
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0028755723565453187,
+        "n": 300,
+        "p_value": 4.017296372203356e-08,
+        "preferred": "dip_garch_t",
+        "statistic": 5.636309230195872
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.0024183521396281727,
+        "n": 300,
+        "p_value": 4.770195482073898e-06,
+        "preferred": "dip_gauss",
+        "statistic": 4.65988371241285
+      },
+      "dip_gmm_k": {
+        "mean_loss_diff_target_minus_challenger": 0.00267530308739725,
+        "n": 300,
+        "p_value": 8.694407919350801e-07,
+        "preferred": "dip_gmm_k",
+        "statistic": 5.024661762604125
+      },
+      "dip_lgbm_q": {
+        "mean_loss_diff_target_minus_challenger": 0.002405801057502203,
+        "n": 300,
+        "p_value": 1.991630668949058e-05,
+        "preferred": "dip_lgbm_q",
+        "statistic": 4.335278289691589
+      },
+      "dip_qar": {
+        "mean_loss_diff_target_minus_challenger": 0.00276697632286519,
+        "n": 300,
+        "p_value": 9.98527663942952e-08,
+        "preferred": "dip_qar",
+        "statistic": 5.460663195778073
+      },
+      "dip_regime": {
+        "mean_loss_diff_target_minus_challenger": 0.0027918330345547463,
+        "n": 300,
+        "p_value": 2.841564318749635e-07,
+        "preferred": "dip_regime",
+        "statistic": 5.253444495593072
+      },
+      "dip_skt": {
+        "mean_loss_diff_target_minus_challenger": 0.0027104285521667207,
+        "n": 300,
+        "p_value": 7.01761505002742e-07,
+        "preferred": "dip_skt",
+        "statistic": 5.069111591710509
+      },
+      "dip_stack": {
+        "mean_loss_diff_target_minus_challenger": 0.0027373474515861754,
+        "n": 300,
+        "p_value": 2.450747957446142e-07,
+        "preferred": "dip_stack",
+        "statistic": 5.283138730095149
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.002753487246010357,
+        "n": 300,
+        "p_value": 2.9188615576323617e-07,
+        "preferred": "dip_student_t",
+        "statistic": 5.248044379227338
+      },
+      "dip_volm": {
+        "mean_loss_diff_target_minus_challenger": 0.0026868366147978686,
+        "n": 300,
+        "p_value": 6.093271566569216e-07,
+        "preferred": "dip_volm",
+        "statistic": 5.098248211935333
+      },
+      "kronos_small": {
+        "mean_loss_diff_target_minus_challenger": -0.0463745620587377,
+        "n": 300,
+        "p_value": 3.410253391103128e-25,
+        "preferred": "bolt_small",
+        "statistic": -11.386632258975295
+      },
+      "timesfm": {
+        "mean_loss_diff_target_minus_challenger": 0.0019396432561115259,
+        "n": 300,
+        "p_value": 6.876408702316588e-05,
+        "preferred": "timesfm",
+        "statistic": 4.0372917931173875
+      }
+    },
+    "chronos2": {
+      "bolt_small": {
+        "mean_loss_diff_target_minus_challenger": -0.0014661644286733133,
+        "n": 300,
+        "p_value": 0.010558999242909572,
+        "preferred": "chronos2",
+        "statistic": -2.5731765358266614
+      },
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.001295733191174816,
+        "n": 300,
+        "p_value": 1.1245768196240259e-05,
+        "preferred": "dip_blend",
+        "statistic": 4.467337990907439
+      },
+      "dip_conf_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0012978685352495315,
+        "n": 300,
+        "p_value": 1.0254963449878585e-05,
+        "preferred": "dip_conf_t",
+        "statistic": 4.488358324110882
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.0012910132648975062,
+        "n": 300,
+        "p_value": 1.1672511463669819e-05,
+        "preferred": "dip_empirical",
+        "statistic": 4.458827194277216
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.0012403523960552822,
+        "n": 300,
+        "p_value": 2.635404286083883e-05,
+        "preferred": "dip_empirical_long",
+        "statistic": 4.269381275285837
+      },
+      "dip_ewma_emp": {
+        "mean_loss_diff_target_minus_challenger": 0.0011983366914040216,
+        "n": 300,
+        "p_value": 2.2747931514004032e-05,
+        "preferred": "dip_ewma_emp",
+        "statistic": 4.304101932352759
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0010978284800612326,
+        "n": 300,
+        "p_value": 8.04791578874285e-05,
+        "preferred": "dip_ewma_t",
+        "statistic": 3.9981979359621906
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.0014452640863164498,
+        "n": 300,
+        "p_value": 2.8830709307132436e-07,
+        "preferred": "dip_fhs",
+        "statistic": 5.250527298725047
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0014094079278720055,
+        "n": 300,
+        "p_value": 5.410059383059408e-07,
+        "preferred": "dip_garch_t",
+        "statistic": 5.122682015882919
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.0009521877109548593,
+        "n": 300,
+        "p_value": 0.002131137464401159,
+        "preferred": "dip_gauss",
+        "statistic": 3.0983287470309495
+      },
+      "dip_gmm_k": {
+        "mean_loss_diff_target_minus_challenger": 0.001209138658723937,
+        "n": 300,
+        "p_value": 5.070330457351136e-05,
+        "preferred": "dip_gmm_k",
+        "statistic": 4.11215979797515
+      },
+      "dip_lgbm_q": {
+        "mean_loss_diff_target_minus_challenger": 0.0009396366288288891,
+        "n": 300,
+        "p_value": 0.0010413685951147027,
+        "preferred": "dip_lgbm_q",
+        "statistic": 3.311616986038007
+      },
+      "dip_qar": {
+        "mean_loss_diff_target_minus_challenger": 0.0013008118941918766,
+        "n": 300,
+        "p_value": 7.144741404062598e-06,
+        "preferred": "dip_qar",
+        "statistic": 4.569981764216201
+      },
+      "dip_regime": {
+        "mean_loss_diff_target_minus_challenger": 0.0013256686058814326,
+        "n": 300,
+        "p_value": 3.5532949239431147e-06,
+        "preferred": "dip_regime",
+        "statistic": 4.724569527887609
+      },
+      "dip_skt": {
+        "mean_loss_diff_target_minus_challenger": 0.0012442641234934073,
+        "n": 300,
+        "p_value": 2.4996780705094115e-05,
+        "preferred": "dip_skt",
+        "statistic": 4.281883319144203
+      },
+      "dip_stack": {
+        "mean_loss_diff_target_minus_challenger": 0.001271183022912862,
+        "n": 300,
+        "p_value": 1.3332533925044655e-05,
+        "preferred": "dip_stack",
+        "statistic": 4.428336234609288
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0012873228173370431,
+        "n": 300,
+        "p_value": 1.3282195262649839e-05,
+        "preferred": "dip_student_t",
+        "statistic": 4.429205950152834
+      },
+      "dip_volm": {
+        "mean_loss_diff_target_minus_challenger": 0.001220672186124555,
+        "n": 300,
+        "p_value": 5.292623262139628e-06,
+        "preferred": "dip_volm",
+        "statistic": 4.636887961565123
+      },
+      "kronos_small": {
+        "mean_loss_diff_target_minus_challenger": -0.04784072648741102,
+        "n": 300,
+        "p_value": 1.6668450093310307e-25,
+        "preferred": "chronos2",
+        "statistic": -11.475954015170812
+      },
+      "timesfm": {
+        "mean_loss_diff_target_minus_challenger": 0.00047347882743821245,
+        "n": 300,
+        "p_value": 0.09680414041020442,
+        "preferred": "timesfm",
+        "statistic": 1.665781979839241
+      }
+    },
+    "kronos_small": {
+      "bolt_small": {
+        "mean_loss_diff_target_minus_challenger": 0.0463745620587377,
+        "n": 300,
+        "p_value": 3.410253391103128e-25,
+        "preferred": "bolt_small",
+        "statistic": 11.386632258975295
+      },
+      "chronos2": {
+        "mean_loss_diff_target_minus_challenger": 0.04784072648741102,
+        "n": 300,
+        "p_value": 1.6668450093310307e-25,
+        "preferred": "chronos2",
+        "statistic": 11.475954015170812
+      },
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.049136459678585834,
+        "n": 300,
+        "p_value": 8.233065914538148e-26,
+        "preferred": "dip_blend",
+        "statistic": 11.56371270910343
+      },
+      "dip_conf_t": {
+        "mean_loss_diff_target_minus_challenger": 0.04913859502266054,
+        "n": 300,
+        "p_value": 7.875535663722101e-26,
+        "preferred": "dip_conf_t",
+        "statistic": 11.569228240162335
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.04913173975230852,
+        "n": 300,
+        "p_value": 8.182207708487508e-26,
+        "preferred": "dip_empirical",
+        "statistic": 11.564482562613867
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.0490810788834663,
+        "n": 300,
+        "p_value": 8.683897142053379e-26,
+        "preferred": "dip_empirical_long",
+        "statistic": 11.55708841967946
+      },
+      "dip_ewma_emp": {
+        "mean_loss_diff_target_minus_challenger": 0.04903906317881504,
+        "n": 300,
+        "p_value": 8.64976248405632e-26,
+        "preferred": "dip_ewma_emp",
+        "statistic": 11.557577852535402
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.04893855496747224,
+        "n": 300,
+        "p_value": 4.2851235205663685e-26,
+        "preferred": "dip_ewma_t",
+        "statistic": 11.644740331737598
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.04928599057372747,
+        "n": 300,
+        "p_value": 5.199453884180496e-26,
+        "preferred": "dip_fhs",
+        "statistic": 11.620763535778485
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.049250134415283024,
+        "n": 300,
+        "p_value": 4.7438327229373664e-26,
+        "preferred": "dip_garch_t",
+        "statistic": 11.6321350608473
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.04879291419836588,
+        "n": 300,
+        "p_value": 2.1530567046148354e-25,
+        "preferred": "dip_gauss",
+        "statistic": 11.444046913233674
+      },
+      "dip_gmm_k": {
+        "mean_loss_diff_target_minus_challenger": 0.049049865146134956,
+        "n": 300,
+        "p_value": 9.872511636015922e-26,
+        "preferred": "dip_gmm_k",
+        "statistic": 11.541142733804513
+      },
+      "dip_lgbm_q": {
+        "mean_loss_diff_target_minus_challenger": 0.04878036311623991,
+        "n": 300,
+        "p_value": 9.963968027448351e-26,
+        "preferred": "dip_lgbm_q",
+        "statistic": 11.539996238673032
+      },
+      "dip_qar": {
+        "mean_loss_diff_target_minus_challenger": 0.049141538381602894,
+        "n": 300,
+        "p_value": 9.790377683597739e-26,
+        "preferred": "dip_qar",
+        "statistic": 11.542181415337101
+      },
+      "dip_regime": {
+        "mean_loss_diff_target_minus_challenger": 0.04916639509329245,
+        "n": 300,
+        "p_value": 7.36316070450876e-26,
+        "preferred": "dip_regime",
+        "statistic": 11.577583679511486
+      },
+      "dip_skt": {
+        "mean_loss_diff_target_minus_challenger": 0.04908499061090442,
+        "n": 300,
+        "p_value": 8.722814067779077e-26,
+        "preferred": "dip_skt",
+        "statistic": 11.556532749589657
+      },
+      "dip_stack": {
+        "mean_loss_diff_target_minus_challenger": 0.049111909510323876,
+        "n": 300,
+        "p_value": 8.981414798646008e-26,
+        "preferred": "dip_stack",
+        "statistic": 11.552901909811387
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.04912804930474805,
+        "n": 300,
+        "p_value": 8.521083715627789e-26,
+        "preferred": "dip_student_t",
+        "statistic": 11.559440344179865
+      },
+      "dip_volm": {
+        "mean_loss_diff_target_minus_challenger": 0.04906139867353557,
+        "n": 300,
+        "p_value": 4.38034017258064e-26,
+        "preferred": "dip_volm",
+        "statistic": 11.642016689736284
+      },
+      "timesfm": {
+        "mean_loss_diff_target_minus_challenger": 0.04831420531484923,
+        "n": 300,
+        "p_value": 2.4978989607016026e-25,
+        "preferred": "timesfm",
+        "statistic": 11.425512118449502
+      }
+    },
+    "timesfm": {
+      "bolt_small": {
+        "mean_loss_diff_target_minus_challenger": -0.0019396432561115259,
+        "n": 300,
+        "p_value": 6.876408702316588e-05,
+        "preferred": "timesfm",
+        "statistic": -4.0372917931173875
+      },
+      "chronos2": {
+        "mean_loss_diff_target_minus_challenger": -0.00047347882743821245,
+        "n": 300,
+        "p_value": 0.09680414041020442,
+        "preferred": "timesfm",
+        "statistic": -1.665781979839241
+      },
+      "dip_blend": {
+        "mean_loss_diff_target_minus_challenger": 0.0008222543637366038,
+        "n": 300,
+        "p_value": 7.208866291989904e-07,
+        "preferred": "dip_blend",
+        "statistic": 5.063549970238328
+      },
+      "dip_conf_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0008243897078113192,
+        "n": 300,
+        "p_value": 8.680334611321223e-07,
+        "preferred": "dip_conf_t",
+        "statistic": 5.0249989891521505
+      },
+      "dip_empirical": {
+        "mean_loss_diff_target_minus_challenger": 0.0008175344374592937,
+        "n": 300,
+        "p_value": 8.774747254074055e-07,
+        "preferred": "dip_empirical",
+        "statistic": 5.022746717799142
+      },
+      "dip_empirical_long": {
+        "mean_loss_diff_target_minus_challenger": 0.0007668735686170696,
+        "n": 300,
+        "p_value": 2.1877484803476265e-06,
+        "preferred": "dip_empirical_long",
+        "statistic": 4.829602792486361
+      },
+      "dip_ewma_emp": {
+        "mean_loss_diff_target_minus_challenger": 0.0007248578639658094,
+        "n": 300,
+        "p_value": 6.80000815101709e-06,
+        "preferred": "dip_ewma_emp",
+        "statistic": 4.581061593553546
+      },
+      "dip_ewma_t": {
+        "mean_loss_diff_target_minus_challenger": 0.00062434965262302,
+        "n": 300,
+        "p_value": 2.806161039993074e-06,
+        "preferred": "dip_ewma_t",
+        "statistic": 4.775917471098811
+      },
+      "dip_fhs": {
+        "mean_loss_diff_target_minus_challenger": 0.0009717852588782372,
+        "n": 300,
+        "p_value": 6.5417700955554616e-12,
+        "preferred": "dip_fhs",
+        "statistic": 7.153602399318227
+      },
+      "dip_garch_t": {
+        "mean_loss_diff_target_minus_challenger": 0.000935929100433793,
+        "n": 300,
+        "p_value": 6.566994091397708e-11,
+        "preferred": "dip_garch_t",
+        "statistic": 6.776138362513582
+      },
+      "dip_gauss": {
+        "mean_loss_diff_target_minus_challenger": 0.000478708883516647,
+        "n": 300,
+        "p_value": 0.004710220339480641,
+        "preferred": "dip_gauss",
+        "statistic": 2.847597927460546
+      },
+      "dip_gmm_k": {
+        "mean_loss_diff_target_minus_challenger": 0.0007356598312857244,
+        "n": 300,
+        "p_value": 6.087736736362144e-06,
+        "preferred": "dip_gmm_k",
+        "statistic": 4.605775574722782
+      },
+      "dip_lgbm_q": {
+        "mean_loss_diff_target_minus_challenger": 0.0004661578013906768,
+        "n": 300,
+        "p_value": 0.02040399337907501,
+        "preferred": "dip_lgbm_q",
+        "statistic": 2.3312620767853782
+      },
+      "dip_qar": {
+        "mean_loss_diff_target_minus_challenger": 0.000827333066753664,
+        "n": 300,
+        "p_value": 6.692108161222245e-08,
+        "preferred": "dip_qar",
+        "statistic": 5.538382388012738
+      },
+      "dip_regime": {
+        "mean_loss_diff_target_minus_challenger": 0.0008521897784432201,
+        "n": 300,
+        "p_value": 2.718851243675562e-08,
+        "preferred": "dip_regime",
+        "statistic": 5.710366713742088
+      },
+      "dip_skt": {
+        "mean_loss_diff_target_minus_challenger": 0.0007707852960551948,
+        "n": 300,
+        "p_value": 2.12625691274753e-06,
+        "preferred": "dip_skt",
+        "statistic": 4.835721115002221
+      },
+      "dip_stack": {
+        "mean_loss_diff_target_minus_challenger": 0.0007977041954746496,
+        "n": 300,
+        "p_value": 1.517910969216713e-07,
+        "preferred": "dip_stack",
+        "statistic": 5.378414780951747
+      },
+      "dip_student_t": {
+        "mean_loss_diff_target_minus_challenger": 0.0008138439898988306,
+        "n": 300,
+        "p_value": 8.753222271604735e-07,
+        "preferred": "dip_student_t",
+        "statistic": 5.023258138321564
+      },
+      "dip_volm": {
+        "mean_loss_diff_target_minus_challenger": 0.0007471933586863425,
+        "n": 300,
+        "p_value": 1.4508521854955945e-05,
+        "preferred": "dip_volm",
+        "statistic": 4.408866222726221
+      },
+      "kronos_small": {
+        "mean_loss_diff_target_minus_challenger": -0.04831420531484923,
+        "n": 300,
+        "p_value": 2.4978989607016026e-25,
+        "preferred": "timesfm",
+        "statistic": -11.425512118449502
+      }
+    }
+  },
+  "disclaimer": "Causal walk-forward evaluation on public Binance klines with proper scores only. Not a live-trading or deployability claim.",
+  "effect_sizes": {
+    "block_length": 4.017279590928143,
+    "comparisons": {
+      "bolt_small": {
+        "chronos2": {
+          "mean_target_minus_comparator": 0.001466164428673313,
+          "pointwise_percentile_ci": [
+            0.0003881653488452201,
+            0.002477721702692283
+          ],
+          "relative_crps_reduction": 0.0821080297387474,
+          "simultaneous_ci": [
+            -4.320216353632597e-05,
+            0.002975531020882952
+          ]
+        },
+        "dip_blend": {
+          "mean_target_minus_comparator": 0.002761897619848129,
+          "pointwise_percentile_ci": [
+            0.0017923795663666623,
+            0.0036482714240090013
+          ],
+          "relative_crps_reduction": 0.15467158217108473,
+          "simultaneous_ci": [
+            0.001416713675633703,
+            0.004107081564062556
+          ]
+        },
+        "dip_conf_t": {
+          "mean_target_minus_comparator": 0.002764032963922845,
+          "pointwise_percentile_ci": [
+            0.0017917604705515184,
+            0.003648627959425601
+          ],
+          "relative_crps_reduction": 0.15479116554888353,
+          "simultaneous_ci": [
+            0.0014121682664648204,
+            0.004115897661380869
+          ]
+        },
+        "dip_empirical": {
+          "mean_target_minus_comparator": 0.0027571776935708197,
+          "pointwise_percentile_ci": [
+            0.0017890053777241384,
+            0.003637405615621978
+          ],
+          "relative_crps_reduction": 0.15440725721573664,
+          "simultaneous_ci": [
+            0.0014108853993321084,
+            0.004103469987809531
+          ]
+        },
+        "dip_empirical_long": {
+          "mean_target_minus_comparator": 0.0027065168247285935,
+          "pointwise_percentile_ci": [
+            0.0017476893275045872,
+            0.003592097938149767
+          ],
+          "relative_crps_reduction": 0.15157015106028843,
+          "simultaneous_ci": [
+            0.0013408799646559048,
+            0.004072153684801282
+          ]
+        },
+        "dip_ewma_emp": {
+          "mean_target_minus_comparator": 0.0026645011200773358,
+          "pointwise_percentile_ci": [
+            0.0017280607923724875,
+            0.0034998047840966652
+          ],
+          "relative_crps_reduction": 0.14921719073774017,
+          "simultaneous_ci": [
+            0.0013910332757398087,
+            0.003937968964414863
+          ]
+        },
+        "dip_ewma_t": {
+          "mean_target_minus_comparator": 0.002563992908734548,
+          "pointwise_percentile_ci": [
+            0.001717135381896385,
+            0.0033892585283917284
+          ],
+          "relative_crps_reduction": 0.14358853746766365,
+          "simultaneous_ci": [
+            0.0013459963810786518,
+            0.003781989436390444
+          ]
+        },
+        "dip_fhs": {
+          "mean_target_minus_comparator": 0.002911428514989763,
+          "pointwise_percentile_ci": [
+            0.002017016161108297,
+            0.0037956815529494895
+          ],
+          "relative_crps_reduction": 0.16304560008138178,
+          "simultaneous_ci": [
+            0.0016309592241303605,
+            0.004191897805849165
+          ]
+        },
+        "dip_garch_t": {
+          "mean_target_minus_comparator": 0.00287557235654532,
+          "pointwise_percentile_ci": [
+            0.001968172051337869,
+            0.0037537122742726816
+          ],
+          "relative_crps_reduction": 0.1610375862008803,
+          "simultaneous_ci": [
+            0.0015702251863134312,
+            0.004180919526777209
+          ]
+        },
+        "dip_gauss": {
+          "mean_target_minus_comparator": 0.002418352139628172,
+          "pointwise_percentile_ci": [
+            0.0014746275583191891,
+            0.00329209851676282
+          ],
+          "relative_crps_reduction": 0.13543237410215284,
+          "simultaneous_ci": [
+            0.0010961135486443143,
+            0.0037405907306120294
+          ]
+        },
+        "dip_gmm_k": {
+          "mean_target_minus_comparator": 0.0026753030873972496,
+          "pointwise_percentile_ci": [
+            0.0017180901985673965,
+            0.0035618646208981793
+          ],
+          "relative_crps_reduction": 0.14982212169677525,
+          "simultaneous_ci": [
+            0.001314016155676252,
+            0.004036590019118247
+          ]
+        },
+        "dip_lgbm_q": {
+          "mean_target_minus_comparator": 0.0024058010575022035,
+          "pointwise_percentile_ci": [
+            0.001375457295831617,
+            0.0033478853223180578
+          ],
+          "relative_crps_reduction": 0.13472948934768844,
+          "simultaneous_ci": [
+            0.0009541753079283649,
+            0.003857426807076042
+          ]
+        },
+        "dip_qar": {
+          "mean_target_minus_comparator": 0.0027669763228651894,
+          "pointwise_percentile_ci": [
+            0.001856186696790913,
+            0.003654765095676309
+          ],
+          "relative_crps_reduction": 0.15495599931434906,
+          "simultaneous_ci": [
+            0.0014687742084226166,
+            0.004065178437307762
+          ]
+        },
+        "dip_regime": {
+          "mean_target_minus_comparator": 0.002791833034554745,
+          "pointwise_percentile_ci": [
+            0.0018307559575810768,
+            0.0036762649710099385
+          ],
+          "relative_crps_reduction": 0.15634802300739437,
+          "simultaneous_ci": [
+            0.0014306029510731592,
+            0.004153063118036331
+          ]
+        },
+        "dip_skt": {
+          "mean_target_minus_comparator": 0.002710428552166722,
+          "pointwise_percentile_ci": [
+            0.0017450155670533745,
+            0.003600655468564897
+          ],
+          "relative_crps_reduction": 0.1517892153252088,
+          "simultaneous_ci": [
+            0.0013416703583550205,
+            0.004079186745978423
+          ]
+        },
+        "dip_stack": {
+          "mean_target_minus_comparator": 0.0027373474515861762,
+          "pointwise_percentile_ci": [
+            0.0018008666320625981,
+            0.0036149165987975074
+          ],
+          "relative_crps_reduction": 0.1532967254999488,
+          "simultaneous_ci": [
+            0.0014132455861656445,
+            0.004061449317006708
+          ]
+        },
+        "dip_student_t": {
+          "mean_target_minus_comparator": 0.0027534872460103594,
+          "pointwise_percentile_ci": [
+            0.0017897363310012732,
+            0.003638398785843403
+          ],
+          "relative_crps_reduction": 0.15420058504983383,
+          "simultaneous_ci": [
+            0.0014095327568186434,
+            0.004097441735202076
+          ]
+        },
+        "dip_volm": {
+          "mean_target_minus_comparator": 0.002686836614797868,
+          "pointwise_percentile_ci": [
+            0.00171333889893821,
+            0.0035928267061787413
+          ],
+          "relative_crps_reduction": 0.15046802142826687,
+          "simultaneous_ci": [
+            0.001333756150759522,
+            0.004039917078836214
+          ]
+        },
+        "kronos_small": {
+          "mean_target_minus_comparator": -0.04637456205873769,
+          "pointwise_percentile_ci": [
+            -0.05366450839920759,
+            -0.039624959520085684
+          ],
+          "relative_crps_reduction": -2.5970647262842905,
+          "simultaneous_ci": [
+            -0.05632564388887672,
+            -0.03642348022859866
+          ]
+        },
+        "timesfm": {
+          "mean_target_minus_comparator": 0.001939643256111525,
+          "pointwise_percentile_ci": [
+            0.0010911763026634658,
+            0.002782871120719657
+          ],
+          "relative_crps_reduction": 0.10862375531745483,
+          "simultaneous_ci": [
+            0.0007108478350685229,
+            0.003168438677154527
+          ]
+        }
+      },
+      "chronos2": {
+        "bolt_small": {
+          "mean_target_minus_comparator": -0.001466164428673313,
+          "pointwise_percentile_ci": [
+            -0.002477721702692283,
+            -0.0003881653488452203
+          ],
+          "relative_crps_reduction": -0.08945282494995312,
+          "simultaneous_ci": [
+            -0.002975531020882952,
+            4.320216353632597e-05
+          ]
+        },
+        "dip_blend": {
+          "mean_target_minus_comparator": 0.0012957331911748165,
+          "pointwise_percentile_ci": [
+            0.0007481902448674193,
+            0.0018762006033982473
+          ],
+          "relative_crps_reduction": 0.07905456718581398,
+          "simultaneous_ci": [
+            0.0004652474146626971,
+            0.002126218967686936
+          ]
+        },
+        "dip_conf_t": {
+          "mean_target_minus_comparator": 0.0012978685352495317,
+          "pointwise_percentile_ci": [
+            0.000749879686174471,
+            0.0018750547413959823
+          ],
+          "relative_crps_reduction": 0.07918484763457392,
+          "simultaneous_ci": [
+            0.0004689709684489754,
+            0.002126766102050088
+          ]
+        },
+        "dip_empirical": {
+          "mean_target_minus_comparator": 0.0012910132648975055,
+          "pointwise_percentile_ci": [
+            0.0007435408944941058,
+            0.0018692123241904636
+          ],
+          "relative_crps_reduction": 0.07876659761650515,
+          "simultaneous_ci": [
+            0.0004624122132915622,
+            0.002119614316503449
+          ]
+        },
+        "dip_empirical_long": {
+          "mean_target_minus_comparator": 0.001240352396055282,
+          "pointwise_percentile_ci": [
+            0.000703014117944236,
+            0.001833623952756613
+          ],
+          "relative_crps_reduction": 0.07567570430076934,
+          "simultaneous_ci": [
+            0.00043762080569818677,
+            0.0020430839864123774
+          ]
+        },
+        "dip_ewma_emp": {
+          "mean_target_minus_comparator": 0.0011983366914040232,
+          "pointwise_percentile_ci": [
+            0.0006500496300338086,
+            0.0018083198730651769
+          ],
+          "relative_crps_reduction": 0.07311226503037395,
+          "simultaneous_ci": [
+            0.00037047477890104195,
+            0.002026198603907004
+          ]
+        },
+        "dip_ewma_t": {
+          "mean_target_minus_comparator": 0.0010978284800612316,
+          "pointwise_percentile_ci": [
+            0.0005913048751335741,
+            0.0016291869261320943
+          ],
+          "relative_crps_reduction": 0.06698011282462506,
+          "simultaneous_ci": [
+            0.0003413742892431277,
+            0.0018542826708793354
+          ]
+        },
+        "dip_fhs": {
+          "mean_target_minus_comparator": 0.0014452640863164504,
+          "pointwise_percentile_ci": [
+            0.000947321810984562,
+            0.0020076498143732696
+          ],
+          "relative_crps_reduction": 0.08817766465436863,
+          "simultaneous_ci": [
+            0.0006828952065839318,
+            0.0022076329660489693
+          ]
+        },
+        "dip_garch_t": {
+          "mean_target_minus_comparator": 0.0014094079278720061,
+          "pointwise_percentile_ci": [
+            0.0009090629851270732,
+            0.0019820029648445724
+          ],
+          "relative_crps_reduction": 0.08599002825971747,
+          "simultaneous_ci": [
+            0.0006479764591345081,
+            0.0021708393966095043
+          ]
+        },
+        "dip_gauss": {
+          "mean_target_minus_comparator": 0.0009521877109548592,
+          "pointwise_percentile_ci": [
+            0.000387226469992188,
+            0.001580985251964513
+          ],
+          "relative_crps_reduction": 0.058094357605316206,
+          "simultaneous_ci": [
+            9.928854018239665e-05,
+            0.0018050868817273218
+          ]
+        },
+        "dip_gmm_k": {
+          "mean_target_minus_comparator": 0.0012091386587239363,
+          "pointwise_percentile_ci": [
+            0.0006776201542940588,
+            0.001802501522760191
+          ],
+          "relative_crps_reduction": 0.07377130877259436,
+          "simultaneous_ci": [
+            0.00040094817477686685,
+            0.0020173291426710056
+          ]
+        },
+        "dip_lgbm_q": {
+          "mean_target_minus_comparator": 0.0009396366288288896,
+          "pointwise_percentile_ci": [
+            0.00040256544638380787,
+            0.00148155214810378
+          ],
+          "relative_crps_reduction": 0.05732859782395064,
+          "simultaneous_ci": [
+            0.00014044670932630962,
+            0.0017388265483314694
+          ]
+        },
+        "dip_qar": {
+          "mean_target_minus_comparator": 0.0013008118941918773,
+          "pointwise_percentile_ci": [
+            0.0007971501705850028,
+            0.0018735395747364646
+          ],
+          "relative_crps_reduction": 0.07936442624600754,
+          "simultaneous_ci": [
+            0.0005244860027182829,
+            0.0020771377856654717
+          ]
+        },
+        "dip_regime": {
+          "mean_target_minus_comparator": 0.0013256686058814337,
+          "pointwise_percentile_ci": [
+            0.0008145338071479167,
+            0.0019057538461745487
+          ],
+          "relative_crps_reduction": 0.08088097039079307,
+          "simultaneous_ci": [
+            0.0005442928299284126,
+            0.002107044381834455
+          ]
+        },
+        "dip_skt": {
+          "mean_target_minus_comparator": 0.0012442641234934077,
+          "pointwise_percentile_ci": [
+            0.0007067394271795593,
+            0.001834908269135685
+          ],
+          "relative_crps_reduction": 0.07591436448303227,
+          "simultaneous_ci": [
+            0.0004411009487259686,
+            0.0020474272982608467
+          ]
+        },
+        "dip_stack": {
+          "mean_target_minus_comparator": 0.0012711830229128619,
+          "pointwise_percentile_ci": [
+            0.0007567503968150221,
+            0.001871938268454834
+          ],
+          "relative_crps_reduction": 0.07755672570154357,
+          "simultaneous_ci": [
+            0.00047732741025259225,
+            0.0020650386355731314
+          ]
+        },
+        "dip_student_t": {
+          "mean_target_minus_comparator": 0.0012873228173370433,
+          "pointwise_percentile_ci": [
+            0.0007381677690375398,
+            0.0018761943033372079
+          ],
+          "relative_crps_reduction": 0.07854143804152369,
+          "simultaneous_ci": [
+            0.00045476117866497944,
+            0.002119884456009107
+          ]
+        },
+        "dip_volm": {
+          "mean_target_minus_comparator": 0.0012206721861245562,
+          "pointwise_percentile_ci": [
+            0.0007234970095862289,
+            0.0017462210410850287
+          ],
+          "relative_crps_reduction": 0.07447498605970239,
+          "simultaneous_ci": [
+            0.00047190637179968914,
+            0.001969438000449423
+          ]
+        },
+        "kronos_small": {
+          "mean_target_minus_comparator": -0.04784072648741102,
+          "pointwise_percentile_ci": [
+            -0.05533477442911105,
+            -0.04116644602251185
+          ],
+          "relative_crps_reduction": -2.9188323275782513,
+          "simultaneous_ci": [
+            -0.05790071315898245,
+            -0.03778073981583959
+          ]
+        },
+        "timesfm": {
+          "mean_target_minus_comparator": 0.00047347882743821224,
+          "pointwise_percentile_ci": [
+            -5.22831170745804e-05,
+            0.0010214416821971975
+          ],
+          "relative_crps_reduction": 0.028887632137320575,
+          "simultaneous_ci": [
+            -0.00028462190765673226,
+            0.0012315795625331568
+          ]
+        }
+      },
+      "kronos_small": {
+        "bolt_small": {
+          "mean_target_minus_comparator": 0.04637456205873769,
+          "pointwise_percentile_ci": [
+            0.039624959520085684,
+            0.05366450839920759
+          ],
+          "relative_crps_reduction": 0.7219955502349316,
+          "simultaneous_ci": [
+            0.03642348022859866,
+            0.05632564388887672
+          ]
+        },
+        "chronos2": {
+          "mean_target_minus_comparator": 0.04784072648741102,
+          "pointwise_percentile_ci": [
+            0.04116644602251185,
+            0.05533477442911105
+          ],
+          "relative_crps_reduction": 0.7448219478637462,
+          "simultaneous_ci": [
+            0.03778073981583959,
+            0.05790071315898245
+          ]
+        },
+        "dip_blend": {
+          "mean_target_minus_comparator": 0.049136459678585785,
+          "pointwise_percentile_ci": [
+            0.042214501193482634,
+            0.05677784223773517
+          ],
+          "relative_crps_reduction": 0.764994938330696,
+          "simultaneous_ci": [
+            0.038838459781252936,
+            0.059434459575918634
+          ]
+        },
+        "dip_conf_t": {
+          "mean_target_minus_comparator": 0.04913859502266054,
+          "pointwise_percentile_ci": [
+            0.04222325653939767,
+            0.056780613219499454
+          ],
+          "relative_crps_reduction": 0.7650281830418426,
+          "simultaneous_ci": [
+            0.03884497666563879,
+            0.05943221337968229
+          ]
+        },
+        "dip_empirical": {
+          "mean_target_minus_comparator": 0.049131739752308515,
+          "pointwise_percentile_ci": [
+            0.04220561558489391,
+            0.05677441998096094
+          ],
+          "relative_crps_reduction": 0.7649214548169259,
+          "simultaneous_ci": [
+            0.038836129681869516,
+            0.05942734982274751
+          ]
+        },
+        "dip_empirical_long": {
+          "mean_target_minus_comparator": 0.04908107888346627,
+          "pointwise_percentile_ci": [
+            0.04216543540874113,
+            0.05678652899698422
+          ],
+          "relative_crps_reduction": 0.7641327266812552,
+          "simultaneous_ci": [
+            0.03879830454781484,
+            0.059363853219117704
+          ]
+        },
+        "dip_ewma_emp": {
+          "mean_target_minus_comparator": 0.04903906317881505,
+          "pointwise_percentile_ci": [
+            0.04212562336009092,
+            0.05670375195072785
+          ],
+          "relative_crps_reduction": 0.7634785932414666,
+          "simultaneous_ci": [
+            0.038752382065812746,
+            0.05932574429181735
+          ]
+        },
+        "dip_ewma_t": {
+          "mean_target_minus_comparator": 0.048938554967472264,
+          "pointwise_percentile_ci": [
+            0.04207041592634499,
+            0.05649094757338671
+          ],
+          "relative_crps_reduction": 0.7619138025862007,
+          "simultaneous_ci": [
+            0.03877192708779542,
+            0.05910518284714911
+          ]
+        },
+        "dip_fhs": {
+          "mean_target_minus_comparator": 0.0492859905737275,
+          "pointwise_percentile_ci": [
+            0.042373712310406625,
+            0.05694721874167982
+          ],
+          "relative_crps_reduction": 0.7673229525721722,
+          "simultaneous_ci": [
+            0.03901914103496923,
+            0.059552840112485766
+          ]
+        },
+        "dip_garch_t": {
+          "mean_target_minus_comparator": 0.049250134415282996,
+          "pointwise_percentile_ci": [
+            0.04238901886546213,
+            0.056921468123125235
+          ],
+          "relative_crps_reduction": 0.7667647157782018,
+          "simultaneous_ci": [
+            0.038997511085955006,
+            0.05950275774461099
+          ]
+        },
+        "dip_gauss": {
+          "mean_target_minus_comparator": 0.04879291419836588,
+          "pointwise_percentile_ci": [
+            0.04182481136670847,
+            0.05652355237961264
+          ],
+          "relative_crps_reduction": 0.7596463528775778,
+          "simultaneous_ci": [
+            0.03847025905642743,
+            0.059115569340304326
+          ]
+        },
+        "dip_gmm_k": {
+          "mean_target_minus_comparator": 0.049049865146134956,
+          "pointwise_percentile_ci": [
+            0.04212736341885371,
+            0.056776854184239944
+          ],
+          "relative_crps_reduction": 0.763646766739879,
+          "simultaneous_ci": [
+            0.03876028400150134,
+            0.05933944629076857
+          ]
+        },
+        "dip_lgbm_q": {
+          "mean_target_minus_comparator": 0.0487803631162399,
+          "pointwise_percentile_ci": [
+            0.04193358861716489,
+            0.05623971374165293
+          ],
+          "relative_crps_reduction": 0.7594509477881645,
+          "simultaneous_ci": [
+            0.03853799413646793,
+            0.059022732096011866
+          ]
+        },
+        "dip_qar": {
+          "mean_target_minus_comparator": 0.049141538381602894,
+          "pointwise_percentile_ci": [
+            0.042229505684075574,
+            0.05679728987443982
+          ],
+          "relative_crps_reduction": 0.7650740075621137,
+          "simultaneous_ci": [
+            0.03884194796140063,
+            0.05944112880180516
+          ]
+        },
+        "dip_regime": {
+          "mean_target_minus_comparator": 0.04916639509329246,
+          "pointwise_percentile_ci": [
+            0.04224362767505031,
+            0.05684466920303248
+          ],
+          "relative_crps_reduction": 0.7654609963429588,
+          "simultaneous_ci": [
+            0.038883889384026926,
+            0.05944890080255799
+          ]
+        },
+        "dip_skt": {
+          "mean_target_minus_comparator": 0.04908499061090443,
+          "pointwise_percentile_ci": [
+            0.04216076790783532,
+            0.056792320960860225
+          ],
+          "relative_crps_reduction": 0.7641936275216881,
+          "simultaneous_ci": [
+            0.03880018718139576,
+            0.05936979404041311
+          ]
+        },
+        "dip_stack": {
+          "mean_target_minus_comparator": 0.049111909510323896,
+          "pointwise_percentile_ci": [
+            0.04219252647521402,
+            0.05682237176274357
+          ],
+          "relative_crps_reduction": 0.7646127220583321,
+          "simultaneous_ci": [
+            0.03881956507160191,
+            0.05940425394904588
+          ]
+        },
+        "dip_student_t": {
+          "mean_target_minus_comparator": 0.04912804930474807,
+          "pointwise_percentile_ci": [
+            0.042210077720760554,
+            0.05676843715498761
+          ],
+          "relative_crps_reduction": 0.7648639990351626,
+          "simultaneous_ci": [
+            0.03882732284060032,
+            0.05942877576889581
+          ]
+        },
+        "dip_volm": {
+          "mean_target_minus_comparator": 0.04906139867353553,
+          "pointwise_percentile_ci": [
+            0.042253930843516654,
+            0.056606171752820504
+          ],
+          "relative_crps_reduction": 0.7638263297393351,
+          "simultaneous_ci": [
+            0.03886609297976136,
+            0.059256704367309704
+          ]
+        },
+        "timesfm": {
+          "mean_target_minus_comparator": 0.04831420531484923,
+          "pointwise_percentile_ci": [
+            0.041402805329739334,
+            0.05585478230628686
+          ],
+          "relative_crps_reduction": 0.7521934375633762,
+          "simultaneous_ci": [
+            0.0380967579785442,
+            0.05853165265115426
+          ]
+        }
+      },
+      "timesfm": {
+        "bolt_small": {
+          "mean_target_minus_comparator": -0.001939643256111525,
+          "pointwise_percentile_ci": [
+            -0.0027828711207196575,
+            -0.0010911763026634658
+          ],
+          "relative_crps_reduction": -0.12186072487958226,
+          "simultaneous_ci": [
+            -0.003168438677154527,
+            -0.0007108478350685229
+          ]
+        },
+        "chronos2": {
+          "mean_target_minus_comparator": -0.00047347882743821224,
+          "pointwise_percentile_ci": [
+            -0.0010214416821971977,
+            5.2283117074580384e-05
+          ],
+          "relative_crps_reduction": -0.02974695111843683,
+          "simultaneous_ci": [
+            -0.0012315795625331568,
+            0.00028462190765673226
+          ]
+        },
+        "dip_blend": {
+          "mean_target_minus_comparator": 0.0008222543637366031,
+          "pointwise_percentile_ci": [
+            0.00044114911079742457,
+            0.0012329969680492758
+          ],
+          "relative_crps_reduction": 0.05165924841314266,
+          "simultaneous_ci": [
+            0.00027040391972354006,
+            0.0013741048077496663
+          ]
+        },
+        "dip_conf_t": {
+          "mean_target_minus_comparator": 0.0008243897078113188,
+          "pointwise_percentile_ci": [
+            0.00043985515060078294,
+            0.0012402908138223019
+          ],
+          "relative_crps_reduction": 0.05179340430804358,
+          "simultaneous_ci": [
+            0.00026855420671202245,
+            0.001380225208910615
+          ]
+        },
+        "dip_empirical": {
+          "mean_target_minus_comparator": 0.0008175344374592938,
+          "pointwise_percentile_ci": [
+            0.00043651487160136025,
+            0.001223397496837054
+          ],
+          "relative_crps_reduction": 0.0513627126271321,
+          "simultaneous_ci": [
+            0.000266211674558779,
+            0.0013688572003598086
+          ]
+        },
+        "dip_empirical_long": {
+          "mean_target_minus_comparator": 0.0007668735686170698,
+          "pointwise_percentile_ci": [
+            0.0004181281604651735,
+            0.0011372751380540277
+          ],
+          "relative_crps_reduction": 0.04817987465902077,
+          "simultaneous_ci": [
+            0.0002568783812716731,
+            0.0012768687559624667
+          ]
+        },
+        "dip_ewma_emp": {
+          "mean_target_minus_comparator": 0.0007248578639658091,
+          "pointwise_percentile_ci": [
+            0.0003253601527663179,
+            0.0011125369651373816
+          ],
+          "relative_crps_reduction": 0.045540180885953734,
+          "simultaneous_ci": [
+            0.00015505885196121427,
+            0.001294656875970404
+          ]
+        },
+        "dip_ewma_t": {
+          "mean_target_minus_comparator": 0.0006243496526230201,
+          "pointwise_percentile_ci": [
+            0.000350513802393426,
+            0.0009087825179643344
+          ],
+          "relative_crps_reduction": 0.03922561584828977,
+          "simultaneous_ci": [
+            0.00021907783263375397,
+            0.0010296214726122862
+          ]
+        },
+        "dip_fhs": {
+          "mean_target_minus_comparator": 0.0009717852588782379,
+          "pointwise_percentile_ci": [
+            0.0006652517688203287,
+            0.0012805560665326036
+          ],
+          "relative_crps_reduction": 0.061053730216143194,
+          "simultaneous_ci": [
+            0.0005422126459471252,
+            0.0014013578718093506
+          ]
+        },
+        "dip_garch_t": {
+          "mean_target_minus_comparator": 0.0009359291004337931,
+          "pointwise_percentile_ci": [
+            0.0006289659139278517,
+            0.00124283016073502
+          ],
+          "relative_crps_reduction": 0.058801018308595396,
+          "simultaneous_ci": [
+            0.0004943123864378915,
+            0.0013775458144296947
+          ]
+        },
+        "dip_gauss": {
+          "mean_target_minus_comparator": 0.0004787088835166467,
+          "pointwise_percentile_ci": [
+            0.00012963534791293098,
+            0.0008583679291628448
+          ],
+          "relative_crps_reduction": 0.030075536502821684,
+          "simultaneous_ci": [
+            -5.674531610531968e-05,
+            0.0010141630831386132
+          ]
+        },
+        "dip_gmm_k": {
+          "mean_target_minus_comparator": 0.0007356598312857237,
+          "pointwise_percentile_ci": [
+            0.0003974293601816759,
+            0.0010977391118166468
+          ],
+          "relative_crps_reduction": 0.04621882917015897,
+          "simultaneous_ci": [
+            0.00022784526398858822,
+            0.001243474398582859
+          ]
+        },
+        "dip_lgbm_q": {
+          "mean_target_minus_comparator": 0.00046615780139067634,
+          "pointwise_percentile_ci": [
+            3.563861821570523e-05,
+            0.0009170790259929554
+          ],
+          "relative_crps_reduction": 0.029286997702671326,
+          "simultaneous_ci": [
+            -0.0001514900822457439,
+            0.0010838056850270966
+          ]
+        },
+        "dip_qar": {
+          "mean_target_minus_comparator": 0.0008273330667536643,
+          "pointwise_percentile_ci": [
+            0.0005369989219239669,
+            0.0011616785229013609
+          ],
+          "relative_crps_reduction": 0.05197832483565342,
+          "simultaneous_ci": [
+            0.00037242284478292874,
+            0.0012822432887243998
+          ]
+        },
+        "dip_regime": {
+          "mean_target_minus_comparator": 0.00085218977844322,
+          "pointwise_percentile_ci": [
+            0.0005106859958248762,
+            0.001209531494111883
+          ],
+          "relative_crps_reduction": 0.0535399815449828,
+          "simultaneous_ci": [
+            0.00036835642130937386,
+            0.001336023135577066
+          ]
+        },
+        "dip_skt": {
+          "mean_target_minus_comparator": 0.0007707852960551948,
+          "pointwise_percentile_ci": [
+            0.0004238304686491402,
+            0.0011446895908880461
+          ],
+          "relative_crps_reduction": 0.04842563425405934,
+          "simultaneous_ci": [
+            0.0002590111759522408,
+            0.0012825594161581487
+          ]
+        },
+        "dip_stack": {
+          "mean_target_minus_comparator": 0.0007977041954746507,
+          "pointwise_percentile_ci": [
+            0.00047566280211673584,
+            0.0011524335173833454
+          ],
+          "relative_crps_reduction": 0.05011685071145662,
+          "simultaneous_ci": [
+            0.0003195424274222075,
+            0.0012758659635270938
+          ]
+        },
+        "dip_student_t": {
+          "mean_target_minus_comparator": 0.0008138439898988305,
+          "pointwise_percentile_ci": [
+            0.0004361941209955116,
+            0.0012276217944870058
+          ],
+          "relative_crps_reduction": 0.05113085524127976,
+          "simultaneous_ci": [
+            0.00026144393427041655,
+            0.0013662440455272445
+          ]
+        },
+        "dip_volm": {
+          "mean_target_minus_comparator": 0.0007471933586863426,
+          "pointwise_percentile_ci": [
+            0.0003977328240193101,
+            0.0010899223556573722
+          ],
+          "relative_crps_reduction": 0.0469434387111297,
+          "simultaneous_ci": [
+            0.00023836130223811732,
+            0.0012560254151345678
+          ]
+        },
+        "kronos_small": {
+          "mean_target_minus_comparator": -0.04831420531484923,
+          "pointwise_percentile_ci": [
+            -0.05585478230628686,
+            -0.041402805329739334
+          ],
+          "relative_crps_reduction": -3.035405641268071,
+          "simultaneous_ci": [
+            -0.05853165265115426,
+            -0.0380967579785442
+          ]
+        }
+      }
+    },
+    "confidence_level": 0.95,
+    "family_size": 80,
+    "method": "stationary_block_bootstrap_by_target_time",
+    "n_boot": 1000,
+    "n_observations": 300,
+    "seed": 7,
+    "sign": "positive_favors_comparator",
+    "simultaneous_method": "centered_max_absolute_standardized_bootstrap_deviation",
+    "simultaneous_status": "computed",
+    "status": "computed"
+  },
+  "implementation_sha256": {
+    "inference.py": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
+    "snooping.py": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+    "sota_eval_kronos.py": "da47894c63df430fe149b2e5ce1129381d1a59054dcb2ab1e1796645a1e4092f",
+    "sota_evidence.py": "45fa0f73e268c7df18f7e8ea8a8e02d60cc057d41989d8854bd189602f98f824"
+  },
+  "inference": {
+    "bar_interval_ns": 86400000000000,
+    "first_target_time_ns": 1764028800000000000,
+    "last_target_time_ns": 1789862400000000000,
+    "method": "equal_weight_asset_loss_by_target_time",
+    "n_assets": 5,
+    "n_balanced_times": 300,
+    "n_excluded_times": 0,
+    "n_observations": 300,
+    "n_target_times": 300,
+    "scope": "conditional_on_balanced_complete_observations",
+    "status": "computed"
+  },
+  "inference_mean_crps": {
+    "bolt_small": 0.01785652917672459,
+    "chronos2": 0.016390364748051275,
+    "dip_blend": 0.015094631556876459,
+    "dip_conf_t": 0.015092496212801745,
+    "dip_empirical": 0.015099351483153771,
+    "dip_empirical_long": 0.015150012351995994,
+    "dip_ewma_emp": 0.015192028056647254,
+    "dip_ewma_t": 0.015292536267990044,
+    "dip_fhs": 0.014945100661734824,
+    "dip_garch_t": 0.01498095682017927,
+    "dip_gauss": 0.015438177037096417,
+    "dip_gmm_k": 0.015181226089327338,
+    "dip_lgbm_q": 0.015450728119222384,
+    "dip_qar": 0.015089552853859397,
+    "dip_regime": 0.015064696142169843,
+    "dip_skt": 0.015146100624557868,
+    "dip_stack": 0.01511918172513841,
+    "dip_student_t": 0.01510304193071423,
+    "dip_volm": 0.015169692561926719,
+    "kronos_small": 0.06423109123546229,
+    "timesfm": 0.015916885920613064
+  },
+  "legacy_scores_require_rerun": false,
+  "live_pnl_claim": false,
+  "losses_file": "merge_d1.losses.npz",
+  "losses_sha256": "07532d5485504caef6375aaf908dc470a0108deb18a3c5952d701ad7d2ec689d",
+  "mcs_included": {
+    "bolt_small": false,
+    "chronos2": false,
+    "dip_blend": true,
+    "dip_conf_t": true,
+    "dip_empirical": true,
+    "dip_empirical_long": false,
+    "dip_ewma_emp": true,
+    "dip_ewma_t": false,
+    "dip_fhs": true,
+    "dip_garch_t": true,
+    "dip_gauss": false,
+    "dip_gmm_k": false,
+    "dip_lgbm_q": false,
+    "dip_qar": true,
+    "dip_regime": true,
+    "dip_skt": true,
+    "dip_stack": false,
+    "dip_student_t": true,
+    "dip_volm": true,
+    "kronos_small": false,
+    "timesfm": false
+  },
+  "mcs_p_values": {
+    "bolt_small": 0.000999000999000999,
+    "chronos2": 0.000999000999000999,
+    "dip_blend": 0.29270729270729273,
+    "dip_conf_t": 0.29270729270729273,
+    "dip_empirical": 0.29270729270729273,
+    "dip_empirical_long": 0.08291708291708291,
+    "dip_ewma_emp": 0.16183816183816183,
+    "dip_ewma_t": 0.003996003996003996,
+    "dip_fhs": 1.0,
+    "dip_garch_t": 0.29270729270729273,
+    "dip_gauss": 0.000999000999000999,
+    "dip_gmm_k": 0.025974025974025976,
+    "dip_lgbm_q": 0.001998001998001998,
+    "dip_qar": 0.16883116883116883,
+    "dip_regime": 0.2777222777222777,
+    "dip_skt": 0.12087912087912088,
+    "dip_stack": 0.08291708291708291,
+    "dip_student_t": 0.2777222777222777,
+    "dip_volm": 0.18281718281718282,
+    "kronos_small": 0.000999000999000999,
+    "timesfm": 0.000999000999000999
+  },
+  "mcs_status": "computed",
+  "mean_crps_per_asset": {
+    "BNBUSDT": {
+      "bolt_small": 0.01312320575525729,
+      "chronos2": 0.012289487046356979,
+      "dip_blend": 0.012093777222973895,
+      "dip_conf_t": 0.012095713280769586,
+      "dip_empirical": 0.012103926419247924,
+      "dip_empirical_long": 0.012094684859832555,
+      "dip_ewma_emp": 0.01215019835450802,
+      "dip_ewma_t": 0.01218839526286716,
+      "dip_fhs": 0.011905297825511309,
+      "dip_garch_t": 0.01189783527278518,
+      "dip_gauss": 0.01249879375140035,
+      "dip_gmm_k": 0.012101601716777814,
+      "dip_lgbm_q": 0.0122891336540457,
+      "dip_qar": 0.011996377999545109,
+      "dip_regime": 0.011954676854264988,
+      "dip_skt": 0.012085080790848302,
+      "dip_stack": 0.012042875981892897,
+      "dip_student_t": 0.012090151067257086,
+      "dip_volm": 0.012061927088889823,
+      "kronos_small": 0.03493098332235487,
+      "timesfm": 0.012612069050871949
+    },
+    "BTCUSDT": {
+      "bolt_small": 0.013876530144561276,
+      "chronos2": 0.012957095383476105,
+      "dip_blend": 0.012145453916039077,
+      "dip_conf_t": 0.012151333549697316,
+      "dip_empirical": 0.012151747596862618,
+      "dip_empirical_long": 0.012108993786691776,
+      "dip_ewma_emp": 0.012263995158932664,
+      "dip_ewma_t": 0.012304074737058555,
+      "dip_fhs": 0.012029056582650549,
+      "dip_garch_t": 0.012067999316005587,
+      "dip_gauss": 0.012278536522580421,
+      "dip_gmm_k": 0.012119961523538473,
+      "dip_lgbm_q": 0.012404260473047995,
+      "dip_qar": 0.012091525440984104,
+      "dip_regime": 0.012064940582397482,
+      "dip_skt": 0.012111541438693762,
+      "dip_stack": 0.012099003889917468,
+      "dip_student_t": 0.012143792273776011,
+      "dip_volm": 0.012235203859802467,
+      "kronos_small": 0.04998157773622498,
+      "timesfm": 0.012956294161995908
+    },
+    "ETHUSDT": {
+      "bolt_small": 0.018919334219816744,
+      "chronos2": 0.01776878724489963,
+      "dip_blend": 0.01675311558010212,
+      "dip_conf_t": 0.016754141069632394,
+      "dip_empirical": 0.016763009165874063,
+      "dip_empirical_long": 0.016762751305266103,
+      "dip_ewma_emp": 0.01689257723788188,
+      "dip_ewma_t": 0.0170288972995981,
+      "dip_fhs": 0.016597017072785592,
+      "dip_garch_t": 0.01665084289552582,
+      "dip_gauss": 0.017211611608150344,
+      "dip_gmm_k": 0.01680331973265503,
+      "dip_lgbm_q": 0.01709193250513987,
+      "dip_qar": 0.016756817487987172,
+      "dip_regime": 0.016745398931986254,
+      "dip_skt": 0.01677965114970923,
+      "dip_stack": 0.01678933956084253,
+      "dip_student_t": 0.01676508857371663,
+      "dip_volm": 0.01679056513792493,
+      "kronos_small": 0.06418221776651398,
+      "timesfm": 0.01745414605809549
+    },
+    "SOLUSDT": {
+      "bolt_small": 0.023232688566648896,
+      "chronos2": 0.019954937220690704,
+      "dip_blend": 0.01792573905535642,
+      "dip_conf_t": 0.01791711486857047,
+      "dip_empirical": 0.017926993370903338,
+      "dip_empirical_long": 0.018110275514474226,
+      "dip_ewma_emp": 0.01802469014225275,
+      "dip_ewma_t": 0.017902084112419347,
+      "dip_fhs": 0.0177235089319521,
+      "dip_garch_t": 0.017824895210613128,
+      "dip_gauss": 0.01811769592955335,
+      "dip_gmm_k": 0.01814119843525654,
+      "dip_lgbm_q": 0.018560022127523196,
+      "dip_qar": 0.018118066132104354,
+      "dip_regime": 0.01799279493798838,
+      "dip_skt": 0.018107064589624463,
+      "dip_stack": 0.018013726805779957,
+      "dip_student_t": 0.01793732728419477,
+      "dip_volm": 0.01775901780077387,
+      "kronos_small": 0.08891692968609537,
+      "timesfm": 0.019028265224847015
+    },
+    "XRPUSDT": {
+      "bolt_small": 0.02013088719733874,
+      "chronos2": 0.018981516844832954,
+      "dip_blend": 0.01655507200991078,
+      "dip_conf_t": 0.016544178295338944,
+      "dip_empirical": 0.016551080862880898,
+      "dip_empirical_long": 0.016673356293715302,
+      "dip_ewma_emp": 0.016628679389660946,
+      "dip_ewma_t": 0.017039229928007053,
+      "dip_fhs": 0.016470622895774573,
+      "dip_garch_t": 0.01646321140596663,
+      "dip_gauss": 0.017084247373797608,
+      "dip_gmm_k": 0.01674004903840883,
+      "dip_lgbm_q": 0.016908291836355165,
+      "dip_qar": 0.016484977208676255,
+      "dip_regime": 0.016565669404212103,
+      "dip_skt": 0.01664716515391358,
+      "dip_stack": 0.016650962387259216,
+      "dip_student_t": 0.01657885045462666,
+      "dip_volm": 0.017001748922242512,
+      "kronos_small": 0.08314374766612226,
+      "timesfm": 0.017533655107254943
+    }
+  },
+  "mean_crps_pooled": {
+    "bolt_small": 0.01785652917672459,
+    "chronos2": 0.016390364748051275,
+    "dip_blend": 0.01509463155687646,
+    "dip_conf_t": 0.015092496212801744,
+    "dip_empirical": 0.015099351483153767,
+    "dip_empirical_long": 0.015150012351995992,
+    "dip_ewma_emp": 0.015192028056647253,
+    "dip_ewma_t": 0.015292536267990042,
+    "dip_fhs": 0.014945100661734824,
+    "dip_garch_t": 0.014980956820179268,
+    "dip_gauss": 0.015438177037096414,
+    "dip_gmm_k": 0.01518122608932734,
+    "dip_lgbm_q": 0.015450728119222386,
+    "dip_qar": 0.015089552853859397,
+    "dip_regime": 0.01506469614216984,
+    "dip_skt": 0.015146100624557865,
+    "dip_stack": 0.015119181725138413,
+    "dip_student_t": 0.01510304193071423,
+    "dip_volm": 0.01516969256192672,
+    "kronos_small": 0.06423109123546229,
+    "timesfm": 0.015916885920613064
+  },
+  "mean_pinball_per_asset": {
+    "BNBUSDT": {
+      "bolt_small": {
+        "0.05": 0.0031587776356446734,
+        "0.5": 0.008546514223907944,
+        "0.95": 0.0026857653885214374
+      },
+      "chronos2": {
+        "0.05": 0.0025329974550166254,
+        "0.5": 0.008317323102864026,
+        "0.95": 0.002831271629554159
+      },
+      "dip_blend": {
+        "0.05": 0.002761877755487711,
+        "0.5": 0.008082743344704619,
+        "0.95": 0.0029409837615862943
+      },
+      "dip_conf_t": {
+        "0.05": 0.00274798702853022,
+        "0.5": 0.008094220962441598,
+        "0.95": 0.0029609596750158535
+      },
+      "dip_empirical": {
+        "0.05": 0.0027480414814228605,
+        "0.5": 0.008094221543820597,
+        "0.95": 0.0029625001952861374
+      },
+      "dip_empirical_long": {
+        "0.05": 0.002802815555424257,
+        "0.5": 0.008057443714193098,
+        "0.95": 0.0029412348319597845
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0027110496585092706,
+        "0.5": 0.00818543289665371,
+        "0.95": 0.0029219365811224366
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0027959511043096946,
+        "0.5": 0.008038968651019173,
+        "0.95": 0.002990807234149814
+      },
+      "dip_fhs": {
+        "0.05": 0.0025621799367876964,
+        "0.5": 0.008060988120383063,
+        "0.95": 0.0028047964699046105
+      },
+      "dip_garch_t": {
+        "0.05": 0.0025126608478378146,
+        "0.5": 0.008050817085201374,
+        "0.95": 0.002755371913632303
+      },
+      "dip_gauss": {
+        "0.05": 0.0028928777807116536,
+        "0.5": 0.008080665285545451,
+        "0.95": 0.0029762331846686705
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0028504076579539293,
+        "0.5": 0.008047157932173248,
+        "0.95": 0.002944981470703777
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.002781878520332416,
+        "0.5": 0.008438449564624249,
+        "0.95": 0.00275449168395796
+      },
+      "dip_qar": {
+        "0.05": 0.0026565399041010435,
+        "0.5": 0.008050696685710432,
+        "0.95": 0.002860488290705788
+      },
+      "dip_regime": {
+        "0.05": 0.0026628897798779225,
+        "0.5": 0.008050228668765293,
+        "0.95": 0.002850370458908944
+      },
+      "dip_skt": {
+        "0.05": 0.00280306965835323,
+        "0.5": 0.008047315728917566,
+        "0.95": 0.0028927056659321018
+      },
+      "dip_stack": {
+        "0.05": 0.0026888986170705916,
+        "0.5": 0.008059025794826013,
+        "0.95": 0.002838920146351883
+      },
+      "dip_student_t": {
+        "0.05": 0.0027850867835782687,
+        "0.5": 0.008083102900584593,
+        "0.95": 0.002928518282151937
+      },
+      "dip_volm": {
+        "0.05": 0.0024128046793637716,
+        "0.5": 0.008134634625305911,
+        "0.95": 0.0029582447883664724
+      },
+      "kronos_small": {
+        "0.05": 0.005466221538040703,
+        "0.5": 0.019762654518722104,
+        "0.95": 0.013611158228034673
+      },
+      "timesfm": {
+        "0.05": 0.0028526268925091482,
+        "0.5": 0.008476858332211389,
+        "0.95": 0.0029808630644540817
+      }
+    },
+    "BTCUSDT": {
+      "bolt_small": {
+        "0.05": 0.0032629328040009852,
+        "0.5": 0.00939903373743982,
+        "0.95": 0.002583826553039813
+      },
+      "chronos2": {
+        "0.05": 0.0028999434282875125,
+        "0.5": 0.00858480937874532,
+        "0.95": 0.002855253956538477
+      },
+      "dip_blend": {
+        "0.05": 0.0026070065825420344,
+        "0.5": 0.00807158226205385,
+        "0.95": 0.0030681720358346253
+      },
+      "dip_conf_t": {
+        "0.05": 0.002591563257844803,
+        "0.5": 0.008067776626883674,
+        "0.95": 0.003116784932551045
+      },
+      "dip_empirical": {
+        "0.05": 0.002591147820097541,
+        "0.5": 0.008067780000934359,
+        "0.95": 0.0031161770619771816
+      },
+      "dip_empirical_long": {
+        "0.05": 0.002541858569634937,
+        "0.5": 0.008059044498688673,
+        "0.95": 0.0029624953148460788
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0025144691315830236,
+        "0.5": 0.008136604200582858,
+        "0.95": 0.003040765315272624
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0028611254213444805,
+        "0.5": 0.0080442231345694,
+        "0.95": 0.0028810474808079883
+      },
+      "dip_fhs": {
+        "0.05": 0.0025136269870332144,
+        "0.5": 0.008055874267732329,
+        "0.95": 0.002800881717670577
+      },
+      "dip_garch_t": {
+        "0.05": 0.002561423056559263,
+        "0.5": 0.008062722017809797,
+        "0.95": 0.0028751211940475133
+      },
+      "dip_gauss": {
+        "0.05": 0.002686143860464218,
+        "0.5": 0.008061644444997396,
+        "0.95": 0.0029813605403539787
+      },
+      "dip_gmm_k": {
+        "0.05": 0.002550340151864375,
+        "0.5": 0.008060535997782,
+        "0.95": 0.0029612879067201815
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.002588887590901135,
+        "0.5": 0.008473783349090514,
+        "0.95": 0.0029328538003405404
+      },
+      "dip_qar": {
+        "0.05": 0.0025186511716000755,
+        "0.5": 0.00806169020522946,
+        "0.95": 0.0028089424343712773
+      },
+      "dip_regime": {
+        "0.05": 0.0025419794210928006,
+        "0.5": 0.008065227951553233,
+        "0.95": 0.002911345385105461
+      },
+      "dip_skt": {
+        "0.05": 0.0025376362260295603,
+        "0.5": 0.00805880327309892,
+        "0.95": 0.002972750318214462
+      },
+      "dip_stack": {
+        "0.05": 0.0025222114541629884,
+        "0.5": 0.008062742650976522,
+        "0.95": 0.0029188386572059364
+      },
+      "dip_student_t": {
+        "0.05": 0.0026146078774157704,
+        "0.5": 0.008071309996215097,
+        "0.95": 0.0030413333486933314
+      },
+      "dip_volm": {
+        "0.05": 0.00264988161310824,
+        "0.5": 0.008113772205415159,
+        "0.95": 0.0027601865503395964
+      },
+      "kronos_small": {
+        "0.05": 0.01212183754954147,
+        "0.5": 0.031629251995313246,
+        "0.95": 0.01350607418806195
+      },
+      "timesfm": {
+        "0.05": 0.002890692924974014,
+        "0.5": 0.008798723027948638,
+        "0.95": 0.0029285236748984853
+      }
+    },
+    "ETHUSDT": {
+      "bolt_small": {
+        "0.05": 0.004240832760043667,
+        "0.5": 0.012518085694599671,
+        "0.95": 0.004099596915889281
+      },
+      "chronos2": {
+        "0.05": 0.003557876925406566,
+        "0.5": 0.011828659555512332,
+        "0.95": 0.004301296748697134
+      },
+      "dip_blend": {
+        "0.05": 0.003614499748550412,
+        "0.5": 0.010977237697935061,
+        "0.95": 0.004202102388420583
+      },
+      "dip_conf_t": {
+        "0.05": 0.0035813454369184425,
+        "0.5": 0.010961746553940156,
+        "0.95": 0.004216038149336104
+      },
+      "dip_empirical": {
+        "0.05": 0.0035817458545252083,
+        "0.5": 0.010961747452306875,
+        "0.95": 0.004216278504740137
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0036468200741853678,
+        "0.5": 0.010943912930089257,
+        "0.95": 0.00424989439259662
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.00339452195525402,
+        "0.5": 0.011021368975476882,
+        "0.95": 0.004509480580861435
+      },
+      "dip_ewma_t": {
+        "0.05": 0.003945953859243464,
+        "0.5": 0.010927242748344506,
+        "0.95": 0.004139886921340861
+      },
+      "dip_fhs": {
+        "0.05": 0.003547076925420449,
+        "0.5": 0.010944902817367218,
+        "0.95": 0.003982120279891469
+      },
+      "dip_garch_t": {
+        "0.05": 0.0035928441545321457,
+        "0.5": 0.010938672834644435,
+        "0.95": 0.004002497368177268
+      },
+      "dip_gauss": {
+        "0.05": 0.003763528418791715,
+        "0.5": 0.011017791980593774,
+        "0.95": 0.004196368806760364
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0036599358837915118,
+        "0.5": 0.01096118398683003,
+        "0.95": 0.004263815149310172
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0036522728387519856,
+        "0.5": 0.011491431139721413,
+        "0.95": 0.0043744593478381695
+      },
+      "dip_qar": {
+        "0.05": 0.003500771463582734,
+        "0.5": 0.010993147469354661,
+        "0.95": 0.004225602170888457
+      },
+      "dip_regime": {
+        "0.05": 0.003665422094726825,
+        "0.5": 0.010971649318434614,
+        "0.95": 0.004234562077121556
+      },
+      "dip_skt": {
+        "0.05": 0.0036494128584831816,
+        "0.5": 0.010954322083358337,
+        "0.95": 0.004240522607034151
+      },
+      "dip_stack": {
+        "0.05": 0.0035967840687071845,
+        "0.5": 0.010952246835670811,
+        "0.95": 0.004189961579151332
+      },
+      "dip_student_t": {
+        "0.05": 0.00366071923659592,
+        "0.5": 0.011013726529594047,
+        "0.95": 0.004201087204997401
+      },
+      "dip_volm": {
+        "0.05": 0.0034885880598531185,
+        "0.5": 0.010961577492792264,
+        "0.95": 0.004265977973337239
+      },
+      "kronos_small": {
+        "0.05": 0.009646537998971291,
+        "0.5": 0.040666098005434796,
+        "0.95": 0.022155032572340434
+      },
+      "timesfm": {
+        "0.05": 0.003993992650162753,
+        "0.5": 0.01159095341335299,
+        "0.95": 0.00396686266602389
+      }
+    },
+    "SOLUSDT": {
+      "bolt_small": {
+        "0.05": 0.005360492618680905,
+        "0.5": 0.01568156574180728,
+        "0.95": 0.003986299237577741
+      },
+      "chronos2": {
+        "0.05": 0.004104977888210942,
+        "0.5": 0.013551780600299513,
+        "0.95": 0.004566644627594511
+      },
+      "dip_blend": {
+        "0.05": 0.0035594492813086796,
+        "0.5": 0.012095186320712817,
+        "0.95": 0.004072119839767444
+      },
+      "dip_conf_t": {
+        "0.05": 0.003472138611850526,
+        "0.5": 0.01209789016749224,
+        "0.95": 0.0040783711602899505
+      },
+      "dip_empirical": {
+        "0.05": 0.00347245447155833,
+        "0.5": 0.012097888937102907,
+        "0.95": 0.004077991323801239
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0037025296099588547,
+        "0.5": 0.012104540253409925,
+        "0.95": 0.004176950894069754
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.0034010615978950385,
+        "0.5": 0.012185453602504974,
+        "0.95": 0.004240328981311877
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0038540163159212376,
+        "0.5": 0.012066235461613797,
+        "0.95": 0.0038880425716679313
+      },
+      "dip_fhs": {
+        "0.05": 0.003359400636352189,
+        "0.5": 0.01209696777003485,
+        "0.95": 0.0038673369536772534
+      },
+      "dip_garch_t": {
+        "0.05": 0.0035961641272418145,
+        "0.5": 0.012096446977345259,
+        "0.95": 0.003885072582315457
+      },
+      "dip_gauss": {
+        "0.05": 0.003687001191102602,
+        "0.5": 0.012082484176362844,
+        "0.95": 0.004073041352212514
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0037277995880796583,
+        "0.5": 0.012083456680679937,
+        "0.95": 0.004297723854125368
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0036783721899663877,
+        "0.5": 0.01295662704351472,
+        "0.95": 0.004009644220642905
+      },
+      "dip_qar": {
+        "0.05": 0.0036881464190804945,
+        "0.5": 0.01217362252317625,
+        "0.95": 0.004076766595024526
+      },
+      "dip_regime": {
+        "0.05": 0.0036307029868532003,
+        "0.5": 0.01210186927240584,
+        "0.95": 0.0040458466066023106
+      },
+      "dip_skt": {
+        "0.05": 0.003703275528324194,
+        "0.5": 0.012086381856813917,
+        "0.95": 0.004227110622965025
+      },
+      "dip_stack": {
+        "0.05": 0.0036053603385568112,
+        "0.5": 0.012090301945376213,
+        "0.95": 0.004070772461922845
+      },
+      "dip_student_t": {
+        "0.05": 0.0036420695503568117,
+        "0.5": 0.0120978495522727,
+        "0.95": 0.004071535607562997
+      },
+      "dip_volm": {
+        "0.05": 0.0035066884136442647,
+        "0.5": 0.012150092994445808,
+        "0.95": 0.0037799533224529367
+      },
+      "kronos_small": {
+        "0.05": 0.015280149121208743,
+        "0.5": 0.058604717530445806,
+        "0.95": 0.027158829601570234
+      },
+      "timesfm": {
+        "0.05": 0.004068980686601704,
+        "0.5": 0.013072887047319544,
+        "0.95": 0.004249676233302214
+      }
+    },
+    "XRPUSDT": {
+      "bolt_small": {
+        "0.05": 0.004752567852208234,
+        "0.5": 0.012962695074028951,
+        "0.95": 0.004410179040524409
+      },
+      "chronos2": {
+        "0.05": 0.003623680607685621,
+        "0.5": 0.01300552431578574,
+        "0.95": 0.004400912582745144
+      },
+      "dip_blend": {
+        "0.05": 0.003311890187796366,
+        "0.5": 0.010928639751522438,
+        "0.95": 0.004709703115176277
+      },
+      "dip_conf_t": {
+        "0.05": 0.0032777840034015756,
+        "0.5": 0.010901637300057193,
+        "0.95": 0.004777139766442849
+      },
+      "dip_empirical": {
+        "0.05": 0.003277947228274891,
+        "0.5": 0.010901640851710427,
+        "0.95": 0.004778675266053484
+      },
+      "dip_empirical_long": {
+        "0.05": 0.0034592902279666706,
+        "0.5": 0.010905666246546108,
+        "0.95": 0.004820706239183191
+      },
+      "dip_ewma_emp": {
+        "0.05": 0.003142404363500245,
+        "0.5": 0.010942958055817279,
+        "0.95": 0.004554262880286138
+      },
+      "dip_ewma_t": {
+        "0.05": 0.0037908418839957348,
+        "0.5": 0.01092641488330862,
+        "0.95": 0.004565379102862006
+      },
+      "dip_fhs": {
+        "0.05": 0.0033214827295280826,
+        "0.5": 0.01091248681594684,
+        "0.95": 0.004127163551659658
+      },
+      "dip_garch_t": {
+        "0.05": 0.0034341933513745,
+        "0.5": 0.010892942771615984,
+        "0.95": 0.004168727155241328
+      },
+      "dip_gauss": {
+        "0.05": 0.00357932631119039,
+        "0.5": 0.01093819053752842,
+        "0.95": 0.004679629992657901
+      },
+      "dip_gmm_k": {
+        "0.05": 0.0033696770942428142,
+        "0.5": 0.01092243537164,
+        "0.95": 0.0048974928371277315
+      },
+      "dip_lgbm_q": {
+        "0.05": 0.0032732486452011654,
+        "0.5": 0.011452623321858695,
+        "0.95": 0.004454796782324899
+      },
+      "dip_qar": {
+        "0.05": 0.0033947043086532363,
+        "0.5": 0.010890524537109748,
+        "0.95": 0.004275318089673012
+      },
+      "dip_regime": {
+        "0.05": 0.003309608079713458,
+        "0.5": 0.010917537713427464,
+        "0.95": 0.004584998948229975
+      },
+      "dip_skt": {
+        "0.05": 0.0034152615966196024,
+        "0.5": 0.01090382064218443,
+        "0.95": 0.004787385032375098
+      },
+      "dip_stack": {
+        "0.05": 0.003387390994450165,
+        "0.5": 0.010897003866264413,
+        "0.95": 0.004541389951912966
+      },
+      "dip_student_t": {
+        "0.05": 0.003415958933935454,
+        "0.5": 0.010969903079330639,
+        "0.95": 0.004693719136327225
+      },
+      "dip_volm": {
+        "0.05": 0.0034709737435941967,
+        "0.5": 0.01105981711476674,
+        "0.95": 0.00438489254691948
+      },
+      "kronos_small": {
+        "0.05": 0.013735517376974897,
+        "0.5": 0.056501901550821264,
+        "0.95": 0.02206832957042615
+      },
+      "timesfm": {
+        "0.05": 0.0038535796153465287,
+        "0.5": 0.011672479876962896,
+        "0.95": 0.004422328633925135
+      }
+    }
+  },
+  "mean_pinball_pooled": {
+    "bolt_small": {
+      "0.05": 0.004155120734115693,
+      "0.5": 0.011821578894356734,
+      "0.95": 0.0035531334271105366
+    },
+    "chronos2": {
+      "0.05": 0.0033438952609214532,
+      "0.5": 0.011057619390641387,
+      "0.95": 0.003791075909025885
+    },
+    "dip_blend": {
+      "0.05": 0.0031709447111370405,
+      "0.5": 0.010031077875385758,
+      "0.95": 0.003798616228157045
+    },
+    "dip_conf_t": {
+      "0.05": 0.003134163667709114,
+      "0.5": 0.010024654322162974,
+      "0.95": 0.003829858736727161
+    },
+    "dip_empirical": {
+      "0.05": 0.003134267371175766,
+      "0.5": 0.010024655757175033,
+      "0.95": 0.003830324470371636
+    },
+    "dip_empirical_long": {
+      "0.05": 0.0032306628074340177,
+      "0.5": 0.010014121528585412,
+      "0.95": 0.0038302563345310858
+    },
+    "dip_ewma_emp": {
+      "0.05": 0.0030327013413483203,
+      "0.5": 0.01009436354620714,
+      "0.95": 0.0038533548677709023
+    },
+    "dip_ewma_t": {
+      "0.05": 0.0034495777169629223,
+      "0.5": 0.010000616975771098,
+      "0.95": 0.00369303266216572
+    },
+    "dip_fhs": {
+      "0.05": 0.003060753443024326,
+      "0.5": 0.010014243958292859,
+      "0.95": 0.0035164597945607137
+    },
+    "dip_garch_t": {
+      "0.05": 0.0031394571075091075,
+      "0.5": 0.01000832033732337,
+      "0.95": 0.003537358042682774
+    },
+    "dip_gauss": {
+      "0.05": 0.003321775512452116,
+      "0.5": 0.010036155285005578,
+      "0.95": 0.0037813267753306857
+    },
+    "dip_gmm_k": {
+      "0.05": 0.0032316320751864572,
+      "0.5": 0.010014953993821043,
+      "0.95": 0.003873060243597446
+    },
+    "dip_lgbm_q": {
+      "0.05": 0.0031949319570306173,
+      "0.5": 0.010562582883761917,
+      "0.95": 0.0037052491670208952
+    },
+    "dip_qar": {
+      "0.05": 0.0031517626534035164,
+      "0.5": 0.010033936284116111,
+      "0.95": 0.003649423516132612
+    },
+    "dip_regime": {
+      "0.05": 0.003162120472452841,
+      "0.5": 0.01002130258491729,
+      "0.95": 0.00372542469519365
+    },
+    "dip_skt": {
+      "0.05": 0.0032217311735619537,
+      "0.5": 0.010010128716874634,
+      "0.95": 0.003824094849304168
+    },
+    "dip_stack": {
+      "0.05": 0.0031601290945895482,
+      "0.5": 0.010012264218622793,
+      "0.95": 0.0037119765593089924
+    },
+    "dip_student_t": {
+      "0.05": 0.003223688476376445,
+      "0.5": 0.010047178411599415,
+      "0.95": 0.003787238715946578
+    },
+    "dip_volm": {
+      "0.05": 0.003105787301912719,
+      "0.5": 0.010083978886545174,
+      "0.95": 0.0036298510362831444
+    },
+    "kronos_small": {
+      "0.05": 0.011250052716947423,
+      "0.5": 0.04143292472014745,
+      "0.95": 0.01969988483208669
+    },
+    "timesfm": {
+      "0.05": 0.0035319745539188294,
+      "0.5": 0.01072238033955909,
+      "0.95": 0.0037096508545207615
+    }
+  },
+  "n_complete": 1500,
+  "n_dropped_incomplete": 0,
+  "n_rows": 1500,
+  "n_scored_per_asset": {
+    "BNBUSDT": 300,
+    "BTCUSDT": 300,
+    "ETHUSDT": 300,
+    "SOLUSDT": 300,
+    "XRPUSDT": 300
+  },
+  "quantile_completion": "trapezoid on dense grid; exponential tails outside native quantile grid",
+  "research_only": true,
+  "schema": "sota_eval.v4",
+  "score_table_scope": "available_per_model; use common_sample for paired comparisons",
+  "scoring_contract": "native_shapes_timesfm_point_first.v2+spliced",
+  "source_parts_sha256": {
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/lane-volm/spliced/d1_bnbusdt_1d_deep.v2aug.volm.npz": "852c6b7b5b3197422df51d615913b24387f481107a02502bc32d396a12655ead",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/lane-volm/spliced/d1_btcusdt_1d_deep.v2aug.volm.npz": "3f98131c12bf232932924f08f5f4ac72411617830101c9d660e3490c208b5c5f",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/lane-volm/spliced/d1_ethusdt_1d_deep.v2aug.volm.npz": "f1e2ad3c93c4b7208d7701b2d784b3aba906b300aaf0b4f79421a91c739a35d7",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/lane-volm/spliced/d1_solusdt_1d_deep.v2aug.volm.npz": "9d0cfbeb0f4f7fc02e5a99ac4b463c3184a8360d18d8541d3bd79dd540240eec",
+    "/Users/vaithianathan/dipcatcher/.dsh-24x7/lane-volm/spliced/d1_xrpusdt_1d_deep.v2aug.volm.npz": "fe635a60a97de2ff44cac9548924e30f0ee4fd85e890c0418a646cf3f4b5d87a"
+  },
+  "spa": {
+    "bolt_small": {
+      "p_consistent": 0.000999000999000999,
+      "p_lower": 0.000999000999000999,
+      "p_upper": 0.000999000999000999,
+      "statistic": 5.966319101948131
+    },
+    "chronos2": {
+      "p_consistent": 0.000999000999000999,
+      "p_lower": 0.000999000999000999,
+      "p_upper": 0.000999000999000999,
+      "statistic": 5.414677902113173
+    },
+    "kronos_small": {
+      "p_consistent": 0.000999000999000999,
+      "p_lower": 0.000999000999000999,
+      "p_upper": 0.000999000999000999,
+      "statistic": 8.373356060633077
+    },
+    "timesfm": {
+      "p_consistent": 0.000999000999000999,
+      "p_lower": 0.000999000999000999,
+      "p_upper": 0.000999000999000999,
+      "statistic": 5.6073191895309495
+    }
+  },
+  "timestamp_source": "reconstructed_from_hash_verified_bars"
+}

@@ -1,0 +1,84 @@
+{
+  "lane": "lane-perf",
+  "subject": "run_backtest_fast numba kernel + ingest glue",
+  "bitwise_parity": true,
+  "workload": {
+    "bars": 10989,
+    "weight_rows": 10780,
+    "dates": 999,
+    "assets": 11,
+    "symbols": ["adausdt", "avaxusdt", "bnbusdt", "btcusdt", "dogeusdt", "ethusdt", "linkusdt", "ltcusdt", "solusdt", "trxusdt", "xrpusdt"],
+    "source": "data/raw/sources/{sid}_1d.parquet, SMA-20 gated target-weight panel (dense: 0.0 rows emitted for non-gated names)",
+    "config": "commission_bps=10, all other cost terms 0, frictionless=False, participation_limit=1.0; risk gate wide (max_gross/max_net=100, max_name=1, stale_price_bars=3); NEXT_OPEN fills",
+    "harness": "scripts/_bench_fast.py --reps 15 --vectorbt --ref (interleaved); before/after via scripts/_bench_before_after.py (HEAD copy = scripts/_fast_replay_before.py)",
+    "parity_harness": "scripts/_conformance_11a.py (sparse gated panel variant)"
+  },
+  "machines": {
+    "remote_primary": {
+      "os": "Windows-10-10.0.19045-SP0",
+      "cpu": "Intel64 Family 6 Model 85 Stepping 7 (Skylake-SP)",
+      "cores": 24,
+      "python": "3.12.14",
+      "numba": "0.67.0",
+      "polars": "1.44.2",
+      "numpy": "2.5.3",
+      "vectorbt": "1.1.0",
+      "note": "me@100.116.120.51, scratch copy D:/dipcatcher-megaplan/_lane-perf (data/ junctioned; remote working tree untouched)"
+    },
+    "local": {
+      "os": "macOS darwin arm64",
+      "cpu": "Apple M4",
+      "cores": 10,
+      "python": "3.12.13",
+      "numba": "0.67.0",
+      "polars": "1.44.2",
+      "numpy": "2.5.3",
+      "vectorbt": "1.1.0",
+      "note": "shared box, load average ~34 during measurement — local numbers are load-inflated and reported as secondary"
+    }
+  },
+  "remote_ms": {
+    "run_backtest_median": 816.82,
+    "fast_before_median": 208.96,
+    "fast_after_median": 65.50,
+    "vectorbt_median": 16.44,
+    "fast_before_all": [332.1, 207.5, 329.0, 205.6, 209.0, 213.5, 198.8, 210.2, 196.5, 198.6, 197.9, 196.2, 233.4, 259.5, 229.4],
+    "fast_after_all": [61.6, 69.5, 68.4, 61.9, 63.9, 74.4, 61.7, 65.5, 62.9, 91.1, 66.1, 61.9, 68.8, 60.5, 70.5],
+    "vectorbt_all": [16.6, 17.5, 16.2, 16.4, 16.0, 22.0, 16.0, 18.9, 15.6, 16.1, 21.6, 16.3, 19.3, 15.5, 26.4],
+    "speedup_vs_before": 3.19,
+    "speedup_vs_reference": 12.47,
+    "vectorbt_gap_remaining": 4.0
+  },
+  "local_ms": {
+    "run_backtest_median": 889.56,
+    "fast_before_median": 678.74,
+    "fast_after_median": 167.80,
+    "vectorbt_median": 20.64,
+    "note": "load avg ~34; conformance-run medians"
+  },
+  "phase_breakdown_remote_ms": {
+    "validate_panel": 1.1,
+    "bars_to_matrices": 7.9,
+    "weight_scatter_and_carry": 2.0,
+    "replay_driver_total": 15.0,
+    "replay_kernel_only": 2.0,
+    "build_result_metrics_tail": 42.0,
+    "total_profiled": 75.0,
+    "note": "cProfile run; ~9ms profiler overhead vs 65.5ms wall median"
+  },
+  "parity": {
+    "unit_tests": "9/9 pass (local + remote)",
+    "conformance_nav_bitwise_equal": true,
+    "conformance_nav_max_abs_diff": 0.0,
+    "conformance_fills_equal": true,
+    "before_after_nav_bitwise_equal": true
+  },
+  "hygiene": {
+    "ruff": "clean (fast_replay.py)",
+    "mypy": "clean (fast_replay.py)",
+    "engine_py": "unmodified (reverted an earlier _build_result extension; driver emits row dicts instead)",
+    "files_changed": ["src/quant_fund/backtest/fast_replay.py"],
+    "files_added": ["scripts/_bench_fast.py", "scripts/_bench_before_after.py", "scripts/_fast_replay_before.py"]
+  },
+  "verdict": "Sequential-loop bottleneck eliminated (297ms -> ~2ms kernel). Fast path 3.2x faster than before, 12.5x faster than reference, bitwise-identical. vectorbt remains ~4x faster end-to-end: ~42ms of the residual is the shared _build_result metrics tail (identical cost paid by the reference engine; vectorbt defers stats), ~15ms ingest/validation/materialisation. Excluding the shared tail, fast-path-specific work is ~24ms vs vectorbt 16ms."
+}
