@@ -29,3 +29,5 @@ data/metadata/**
 .ipynb_checkpoints/
 uv.lock.bak
 data/models/**
+
+third_party/
