@@ -104,6 +104,7 @@ def run_one(
     vlb=None,
     vr=0.04,
     rexp=0.0,
+    ebp=None,
 ):
     w = basis_carry_hysteresis_weights(
         perp,
@@ -120,6 +121,7 @@ def run_one(
         vol_lookback=vlb,
         vol_ref=vr,
         rate_exponent=rexp,
+        enter_rate_by_prefix=ebp,
     )
     scaler = OverlayAdapter(**scaler_kw) if scaler_kw else None
     res = run_carry_backtest(perp, spot, fund, w, make_cfg(), initial_nav=1e6, scaler=scaler)
@@ -191,8 +193,9 @@ def eligible_coins(perp: pl.DataFrame, spot: pl.DataFrame, max_gap: int = 3) -> 
         for t in sub["event_time"].to_list():
             have[idx[t]] = True
         nz = np.nonzero(have)[0]
-        # must still be listed at window end; gaps only inside its own span
-        if nz.size == 0 or nz[-1] < last_i:
+        # must still be listed at window end (within max_gap: merged venues end on
+        # different dates); gaps only inside its own span
+        if nz.size == 0 or nz[-1] < last_i - max_gap:
             continue
         span = have[nz[0] : nz[-1] + 1]
         mx = cur = 0
@@ -243,6 +246,11 @@ def run_champion(perp, spot, fund, dev_p, dev_s, dev_f, dev_end, tag="") -> int:
 
 
 def run_grid(dev_p, dev_s, dev_f) -> int:
+    keep = eligible_coins(dev_p, dev_s)
+    dev_p = dev_p.filter(pl.col("security_id").is_in(keep))
+    dev_s = dev_s.filter(pl.col("security_id").is_in(keep))
+    dev_f = dev_f.filter(pl.col("security_id").is_in(keep))
+    print("dev eligible coins:", len(keep))
 
     grid = []
     for enter, lb, nw, mx, band in itertools.product(
