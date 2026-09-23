@@ -97,6 +97,7 @@ def run_one(
     rsf=0.3,
     vlb=None,
     vr=0.04,
+    rexp=0.0,
 ):
     w = basis_carry_hysteresis_weights(
         perp,
@@ -112,6 +113,7 @@ def run_one(
         rate_scale_floor=rsf,
         vol_lookback=vlb,
         vol_ref=vr,
+        rate_exponent=rexp,
     )
     scaler = OverlayAdapter(**scaler_kw) if scaler_kw else None
     res = run_carry_backtest(perp, spot, fund, w, make_cfg(), initial_nav=1e6, scaler=scaler)

@@ -398,6 +398,7 @@ def basis_carry_hysteresis_weights(
     rate_scale_floor: float = 0.3,
     vol_lookback: int | None = None,
     vol_ref: float = 0.04,
+    rate_exponent: float = 0.0,
 ) -> pl.DataFrame:
     """Event-driven carry membership book — the low-churn version.
 
@@ -428,6 +429,11 @@ def basis_carry_hysteresis_weights(
     daily close-close return std over the last ``vol_lookback`` bars. Wildest
     microcaps — the ones that drive basis-squeeze drawdowns — get diluted
     weight while calm names keep full size.
+
+    ``rate_exponent`` tilts weights toward higher payers: each name's weight
+    is multiplied by ``N * rate_i**rate_exponent / sum(rate_j**rate_exponent)``
+    over the day's book, so the book's gross is unchanged but share follows
+    rate^exponent. ``0`` = equal weight (default).
     """
     _validate_bars(bars)
     if funding.height == 0:
@@ -509,6 +515,16 @@ def basis_carry_hysteresis_weights(
                     max(rate_scale_floor, (sum(book_rates) / len(book_rates)) / rate_scale_ref),
                 )
         w_now = name_weight * scale
+        tilts: dict[str, float] = {}
+        if rate_exponent > 0:
+            book: dict[str, float | None] = {sid: r for sid, r in cands[:max_names]}
+            for sid in active:
+                book.setdefault(sid, rates.get(sid))
+            rates_pos = {s: r for s, r in book.items() if isinstance(r, (int, float)) and r > 0}
+            if rates_pos:
+                n_book = max(len(book), 1)
+                norm = n_book / sum(r**rate_exponent for r in rates_pos.values())
+                tilts = {s: norm * r**rate_exponent for s, r in rates_pos.items()}
         vols_t = vols_by_time.get(t, {})
 
         def _vscale(sid: str, w: float, vols_t: dict[str, float] = vols_t) -> float:
@@ -516,6 +532,9 @@ def basis_carry_hysteresis_weights(
             if v is None or v <= 0:
                 return w
             return w * min(1.0, vol_ref / v)
+
+        def _w(sid: str, w_now: float = w_now, tilts: dict[str, float] = tilts) -> float:
+            return _vscale(sid, w_now * tilts.get(sid, 1.0))
 
         if rebalance_band is not None:
             for sid in list(active):
@@ -527,12 +546,12 @@ def basis_carry_hysteresis_weights(
                 if drift >= rebalance_band or drift <= 1.0 / rebalance_band:
                     out_t.append(t)
                     out_s.append(sid)
-                    out_w.append(_vscale(sid, w_now))
+                    out_w.append(_w(sid))
                     entry_px[sid] = p1
         for sid, _r in cands:
             if len(active) >= max_names:
                 break
-            w_sid = _vscale(sid, w_now)
+            w_sid = _w(sid)
             active[sid] = w_sid
             pe = px_now.get(sid)
             if pe is not None and pe > 0:
