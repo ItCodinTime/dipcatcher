@@ -35,6 +35,9 @@ data/okx_carry/**
 data/hyperliquid_carry/**
 data/hl_carry_book/**
 data/hl_probe/**
+data/dydx_carry/**
+data/dydx_carry_book/**
+data/dydx_probe/**
 artifacts/hedge_lab/**
 !artifacts/hedge_lab/.gitkeep
 !artifacts/hedge_lab/*.json
