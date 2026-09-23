@@ -511,3 +511,42 @@ h4f fleet complete (5/5, 300 origins, deep 4h). native-protocol fleet at
   levers: stock-breadth cross-section (grid-4 running), intraday book
   (intraday_book.py written: xrev/xgap/tmom/daymom sleeves, measured
   bars-per-year annualization, 2bps half-spread honest cost).
+
+## 2026-09-23 — lineage merge + Phase C completion (Devin)
+
+- GIT: local main merged origin/main (edec1ea: 119 conflicts — evidence
+  artifacts value-identical, source unioned; 0417f7f: +12 agent commits).
+  Second wave merged (9c44f69: PR#7). All pushed: origin/main = 6da2c10.
+- PHASE C COMPLETE: native crossover merged both frequencies.
+  MERGED_d1_native.json (3300 origins): dip_garch_t +0.0402 path RankIC #1.
+  MERGED_h4_native.json (1500 origins): kronos_small +0.0336 path /
+  +0.0655 ret RankIC #1 — split verdict, disclosed in EVAL_REPORT §4.3.
+- Merge-critical unit tests green (engine/institutional/garch/cli-api/
+  fast-replay/broker). Full suite running; 1 known env failure
+  (test_covariance DCC — arch 8.0.0 boundary fit on noise, both-lineage
+  identical code, not merge-caused).
+- Concurrent agent active in worktree: lane-* dirs + WIP engine/replay
+  edits left uncommitted; remote checkout D:\dipcatcher also has WIP —
+  its committed state (ebd3951) already on origin.
+- SOTA status unchanged: PROVEN on declared metric; crossover boundary
+  disclosed (no 4h trajectory-shape claim). Industry-grade: NOT PROVEN.
+
+## 2026-09-23 — s23 merge + tfmfix4 spawn (Devin)
+
+- S23 LANDED: `merge_s23_v2aug.json` (5 deep-daily assets × 300 origins,
+  seed=23, native v2 contract — no splice needed; bootstrap seed 7,
+  n_boot 1000 matching merge_s11_v2aug convention). All 4 targets excluded
+  from MCS @0.10 a third time (SPA p=0.0010 floor each). Superior set =
+  seed-7/11 octet + dip_ewma_emp + dip_skt (10 members — MCS-boundary
+  fluctuation, disclosed). Best target timesfm 0.015917 vs best
+  challenger dip_regime 0.015065. EVAL_REPORT §4.4 updated.
+- TFMFIX4 SPAWNED on codex-remote: 6 jobs (ada/avax/doge/link/ltc/trx
+  daily × 300 origins, timesfm-only v2 contract, seed 7) via
+  `scripts/spawn_tfmfix4.ps1` — completes verified 11-asset daily arena
+  when spliced into the `d1fix_*` 300-origin bases. Pids in
+  `C:\Users\me\spawn_tfmfix4.out.log`; ~52min/job parallel.
+- LOCAL VERIFY: full suite continuation passed 3111 tests (only failure =
+  documented macOS arch-8.0.0 GARCH boundary, pre-existing/not-merge).
+  ruff clean on engine/zoo/constants; `fast_replay.py` needs `ruff
+  format` but is the concurrent agent's uncommitted WIP — flagged, not
+  clobbered. mypy clean on the 3 changed source files.

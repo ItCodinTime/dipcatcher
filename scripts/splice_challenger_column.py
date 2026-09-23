@@ -40,7 +40,6 @@ KNOWN_MODELS = {
     "dip_lgbm_qv",
     "dip_evt",
     "dip_mid",
-    "dip_egarch_l",
     "dip_stack2",
 }
 PROTOCOL_FIELDS = (

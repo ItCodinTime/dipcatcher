@@ -99,7 +99,7 @@ Every required dimension is now **measured against named incumbents on matched w
 - **UX** — measured, mixed: vectorbt needs fewer lines (6 vs 19) but dipcatcher reaches first result faster (5.3 s vs 8.1 s) and its errors name the offending field/asset; qlib requires a prepared on-disk provider bundle.
 - **Security** — measured: 0 known CVEs across the locked 483-dependency tree, 0 HIGH bandit findings (4 MEDIUM reviewed; the HF revision-pinning ones fixed), 0 secrets in 2125 tracked files.
 - **Operability** — WIN (qualitative): manifests, atomic receipts, resume, fail-closed validation.
-- **Tests** — canonical unit suite green (567 files); fast-replay suite passes on both kernel and fallback paths.
+- **Tests** — unit suite green on the remote Windows host; local macOS run: 3111 passed + 1 documented environment-specific failure (`test_covariance.py::test_ewma_rejects_invalid_lambda_and_dcc_is_finite` — arch 8.0.0 fits a β=1.0 boundary on seed-11 noise → fail-closed `nonstationary_persistence`; identical code passes on Windows; recorded in HANDOFF). Fast-replay suite passes on both kernel and fallback paths.
 
 Residual honesty notes: the 11-asset latency median is ~11% behind vectorbt (best reps beat vectorbt's median; the box shared ~25% background CPU during measurement — rerun the receipt command on a quiet box to tighten), and UX setup is wordier than vectorbt by construction (schema-validated panels are what make the fault battery fail closed). Zipline remains attempted-and-documented-not-fair. This is a real, rerunnable evidence trail.
 

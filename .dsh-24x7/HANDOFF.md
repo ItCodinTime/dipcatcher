@@ -126,5 +126,14 @@ Completed and failed attempts at that checkpoint:
   egarchl, evt, har, kde, mid, seas, stack2, tools) + WIP edits to
   `engine.py`/`fast_replay.py`/`splice_challenger_column.py`/
   `robinhood_plus/constants.py` left UNCOMMITTED — do not clobber.
-- NEXT: s23 merge when it lands; tfmfix4 splice → 11-asset verified daily
-  arena; P0.7 doc flip if the concurrent lane work converges.
+- s23 replication LANDED + merged: `merge_s23_v2aug.json` (5 assets × 300,
+  seed=23, native v2 contract — no splice needed). All 4 targets excluded
+  from MCS @0.10 a third time; superior set = seed-7/11 octet + ewma_emp +
+  skt (10 members). EVAL_REPORT §4.4 updated.
+- tfmfix4 wave SPAWNED on codex-remote (6 jobs: ada/avax/doge/link/ltc/trx
+  daily × 300 origins, timesfm-only v2, seed 7 — `spawn_tfmfix4.ps1`,
+  pids logged in `C:\Users\me\spawn_tfmfix4.out.log`). ~1h runtime.
+- NEXT: when tfmfix4 lands → `splice_timesfm_fix.py` into the 6 `d1fix_*`
+  300-origin bases → merge 11 parts → verified 11-asset daily arena →
+  EVAL_REPORT + PROOF update; P0.7 doc flip if the concurrent lane work
+  converges.

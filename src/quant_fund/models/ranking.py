@@ -225,6 +225,19 @@ class NeuralRanker(RidgeRanker):
             random_state=self.seed,
         )
 
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> NeuralRanker:
+        xx, yy, mask = _finite(x, y)
+        dates = kwargs.get("dates")
+        if dates is not None:
+            yy = _demean_by_date(yy, np.asarray(dates)[mask])
+        self.scaler.fit(xx)
+        self.model.fit(self.scaler.transform(xx), yy)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        x = np.where(np.isfinite(x), x, 0.0)
+        return self.model.predict(self.scaler.transform(x))
+
     def metadata(self) -> ModelMeta:
         return ModelMeta(family="ranking", name="neural", version="v1", extra={"seed": self.seed})
 
