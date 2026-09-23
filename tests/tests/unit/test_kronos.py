@@ -3,9 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 import polars as pl
 import pytest
-from quant_fund.models.kronos import KronosAdapter, validate_ohlcv_frame
 
 from quant_fund.config.models import AppConfig
+from quant_fund.models.kronos import KronosAdapter, validate_ohlcv_frame
 
 
 def _bars(n: int = 8) -> pd.DataFrame:
