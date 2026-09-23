@@ -393,6 +393,9 @@ def basis_carry_hysteresis_weights(
     name_weight: float = 0.08,
     max_names: int = 10,
     rebalance_band: float | None = None,
+    rate_scale_ref: float | None = None,
+    rate_scale_cap: float = 2.0,
+    rate_scale_floor: float = 0.3,
 ) -> pl.DataFrame:
     """Event-driven carry membership book — the low-churn version.
 
@@ -409,6 +412,14 @@ def basis_carry_hysteresis_weights(
     entered cheap can drift to many multiples of the intended weight and blow
     past the perp book's leverage/margin limits (the engine caps leverage only
     at order time). ``None`` keeps the original hold-untouched behaviour.
+
+    ``rate_scale_ref`` enables regime-scaled sizing: when set, all weight rows
+    emitted at a timestamp are multiplied by
+    ``clip(book_rate / rate_scale_ref, rate_scale_floor, rate_scale_cap)``
+    where ``book_rate`` is the mean trailing rate across the day's qualifying
+    candidates (top ``max_names``) plus currently held names — the book
+    self-sizes with funding dispersion (deploys more when yields are rich,
+    thins when they compress) without adding churn between event days.
     """
     _validate_bars(bars)
     if funding.height == 0:
@@ -453,6 +464,26 @@ def basis_carry_hysteresis_weights(
                 out_w.append(0.0)
                 del active[sid]
                 entry_px.pop(sid, None)
+        cands = sorted(
+            (
+                (sid, r)
+                for sid, r in rates.items()
+                if r is not None and r >= enter_rate and sid not in active
+            ),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
+        scale = 1.0
+        if rate_scale_ref is not None and rate_scale_ref > 0:
+            book_rates = [r for _, r in cands[:max_names]] + [
+                rates[s] for s in active if rates.get(s) is not None
+            ]
+            if book_rates:
+                scale = min(
+                    rate_scale_cap,
+                    max(rate_scale_floor, (sum(book_rates) / len(book_rates)) / rate_scale_ref),
+                )
+        w_now = name_weight * scale
         if rebalance_band is not None:
             for sid in list(active):
                 p0 = entry_px.get(sid)
@@ -463,27 +494,18 @@ def basis_carry_hysteresis_weights(
                 if drift >= rebalance_band or drift <= 1.0 / rebalance_band:
                     out_t.append(t)
                     out_s.append(sid)
-                    out_w.append(name_weight)
+                    out_w.append(w_now)
                     entry_px[sid] = p1
-        cands = sorted(
-            (
-                (sid, r)
-                for sid, r in rates.items()
-                if r is not None and r >= enter_rate and sid not in active
-            ),
-            key=lambda kv: kv[1],
-            reverse=True,
-        )
         for sid, _r in cands:
             if len(active) >= max_names:
                 break
-            active[sid] = name_weight
+            active[sid] = w_now
             pe = px_now.get(sid)
             if pe is not None and pe > 0:
                 entry_px[sid] = pe
             out_t.append(t)
             out_s.append(sid)
-            out_w.append(name_weight)
+            out_w.append(w_now)
     return pl.DataFrame({"event_time": out_t, "security_id": out_s, "target_weight": out_w}).sort(
         ["event_time", "security_id"]
     )

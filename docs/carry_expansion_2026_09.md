@@ -72,6 +72,37 @@ Sharpe-optimal alternative on the same expanded universe: `nw0.08×mx15`
 Aggressive variant `nw0.12×mx60` (+336% / $3.82M) passes all constraints but its
 holdout Sharpe drops to 1.08; kept off the podium.
 
+## Regime-scaled sizing (`rate_scale_*`, new champion v2)
+
+`basis_carry_hysteresis_weights` gained optional regime-scaling:
+`w = name_weight * clip(book_rate / rate_scale_ref, floor, cap)` where
+`book_rate` is the day's mean trailing funding across top candidates + held
+names. Upside-only mode (`floor=1.0`) never de-rates the flat book — it only
+adds exposure when funding dispersion is rich.
+
+Result: `rsr=20bp/d, cap=1.5, floor=1.0` on `nw0.11/mx60`:
+
+| window | Sharpe | CAGR | total | max DD | funding_net |
+|--------|-------:|-----:|------:|-------:|------------:|
+| dev (283 elig.)    | 6.44 | 35.0% | +348% | −1.88% | $3.74M |
+| holdout (58 elig.) | 1.33 | 1.3%  | +2.2% | −1.70% | $0.07M |
+| full (57 elig.)    | 5.98 | 25.3% | **+356%** | −2.10% | **$4.03M** |
+
+2021 alone: **+134.9%**. Worst day −0.94% (2021-05-19). Zero liquidations;
+15 margin-rejects = the 3.0× leverage cap correctly clipping orders at the
+top of rich regimes (gross marks peaked 3.15×).
+
+Boundary map (all on this universe):
+- `floor<1.0` (bidirectional scaling) *lowers* full-window returns — it
+  de-rates the book in the regimes that compound hardest (+252% vs +356%).
+- `ref ≤ 18bp` or `cap ≥ 1.55` → liquidation cliff (per-name effective weight
+  > ~17% enters squeeze-liquidation territory). cap 1.5 = the last safe rung.
+- Holdout is invariant: the scale never exceeds 1.0 in the compressed
+  2025–26 regime — correct behavior (no yield, no leverage).
+
+Rejected alternative preserved: `ref20bp cap1.5 floor0.3` (bidirectional)
+scored holdout Sharpe 3.16 but gave up ~100pp of full-window return.
+
 ## Reproduce
 
 ```
