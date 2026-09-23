@@ -211,10 +211,10 @@ def _parse_funding_csv(raw: bytes, coin: str) -> list[dict]:
     return rows
 
 
-def fetch_symbol(coin: str) -> tuple[str, list[dict], list[dict], list[dict]]:
+def fetch_symbol(coin: str, interval: str = "1d") -> tuple[str, list[dict], list[dict], list[dict]]:
     sym = f"{coin}USDT"
-    pk = f"data/futures/um/monthly/klines/{sym}/1d/"
-    sk = f"data/spot/monthly/klines/{sym}/1d/"
+    pk = f"data/futures/um/monthly/klines/{sym}/{interval}/"
+    sk = f"data/spot/monthly/klines/{sym}/{interval}/"
     fk = f"data/futures/um/monthly/fundingRate/{sym}/"
     p_months = set(_months_from_keys(list_keys(pk)))
     s_months = set(_months_from_keys(list_keys(sk)))
@@ -227,11 +227,11 @@ def fetch_symbol(coin: str) -> tuple[str, list[dict], list[dict], list[dict]]:
     fund_rows: list[dict] = []
     for m in all_months:
         if m in p_months:
-            raw = _dl_zip_csv(f"{S3}/{pk}{sym}-1d-{m}.zip")
+            raw = _dl_zip_csv(f"{S3}/{pk}{sym}-{interval}-{m}.zip")
             if raw:
                 perp_rows.extend(_parse_kline_csv(raw, coin, "binance"))
         if m in s_months:
-            raw = _dl_zip_csv(f"{S3}/{sk}{sym}-1d-{m}.zip")
+            raw = _dl_zip_csv(f"{S3}/{sk}{sym}-{interval}-{m}.zip")
             if raw:
                 spot_rows.extend(_parse_kline_csv(raw, coin, "binance"))
         if m in f_months:
@@ -246,6 +246,7 @@ def main() -> int:
     ap.add_argument("--coins", default=" ".join(CANDIDATES), help="space-separated base coins")
     ap.add_argument("--out", type=Path, default=Path("data/binance_carry"))
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--interval", default="1d")
     args = ap.parse_args()
     coins = args.coins.split()
     print(f"fetching {len(coins)} candidate coins")
@@ -254,7 +255,7 @@ def main() -> int:
     funds: list[dict] = []
     keep: list[str] = []
     with cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(fetch_symbol, c): c for c in coins}
+        futs = {ex.submit(fetch_symbol, c, args.interval): c for c in coins}
         for fut in cf.as_completed(futs):
             coin = futs[fut]
             try:

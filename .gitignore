@@ -42,3 +42,4 @@ third_party/kronos_weights/
 .tmp_*/
 
 data/models/
+data/binance_carry_8h*/

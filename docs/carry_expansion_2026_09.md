@@ -83,23 +83,28 @@ adds exposure when funding dispersion is rich.
 Champion v2: `rsr=20bp/d, cap=1.5, floor=1.0` on `nw0.11/mx60` scored
 +356% / 25.3% CAGR / Sharpe 5.98 / DD −2.10% / $4.03M — superseded by v3 below.
 
-## Champion v3 — `enter=2bp/d, exit=0, lb=9, nw=0.12, mx=60, band=1.3, rsr=20bp/d, cap=1.5, floor=1.0`
+## Champion v4 — `enter=2bp/d, exit=−1.25bp/d, lb=9, nw=0.12, mx=60, band=1.3, rsr=20bp/d, cap=1.5, floor=1.0`
 
-A 2bp/day entry bar (vs 1.5bp) is a sharp local optimum: high enough to keep
-the squeeze-prone tail out, low enough to keep ~60 qualifying names.
+A 2bp/day entry bar (vs 1.5bp) keeps the squeeze-prone tail out while keeping
+~60 qualifying names. A *negative* exit bar (−1.25bp/d, vs 0) holds a payer
+through shallow funding dips instead of churning out and back in — mean daily
+turnover halves (0.016 vs 0.025), saving ~35% of churn cost and keeping
+positions through the dips that revert.
 
 | window | Sharpe | CAGR | total | max DD | funding_net |
 |--------|-------:|-----:|------:|-------:|------------:|
-| dev (283 elig.)    | 6.36 | 35.3% | +353% | −1.84% | $3.79M |
-| holdout (58 elig.) | 1.87 | 1.7%  | +2.9% | −0.98% | $0.07M |
-| full (57 elig.)    | 6.12 | 25.7% | **+365%** | **−1.53%** | **$4.09M** |
+| dev (283 elig.)    | 6.52 | 34.4% | +338% | −1.56% | $3.54M |
+| holdout (58 elig.) | 4.35 | 2.5%  | +4.3% | −0.35% | $0.06M |
+| full (57 elig.)    | 6.44 | 26.9% | **+397%** | **−1.40%** | **$4.19M** |
 
-Dominates v2 on every axis. Yearly: 2020 +37.4%, **2021 +132.7%**, 2022 +1.5%,
-2023 +11.5%, 2024 +25.3%, 2025 +2.8%. Worst day ever −0.96%; zero
-liquidations; 8 margin-rejects (leverage cap honestly clipping at peak
-dispersion; gross marks peaked 3.26×).
+Dominates v3 on every axis. Yearly: 2020 +37.4%, **2021 +136.6%**, 2022 +1.8%,
+2023 +12.2%, 2024 +27.0%, 2025 +4.4%, 2026 +1.0%. Worst day ever −0.96%; zero
+liquidations; 18 margin-rejects (3.0× leverage cap clipping at peak
+dispersion; gross marks peaked 3.29×). Exit depth is a razor: −1.5bp rides
+into squeezes (5 liqs, −26% DD); −0.5bp keeps too much churn (1 liq, 4.72
+Sharpe).
 
-## The frontier is mapped — v3 sits at the maximum
+## The frontier is mapped — v4 sits at the maximum
 
 Every adjacent config is strictly worse or inadmissible; the binding
 constraints are (a) baseline per-name weight ≤ ~0.12, (b) scaled weight
@@ -112,6 +117,8 @@ constraints are (a) baseline per-name weight ≤ ~0.12, (b) scaled weight
 | rsr | ≤18bp, ≥22bp | cliff or flat-worse |
 | band | 1.15–1.8 | 1.3 optimal; ≥1.4 dev-ruins (drift balloons before rebalance) |
 | enter | 1.0–3.0bp | 2bp optimal; looser admits squeezers, tighter concentrates |
+| exit | −2.0–0bp | −1.25bp optimal; ≥−0.5 keeps churn, ≤−1.5 rides into squeezes (5 liqs) |
+| bar resolution | 1d vs 8h | 8h churn bleeds in compressed regimes: holdout −0.54 Sharpe / −5.97% DD — daily is the sweet spot |
 | lb | 3–20 | 9 optimal; shorter whipsaws, longer rides through squeezes |
 | mx | 15–150 | plateau 50–75; mid zone (25–45) is the DD cliff |
 | floor | <1.0 | bidirectional scaling gives up ~100pp of full return |
@@ -121,10 +128,19 @@ constraints are (a) baseline per-name weight ≤ ~0.12, (b) scaled weight
 ## Vol-scaled sizing — Sharpe-optimal variant (not champion)
 
 `vol_lookback=20, vol_ref=3%/d` scales each name's weight by
-`min(1, vol_ref/vol_i)` — wild microcaps get diluted weight. Full-window:
-**Sharpe 6.81, DD −1.29%**, but only +201% total — it trades ~164pp of
-return for +0.69 Sharpe. Kept as a capability (not the return-max config)
-and worth revisiting if the mandate shifts from CAGR to risk-adjustment.
+`min(1, vol_ref/vol_i)` — wild microcaps get diluted weight. Full-window
+(under the v3 config): **Sharpe 6.81, DD −1.29%**, but only +201% total —
+it trades ~164pp of return for +0.69 Sharpe. Kept as a capability (not the
+return-max config) and worth revisiting if the mandate shifts from CAGR to
+risk-adjustment.
+
+## 8h bar resolution — probed and rejected
+
+`data/binance_carry_8h{,_majors}` (299 coins, funding-native 8h bars) under
+the v3 config: full Sharpe 6.63 but only +274%, and holdout **−0.54 Sharpe /
+−5.97% DD** — 3× more membership/rebalance decision points turns boundary
+names into churn cost exactly where yield is thinnest. Daily bars remain
+the sweet spot for this mechanism.
 
 ## Reproduce
 
