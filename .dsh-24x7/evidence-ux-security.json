@@ -1,0 +1,113 @@
+{
+  "engines": {
+    "dipcatcher": {
+      "setup_loc": 19,
+      "setup_artifacts": "none \u2014 in-memory polars frames",
+      "first_result_ms": 6957.8,
+      "faults": {
+        "duplicate_weight_rows": {
+          "score": 3,
+          "detail": "ValueError: duplicate target weights for event_time/security_id"
+        },
+        "nan_target_weight": {
+          "score": 3,
+          "detail": "ValueError: target_weight must be finite for 'x' at datetime.datetime(2024, 1, 1, 0, 0)"
+        },
+        "missing_column": {
+          "score": 3,
+          "detail": "ValueError: target weights missing required columns: ['target_weight']"
+        },
+        "stale_marks": {
+          "score": 3,
+          "detail": "StaleValuationError: held position valuation is stale beyond the configured limit: x=3"
+        },
+        "order_exceeds_cash": {
+          "score": 3,
+          "detail": "fail-closed cash reject, ledger consistent (cash_rejects=39)"
+        },
+        "kill_switch": {
+          "score": 3,
+          "detail": "halted: 0 fills, flat NAV=1000000.0"
+        }
+      },
+      "governance": {
+        "research_only": true,
+        "live_pnl_claim": false,
+        "detail": "metrics dict self-labels research-only"
+      }
+    },
+    "vectorbt": {
+      "setup_loc": 6,
+      "setup_artifacts": "none \u2014 in-memory pandas frame",
+      "first_result_ms": 11122.0,
+      "faults": {
+        "duplicate_weight_rows": {
+          "score": 0,
+          "detail": "accepted duplicate index silently"
+        },
+        "nan_target_weight": {
+          "score": 1,
+          "detail": "NaN order silently skipped/adjusted"
+        },
+        "stale_marks": {
+          "score": 1,
+          "detail": "NaN marks propagate; equity NaN=False"
+        },
+        "missing_column": {
+          "score": "no_such_feature",
+          "detail": "vectorbt has no schema-validated weight panel input"
+        },
+        "order_exceeds_cash": {
+          "score": 1,
+          "detail": "order clipped to available cash silently"
+        },
+        "kill_switch": {
+          "score": "no_such_feature",
+          "detail": "vectorbt has no kill-switch concept"
+        }
+      },
+      "governance": {
+        "research_only": null,
+        "live_pnl_claim": null,
+        "detail": "no self-labeling on outputs"
+      }
+    },
+    "qlib": {
+      "setup_loc": 121,
+      "setup_artifacts": "on-disk binary provider bundle (calendars/instruments/features)",
+      "first_result_ms": 1523.3,
+      "first_result_note": "import qlib only; provider-bundle prep + executor config excluded (measured separately in incumbent_bench_qlib)",
+      "faults": {
+        "duplicate_weight_rows": {
+          "score": "untested",
+          "detail": "requires provider bundle"
+        },
+        "nan_target_weight": {
+          "score": "untested",
+          "detail": "requires provider bundle"
+        },
+        "missing_column": {
+          "score": "untested",
+          "detail": "requires provider bundle"
+        },
+        "stale_marks": {
+          "score": "untested",
+          "detail": "requires provider bundle"
+        },
+        "order_exceeds_cash": {
+          "score": 1,
+          "detail": "documented: OrderGenerator renormalizes/clips weights silently"
+        },
+        "kill_switch": {
+          "score": "no_such_feature",
+          "detail": "qlib has no kill-switch concept"
+        }
+      },
+      "governance": {
+        "research_only": null,
+        "live_pnl_claim": null,
+        "detail": "no self-labeling on outputs"
+      }
+    }
+  }
+}

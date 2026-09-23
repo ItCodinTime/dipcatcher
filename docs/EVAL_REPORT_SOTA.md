@@ -2,8 +2,8 @@
 
 **Status:** contract-v2 results final for the primary cells and the
 20-model extended arena; §4.3 native-protocol crossover landed at both
-frequencies (split verdict — daily challenger / 4h Kronos); seed-11
-replication verified under contract v2; seed-23 in flight.
+frequencies (split verdict — daily challenger / 4h Kronos); seed-11 and
+seed-23 replications verified under contract v2.
 **Scope (declared):** causal return-distribution forecasting on Binance USDT
 spot bars (daily + 4-hour). Research-only; `live_pnl_claim: false` in every
 receipt. This document is the outsider-auditable artifact; `.dsh-24x7/PROOF.md`
@@ -113,6 +113,36 @@ includes dip_stack (3rd, 0.005273) plus 13 other challengers. No single
 challenger separates from the fhs/garch_t leaders — the frontier is a
 statistical tier; every published model is outside it at both horizons.
 
+**Mega-arena (contract v2, 32 models, 2026-09-23)** —
+`.dsh-24x7/mega-arena/merge_d1.json`, `merge_h4f.json` + `LEADERBOARD_*.md`:
+twelve further challengers spliced onto the same verified shards via
+`splice_challenger_column.py` (bars_sha256 + protocol-field bound, per-column
+provenance in `meta.appended_columns`). New mechanisms tested: cross-asset
+beta conditioning (`dip_xbeta`), calendar seasonality (`dip_seas`), EGARCH
+symmetric + true leverage (`dip_egarch`, `dip_egarch_l`), EVT POT-GPD tails
+(`dip_evt`), adaptive conformal inference on garch_t (`dip_aci`), HAR
+Parkinson realized-vol (`dip_har`), Gaussian KDE (`dip_kde`),
+volume-conditioned sigma (`dip_volm`), feature-augmented LGBM quantile
+(`dip_lgbm_qv`), coarse-scale MIDAS tilt (`dip_mid`), and an upgraded
+quantile stack with the new bases (`dip_stack2`).
+
+- Daily MCS @0.10 now includes the new top tier: `dip_evt` (#2, 0.014951)
+  and `dip_egarch_l` (#3, 0.014952) slot between `dip_fhs` (0.014945) and
+  `dip_garch_t` (0.014981); `dip_egarch` #4, `dip_stack2` #6, `dip_seas`
+  #8, `dip_aci` #9 also in. `dip_egarch_l` fits negative gamma on 86% of
+  daily origins (leverage confirmed).
+- 4h: `dip_egarch` #3 (0.005221, dead-tie with garch_t), `dip_stack2` #5,
+  `dip_aci` #6, `dip_evt` #7 — all MCS-included.
+- Honest negatives: `dip_mid` (17th both cells — coarse vol tilt shrinks
+  EWMA and loses), `dip_kde` (Gaussian-smoothed tails too thin vs ECDF),
+  `dip_xbeta`/`dip_har`/`dip_lgbm_qv`/`dip_volm`/`dip_aci` add no edge over
+  the vol leaders despite beating every published target.
+- All 28 `dip_*` challengers rank ahead of every published target on both
+  panels; best published remains timesfm (#29 d1, #29 h4f), all four
+  excluded from both MCS sets.
+- No new SOTA leader: `dip_fhs` retains #1 on both panels; the frontier
+  remains a statistical tier. Research-only; no live-PnL claim.
+
 ### 4.2 Coverage
 
 - v4 daily: 1500/1500 complete origins; per-model/per-asset
@@ -191,8 +221,15 @@ construction (flat mean path); `dip_gmm_k` landed in-slate via
   to seed 7; `kronos_small` resampled 0.021200 vs 0.021228; the 20-model
   MCS superior set at seed 11 is **identical** to seed 7 ({fhs, garch_t,
   regime, qar, conf_t, blend, empirical, student_t}); all four targets
-  excluded again. Seed-23 corrected-pairing fleet (5 assets × 300,
-  v2-native) in flight at time of writing.
+  excluded again.
+- Seed-23 replication LANDED (`merge_s23_v2aug.json`, seed 23, 5 deep-daily
+  assets × 300 origins, native v2 contract — no splice needed): all four
+  targets excluded from MCS @0.10 a third time (SPA p_lower/p_cons/p_upper
+  = 0.0010 floor for each target). The superior set grows to 10 members —
+  `dip_ewma_emp` and `dip_skt` join the seed-7/11 octet — an expected
+  MCS-boundary fluctuation that changes nothing about the hypothesis:
+  every challenger still beats every target on mean CRPS (best target
+  timesfm 0.015917 vs best challenger dip_regime 0.015065).
 
 ## 5. Reproduction
 
@@ -229,7 +266,8 @@ config, implementation hashes (`sota_eval_kronos.py`, `inference.py`,
    only the handicapped run; corrected-pairing fleets landed/running:
    `s11_*` done and verified-v2 (timesfm column bitwise-equal to the
    tfmfix rerun — adapter fix predates the contract field in the spawned
-   checkout); `s23_*` (5 deep assets × 300, seed=23) in flight.
+   checkout); `s23_*` (5 deep assets × 300, seed=23) landed and merged —
+   `merge_s23_v2aug.json`.
 5. **Native-protocol freq misclassification (2026-09-22)** — `sota_eval_native`
    converted the bar interval ns→hours with divisor 3.6e15 (off by 1000×;
    correct: 3.6e12), so every file classified `freq="1h"` → all 16 first-pass
