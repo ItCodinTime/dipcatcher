@@ -118,7 +118,7 @@ Thresholds were fixed **before** the measurements below ran. `Industry-grade` fl
 | incumbent latency | within ~15 % of vectorbt median on the largest matched workload, or faster | **PASS** — 1.09× on 11-asset quiet-box; 1.28× faster on 3-asset; ~104× faster than qlib |
 | reliability (fail-closed) | every injected fault class → typed fail-closed rejection | **PASS** — 6/6 (`evidence-ux-security.json`) |
 | security | 0 known CVEs (pip-audit on lockfile); 0 HIGH bandit; 0 secrets in tracked tree | **PASS** — 0/0/0 (`evidence-ux-security.json`) |
-| tests | unit suite green; environment-specific failures disclosed individually | **PASS-with-disclosure** — 3111 pass local + 1 documented macOS-only arch-optimizer boundary failure (passes on Windows); remote host green |
+| tests | unit suite green; environment-specific failures disclosed individually | **PASS-with-disclosure** — 3111 pass local + 1 documented macOS-only arch-optimizer boundary failure (`test_covariance`, passes on Windows); remote host green. Second platform boundary found in CI: `test_garch_configurable[egarch]` fails closed (fallback, `result=None`) on ubuntu/py3.13 only — arch 8.0.0 BLAS-wheel optimizer boundary; scoped `pytest.xfail` applied for linux+≥3.13 with reason recorded; fits fine on linux/3.12, macOS 3.12/3.13, Windows |
 
 Current verdict on this rubric: **5 measured-pass, 1 pass-with-disclosure, 3 pending** → `STATUS` remains `NOT PROVEN` until the pending rows resolve.
 
