@@ -36,9 +36,11 @@ raw return scale.
 
 | book | OOS return | OOS Sharpe | OOS maxDD |
 |---|---|---|---|
+| **champion + xp=3 + BTC-lead** | **+51.1%** | **+1.05** | −15.3% |
 | ewriskz (champion) | +45.4% | +1.03 | −12.2% |
 | vincent(3-lam) + xp=3 + bvt=0.03 | +48.2% | +0.99 | −12.8% |
 | champion + xp=3 | +46.5% | +0.97 | −15.3% |
+| BTC-lead only | +40.4% | +0.97 | −12.2% |
 | ewma_emp mu-gate 10bps | +17.3% | +1.05 | −4.9% |
 | vincent(ewma_emp+empirical) risk | +25.7% | +0.89 | −9.3% |
 | persist=2 + bvt=0.02 | +30.0% | +0.81 | −14.5% |
@@ -55,6 +57,7 @@ consecutive gate-passing dates before (re-)entry.
 | config | return | Sharpe | maxDD | ann vol |
 |---|---|---|---|---|
 | ewma_emp@h5 (5d horizon) | +3,486.1% | +1.62 | −39.8% | 41.7% |
+| **champion + xp=3 + BTC-lead** | **+2,942.1%** | +1.71 | −27.7% | 36.5% |
 | vincent(3-lam) + xp=3 + bvt=0.03 g2 | +2,752.5% | **+1.85** | −27.1% | 32.5% |
 | champion + xp=3 | +2,882.4% | +1.71 | −30.7% | 36.3% |
 | champion (no bvt) | +2,628.8% | +1.79 | −22.1% | 33.4% |
@@ -71,12 +74,17 @@ drawdown faster than it buys Sharpe.
 `exit_persist` (slow exit — hold through a single gate-failing bar)
 lifts both return and Sharpe at scale: xp=3 on the vincent blend is the
 best risk-adjusted large book (SR 1.85), at the cost of deeper DD
-(−27.1%). `top_k` concentration (2–3 names) lowers return and Sharpe —
-diversification across the 5-name book is load-bearing. `@hN`
-multi-horizon specs amplify edge by ~√N but *only* through a looser
-effective gate — at matched selectivity (z·√N) h3/h5/h10 are all worse
-than the daily champion (SR ≤1.70), so the horizon axis is disclosed
-as rejected.
+(−27.1%). `leader_sid=BTCUSDT` (alts trade only while BTC's edge > 0)
+stacks on xp=3 for the best raw return, **+2,942%**, and the best OOS
+slice yet (+51.1% / SR 1.045 / DD −15.3%). `top_k` concentration
+(2–3 names) lowers return and Sharpe — diversification across the
+5-name book is load-bearing. `@hN` multi-horizon specs amplify edge by
+~√N but *only* through a looser effective gate — at matched selectivity
+(z·√N) h3/h5/h10 are all worse than the daily champion (SR ≤1.70), so
+the horizon axis is disclosed as rejected. `mkt_edge_min` (flat book
+when mean cross-asset edge sags) and `w_alpha` (target EWMA) are both
+~Sharpe-neutral: the edge filter cuts into trend profits, and smoothing
+inflates turnover 6× (10.6k fills) without DD benefit — rejected.
 
 ## Rejected experiments (honest negatives)
 

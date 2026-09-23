@@ -286,6 +286,10 @@ class QuantilePolicy:
     exit_persist: int = 1  # consecutive gate-FAILING dates before exit (1 = instant)
     mkt_disp_cut: float | None = None  # flat book when median cross-asset disp exceeds this
     top_k: int | None = None  # keep only the k largest |target| names per date
+    mkt_edge_min: float | None = None  # flat book when mean cross-asset edge < this
+    leader_sid: str | None = None  # leadership gate: alts need leader edge > leader_edge_min
+    leader_edge_min: float = 0.0
+    w_alpha: float = 1.0  # target EWMA: w = a*raw + (1-a)*prior (1 = off)
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -304,6 +308,8 @@ class QuantilePolicy:
             raise ValueError("exit_persist must be >= 1")
         if self.top_k is not None and int(self.top_k) < 1:
             raise ValueError("top_k must be >= 1")
+        if not (0.0 < float(self.w_alpha) <= 1.0):
+            raise ValueError("w_alpha must be in (0, 1]")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -345,6 +351,21 @@ def weights_from_quantiles(
     prev_targets = prev_targets or {}
     raw: dict[str, float] = {}
     disp_map: dict[str, float] = {}
+    edge_map: dict[str, float] = {}
+    leader_edge = float("-inf")
+    if policy.leader_sid is not None:
+        # Leadership gate needs the leader's edge independent of dict order —
+        # compute it up front; a missing/degenerate leader row fail-closes
+        # (edge = -inf) so alts stay flat.
+        lq = q_rows.get(policy.leader_sid)
+        if lq is not None:
+            try:
+                lq = _require_monotone(np.asarray(lq, dtype=float), np.asarray(taus).size)
+                lmu, ldisp = quantile_moments(lq, taus, policy)
+                if np.isfinite(lmu) and np.isfinite(ldisp) and ldisp > 0:
+                    leader_edge = lmu / ldisp
+            except ValueError:
+                pass
     for sid, q in q_rows.items():
         try:
             q = _require_monotone(np.asarray(q, dtype=float), np.asarray(taus).size)
@@ -355,8 +376,16 @@ def weights_from_quantiles(
             continue
         disp_map[sid] = disp
         edge = mu / disp
+        edge_map[sid] = edge
         gate_metric = abs(mu) if policy.gate_on == "mu" else abs(edge)
         passed = gate_metric > policy.cost_gate
+        if (
+            passed
+            and policy.leader_sid is not None
+            and sid != policy.leader_sid
+            and leader_edge <= policy.leader_edge_min
+        ):
+            passed = False  # leadership gate: alt needs leader edge > min
         if passed and policy.tail_gate is not None:
             # Tail conviction: the forecast's own bound must be benign in the
             # trade direction — longs need q_lo > -tail_gate, shorts need
@@ -389,6 +418,15 @@ def weights_from_quantiles(
             if policy.mode == "long_flat":
                 w = max(w, 0.0)
         raw[sid] = w
+    # Market regime breaker: mean cross-asset edge below the cut -> flat
+    # the whole book. Correlated crypto selloffs lift few names' edges;
+    # uses same-bar forecasts only, so it stays causal.
+    if (
+        policy.mkt_edge_min is not None
+        and edge_map
+        and float(np.mean(list(edge_map.values()))) <= policy.mkt_edge_min
+    ):
+        raw = {sid: 0.0 for sid in raw}
     if policy.book_vol_target is not None:
         # Book-level vol target (both directions): Σ|w_i·disp_i| is a
         # conservative (perfect-corr) book-vol proxy; scale weights toward
@@ -410,6 +448,10 @@ def weights_from_quantiles(
     out: dict[str, float] = {}
     for sid, w in raw.items():
         prior = float(prev_targets.get(sid, 0.0))
+        if policy.w_alpha < 1.0:
+            # Target EWMA: blend the raw target toward the prior book —
+            # continuous whipsaw damping (complement to binary persist gates).
+            w = policy.w_alpha * w + (1.0 - policy.w_alpha) * prior
         if abs(w - prior) < policy.deadband:
             # Deadband: hold the prior target. The name must still be emitted —
             # the engine flattens names absent from a present date's target map.

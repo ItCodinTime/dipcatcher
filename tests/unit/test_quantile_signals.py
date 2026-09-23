@@ -302,6 +302,50 @@ def test_policy_top_k_keeps_largest_targets() -> None:
     assert out["A"] > out["B"]
 
 
+def test_policy_leader_gate_blocks_alts() -> None:
+    """Alts flatten when the leader's edge <= min; the leader still trades."""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        gate_on="edge", deadband=0.0, leader_sid="BTC", leader_edge_min=0.0,
+    )
+    rows = {"BTC": _q(-0.01, 0.02), "ETH": _q(0.05, 0.02)}  # BTC edge < 0
+    out = weights_from_quantiles(rows, TAUS, pol)
+    assert out.get("ETH", 0.0) == 0.0
+    rows2 = {"BTC": _q(0.03, 0.02), "ETH": _q(0.05, 0.02)}  # BTC edge > 0
+    out2 = weights_from_quantiles(rows2, TAUS, pol)
+    assert out2["ETH"] > 0.0 and out2["BTC"] > 0.0
+    # Missing leader row -> fail-closed: alts stay flat
+    out3 = weights_from_quantiles({"ETH": _q(0.05, 0.02)}, TAUS, pol)
+    assert out3.get("ETH", 0.0) == 0.0
+
+
+def test_policy_mkt_edge_min_flattens_book() -> None:
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        gate_on="edge", deadband=0.0, mkt_edge_min=0.0,
+    )
+    # mean edge = (1.0 - 0.5)/2 > 0 -> both trade
+    out = weights_from_quantiles({"A": _q(0.02, 0.02), "B": _q(-0.01, 0.02)}, TAUS, pol)
+    assert out["A"] > 0.0
+    # mean edge = (-1.0 - 0.5)/2 < 0 -> all flat (zeros emitted for prior holds)
+    prev = {"A": 0.3, "B": 0.0}
+    out2 = weights_from_quantiles({"A": _q(-0.02, 0.02), "B": _q(-0.01, 0.02)}, TAUS, pol, prev)
+    assert out2.get("A", 0.0) == 0.0 and out2.get("B", 0.0) == 0.0
+
+
+def test_policy_w_alpha_smooths_toward_prior() -> None:
+    pol = QuantilePolicy(
+        mode="symmetric", kappa=1.0, name_cap=10.0, gross_target=10.0,
+        cost_gate=0.0, deadband=0.0, w_alpha=0.5,
+    )
+    first = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol)
+    raw = first["A"]  # a=0.5, prior=0 -> w = 0.5*raw_target
+    assert raw > 0.0
+    second = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, first)
+    assert second["A"] > first["A"]  # converges upward toward raw target
+    assert second["A"] < 2.0 * raw + 1e-9
+
+
 def test_horizon_spec_uses_nbar_returns() -> None:
     """``ewma_emp@h3`` consumes 3-bar overlapping returns; panel stays causal
     and finite, and the cache key/spec parse round-trips."""
