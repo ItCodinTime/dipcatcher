@@ -164,7 +164,9 @@ def test_ipca_unrestricted_differs_when_alpha_present() -> None:
     assert unres.metadata().name == "ipca_alpha"
     assert float(np.linalg.norm(rest.gamma_alpha)) == pytest.approx(0.0, abs=1e-12)
     assert float(np.linalg.norm(unres.gamma_alpha)) > 1e-3
-    assert float(np.corrcoef(unres.predict(x), y)[0, 1]) > float(np.corrcoef(rest.predict(x), y)[0, 1])
+    assert float(np.corrcoef(unres.predict(x), y)[0, 1]) > float(
+        np.corrcoef(rest.predict(x), y)[0, 1]
+    )
     assert float(np.corrcoef(unres.gamma_alpha, alpha)[0, 1]) > 0.5
 
 

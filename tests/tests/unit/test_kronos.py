@@ -3,9 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 import polars as pl
 import pytest
+from quant_fund.models.kronos import KronosAdapter, validate_ohlcv_frame
 
 from quant_fund.config.models import AppConfig
-from quant_fund.models.kronos import KronosAdapter, validate_ohlcv_frame
 
 
 def _bars(n: int = 8) -> pd.DataFrame:
@@ -65,7 +65,9 @@ def test_kronos_rejects_future_and_nonfinite_data() -> None:
         validate_ohlcv_frame(frame)
 
     frame = _bars()
-    frame.loc[len(frame) - 1, "available_time"] = frame["event_time"].iloc[-1] + timedelta(minutes=1)
+    frame.loc[len(frame) - 1, "available_time"] = frame["event_time"].iloc[-1] + timedelta(
+        minutes=1
+    )
     with pytest.raises(ValueError, match="point-in-time"):
         KronosAdapter(_Predictor(), pred_len=2, lookback=5).forecast_asset(
             frame, security_id="A", symbol="A", asof=frame["event_time"].iloc[-1]

@@ -288,7 +288,9 @@ def _window_bundle(
     n_boot: int,
     horizon_bars: int = 1,
 ) -> dict[str, Any]:
-    sliced = [slice_ic_window(card, start=start, end=end, horizon_bars=horizon_bars) for card in ic_cards]
+    sliced = [
+        slice_ic_window(card, start=start, end=end, horizon_bars=horizon_bars) for card in ic_cards
+    ]
     aligned = _align_ic(sliced)
     n_win = int(sliced[0]["n_dates"]) if sliced else 0
     lags = overlap_aware_hac_lags(n_win, int(horizon_bars)) if n_win else None

@@ -192,7 +192,12 @@ class BackTesting:
         if x.size < 8:
             return {"statistic": float("nan"), "p_value": float("nan"), "n": int(x.size)}
         stat, p = stats.ttest_1samp(x, 0.0)
-        return {"statistic": float(stat), "p_value": float(p), "n": int(x.size), "alpha": float(alpha)}
+        return {
+            "statistic": float(stat),
+            "p_value": float(p),
+            "n": int(x.size),
+            "alpha": float(alpha),
+        }
 
     def normal_test(self, threshold: float, alpha: float = 0.01) -> dict[str, Any]:
         del threshold
@@ -200,7 +205,12 @@ class BackTesting:
         if x.size < 8:
             return {"statistic": float("nan"), "p_value": float("nan"), "n": int(x.size)}
         stat, p = stats.normaltest(x)
-        return {"statistic": float(stat), "p_value": float(p), "n": int(x.size), "alpha": float(alpha)}
+        return {
+            "statistic": float(stat),
+            "p_value": float(p),
+            "n": int(x.size),
+            "alpha": float(alpha),
+        }
 
     def kupiec_test(self, threshold: float, alpha: float = 0.01) -> dict[str, Any]:
         hits = self._hits(threshold)
@@ -223,7 +233,11 @@ class BackTesting:
         v = v[np.isfinite(v)]
         if v.size == 0:
             return {"diameter": float("nan"), "min": float("nan"), "max": float("nan")}
-        return {"diameter": float(np.max(v) - np.min(v)), "min": float(np.min(v)), "max": float(np.max(v))}
+        return {
+            "diameter": float(np.max(v) - np.min(v)),
+            "min": float(np.min(v)),
+            "max": float(np.max(v)),
+        }
 
     def cvar_diameter(self, cvar: list[float], alpha: float = 0.01) -> dict[str, Any]:
         return self.var_diameter(cvar, alpha=alpha)

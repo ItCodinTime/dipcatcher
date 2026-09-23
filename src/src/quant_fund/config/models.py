@@ -516,8 +516,13 @@ class KronosConfig(StrictConfigModel):
             raise ValueError("kronos.sample_count must be positive")
         if not np.isfinite(self.clip) or self.clip <= 0:
             raise ValueError("kronos.clip must be finite and positive")
-        for name, digest in (("model_sha256", self.model_sha256), ("tokenizer_sha256", self.tokenizer_sha256)):
-            if digest is not None and (len(digest) != 64 or any(c not in "0123456789abcdefABCDEF" for c in digest)):
+        for name, digest in (
+            ("model_sha256", self.model_sha256),
+            ("tokenizer_sha256", self.tokenizer_sha256),
+        ):
+            if digest is not None and (
+                len(digest) != 64 or any(c not in "0123456789abcdefABCDEF" for c in digest)
+            ):
                 raise ValueError(f"kronos.{name} must be a SHA-256 hex digest")
         if self.enabled and (self.model_path is None or self.tokenizer_path is None):
             raise ValueError("enabled Kronos requires local model_path and tokenizer_path")

@@ -14,14 +14,20 @@ from scipy.stats import norm
 Array = NDArray[np.float64]
 
 
-def d1(S: ArrayLike, K: ArrayLike, T: ArrayLike, r: ArrayLike, q: ArrayLike, sigma: ArrayLike) -> Array:
+def d1(
+    S: ArrayLike, K: ArrayLike, T: ArrayLike, r: ArrayLike, q: ArrayLike, sigma: ArrayLike
+) -> Array:
     S, K, T, r, q, sigma = (np.asarray(z, dtype=float) for z in (S, K, T, r, q, sigma))
     vol_sqrt = sigma * np.sqrt(T)
     return (np.log(S / K) + (r - q + 0.5 * sigma**2) * T) / vol_sqrt
 
 
-def d2(S: ArrayLike, K: ArrayLike, T: ArrayLike, r: ArrayLike, q: ArrayLike, sigma: ArrayLike) -> Array:
-    return d1(S, K, T, r, q, sigma) - np.asarray(sigma, dtype=float) * np.sqrt(np.asarray(T, dtype=float))
+def d2(
+    S: ArrayLike, K: ArrayLike, T: ArrayLike, r: ArrayLike, q: ArrayLike, sigma: ArrayLike
+) -> Array:
+    return d1(S, K, T, r, q, sigma) - np.asarray(sigma, dtype=float) * np.sqrt(
+        np.asarray(T, dtype=float)
+    )
 
 
 def bs_price(

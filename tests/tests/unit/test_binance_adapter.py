@@ -7,7 +7,6 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 import pytest
-
 from quant_fund.data.adapters.binance import (
     BINANCE_SYMBOLS,
     BinanceArchiveSpec,
@@ -30,7 +29,9 @@ def _archive(root: Path, symbol: str, day_text: str, *, close: str = "101.0") ->
         handle.writestr(csv_name, row)
     archive.write_bytes(payload.getvalue())
     checksum = root / f"{filename}.CHECKSUM"
-    checksum.write_text(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {filename}\n", encoding="utf-8")
+    checksum.write_text(
+        f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {filename}\n", encoding="utf-8"
+    )
     return BinanceArchiveSpec(
         symbol=symbol,
         date=day_text,

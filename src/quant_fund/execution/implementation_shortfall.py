@@ -79,10 +79,7 @@ def shortfall_frame(fills: pl.DataFrame) -> pl.DataFrame:
         raise ValueError(f"fills frame missing columns: {sorted(missing)}")
     if "side_sign" not in fills.columns:
         fills = fills.with_columns(
-            pl.when(pl.col("quantity") >= 0)
-            .then(1.0)
-            .otherwise(-1.0)
-            .alias("side_sign"),
+            pl.when(pl.col("quantity") >= 0).then(1.0).otherwise(-1.0).alias("side_sign"),
             pl.col("quantity").abs(),
         )
     if fills.height == 0:
@@ -96,8 +93,9 @@ def shortfall_frame(fills: pl.DataFrame) -> pl.DataFrame:
     spread = pl.col("spread_cost").fill_null(0.0) if "spread_cost" in fills.columns else pl.lit(0.0)
     impact = pl.col("impact_cost").fill_null(0.0) if "impact_cost" in fills.columns else pl.lit(0.0)
     return fills.with_columns(
-        (pl.col("side_sign") * (pl.col("price") - pl.col("decision_price")) * pl.col("quantity"))
-        .alias("drift"),
+        (
+            pl.col("side_sign") * (pl.col("price") - pl.col("decision_price")) * pl.col("quantity")
+        ).alias("drift"),
         (fee + spread + impact).alias("explicit"),
         (pl.col("quantity") * pl.col("decision_price")).alias("notional"),
     ).with_columns(
@@ -148,9 +146,7 @@ def aggregate_shortfall(frame: pl.DataFrame) -> dict[str, Any]:
         .sort("total_is", descending=True)
         .to_dicts()
     )
-    favorable = float(
-        frame.filter(pl.col("total_is") < 0)["total_is"].sum() or 0.0
-    )
+    favorable = float(frame.filter(pl.col("total_is") < 0)["total_is"].sum() or 0.0)
     return {
         "n_fills": int(frame.height),
         "total_is": total_is,

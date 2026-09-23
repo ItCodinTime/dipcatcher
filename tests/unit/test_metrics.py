@@ -124,9 +124,7 @@ def test_crps_approx_nonnegative() -> None:
 
 def test_crps_gaussian_mixture_single_component_matches_gaussian() -> None:
     y = np.array([-0.05, 0.0, 0.12])
-    mix = crps_gaussian_mixture(
-        y, np.array([1.0]), np.array([0.01]), np.array([0.03])
-    )
+    mix = crps_gaussian_mixture(y, np.array([1.0]), np.array([0.01]), np.array([0.03]))
     ref = crps_gaussian(y, np.full(3, 0.01), np.full(3, 0.03))
     np.testing.assert_allclose(mix, ref, rtol=0, atol=1e-14)
 

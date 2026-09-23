@@ -138,9 +138,7 @@ def test_future_available_time_is_excluded() -> None:
     )
     assert "S0" in out
     used = extract_kline(
-        frame.filter(
-            (pl.col("event_time") <= asof) & (pl.col("available_time") <= asof)
-        )
+        frame.filter((pl.col("event_time") <= asof) & (pl.col("available_time") <= asof))
     )
     assert used.shape[0] == 9
 

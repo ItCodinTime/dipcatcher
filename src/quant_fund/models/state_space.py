@@ -135,13 +135,17 @@ def local_level_mle(y: Array) -> dict[str, float]:
 
     def _nll(theta: Array) -> float:
         sig_e, sig_n = np.exp(theta)
-        out = kalman_filter(y2, np.array([[1.0]]), np.array([[1.0]]), np.array([[sig_n]]), np.array([[sig_e]]))
+        out = kalman_filter(
+            y2, np.array([[1.0]]), np.array([[1.0]]), np.array([[sig_n]]), np.array([[sig_e]])
+        )
         return -float(out["loglik"][0])
 
     var0 = float(np.var(v)) or 1.0
     res = optimize.minimize(_nll, np.log([var0 * 0.5, var0 * 0.1]), method="Nelder-Mead")
     sig_e, sig_n = np.exp(res.x)
-    filt = kalman_filter(y2, np.array([[1.0]]), np.array([[1.0]]), np.array([[sig_n]]), np.array([[sig_e]]))
+    filt = kalman_filter(
+        y2, np.array([[1.0]]), np.array([[1.0]]), np.array([[sig_n]]), np.array([[sig_e]])
+    )
     sm = kalman_smoother(filt, np.array([[1.0]]))
     return {
         "sigma_obs": float(np.sqrt(sig_e)),

@@ -68,7 +68,9 @@ def hedge_effectiveness(spot_ret: Array, hedge_ret: Array, h: float) -> dict[str
     }
 
 
-def rolling_hedge_ratio(spot_ret: Array, hedge_ret: Array, window: int = 60) -> dict[str, Array | float]:
+def rolling_hedge_ratio(
+    spot_ret: Array, hedge_ret: Array, window: int = 60
+) -> dict[str, Array | float]:
     """Rolling OLS hedge ratio — simple time-varying MV hedge."""
     s, h = _paired(spot_ret, hedge_ret)
     n = s.size

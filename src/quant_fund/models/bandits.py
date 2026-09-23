@@ -162,9 +162,7 @@ class EXP3:
     outside are clipped for the loss update — documented behavior).
     """
 
-    def __init__(
-        self, n_arms: int, gamma: float = 0.1, seed: int | None = None
-    ) -> None:
+    def __init__(self, n_arms: int, gamma: float = 0.1, seed: int | None = None) -> None:
         if isinstance(n_arms, bool) or not isinstance(n_arms, int) or n_arms < 2:
             raise ValueError("n_arms must be an integer >= 2")
         if not np.isfinite(gamma) or not (0.0 < gamma <= 1.0):

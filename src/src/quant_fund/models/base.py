@@ -105,7 +105,6 @@ class JoblibMixin:
         model = joblib.load(path)
         if not isinstance(model, cls):
             raise TypeError(
-                f"model artifact has type {type(model).__name__}; "
-                f"expected {cls.__name__}"
+                f"model artifact has type {type(model).__name__}; expected {cls.__name__}"
             )
         return model

@@ -52,7 +52,9 @@ def test_topk_holds_the_winner() -> None:
             100.0 * np.exp(-0.001 * np.arange(t)),
         ]
     )
-    r = topk_long_returns(px, lookback=252, skip=21, top_k=1, delay=1, rebalance_every=21, one_way_cost=0.0)
+    r = topk_long_returns(
+        px, lookback=252, skip=21, top_k=1, delay=1, rebalance_every=21, one_way_cost=0.0
+    )
     spy = simple_returns(px[:, 0])
     assert float(np.corrcoef(r[260:], spy[260:])[0, 1]) > 0.8
 

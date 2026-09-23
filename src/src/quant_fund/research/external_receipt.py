@@ -67,7 +67,9 @@ def _observations(
     return observations
 
 
-def verify_receipt(receipt_path: str | Path, *, base_dir: str | Path | None = None) -> dict[str, Any]:
+def verify_receipt(
+    receipt_path: str | Path, *, base_dir: str | Path | None = None
+) -> dict[str, Any]:
     """Verify frozen snapshot hashes and report pairwise vintage revisions.
 
     Paths in a receipt are interpreted relative to ``base_dir`` when supplied,
@@ -115,7 +117,13 @@ def verify_receipt(receipt_path: str | Path, *, base_dir: str | Path | None = No
         actual = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual != expected:
             raise ValueError(f"sha256 mismatch for {path}: {actual} != {expected}")
-        entries.append((vintage, path, _observations(path, expected_value_column=f"VIXCLS_{vintage.replace('-', '')}")))
+        entries.append(
+            (
+                vintage,
+                path,
+                _observations(path, expected_value_column=f"VIXCLS_{vintage.replace('-', '')}"),
+            )
+        )
 
     entries.sort(key=lambda item: item[0])
     revision_pairs: list[dict[str, Any]] = []

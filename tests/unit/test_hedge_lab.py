@@ -24,7 +24,9 @@ def test_ram_plan_leaves_headroom() -> None:
     assert int(plan["workspace_bytes"]) < int(plan["total_bytes"]) or int(plan["total_bytes"]) == 0
     if int(plan["total_bytes"]) > 0:
         assert int(plan["headroom_bytes"]) > 0
-        assert int(plan["workspace_bytes"]) + int(plan["headroom_bytes"]) <= int(plan["total_bytes"])
+        assert int(plan["workspace_bytes"]) + int(plan["headroom_bytes"]) <= int(
+            plan["total_bytes"]
+        )
 
 
 def test_economic_scoreboard_not_a_research_family_blob() -> None:
@@ -78,9 +80,7 @@ def test_lab_artifact_dirs_keep_synthetic_off_public_tree(tmp_path: Path) -> Non
 def test_rebalance_dates_steps() -> None:
     from datetime import datetime
 
-    times = [datetime(2020, 1, 1) for _ in range(3)] + [
-        datetime(2020, 1, 2 + i) for i in range(20)
-    ]
+    times = [datetime(2020, 1, 1) for _ in range(3)] + [datetime(2020, 1, 2 + i) for i in range(20)]
     picked = rebalance_dates(times, lookback=5, every=5)
     assert picked
     assert len(picked) <= 5

@@ -190,7 +190,11 @@ def test_paper_config_rejects_invalid_simulation_settings() -> None:
         {"promote_min_steps": 0},
         {"ledger_subdir": " "},
         {"ledger_subdir": "../escape"},
-        {"ledger_subdir": str(Path("C:/tmp/paper") if Path("C:/tmp/paper").is_absolute() else Path("/tmp/paper"))},
+        {
+            "ledger_subdir": str(
+                Path("C:/tmp/paper") if Path("C:/tmp/paper").is_absolute() else Path("/tmp/paper")
+            )
+        },
     ):
         with pytest.raises(ValueError):
             PaperConfig.model_validate(payload)
@@ -247,14 +251,10 @@ def test_optimizer_config_named_covariance_paths() -> None:
     )
     assert OptimizerConfig.model_validate({"covariance": "adcc"}).covariance == "adcc"
     assert OptimizerConfig.model_validate({"covariance": "ccc"}).covariance == "ccc"
-    assert (
-        OptimizerConfig.model_validate({"covariance": "bollerslev_1990_ccc"}).covariance == "ccc"
-    )
+    assert OptimizerConfig.model_validate({"covariance": "bollerslev_1990_ccc"}).covariance == "ccc"
     assert OptimizerConfig.model_validate({"covariance": "agdcc"}).covariance == "agdcc"
     assert OptimizerConfig.model_validate({"covariance": "ag_dcc"}).covariance == "agdcc"
-    assert (
-        OptimizerConfig.model_validate({"covariance": "diagonal_agdcc"}).covariance == "agdcc"
-    )
+    assert OptimizerConfig.model_validate({"covariance": "diagonal_agdcc"}).covariance == "agdcc"
     assert OptimizerConfig.model_validate({"covariance": "agdcc_full"}).covariance == "agdcc_full"
     assert OptimizerConfig.model_validate({"covariance": "full_agdcc"}).covariance == "agdcc_full"
     assert (
@@ -282,9 +282,7 @@ def test_optimizer_config_named_covariance_paths() -> None:
         == "ledoit_wolf_nonlinear"
     )
     assert OptimizerConfig.model_validate({"covariance": "sample"}).covariance == "sample"
-    assert (
-        OptimizerConfig.model_validate({"covariance": "unbiased_sample"}).covariance == "sample"
-    )
+    assert OptimizerConfig.model_validate({"covariance": "unbiased_sample"}).covariance == "sample"
     with pytest.raises(ValueError, match="unknown_optimizer_covariance"):
         OptimizerConfig.model_validate({"covariance": "t"})
     with pytest.raises(ValueError, match="unwired_optimizer_covariance:factor"):

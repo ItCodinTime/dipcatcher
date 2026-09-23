@@ -175,9 +175,7 @@ def run_perp_backtest(
     # Pre-group target rows by event_time once — a per-bar frame filter is
     # O(N) per timestamp and dominates runtime on hourly panels.
     wmap_by_time: dict[datetime, dict[str, float]] = {}
-    for wrow in weights.select("event_time", "security_id", "target_weight").iter_rows(
-        named=True
-    ):
+    for wrow in weights.select("event_time", "security_id", "target_weight").iter_rows(named=True):
         wmap_by_time.setdefault(wrow["event_time"], {})[str(wrow["security_id"])] = float(
             wrow["target_weight"]
         )

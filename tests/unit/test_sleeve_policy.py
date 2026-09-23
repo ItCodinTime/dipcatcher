@@ -31,7 +31,9 @@ def test_policy_fit_ignores_rows_after_the_cut() -> None:
     pnl, actions = apply_sleeve_policy(features, sleeves, intercept, slopes)
     pnl2, _ = apply_sleeve_policy(features, shocked, intercept, slopes)
     # Bar 140's action uses features through 139, which do not contain the shock.
-    assert int(actions[140]) == int(apply_sleeve_policy(features, shocked, intercept, slopes)[1][140])
+    assert int(actions[140]) == int(
+        apply_sleeve_policy(features, shocked, intercept, slopes)[1][140]
+    )
     assert pnl.shape == (t,)
     assert float(pnl[140]) == float(pnl2[140])
 

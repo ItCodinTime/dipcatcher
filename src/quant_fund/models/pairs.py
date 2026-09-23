@@ -44,9 +44,7 @@ def gatev_distance(prices: Array) -> Array:
     return np.sum(diff * diff, axis=0)
 
 
-def gatev_select(
-    prices: Array, n_pairs: int = 10
-) -> dict[str, Array]:
+def gatev_select(prices: Array, n_pairs: int = 10) -> dict[str, Array]:
     """Select the n_pairs lowest-SSD pairs (Gatev 2006 formation stage).
 
     Returns (n_pairs, 2) index pairs sorted by SSD and their distances.
@@ -62,9 +60,7 @@ def gatev_select(
     return {"pairs": pairs, "distances": dists[order], "ssd": ssd}
 
 
-def cointegration_screen(
-    prices: Array, alpha: float = 0.05
-) -> dict[str, Array]:
+def cointegration_screen(prices: Array, alpha: float = 0.05) -> dict[str, Array]:
     """Vidyamurthy (2004) screen: Engle–Granger tau for all pairs.
 
     Returns the tau matrix (i, j) = EG tau for log prices i~j, plus the
@@ -86,9 +82,7 @@ def cointegration_screen(
     return {"tau": tau, "passes": pmask}
 
 
-def zscore_spread_stats(
-    price_a: Array, price_b: Array
-) -> dict[str, float]:
+def zscore_spread_stats(price_a: Array, price_b: Array) -> dict[str, float]:
     """Spread diagnostics for a candidate pair (log-price spread).
 
     Returns hedge ratio, z-score series stats, half-life, zero-crossing
@@ -128,9 +122,7 @@ def zscore_spread_stats(
     }
 
 
-def ou_optimal_bands(
-    theta: float, mu: float, sigma: float, r: float = 0.0
-) -> dict[str, float]:
+def ou_optimal_bands(theta: float, mu: float, sigma: float, r: float = 0.0) -> dict[str, float]:
     """Leung–Li (2016) OU optimal entry/exit thresholds (long-side).
 
     Solves for the optimal buy level b* and sell level a* of an OU spread
@@ -173,9 +165,7 @@ def _ou_hitting_time(x0: float, target: float, theta: float, mu: float, sd: floa
     return max(math.log(max(d0 / max(d1, 1e-8), 1e-8)) / theta, 1.0 / theta)
 
 
-def pair_quality_score(
-    price_a: Array, price_b: Array
-) -> dict[str, float]:
+def pair_quality_score(price_a: Array, price_b: Array) -> dict[str, float]:
     """Composite pair quality: combines cointegration tau, half-life, and
     zero-crossing frequency into a single selection score in [0, 1].
 
@@ -185,7 +175,11 @@ def pair_quality_score(
     s = zscore_spread_stats(price_a, price_b)
     tau_score = float(1.0 / (1.0 + math.exp(s["adf_tau"] + 2.86)))
     hl = s["half_life"]
-    hl_score = float(1.0 / (1.0 + math.exp((math.log(max(hl, 1e-6)) - math.log(20.0)) * 2.0))) if np.isfinite(hl) else 0.0
+    hl_score = (
+        float(1.0 / (1.0 + math.exp((math.log(max(hl, 1e-6)) - math.log(20.0)) * 2.0)))
+        if np.isfinite(hl)
+        else 0.0
+    )
     cross_rate = min(s["zero_crossings"] / (len(np.asarray(price_a)) / 10.0), 1.0)
     score = 0.4 * tau_score + 0.3 * hl_score + 0.3 * cross_rate
     return {

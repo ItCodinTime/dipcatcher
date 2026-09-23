@@ -234,9 +234,7 @@ def run_target_hunt(
     for a, b in ECONOMIC_PAIRS:
         if a not in closes or b not in closes:
             continue
-        pnl = pair_spread_returns(
-            closes[a], closes[b], one_way_cost=float(one_way_cost)
-        )
+        pnl = pair_spread_returns(closes[a], closes[b], one_way_cost=float(one_way_cost))
         pair_pnl.append(pnl)
         used_pairs.append(f"{a}/{b}")
         paths[f"pair_{a}_{b}"] = pnl
@@ -292,7 +290,11 @@ def run_target_hunt(
         cards.append(card("tqqq_3x_voltgt_2p5", vt_t))
         cards.append(card("tqqq_3x_voltgt_ddhalt", paths["tqqq_3x_voltgt_ddhalt"]))
 
-    combo_keys = [k for k in ("pairs_voltgt_2p5", "lightspeed_mom_voltgt_2p5", "tqqq_3x_voltgt_2p5") if k in paths]
+    combo_keys = [
+        k
+        for k in ("pairs_voltgt_2p5", "lightspeed_mom_voltgt_2p5", "tqqq_3x_voltgt_2p5")
+        if k in paths
+    ]
     if combo_keys:
         combo = np.nanmean(np.column_stack([paths[k] for k in combo_keys]), axis=1)
         paths["combo_voltgt"] = combo
@@ -304,7 +306,9 @@ def run_target_hunt(
     name_list = list(names)
     _, px_all = close_matrix(closes, name_list)
     tsmom_lo = tsmom_book_returns(px_all, long_only=True, one_way_cost=float(one_way_cost))
-    tsmom_ls = tsmom_book_returns(px_all, long_only=False, max_gross=1.0, one_way_cost=float(one_way_cost))
+    tsmom_ls = tsmom_book_returns(
+        px_all, long_only=False, max_gross=1.0, one_way_cost=float(one_way_cost)
+    )
     topk = topk_long_returns(px_all, top_k=5, one_way_cost=float(one_way_cost))
     topk_trend = topk_long_returns(
         px_all,
@@ -345,7 +349,11 @@ def run_target_hunt(
         paths["spy_buy_hold"] = spy_r
         cards.append(card("spy_buy_hold", spy_r))
 
-    dir_keys = [k for k in ("tsmom_lo", "tsmom_etf_lo", "antonacci_spy_tlt", "topk5_12_1", "tqqq_3x") if k in paths]
+    dir_keys = [
+        k
+        for k in ("tsmom_lo", "tsmom_etf_lo", "antonacci_spy_tlt", "topk5_12_1", "tqqq_3x")
+        if k in paths
+    ]
     if len(dir_keys) >= 2:
         blend = risk_parity_blend({k: paths[k] for k in dir_keys}, delay=1, one_way_cost=0.0)
         paths["dir_riskparity"] = blend
@@ -357,7 +365,16 @@ def run_target_hunt(
 
     stack = GateSpec(vol_target=vol_tgt, dd_limit=dd_limit)
     stack_stepm = GateSpec(vol_target=vol_tgt, dd_limit=dd_limit, stepm_enable=True)
-    for raw_key in ("ew_close", "pairs_equal", "lightspeed_mom", "tqqq_3x", "tsmom_lo", "topk5_12_1", "antonacci_spy_tlt", "dir_riskparity"):
+    for raw_key in (
+        "ew_close",
+        "pairs_equal",
+        "lightspeed_mom",
+        "tqqq_3x",
+        "tsmom_lo",
+        "topk5_12_1",
+        "antonacci_spy_tlt",
+        "dir_riskparity",
+    ):
         if raw_key not in paths:
             continue
         gated = apply_gate_stack(paths[raw_key], stack)
@@ -387,7 +404,11 @@ def run_target_hunt(
         "best_abs_sharpe": best.get("name"),
         "target": {"sharpe": 5.0, "max_dd": -0.05, "note": "joint target; not forced"},
         "hit_sharpe5": bool(any((c.get("sharpe") or 0) > 5.0 for c in cards)),
-        "hit_dd5": bool(any((c.get("max_drawdown") or 0) > -0.05 and (c.get("sharpe") or 0) > 1.0 for c in cards)),
+        "hit_dd5": bool(
+            any(
+                (c.get("max_drawdown") or 0) > -0.05 and (c.get("sharpe") or 0) > 1.0 for c in cards
+            )
+        ),
         "note": (
             "Kalman/OU pairs after NDAR123909/ou-statarb + delay-1 costs. "
             "Directional TSMOM is Moskowitz–Ooi–Pedersen 12–1 on total-return "

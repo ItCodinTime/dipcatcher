@@ -264,9 +264,7 @@ def test_ledoit_wolf_nonlinear_stays_nonlinear_when_t_le_n(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _boom(*_args: object, **_kwargs: object) -> object:
-        raise AssertionError(
-            "nonlinear Ledoit-Wolf must not switch to sample or 2004 when T<=N"
-        )
+        raise AssertionError("nonlinear Ledoit-Wolf must not switch to sample or 2004 when T<=N")
 
     monkeypatch.setattr("quant_fund.models.covariance.ledoit_wolf", _boom)
     monkeypatch.setattr("quant_fund.models.covariance.ledoit_wolf_cov", _boom)

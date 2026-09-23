@@ -36,9 +36,7 @@ def security_returns(bars: pl.DataFrame) -> pl.DataFrame:
         bars.select("security_id", "event_time", "close")
         .sort(["security_id", "event_time"])
         .with_columns(
-            (pl.col("close") / pl.col("close").shift(1) - 1.0)
-            .over("security_id")
-            .alias("ret")
+            (pl.col("close") / pl.col("close").shift(1) - 1.0).over("security_id").alias("ret")
         )
         .select("security_id", "event_time", "ret")
     )
@@ -83,9 +81,7 @@ def attribute_weights_pnl(
         present = [c for c in _COST_COLS if c in fills.columns]
         if not present:
             raise ValueError("fills carry none of the cost columns fee/spread_cost/impact_cost")
-        cost_expr = pl.sum_horizontal(
-            [pl.col(c).fill_null(0.0).sum() for c in present]
-        )
+        cost_expr = pl.sum_horizontal([pl.col(c).fill_null(0.0).sum() for c in present])
         cost_by = (
             fills.with_columns(pl.col("fill_time").alias("event_time"))
             .group_by(["security_id", "event_time"])
@@ -110,9 +106,7 @@ def attribute_weights_pnl(
     else:
         frame = frame.with_columns(pl.col("cost_ret").fill_null(0.0))
 
-    frame = frame.with_columns(
-        (pl.col("gross_contrib") - pl.col("cost_ret")).alias("net_contrib")
-    )
+    frame = frame.with_columns((pl.col("gross_contrib") - pl.col("cost_ret")).alias("net_contrib"))
     return frame.filter(pl.col("weight_prev") != 0.0).sort(["event_time", "security_id"])
 
 

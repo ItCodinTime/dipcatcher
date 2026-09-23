@@ -106,9 +106,7 @@ def _fingerprint(
     digest = hashlib.sha256()
     digest.update(label.encode())
     digest.update(",".join(used).encode())
-    digest.update(
-        f"{scheme}|{train_bars}|{val_bars}|{test_bars}|{embargo_bars}".encode()
-    )
+    digest.update(f"{scheme}|{train_bars}|{val_bars}|{test_bars}|{embargo_bars}".encode())
     digest.update(np.ascontiguousarray(x[:: max(1, x.shape[0] // 4096)]).tobytes())
     digest.update(np.ascontiguousarray(y[:: max(1, y.shape[0] // 4096)]).tobytes())
     digest.update(str(x.shape).encode())
@@ -205,9 +203,7 @@ def _lane_gates(
         n = min(len(series), len(bench))
         if n < 10:
             continue
-        result = diebold_mariano(
-            -series[:n], -bench[:n], lags=lags, name_a=name, name_b=benchmark
-        )
+        result = diebold_mariano(-series[:n], -bench[:n], lags=lags, name_a=name, name_b=benchmark)
         dm[name] = {
             "statistic": result.statistic,
             "p_value": result.p_value,
@@ -231,8 +227,7 @@ def _lane_gates(
     step = stepm(f, n_boot=n_boot, alpha=ALPHA, seed=7)
     rejected = [kept[i] for i, flag in enumerate(step.rejected) if flag]
     means = {
-        name: float(np.mean(aligned[name][: min(len(aligned[name]), len(bench))]))
-        for name in dm
+        name: float(np.mean(aligned[name][: min(len(aligned[name]), len(bench))])) for name in dm
     }
     cleared = [
         name
@@ -256,9 +251,7 @@ def _lane_gates(
         "spa_p_lower": spa.p_lower,
         "spa_p_upper": spa.p_upper,
         "stepm_rejected": rejected,
-        "stepm_adjusted_p": dict(
-            zip(names, [float(p) for p in step.adjusted_p], strict=False)
-        ),
+        "stepm_adjusted_p": dict(zip(names, [float(p) for p in step.adjusted_p], strict=False)),
         "n_boot": int(n_boot),
         "hac_lags": lags,
         "promote": promote,
@@ -286,14 +279,13 @@ def _ic_windows(
         "holdout": (HOLDOUT_START, None),
     }
     for name, (start, end) in windows.items():
-        sliced = [slice_ic_window(c, start=start, end=end, horizon_bars=int(horizon)) for c in cards]
+        sliced = [
+            slice_ic_window(c, start=start, end=end, horizon_bars=int(horizon)) for c in cards
+        ]
         aligned = _align_ic(sliced)
         n = int(aligned[benchmark].size) if benchmark in aligned else 0
         lags = overlap_aware_hac_lags(n, int(horizon)) if n else None
-        slim = [
-            {k: v for k, v in c.items() if k not in {"ic_series", "ic_dates"}}
-            for c in sliced
-        ]
+        slim = [{k: v for k, v in c.items() if k not in {"ic_series", "ic_dates"}} for c in sliced]
         out[name] = {
             "n_dates": n,
             "hac_lags": lags,
@@ -424,11 +416,12 @@ def run_lane2(
         blob = _oos_scores(cfg, label, engines, use_cache=use_cache)
         hac = overlap_aware_hac_lags(blob["n_dates"], horizon)
         cards = [
-            _ic_card(name, blob["scores"][name], blob["y"], blob["dates"], hac)
-            for name in engines
+            _ic_card(name, blob["scores"][name], blob["y"], blob["dates"], hac) for name in engines
         ]
         windows = _ic_windows(
-            cards, benchmark=slate["evaluation"]["benchmark"], n_boot=n_boot,
+            cards,
+            benchmark=slate["evaluation"]["benchmark"],
+            n_boot=n_boot,
             horizon=horizon,
         )
         per_label[label] = {
@@ -439,9 +432,7 @@ def run_lane2(
             "windows": windows,
         }
     receipt = _base_receipt(slate, slate_sha, parent_sha, lane, cfg, n_boot)
-    receipt["embargo_bars"] = {
-        label: int(_label_horizon(label)) for label in lane["labels"]
-    }
+    receipt["embargo_bars"] = {label: int(_label_horizon(label)) for label in lane["labels"]}
     any_promote = any(
         set(per_label[label]["windows"]["selection"]["gates"].get("cleared") or [])
         & set(per_label[label]["windows"]["holdout"]["gates"].get("cleared") or [])
@@ -453,9 +444,7 @@ def run_lane2(
             "engines": engines,
             "results": per_label,
             "decision_window": "selection_and_holdout",
-            "promote": bool(
-                any_promote and str(cfg.data.source).upper() != "SYNTHETIC"
-            ),
+            "promote": bool(any_promote and str(cfg.data.source).upper() != "SYNTHETIC"),
             "note": (
                 "Pre-registered horizon slate. Embargo equals the label "
                 "horizon. A horizon win still needs the calibration gate "
@@ -475,9 +464,7 @@ def _book_inputs(cfg: Any) -> tuple[list[Any], dict[str, Array]]:
     sub = labels.select(["event_time", "security_id", price]).drop_nulls()
     piv = sub.pivot(index="event_time", on="security_id", values=price).sort("event_time")
     dates = piv["event_time"].to_list()
-    closes = {
-        c: piv[c].to_numpy().astype(float) for c in piv.columns if c != "event_time"
-    }
+    closes = {c: piv[c].to_numpy().astype(float) for c in piv.columns if c != "event_time"}
     n = min(len(v) for v in closes.values())
     for key in list(closes):
         closes[key] = np.asarray(closes[key][:n], dtype=float)
@@ -487,10 +474,7 @@ def _book_inputs(cfg: Any) -> tuple[list[Any], dict[str, Array]]:
 def _window_mask(dates: list[Any], *, start: str | None, end: str | None) -> np.ndarray:
     keys = [_date_key(d) for d in dates]
     return np.asarray(
-        [
-            (start is None or k >= start) and (end is None or k <= end)
-            for k in keys
-        ],
+        [(start is None or k >= start) and (end is None or k <= end) for k in keys],
         dtype=bool,
     )
 
@@ -538,9 +522,7 @@ def run_lane3(
     fit_mask &= np.isfinite(feats).all(axis=1)
     regime = GaussianHMMRegime(n_states=int(gate["n_states"]), seed=int(gate["seed"]))
     regime.fit(feats[fit_mask])
-    stress_state = next(
-        (s for s, name in regime.labels.items() if name == "stress"), None
-    )
+    stress_state = next((s for s, name in regime.labels.items() if name == "stress"), None)
     if stress_state is None:
         raise RuntimeError("HMM did not label a stress state")
     filtered = regime.predict_proba(feats)  # forward filter; causal at each t
@@ -568,8 +550,7 @@ def run_lane3(
         out[wname] = {
             "n_returns": int(mask.sum()),
             "cards": {
-                k: book_economic_scoreboard(v[mask], data_source="file")
-                for k, v in series.items()
+                k: book_economic_scoreboard(v[mask], data_source="file") for k, v in series.items()
             },
         }
     ho = _window_mask(dates, start=HOLDOUT_START, end=None)
@@ -661,8 +642,7 @@ def run_lane4(
         .sort("event_time")
     )
     cs_map = {
-        _date_key(row[0]): (float(row[1]), float(row[2]), float(row[3]))
-        for row in cs.iter_rows()
+        _date_key(row[0]): (float(row[1]), float(row[2]), float(row[3])) for row in cs.iter_rows()
     }
     keys = [_date_key(d) for d in dates]
     lag = int(lane["state"]["lag_bars"])
@@ -703,10 +683,7 @@ def run_lane4(
         if not np.isfinite(state[t]).all():
             policy[t] = 0
             continue
-        q = [
-            float(np.clip(models[a].predict(state[t : t + 1])[0], *bounds[a]))
-            for a in range(3)
-        ]
+        q = [float(np.clip(models[a].predict(state[t : t + 1])[0], *bounds[a])) for a in range(3)]
         policy[t] = int(np.argmax(q))
 
     rl_ret = np.zeros(n, dtype=float)
@@ -732,8 +709,7 @@ def run_lane4(
         out[wname] = {
             "n_returns": int(mask.sum()),
             "cards": {
-                k: book_economic_scoreboard(v[mask], data_source="file")
-                for k, v in series.items()
+                k: book_economic_scoreboard(v[mask], data_source="file") for k, v in series.items()
             },
         }
     diff = np.column_stack(
@@ -750,8 +726,7 @@ def run_lane4(
         spa_p=float(spa.p_consistent),
     )
     action_counts = {
-        list(lane["actions"])[a]: int((policy[hold_mask] == a).sum())
-        for a in range(3)
+        list(lane["actions"])[a]: int((policy[hold_mask] == a).sum()) for a in range(3)
     }
     receipt = _base_receipt(slate, slate_sha, parent_sha, lane, cfg, n_boot)
     receipt.update(
@@ -843,9 +818,7 @@ def run_lane5(
             "gold_rebuilt": True,
             "n_feature_rows": int(feats.height),
             "n_label_rows": int(labs.height),
-            "feature_set_version": feats.get_column("feature_set_version")
-            .unique()
-            .to_list()
+            "feature_set_version": feats.get_column("feature_set_version").unique().to_list()
             if "feature_set_version" in feats.columns
             else [],
         }
@@ -853,11 +826,12 @@ def run_lane5(
     blob = _oos_scores(cfg, lane["label"], engines, use_cache=use_cache)
     hac = overlap_aware_hac_lags(blob["n_dates"], blob["horizon"])
     cards = [
-        _ic_card(name, blob["scores"][name], blob["y"], blob["dates"], hac)
-        for name in engines
+        _ic_card(name, blob["scores"][name], blob["y"], blob["dates"], hac) for name in engines
     ]
     windows = _ic_windows(
-        cards, benchmark=slate["evaluation"]["benchmark"], n_boot=n_boot,
+        cards,
+        benchmark=slate["evaluation"]["benchmark"],
+        n_boot=n_boot,
         horizon=blob["horizon"],
     )
     holdout = windows["holdout"]["gates"]
@@ -879,10 +853,7 @@ def run_lane5(
             "pit_rebuild": rebuild_stats,
             "windows": windows,
             "decision_window": "holdout",
-            "promote": bool(
-                holdout.get("promote")
-                and str(cfg.data.source).upper() != "SYNTHETIC"
-            ),
+            "promote": bool(holdout.get("promote") and str(cfg.data.source).upper() != "SYNTHETIC"),
             "note": (
                 "Wide-tape PIT membership (ADV-ranked, names enter and exit) "
                 "is survivorship-honest within the vendor pool; the pool "

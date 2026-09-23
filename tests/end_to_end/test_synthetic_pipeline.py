@@ -77,10 +77,9 @@ def test_ingest_train_optimize_backtest(tmp_path: Path) -> None:
                 }
             )
         terminal = pl.DataFrame(terminal_rows)
-        weights = (
-            pl.concat([weights.select("event_time", "security_id", "target_weight"), terminal])
-            .unique(subset=["event_time", "security_id"], keep="last", maintain_order=True)
-        )
+        weights = pl.concat(
+            [weights.select("event_time", "security_id", "target_weight"), terminal]
+        ).unique(subset=["event_time", "security_id"], keep="last", maintain_order=True)
     result = run_backtest(bars, weights, cfg)
     assert result.source_note == "SYNTHETIC"
     assert "sharpe" in result.metrics

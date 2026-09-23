@@ -136,9 +136,7 @@ def moving_block_bootstrap_ci(
             mdd = np.min(dd, axis=1)
             years = n / periods_per_year
             with np.errstate(divide="ignore", invalid="ignore"):
-                growth = np.where(
-                    wealth[:, -1] > 0, wealth[:, -1] ** (1.0 / years) - 1.0, np.nan
-                )
+                growth = np.where(wealth[:, -1] > 0, wealth[:, -1] ** (1.0 / years) - 1.0, np.nan)
                 calmars = np.where(np.abs(mdd) > 0, growth / np.abs(mdd), np.nan)
             del wealth, peak, dd
             break

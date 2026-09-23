@@ -40,9 +40,7 @@ def _as_vector(x: Array, name: str, min_len: int = 1) -> Array:
     return v
 
 
-def sqrt_impact_bps(
-    fraction_of_volume: float, sigma: float, upsilon: float = 0.6
-) -> float:
+def sqrt_impact_bps(fraction_of_volume: float, sigma: float, upsilon: float = 0.6) -> float:
     """Almgren-style temporary impact in bps: ``upsilon * sigma * sqrt(q)``.
 
     ``fraction_of_volume`` = order size / market volume over the horizon;
@@ -97,9 +95,7 @@ def propagator_price_path(
     taus = np.arange(n, dtype=np.float64)
     g = propagator_kernel(taus, b)
     # Convolution: dp_t = a * sum_s g[t-s] q[s].
-    return a * np.array(
-        [np.dot(g[t - np.arange(t + 1)], q[: t + 1]) for t in range(n)]
-    )
+    return a * np.array([np.dot(g[t - np.arange(t + 1)], q[: t + 1]) for t in range(n)])
 
 
 def pow_law_total_impact(
@@ -115,9 +111,7 @@ def pow_law_total_impact(
     return s * (q / v) ** e
 
 
-def pov_schedule(
-    quantity: float, volume_forecast: Array, participation: float
-) -> Array:
+def pov_schedule(quantity: float, volume_forecast: Array, participation: float) -> Array:
     """Percent-of-volume schedule: trades ``p * V_t`` per bar until filled.
 
     Returns per-bar quantities summing to <= ``quantity``; the final bar is
@@ -140,9 +134,7 @@ def pov_schedule(
     return raw
 
 
-def vwap_slippage(
-    trade_prices: Array, trade_qty: Array, market_vwap: float
-) -> float:
+def vwap_slippage(trade_prices: Array, trade_qty: Array, market_vwap: float) -> float:
     """Signed VWAP slippage: ``(exec_vwap - market_vwap) / market_vwap``.
 
     Positive for buys that paid up.  ``trade_qty`` carries the sign for
@@ -163,9 +155,7 @@ def vwap_slippage(
     return side * (exec_vwap - m) / m
 
 
-def arrival_price_slippage(
-    trade_prices: Array, trade_qty: Array, arrival_price: float
-) -> float:
+def arrival_price_slippage(trade_prices: Array, trade_qty: Array, arrival_price: float) -> float:
     """Signed slippage vs the arrival (decision) price, in return units."""
     p = _as_vector(trade_prices, "trade_prices")
     q = _as_vector(trade_qty, "trade_qty")
@@ -248,7 +238,5 @@ def required_participation(
     v_use = v if max_bars is None else v[: int(max_bars)]
     total_v = float(v_use.sum())
     if q_total > total_v:
-        raise ValueError(
-            f"quantity {q_total} exceeds forecast volume {total_v} over horizon"
-        )
+        raise ValueError(f"quantity {q_total} exceeds forecast volume {total_v} over horizon")
     return float(q_total / total_v)

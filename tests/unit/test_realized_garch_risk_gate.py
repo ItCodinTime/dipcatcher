@@ -151,9 +151,10 @@ def test_backtest_rgarch_overlay_rejects_high_parkinson_vol(tmp_path: Path) -> N
     assert with_overlay.fills.height <= without.fills.height
     assert with_overlay.fills.height >= 1
     assert int(with_overlay.metrics["risk_gate_rejects"]) >= 1
-    assert with_overlay.fills["signal_time"].unique().to_list() != without.fills[
-        "signal_time"
-    ].unique().to_list()
+    assert (
+        with_overlay.fills["signal_time"].unique().to_list()
+        != without.fills["signal_time"].unique().to_list()
+    )
     assert int(with_overlay.metrics["realized_garch_risk_overlay_dates"]) >= 1
     assert int(with_overlay.metrics["garch_risk_overlay_dates"]) == 0
 
@@ -227,9 +228,10 @@ def test_backtest_prefers_rgarch_over_return_only_garch(tmp_path: Path) -> None:
     assert both.fills.height <= garch_only.fills.height
     assert both.fills.height >= 1
     assert int(both.metrics["risk_gate_rejects"]) >= 1
-    assert both.fills["signal_time"].unique().to_list() != garch_only.fills[
-        "signal_time"
-    ].unique().to_list()
+    assert (
+        both.fills["signal_time"].unique().to_list()
+        != garch_only.fills["signal_time"].unique().to_list()
+    )
     assert int(both.metrics["realized_garch_risk_overlay_dates"]) >= 1
     assert int(both.metrics["garch_risk_overlay_dates"]) == 0
 

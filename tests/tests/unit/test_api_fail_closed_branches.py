@@ -341,9 +341,7 @@ def test_risk_portfolio_ignores_late_available_return_restatement(
         .json()
     )
     assert omitted_body["status"] == dirty_body["status"] == "MEASURED"
-    assert dirty_body["predicted_volatility"] == pytest.approx(
-        omitted_body["predicted_volatility"]
-    )
+    assert dirty_body["predicted_volatility"] == pytest.approx(omitted_body["predicted_volatility"])
     assert dirty_body["observations"] == omitted_body["observations"] == 4
     assert published_body["status"] == "MEASURED"
     assert published_body["observations"] == 5
@@ -364,9 +362,7 @@ def test_risk_portfolio_null_available_time_fails_closed(
             "ret_1": [0.01, -0.02],
         }
     )
-    client = _risk_client(
-        tmp_path, monkeypatch, weights=_weights_frame(), panel_frame=frame
-    )
+    client = _risk_client(tmp_path, monkeypatch, weights=_weights_frame(), panel_frame=frame)
     response = client.get("/risk/portfolio", params={"config_path": "research.yaml"})
     assert response.status_code == 422
     assert "null available_time" in response.json()["detail"]

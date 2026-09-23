@@ -42,9 +42,7 @@ def test_interval_caps_preserve_hard_turnover_limit() -> None:
     )
 
     with pytest.raises(OptimizationInfeasible, match="interval caps.*turnover"):
-        _apply_forecast_interval_caps(
-            np.array([0.05]), state, ["A"], cfg, w_prev=np.array([0.05])
-        )
+        _apply_forecast_interval_caps(np.array([0.05]), state, ["A"], cfg, w_prev=np.array([0.05]))
 
 
 def test_interval_caps_project_into_remaining_turnover_budget() -> None:

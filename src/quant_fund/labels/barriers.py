@@ -149,9 +149,7 @@ def meta_labels(side: Array, barrier_labels: Array) -> Array:
     return (s * label > 0.0).astype(float)
 
 
-def trend_scanning_labels(
-    close: Array, window: int = 20, *, min_t: float = 0.0
-) -> Array:
+def trend_scanning_labels(close: Array, window: int = 20, *, min_t: float = 0.0) -> Array:
     """Trend-scanning labels (AFML 5.4.1): sign of the best-fit trend t-stat.
 
     For each origin, regress log-price on time over trailing windows of length
@@ -219,9 +217,7 @@ def average_uniqueness(t_start: np.ndarray, t_end: np.ndarray) -> Array:
     return u
 
 
-def sequential_bootstrap(
-    t_start: Array, t_end: Array, n_samples: int, seed: int = 0
-) -> IdxArray:
+def sequential_bootstrap(t_start: Array, t_end: Array, n_samples: int, seed: int = 0) -> IdxArray:
     """AFML 4.3 sequential bootstrap: draw labels proportional to uniqueness.
 
     Each iteration picks an index with probability proportional to its current

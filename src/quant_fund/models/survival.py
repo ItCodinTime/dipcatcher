@@ -78,9 +78,7 @@ def nelson_aalen(durations: Array, events: Array) -> dict[str, Array]:
     return {"times": times, "hazard": H, "se": np.sqrt(var)}
 
 
-def log_rank_test(
-    t1: Array, d1: Array, t2: Array, d2: Array
-) -> dict[str, float]:
+def log_rank_test(t1: Array, d1: Array, t2: Array, d2: Array) -> dict[str, float]:
     """Mantel (1966) log-rank test comparing two survival curves.
 
     ``Z = (O1 - E1) / sqrt(V)`` over pooled event times."""
@@ -151,7 +149,10 @@ def fit_cox_ph(X: Array, durations: Array, events: Array) -> dict[str, Array]:
         return -ll, -grad, info
 
     res = opt.minimize(
-        lambda b: nll_grad(b)[:2], np.zeros(k), jac=True, method="BFGS",
+        lambda b: nll_grad(b)[:2],
+        np.zeros(k),
+        jac=True,
+        method="BFGS",
         options={"maxiter": 200},
     )
     if not np.isfinite(res.fun):

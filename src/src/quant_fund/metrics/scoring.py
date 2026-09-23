@@ -361,9 +361,7 @@ def nonoverlapping_origin_mask(
     return keep
 
 
-def _session_positions(
-    dates: Array, session_index: dict[object, int] | None
-) -> NDArray[np.int_]:
+def _session_positions(dates: Array, session_index: dict[object, int] | None) -> NDArray[np.int_]:
     d = np.asarray(dates, dtype=object).reshape(-1)
     unique = list(dict.fromkeys(d.tolist()))
     if session_index is None:
@@ -507,7 +505,9 @@ def name_level_qlike(
     d = np.asarray(dates, dtype=object).reshape(-1)
     f = _as_1d("forecast_var", forecast_var)
     y = _as_1d("realized_var", realized_var)
-    _require_same_length(("security_ids", ids), ("dates", d), ("forecast_var", f), ("realized_var", y))
+    _require_same_length(
+        ("security_ids", ids), ("dates", d), ("forecast_var", f), ("realized_var", y)
+    )
     if ids.size == 0:
         raise ValueError("at least one observation is required")
     if any(not isinstance(value, str) for value in ids.tolist()):
@@ -550,7 +550,9 @@ def name_level_one_step_density_summary(
     horizon = _validate_horizon(horizon_bars)
     ids = np.asarray(security_ids, dtype=object).reshape(-1)
     d = np.asarray(dates, dtype=object).reshape(-1)
-    _require_same_length(("security_ids", ids), ("dates", d), ("log_scores", _as_1d("log_scores", log_scores)))
+    _require_same_length(
+        ("security_ids", ids), ("dates", d), ("log_scores", _as_1d("log_scores", log_scores))
+    )
     if ids.size == 0:
         raise ValueError("at least one origin is required")
     if any(not isinstance(value, str) for value in ids.tolist()):

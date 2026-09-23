@@ -67,7 +67,9 @@ def greeks(
     elif option == "put":
         delta = eq * (norm.cdf(a) - 1.0)
         rho = -K * tau * er * norm.cdf(-b)
-        theta = -S * pa * sig * eq / (2 * rt) - q * S * eq * norm.cdf(-a) + r * K * er * norm.cdf(-b)
+        theta = (
+            -S * pa * sig * eq / (2 * rt) - q * S * eq * norm.cdf(-a) + r * K * er * norm.cdf(-b)
+        )
         charm = -q * eq * norm.cdf(-a) - eq * pa * (2 * (r - q) * tau - b * sig * rt) / (
             2 * tau * sig * rt
         )
@@ -206,7 +208,10 @@ def taylor_attribution(
     days: float,
 ) -> dict[str, float]:
     """How much of a BSM reprice each order of the expansion explains."""
-    g = {k: float(np.asarray(v).reshape(-1)[0]) for k, v in greeks(S, K, tau, r, q, sig, kind).items()}
+    g = {
+        k: float(np.asarray(v).reshape(-1)[0])
+        for k, v in greeks(S, K, tau, r, q, sig, kind).items()
+    }
     dt_yr = days / 365.0
     exact = float(bs_price(S + dS, K, tau - dt_yr, r, q, sig + dsig, kind)) - g["price"]
     t1 = g["delta"] * dS + g["vega"] * dsig + g["theta"] * dt_yr

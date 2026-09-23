@@ -884,13 +884,11 @@ def test_require_implemented_optimizer_covariance_named_paths() -> None:
     assert require_implemented_optimizer_covariance("engle_2002") == DCC_FAMILY_GAUSSIAN
     assert require_implemented_optimizer_covariance("dcc_student_t") == DCC_FAMILY_STUDENT_T
     assert (
-        require_implemented_optimizer_covariance("engle_2002_student_t_dcc")
-        == DCC_FAMILY_STUDENT_T
+        require_implemented_optimizer_covariance("engle_2002_student_t_dcc") == DCC_FAMILY_STUDENT_T
     )
     assert require_implemented_optimizer_covariance("adcc") == DCC_FAMILY_ADCC
     assert (
-        require_implemented_optimizer_covariance("cappiello_engle_sheppard_2006")
-        == DCC_FAMILY_ADCC
+        require_implemented_optimizer_covariance("cappiello_engle_sheppard_2006") == DCC_FAMILY_ADCC
     )
     assert require_implemented_optimizer_covariance("asymmetric_dcc") == DCC_FAMILY_ADCC
     assert require_implemented_optimizer_covariance("ccc") == DCC_FAMILY_CCC
@@ -933,7 +931,9 @@ def test_require_implemented_optimizer_covariance_named_paths() -> None:
         == OPTIMIZER_COVARIANCE_LEDOIT_WOLF_NONLINEAR
     )
     assert require_implemented_optimizer_covariance("sample") == OPTIMIZER_COVARIANCE_SAMPLE
-    assert require_implemented_optimizer_covariance("unbiased_sample") == OPTIMIZER_COVARIANCE_SAMPLE
+    assert (
+        require_implemented_optimizer_covariance("unbiased_sample") == OPTIMIZER_COVARIANCE_SAMPLE
+    )
     with pytest.raises(ValueError, match="unknown_optimizer_covariance"):
         require_implemented_optimizer_covariance("t")
     with pytest.raises(ValueError, match="unknown_optimizer_covariance"):
