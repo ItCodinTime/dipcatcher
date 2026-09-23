@@ -7,9 +7,11 @@ impact, 10% participation cap), the risk gate, and the kill switch. No
 broker connectivity exists on this path.
 
 Pipeline: causal quantile panels (`fhs|evt|garch_t|egarch_l|empirical|
-ewma_emp{,94,99}|vincent(a+b)`) → `QuantilePolicy` (mu-bps or edge-z
-gate, `edge`/`risk` sizing, deadband carry, caps) → sparse weight panel
-→ event loop (next-open fills). Receipts in `.dsh-24x7/lane-simlive/`.
+ewma_emp{,94,99}|vincent(a+b)|agree(a,b)`) → `QuantilePolicy` (mu-bps
+or edge-z gate, `edge`/`risk` sizing, book-vol target, tail gate,
+persistence, market-disp breaker, deadband carry, caps) → sparse
+weight panel → event loop (next-open fills). Receipts in
+`.dsh-24x7/lane-simlive/`.
 
 ## Headline book (daily, 5 majors, 2020-08→2026-09, shared calendar)
 
@@ -39,6 +41,52 @@ raw return scale.
 
 In-sample Sharpe 1.79 → OOS 1.03: real degradation, disclosed. The
 signal survives but does not replicate the 2020-21 regime's magnitude.
+
+## Return/drawdown frontier (bench, same bars/costs)
+
+`book_vol_target` scales the whole book toward a per-bar vol target
+(both directions; gross cap bounds the upside). `persist_bars` requires
+consecutive gate-passing dates before (re-)entry.
+
+| config | return | Sharpe | maxDD | ann vol |
+|---|---|---|---|---|
+| champion (no bvt) | +2,628.8% | +1.79 | −22.1% | 33.4% |
+| vincent(ew94+97+99) bvt=0.03 g2 | +1,543.7% | **+1.83** | −21.9% | 27.1% |
+| bvt=0.03 g2 | +1,394.9% | +1.72 | −18.6% | 28.1% |
+| vincent(3-lam) bvt=0.03 g1 | +1,124.7% | **+1.83** | −19.1% | 24.0% |
+| bvt=0.02 | +672.8% | +1.82 | −16.6% | 19.4% |
+| persist=2 + bvt=0.02 | +630.2% | +1.81 | **−13.2%** | 19.0% |
+| bvt=0.015 | +447.7% | **+1.85** | **−13.1%** | 15.7% |
+
+Vol targeting is a clean efficient frontier — Sharpe holds ~1.8 while
+drawdown halves at bvt 0.015–0.02; chasing return past ~1,500% costs
+drawdown faster than it buys Sharpe.
+
+## Rejected experiments (honest negatives)
+
+- **`tail_gate`** (enter only when the forecast's own adverse-tail bound
+  is benign): too strict — crypto left tails are fat; kills the book.
+- **`mkt_disp_cut`** (market-wide vol breaker; flat when median disp
+  > cut): every cut level *lowers* Sharpe — the biggest trend-follow
+  gains occur inside high-vol regimes. Feature retained, disclosed.
+- **Leverage gross 2–3× without vol targeting**: +2,938% at SR 1.46 /
+  DD −42.6% in-sample; **OOS collapses to SR 0.16** — leverage amplifies
+  chop, not edge.
+- **4h interval**: costs × 2,191 bars/yr compress the edge to +10.8%
+  (SR 0.60) at best.
+
+## Regime dependence (the honest limit)
+
+| window | book | Sharpe |
+|---|---|---|
+| 2020-08→2026-09 (5 majors) | champion | 1.79 |
+| last 800d only | champion | 1.03 |
+| 2018-05→2026-09 (BTC/ETH/XRP, 8.3y) | champion | ~1.01 |
+| 998d breadth book (9 majors) | champion | 1.04 |
+
+The edge is real but regime-dependent: ~1.0 Sharpe outside the trending
+2020-24 regime — the +2,629% headline is regime compounding, not a
+universal multiplier.
 
 ## Per-asset attribution (same policy, single-name books)
 

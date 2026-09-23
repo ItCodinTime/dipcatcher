@@ -160,12 +160,15 @@ def run_sim_live(
     slots = [champion, *(challengers or [])]
 
     def _member_specs(spec: str) -> list[str]:
-        # "vincent(a+b[+...])" — element-wise mean of member quantile panels
-        # (Vincentization: the arena-proven ensemble primitive, applied causally
-        # per origin before the policy map). Parens avoid the ':' separator in
-        # challenger CLI syntax.
+        # Composite specs (parens avoid the ':' separator in CLI syntax):
+        #   vincent(a+b+...) — element-wise mean of member quantile panels
+        #     (Vincentization: the arena-proven ensemble primitive).
+        #   agree(a,b) — emit a's row only when sign(mean(a)) == sign(mean(b));
+        #     disagreement emits a degenerate near-flat row (name goes flat).
         if spec.startswith("vincent(") and spec.endswith(")"):
             return spec[len("vincent("):-1].split("+")
+        if spec.startswith("agree(") and spec.endswith(")"):
+            return spec[len("agree("):-1].split(",")
         return [spec]
 
     specs = sorted({m for slot in slots for m in _member_specs(slot.spec)})
@@ -242,7 +245,20 @@ def run_sim_live(
         panels: dict[str, np.ndarray] = {}
         for sid in per_sid:
             member_panels = [quantile_cache[(sid, m)][0] for m in members]
-            if len(member_panels) == 1:
+            if slot.spec.startswith("agree(") and len(member_panels) == 2:
+                primary, confirmer = member_panels
+                flat_row = np.linspace(-1e-6, 1e-6, taus.size)  # mu~0 -> w=0
+                ok_p = np.isfinite(primary).all(axis=1)
+                ok_c = np.isfinite(confirmer).all(axis=1)
+                mu_p = np.full(primary.shape[0], np.nan)
+                mu_c = np.full(confirmer.shape[0], np.nan)
+                mu_p[ok_p] = primary[ok_p].mean(axis=1)
+                mu_c[ok_c] = confirmer[ok_c].mean(axis=1)
+                ok = ok_p & ok_c
+                keep = ok & (np.sign(mu_p) == np.sign(mu_c))
+                panels[sid] = np.where(keep[:, None], primary, flat_row[None, :])
+                panels[sid][~ok] = np.nan
+            elif len(member_panels) == 1:
                 panels[sid] = member_panels[0]
             else:
                 # Vincentize: row-wise mean over member quantile rows. Rows

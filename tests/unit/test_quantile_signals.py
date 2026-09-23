@@ -204,6 +204,70 @@ def test_policy_sizing_validation() -> None:
         QuantilePolicy(sizing="bogus")
 
 
+def test_policy_persist_bars_requires_consecutive_passes() -> None:
+    """persist_bars=2: first qualifying bar does not enter; second does; a
+    failing bar resets the streak."""
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
+        gate_on="edge", deadband=0.0, persist_bars=2,
+    )
+    streaks: dict[str, int] = {}
+    first = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, {}, streaks)
+    assert first.get("A", 0.0) == 0.0  # streak=1 < 2
+    second = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, first, streaks)
+    assert second["A"] > 0.0  # streak=2 -> confirmed
+    # Held name keeps trading while passing (prior != 0 confirms instantly)
+    third = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, second, streaks)
+    assert third["A"] > 0.0
+    # Failing bar resets the streak -> next pass is streak=1 again
+    flat = weights_from_quantiles({"A": _q(0.001, 0.02)}, TAUS, pol, third, streaks)
+    assert flat.get("A", 0.0) == 0.0
+    re1 = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, flat, streaks)
+    assert re1.get("A", 0.0) == 0.0  # re-entry blocked until streak rebuilt
+
+
+def test_policy_book_vol_target_scales_both_ways() -> None:
+    """bvt as a target: quiet book scales up (bounded by gross), loud book down."""
+    pol = QuantilePolicy(
+        mode="symmetric", kappa=0.001, cost_gate=0.0, sizing="risk",
+        name_cap=10.0, gross_target=10.0, book_vol_target=0.05,
+    )
+    quiet = weights_from_quantiles({"A": _q(0.5, 0.01)}, TAUS, pol)  # raw book_vol tiny
+    loud = weights_from_quantiles({"A": _q(0.5, 1.0)}, TAUS, pol)
+    # book_vol = |w|*disp -> scale to 0.05 in both directions
+    assert quiet["A"] * 0.01 == pytest.approx(0.05, rel=1e-6)
+    assert loud["A"] * 1.0 == pytest.approx(0.05, rel=1e-6)
+
+
+def test_mkt_disp_cut_flattens_book() -> None:
+    """Median cross-asset disp above the cut emits explicit zeros (flat), and
+    clears persistence streaks so re-entry must re-confirm."""
+    times = np.array([T0 + timedelta(hours=4 * i) for i in range(4)])
+    storm = np.vstack([_q(0.02, 0.02)] * 2 + [_q(0.02, 0.20), _q(0.02, 0.02)])
+    storm = np.vstack([_q(0.02, 0.02)] * 2 + [_q(0.02, 0.20), _q(0.02, 0.02)])
+    pol = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
+        deadband=0.0, mkt_disp_cut=0.10,
+    )
+    w = quantile_panels_to_weights(
+        {"A": storm, "B": storm}, {"A": times, "B": times}, pol, TAUS
+    )
+    day2 = w.filter(pl.col("event_time") == times[2])
+    # Median disp on day2 = 0.20 > cut -> explicit flat for held names
+    assert day2.height == 2
+    assert (day2["target_weight"] == 0.0).all()
+    day3 = w.filter(pl.col("event_time") == times[3])
+    assert day3.height == 2 and (day3["target_weight"] > 0.0).all()
+    # sanity: without the cut, day2 trades
+    pol2 = QuantilePolicy(
+        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0
+    )
+    w2 = quantile_panels_to_weights(
+        {"A": storm, "B": storm}, {"A": times, "B": times}, pol2, TAUS
+    )
+    assert (w2.filter(pl.col("event_time") == times[2])["target_weight"] > 0.0).all()
+
+
 # --------------------------------------------------------------------------
 # Panel -> weights
 # --------------------------------------------------------------------------

@@ -19,8 +19,8 @@ costs:
   frictionless: false
 risk_gate:
   max_order_notional: 5000000.0
-  max_gross: 2.0
-  max_net: 1.0
-  max_name: 0.3
+  max_gross: 3.0
+  max_net: 3.0
+  max_name: 0.5
   max_participation: 0.25
   stale_price_bars: 3

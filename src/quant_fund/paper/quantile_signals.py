@@ -280,6 +280,10 @@ class QuantilePolicy:
     band_hi: float = 0.95  # dispersion band upper tau
     gate_on: str = "mu"  # "mu": |mu| return gate | "edge": |mu/disp| z-gate
     sizing: str = "edge"  # "edge": w=kappa*edge | "risk": w=kappa*edge/disp (vol-parity)
+    book_vol_target: float | None = None  # scale book so Σ|w·disp| <= this
+    tail_gate: float | None = None  # longs need q_lo > -tail_gate; shorts q_hi < +tail_gate (return units)
+    persist_bars: int = 1  # consecutive gate-passing dates before (re-)entry
+    mkt_disp_cut: float | None = None  # flat book when median cross-asset disp exceeds this
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -288,6 +292,12 @@ class QuantilePolicy:
             raise ValueError("gate_on must be 'mu' or 'edge'")
         if self.sizing not in {"edge", "risk"}:
             raise ValueError("sizing must be 'edge' or 'risk'")
+        for name in ("book_vol_target", "tail_gate", "mkt_disp_cut"):
+            v = getattr(self, name)
+            if v is not None and (not np.isfinite(float(v)) or float(v) < 0):
+                raise ValueError(f"{name} must be finite and non-negative")
+        if int(self.persist_bars) < 1:
+            raise ValueError("persist_bars must be >= 1")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -312,6 +322,7 @@ def weights_from_quantiles(
     taus: np.ndarray,
     policy: QuantilePolicy,
     prev_targets: dict[str, float] | None = None,
+    streaks: dict[str, int] | None = None,
 ) -> dict[str, float]:
     """Map per-name quantile rows to target weights under ``policy``.
 
@@ -326,6 +337,7 @@ def weights_from_quantiles(
     """
     prev_targets = prev_targets or {}
     raw: dict[str, float] = {}
+    disp_map: dict[str, float] = {}
     for sid, q in q_rows.items():
         try:
             q = _require_monotone(np.asarray(q, dtype=float), np.asarray(taus).size)
@@ -334,9 +346,27 @@ def weights_from_quantiles(
         mu, disp = quantile_moments(q, taus, policy)
         if not np.isfinite(mu) or not np.isfinite(disp) or disp <= 0.0:
             continue
+        disp_map[sid] = disp
         edge = mu / disp
         gate_metric = abs(mu) if policy.gate_on == "mu" else abs(edge)
-        if gate_metric <= policy.cost_gate:
+        passed = gate_metric > policy.cost_gate
+        if passed and policy.tail_gate is not None:
+            # Tail conviction: the forecast's own bound must be benign in the
+            # trade direction — longs need q_lo > -tail_gate, shorts need
+            # q_hi < +tail_gate (return units). Uses the full shape.
+            i_lo = int(np.argmin(np.abs(taus - policy.band_lo)))
+            i_hi = int(np.argmin(np.abs(taus - policy.band_hi)))
+            passed = not (
+                (edge > 0 and q[i_lo] <= -policy.tail_gate)
+                or (edge < 0 and q[i_hi] >= policy.tail_gate)
+            )
+        if streaks is not None:
+            streaks[sid] = streaks.get(sid, 0) + 1 if passed else 0
+        prior = float(prev_targets.get(sid, 0.0))
+        confirmed = policy.persist_bars <= 1 or abs(prior) > 1e-12 or (
+            streaks is not None and streaks.get(sid, 0) >= policy.persist_bars
+        )
+        if not passed or not confirmed:
             w = 0.0
         else:
             raw_w = policy.kappa * edge if policy.sizing == "edge" else policy.kappa * edge / disp
@@ -344,6 +374,15 @@ def weights_from_quantiles(
             if policy.mode == "long_flat":
                 w = max(w, 0.0)
         raw[sid] = w
+    if policy.book_vol_target is not None:
+        # Book-level vol target (both directions): Σ|w_i·disp_i| is a
+        # conservative (perfect-corr) book-vol proxy; scale weights toward
+        # constant risk — up in quiet regimes, down in turbulent ones. The
+        # gross_target cap below remains the hard bound on scaling up.
+        book_vol = sum(abs(w) * disp_map.get(sid, 0.0) for sid, w in raw.items())
+        if book_vol > 0.0 and policy.book_vol_target > 0.0:
+            scale = policy.book_vol_target / book_vol
+            raw = {sid: w * scale for sid, w in raw.items()}
     gross = sum(abs(w) for w in raw.values())
     if gross > policy.gross_target > 0.0:
         scale = policy.gross_target / gross
@@ -423,6 +462,7 @@ def quantile_panels_to_weights(
     """
     taus = np.asarray(taus, dtype=float)
     prev: dict[str, float] = {}
+    streaks: dict[str, int] = {}
     out_t: list[Any] = []
     out_s: list[str] = []
     out_w: list[float] = []
@@ -445,7 +485,26 @@ def quantile_panels_to_weights(
                 q_rows[sid] = q
         if not q_rows:
             continue
-        targets = weights_from_quantiles(q_rows, taus, policy, prev)
+        if policy.mkt_disp_cut is not None:
+            # Market-wide vol breaker: median forecast dispersion across names
+            # above the cut -> flatten the whole book for this decision date.
+            # Causal (same-bar quantiles only); emits explicit zeros so held
+            # names de-risk rather than carry under sparse semantics.
+            disps = []
+            for q in q_rows.values():
+                _, d = quantile_moments(np.asarray(q, dtype=float), taus, policy)
+                if np.isfinite(d):
+                    disps.append(d)
+            if disps and float(np.median(disps)) > policy.mkt_disp_cut:
+                targets = {sid: 0.0 for sid in q_rows if abs(prev.get(sid, 0.0)) > 1e-12}
+                streaks.clear()
+                prev = {}
+                for sid, w in targets.items():
+                    out_t.append(t_i)
+                    out_s.append(sid)
+                    out_w.append(w)
+                continue
+        targets = weights_from_quantiles(q_rows, taus, policy, prev, streaks)
         # The emitted dict IS the carried book: names dropped from it are
         # flattened by the engine, so the deadband reference resets wholesale.
         prev = dict(targets)

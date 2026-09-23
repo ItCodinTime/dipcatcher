@@ -1662,6 +1662,16 @@ def sim_live(
         help="OOS eval: panels on full history, loop/bench on last N shared dates",
     ),
     sizing: str = typer.Option("edge", help="Sizing law: 'edge' (k*edge) | 'risk' (k*edge/disp)"),
+    book_vol_target: float | None = typer.Option(
+        None, help="Champion book vol target (per-bar); scales Σ|w·disp| toward it"
+    ),
+    tail_gate: float | None = typer.Option(
+        None, help="Tail conviction gate (return units): longs need q_lo > -tail_gate"
+    ),
+    persist: int = typer.Option(1, help="Consecutive gate-passing bars before entry"),
+    mkt_disp_cut: float | None = typer.Option(
+        None, help="Market vol breaker: flat book when median cross-asset disp exceeds this"
+    ),
     max_steps: int | None = typer.Option(None, help="Cap decision steps"),
     run_id: str | None = typer.Option(None, help="Paper run_id"),
     resume: bool = typer.Option(
@@ -1699,6 +1709,10 @@ def sim_live(
         deadband=deadband,
         gate_on=gate_on,
         sizing=sizing,
+        book_vol_target=book_vol_target,
+        tail_gate=tail_gate,
+        persist_bars=persist,
+        mkt_disp_cut=mkt_disp_cut,
     )
     slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
     challengers: list[StrategySlot] = []
@@ -1711,11 +1725,21 @@ def sim_live(
         c_kappa = float(parts[4]) if len(parts) > 4 else kappa
         c_gate_on = parts[5] if len(parts) > 5 else gate_on
         c_sizing = parts[6] if len(parts) > 6 else sizing
+        # Trailing key=value overrides: bvt=<book_vol_target> tg=<tail_gate>
+        kv = {}
+        for extra in parts[7:]:
+            if "=" in extra:
+                k, v = extra.split("=", 1)
+                kv[k.strip()] = float(v)
         challengers.append(
             StrategySlot(name=cname, spec=cspec, policy=QuantilePolicy(
-                mode=cmode, kappa=c_kappa, gross_target=gross,
-                name_cap=name_cap, cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
-                deadband=deadband, gate_on=c_gate_on, sizing=c_sizing,
+                mode=cmode, kappa=c_kappa, gross_target=kv.get("gross", gross),
+                name_cap=kv.get("nc", name_cap),
+                cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
+                deadband=kv.get("db", deadband), gate_on=c_gate_on, sizing=c_sizing,
+                book_vol_target=kv.get("bvt"), tail_gate=kv.get("tg"),
+                persist_bars=int(kv.get("pb", persist)),
+                mkt_disp_cut=kv.get("cut"),
             ))
         )
     result = run_sim_live(
