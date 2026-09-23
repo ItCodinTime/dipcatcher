@@ -1,0 +1,126 @@
+{
+  "correctness": {
+    "cash_rejects_dipcatcher": 0,
+    "common_dates": 998,
+    "dipcatcher_metrics_keys": [
+      "analytics",
+      "analytics_export",
+      "cash_rejects",
+      "commission",
+      "data_source",
+      "flag_high_sharpe",
+      "impact",
+      "implementation_shortfall",
+      "kill_switch_halts",
+      "live_pnl_claim",
+      "max_drawdown",
+      "mean_turnover",
+      "n",
+      "research_only",
+      "risk_gate_rejects",
+      "sharpe",
+      "spread",
+      "total_return"
+    ],
+    "dipcatcher_total_fees": 159731.38989095474,
+    "fills_dipcatcher": 5734,
+    "nav_final_dipcatcher": 1442537.2603606356,
+    "nav_final_vectorbt": 1442537.260360636,
+    "nav_max_abs_diff": 1.862645149230957e-09,
+    "nav_max_rel_diff": 1.5354674690941092e-15,
+    "risk_gate_rejects_dipcatcher": 0,
+    "vectorbt_orders": 5734,
+    "vectorbt_total_fees": 159731.38989095468
+  },
+  "dipcatcher_engine": "fast",
+  "disclaimer": "Single matched workload vs vectorbt on real Binance daily bars. Latency is single-process wall time for identical economics; correctness is NAV parity; reliability demos are behavioural. Not a claim of superiority across all product dimensions.",
+  "environment": {
+    "platform": "win32",
+    "python": "3.12.14"
+  },
+  "fault_injection": {
+    "duplicate_weight_rows": "rejected: duplicate target weights for event_time/security_id",
+    "kill_switch_halts": {
+      "fills": 0,
+      "flat_equity": true,
+      "halt_rejects": 5106,
+      "nav_end": 1000000.0,
+      "nav_start": 1000000.0
+    },
+    "stale_held_marks": "rejected: held position valuation is stale beyond the configured limit: ADAUSDT=4",
+    "vectorbt_counterpart": {
+      "conflicting_target": "accepted, final=1397582.39",
+      "stale_marks": "accepted; equity NaN rows=0, final=1443150.7517163786"
+    }
+  },
+  "incumbent": {
+    "name": "vectorbt",
+    "repo": "https://github.com/polakowo/vectorbt",
+    "url": "https://vectorbt.dev/",
+    "version": "1.1.0"
+  },
+  "known_semantic_differences": [
+    "cash constraint: with weights summing to exactly 1.0, dipcatcher rejects whole orders that would overdraw cash (329 rejects on the 3-asset workload), while vectorbt clips/fills; workloads use a 0.9 target-sum buffer so the parity test isolates accounting."
+  ],
+  "latency": {
+    "dipcatcher_ms_all": [
+      103.47,
+      88.61,
+      96.08,
+      91.96,
+      103.13,
+      76.17,
+      118.5
+    ],
+    "dipcatcher_ms_median": 96.0798000160139,
+    "reps": 7,
+    "vectorbt_ms_all": [
+      89.6,
+      71.83,
+      88.82,
+      88.59,
+      87.06,
+      84.99,
+      88.08
+    ],
+    "vectorbt_ms_median": 88.07540000998415
+  },
+  "live_pnl_claim": false,
+  "research_only": true,
+  "schema": "incumbent_bench.v1",
+  "workload": {
+    "assets": [
+      "ADAUSDT",
+      "AVAXUSDT",
+      "BNBUSDT",
+      "BTCUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "LINKUSDT",
+      "LTCUSDT",
+      "SOLUSDT",
+      "TRXUSDT",
+      "XRPUSDT"
+    ],
+    "bar_files_sha256": {
+      "adausdt_1d.parquet": "59b5ec1a9076065bbedc3e14e49e59ee5f3781646721710dffca0aeab093a3f2",
+      "avaxusdt_1d.parquet": "40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359",
+      "bnbusdt_1d.parquet": "822ec14bb30fda27bd14b4ab2a99070ae2d78858794c08444f8c0adbf75a80c1",
+      "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+      "dogeusdt_1d.parquet": "a8a8005ee958a265c313ac6ee3da9f0dacf1e1d7be95b7496bb5a58d687bf7c7",
+      "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+      "linkusdt_1d.parquet": "e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512",
+      "ltcusdt_1d.parquet": "ce5bd0ab9540792895940afae9e0934db0eaf0e221bf3ae7bd3d1e89ce361b3a",
+      "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb",
+      "trxusdt_1d.parquet": "9eb8c62328057e0eef19013be9e435b585d880a9ebe14a6f59bc1cc14427d3f3",
+      "xrpusdt_1d.parquet": "d03430a83a62632adaa02878069c6124f9855247238fc2f635d19b0c6bf91f30"
+    },
+    "bars_per_asset": 999,
+    "commission_bps": 10.0,
+    "fills": "decision close t -> exec open t+1 (both engines)",
+    "init_nav": 1000000.0,
+    "script_sha256": "51e857953f4f391561d4315107455c03705e9b84c6cbf9093d61214922d3fad6",
+    "spread_impact_borrow": 0.0,
+    "strategy": "causal SMA20 gate, equal-weight 1/11 per gated name"
+  }
+}

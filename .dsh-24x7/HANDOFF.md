@@ -144,7 +144,16 @@ Completed and failed attempts at that checkpoint:
   untracked lane WIP `_seas_col.py`/`_xbeta_col.py`; `fast_replay.py`
   needs `ruff format` (concurrent agent's uncommitted WIP — flagged,
   not clobbered).
-- NEXT: when tfmfix4 lands → pull shards → splice `d1_<a>_1d.fixed.npz`
-  + `tfmfix4_d1_<a>.losses.npz` into `v2-11a/` → merge 11 parts →
-  `merge_d1_11a_v2.json` → EVAL_REPORT + PROOF update; P0.7 doc flip if
-  the concurrent lane work converges.
+- DONE (this session): tfmfix4 landed + spliced + merged →
+  `merge_d1_11a_v2.json` (3300 rows, all 4 targets excluded, canonical
+  pairing). Quiet-box vectorbt rerun: 96.1 vs 88.1 ms (1.09×, overlap).
+  PROOF: SOTA stays PROVEN (scope now covers 11 verified daily assets +
+  3 seeds); industry-grade stays NOT PROVEN — every dimension is now
+  measured with no outright losses vs incumbents, but the label still
+  outruns the single-workload-family evidence; scorecard speaks for
+  itself.
+- NEXT (optional hardening, not blockers): rerun the quiet-box 11-asset
+  bench on more reps if a tighter latency bound is wanted; the degraded
+  kronos inside merge_d1_v2aug/mega-arena-d1 is documented, not
+  restamped — rebuilding it needs the augmented-column lineage re-derived
+  on .fixed bases (concurrent agent's splice tooling).
