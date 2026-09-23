@@ -1690,6 +1690,10 @@ def sim_live(
     breadth_gross: bool = typer.Option(
         False, help="Scale gross cap by fraction of names with edge > 0"
     ),
+    leader_sid: str | None = typer.Option(
+        None, help="Leadership gate: alts need this sid's edge > leader_edge_min"
+    ),
+    leader_edge_min: float = typer.Option(0.0, help="Leader edge threshold for alts"),
     max_steps: int | None = typer.Option(None, help="Cap decision steps"),
     run_id: str | None = typer.Option(None, help="Paper run_id"),
     resume: bool = typer.Option(
@@ -1737,6 +1741,8 @@ def sim_live(
         meta_min=meta_min,
         rebal_every=rebal_every,
         breadth_gross=breadth_gross,
+        leader_sid=leader_sid,
+        leader_edge_min=leader_edge_min,
     )
     slots = [StrategySlot(name=f"{spec}_{mode}", spec=spec, policy=champion_policy)]
     challengers: list[StrategySlot] = []

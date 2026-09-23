@@ -28,6 +28,15 @@ EWMA, deadband carry, caps) → sparse weight panel → event loop
 | ann vol | 33.4% | 33.2% |
 | fills | 1,721 | 1,721 |
 
+Second flagship — `vincent(ew94+97+99)` + xp3 + bvt=0.03 g2 (no leader):
+paper loop +2,769.8% / SR 1.850 / DD −27.0% / 1,947 fills / 1,014 gate
+rejects / 0 halts vs bench +2,752.5% / SR 1.849 — bench↔loop parity
+holds within participation-cap noise on the leveraged book too.
+
+Third flagship — full stack `vincent(3-lam)` + xp3 + **BTC-lead** +
+bvt=0.03 g2: paper loop **+2,923.5% / SR 1.970 / DD −27.0%** / 1,893
+fills / 857 gate rejects / 0 halts vs bench +2,905.2% / SR 1.970.
+
 Benchmarks on identical bars/costs: equal-weight buy-hold 5 majors
 +2,201% at Sharpe 1.16, **maxDD −72.3%**, vol 59.5%. The book beats
 buy-hold on Sharpe (1.79 vs 1.16) and drawdown (−22% vs −72%), not on
