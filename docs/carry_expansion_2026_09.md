@@ -142,12 +142,97 @@ the v3 config: full Sharpe 6.63 but only +274%, and holdout **−0.54 Sharpe /
 names into churn cost exactly where yield is thinnest. Daily bars remain
 the sweet spot for this mechanism.
 
+## Multi-venue expansion — venue depth census + dYdX probe
+
+Venue funding-history census (all public endpoints probed 2026-09-22):
+
+| venue | OHLC depth | funding depth | verdict |
+|-------|-----------|---------------|---------|
+| Binance | 2019+ | 2019+ (Vision) | **base book** |
+| Hyperliquid | listing+ | listing+ (hourly, paginated) | **fetched** |
+| dYdX v4 indexer | 2023-10+ | 2023-10+ (hourly) | fetched, rejected below |
+| OKX | 2017+ | ~3 mo only | dead |
+| Bybit | — | ~3 mo only | dead |
+| Gate.io | — | hard-capped 180 d | dead |
+| Bitget | — | ~1 mo | dead |
+
+`scripts/fetch_dydx_carry.py` / `build_dydx_book.py` + `fetch_hyperliquid_carry.py`
+/ `build_hl_book.py` produce venue-namespaced books (`DYDX:BTC`, `HL:BTC` — each a
+separate delta-neutral pair marked at its own wicks, spot hedge from the venue
+itself when listed, else Binance spot). This keeps cross-venue basis risk
+*inside* the model rather than assuming one global perp price.
+
+### Two data traps found and fixed (`carry_research.py`)
+
+1. **`eligible_coins` union-staleness:** "still listed at window end" compared
+   each coin's last bar to the *merged* union's last timestamp — any venue
+   whose fetch ended a day earlier silently dropped ALL its names, and a stale
+   `binance_carry_extra` (ended 2026-08-31) ejected the whole extra universe
+   from holdout/full. Now `nz[-1] >= last_i - max_gap`: delisted-mid-window
+   names stay excluded, venues ending ≤3 days apart all pass.
+2. **`run_grid` skipped the eligible filter** — dead coins (YFII, AUDIO)
+   entered the book then aborted every config on `StaleValuationError`. Grid
+   now filters identically to `run_champion`.
+
+`fetch_binance_daily_tail.py` gained `--data`/`--since` + a funding-tail
+merge; klines for both Binance dirs refreshed through 2026-09-22.
+(`fapi.binance.com` funding endpoint geo-blocks this host with HTTP 451 —
+funding history ends 2026-08-31 for Binance names, so Sep-2026 carry is
+modestly understated. Honest direction: missing events can't pay.)
+
+### dYdX result — real risk, net-negative, rejected
+
+- dYdX standalone (68 names, Binance-spot hedge): dev Sharpe 6.80 / +23%, but
+  **holdout DD −17.1%** — the Oct-2025 flash crash decoupled dYdX perps from
+  the Binance spot hedge leg for hours. That is honest modeled risk, not a
+  data bug: on thin venues the two legs genuinely stop trading together.
+- Merged with the Binance book under champion v4: dev 6.56/+342% (a wash —
+  dYdX rarely clears the 2bp bar), full **5.83/+355% vs Binance-only
+  6.44/+397%**, holdout 1.42 vs 4.35. The venue adds basis-crash exposure
+  with almost no funding harvest.
+- `enter_rate_by_prefix` (per-venue entry bars, e.g. `{"DYDX:": 0.0005}`)
+  probed at 3/5/8bp — dev return moved ≤0.4pp; thin book stays thin.
+  dYdX is **documented, not shipped**; fetcher + builder retained.
+
+### Hyperliquid result — new all-time record book
+
+126 HL names kept (8 hedge on HL spot, 118 on Binance spot; 52 dropped for
+lack of any spot leg). Funding since 2023 (hourly events → daily-aggregated),
+perp daily bars since each listing.
+
+HL standalone under v4: dev **7.73 Sharpe** / +53% / $553k funding (105
+eligible); holdout **3.54** / +12.2% / −0.96% — a genuinely paying venue in
+the compressed regime; full 1.78 with a −10.2% DD from the thin 2023 era.
+
+**Combined Binance (355) + HL (126) under champion v4 — new records:**
+
+| window | Sharpe | CAGR | total | max DD | funding_net | liqs |
+|--------|-------:|-----:|------:|-------:|------------:|-----:|
+| dev (388 elig.)    | 6.86 | 38.2% | +404% | −1.56% | $4.21M | 0 |
+| holdout (399 elig.)| 1.68 | 4.0%  | +6.9% | −2.23% | $0.08M | 0 |
+| full (394 elig.)   | 6.26 | **28.0%** | **+425%** | −1.62% | **$4.58M** | 0 |
+
+vs Binance-only v4 full (6.44 / 26.9% / +397% / −1.40% / $4.19M): record total
+return, record CAGR, record funding capture — at the cost of 0.18 Sharpe and
+0.22pp DD (all still inside Sharpe>5, DD<5%). Worst-ever drawdown remains the
+May-2021 squeeze window (−1.62%); HL adds no new tail in dev.
+
+Adjacent configs probed on the combined dev book: `mx=75` trades −4pp return
+for +0.2 Sharpe; `HL:` entry bar 4bp costs −45pp; `enter=2.5bp` globally
+liquidates (18 liqs, −62% DD — admits the squeeze tail). v4 stands.
+
+Honest read on holdout: 1.68 vs Binance-only 4.35 — the multi-venue book held
+57 names (29 HL) into the Oct-2025 flash crash and paid some cross-venue
+basis; still positive (+6.9%), zero liquidations, DD −2.23%.
+
 ## Reproduce
 
 ```
 uv run python scripts/fetch_binance_vision_carry.py \
   --coins "$(cat /tmp/new_coins.txt)" --out data/binance_carry_extra --workers 32
-uv run python scripts/carry_research.py champion --extra-dir data/binance_carry_extra
+uv run python scripts/fetch_hyperliquid_carry.py --workers 8
+uv run python scripts/build_hl_book.py
+uv run python scripts/carry_research.py champion --extra-dir data/binance_carry_extra,data/hl_carry_book
 ```
 
 Artifacts: `artifacts/carry_champion_expanded.json`,
