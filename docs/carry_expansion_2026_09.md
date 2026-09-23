@@ -194,12 +194,45 @@ modestly understated. Honest direction: missing events can't pay.)
   probed at 3/5/8bp — dev return moved ≤0.4pp; thin book stays thin.
   dYdX is **documented, not shipped**; fetcher + builder retained.
 
+### Hyperliquid result — new all-time record book
+
+126 HL names kept (8 hedge on HL spot, 118 on Binance spot; 52 dropped for
+lack of any spot leg). Funding since 2023 (hourly events → daily-aggregated),
+perp daily bars since each listing.
+
+HL standalone under v4: dev **7.73 Sharpe** / +53% / $553k funding (105
+eligible); holdout **3.54** / +12.2% / −0.96% — a genuinely paying venue in
+the compressed regime; full 1.78 with a −10.2% DD from the thin 2023 era.
+
+**Combined Binance (355) + HL (126) under champion v4 — new records:**
+
+| window | Sharpe | CAGR | total | max DD | funding_net | liqs |
+|--------|-------:|-----:|------:|-------:|------------:|-----:|
+| dev (388 elig.)    | 6.86 | 38.2% | +404% | −1.56% | $4.21M | 0 |
+| holdout (399 elig.)| 1.68 | 4.0%  | +6.9% | −2.23% | $0.08M | 0 |
+| full (394 elig.)   | 6.26 | **28.0%** | **+425%** | −1.62% | **$4.58M** | 0 |
+
+vs Binance-only v4 full (6.44 / 26.9% / +397% / −1.40% / $4.19M): record total
+return, record CAGR, record funding capture — at the cost of 0.18 Sharpe and
+0.22pp DD (all still inside Sharpe>5, DD<5%). Worst-ever drawdown remains the
+May-2021 squeeze window (−1.62%); HL adds no new tail in dev.
+
+Adjacent configs probed on the combined dev book: `mx=75` trades −4pp return
+for +0.2 Sharpe; `HL:` entry bar 4bp costs −45pp; `enter=2.5bp` globally
+liquidates (18 liqs, −62% DD — admits the squeeze tail). v4 stands.
+
+Honest read on holdout: 1.68 vs Binance-only 4.35 — the multi-venue book held
+57 names (29 HL) into the Oct-2025 flash crash and paid some cross-venue
+basis; still positive (+6.9%), zero liquidations, DD −2.23%.
+
 ## Reproduce
 
 ```
 uv run python scripts/fetch_binance_vision_carry.py \
   --coins "$(cat /tmp/new_coins.txt)" --out data/binance_carry_extra --workers 32
-uv run python scripts/carry_research.py champion --extra-dir data/binance_carry_extra
+uv run python scripts/fetch_hyperliquid_carry.py --workers 8
+uv run python scripts/build_hl_book.py
+uv run python scripts/carry_research.py champion --extra-dir data/binance_carry_extra,data/hl_carry_book
 ```
 
 Artifacts: `artifacts/carry_champion_expanded.json`,
