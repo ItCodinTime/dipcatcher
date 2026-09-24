@@ -221,6 +221,20 @@
   power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
   [alpha, 1] scaled by 1/(1-alpha).
 
+## Wave 13 mathematical conventions
+
+- `bachelier.py`: d=(F-K)/(sigma sqrt(T)); call=df[(F-K)Phi(d)+sigma sqrt(T)phi(d)];
+  ATM=df sigma sqrt(T/(2 pi)); implied normal vol by brentq.
+- `short_rate.py`: Vasicek/CIR affine bonds P=A(tau) e^{-B(tau) r}; Vasicek exact
+  AR(1) discretisation r_{t+1}=r_t e^{-kappa dt}+theta(1-e^{-kappa dt})+sd Z, OLS
+  calibration recovers (kappa,theta,sigma); CIR B=2(e^{g tau}-1)/((g+kappa)
+  (e^{g tau}-1)+2g), g=sqrt(kappa^2+2 sigma^2), full-truncation Euler sim.
+- `bond_analytics.py`: continuous compounding P=sum c_i e^{-y t_i}; Macaulay
+  D=(1/P)sum t_i c_i e^{-y t_i} (=modified under continuous comp.); convexity
+  (1/P)sum t_i^2 c_i e^{-y t_i}; YTM by brentq; DV01=D*P*1e-4.
+- `variance_swap.py`: DDKZ fair strike K_var=(2/T)e^{rT} sum (dK_i/K_i^2) Q(K_i)
+  - (1/T)(F/K0-1)^2 with OTM puts below K0 and calls at/above; equals sigma^2
+  under flat Black-Scholes vol.
 ## Wave 10 mathematical conventions
 
 - `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp

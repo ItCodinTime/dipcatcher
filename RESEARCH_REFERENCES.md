@@ -205,6 +205,19 @@
 - C. Acerbi (2002). "Spectral measures of risk: a coherent representation of subjective risk aversion." J. Banking & Finance — `metrics/spectral_risk.py`.
 - K. Dowd, J. Cotter, G. Sorwar (2008). "Spectral risk measures: properties and limitations." J. Financial Services Research — exponential (CARA) spectrum (`metrics/spectral_risk.py`).
 
+## Wave 13 references (derivatives & interest-rate canon)
+
+### Options
+- L. Bachelier (1900). "Theorie de la speculation." Ann. Sci. ENS — `models/bachelier.py` normal option model + implied normal vol.
+- A. Neuberger (1994). "The log contract." J. Portfolio Management; K. Demeterfi, E. Derman, M. Kamal, J. Zou (1999). "More than you ever wanted to know about volatility swaps." Goldman Sachs; P. Carr, D. Madan (1998). "Towards a theory of volatility trading." — `models/variance_swap.py`.
+
+### Short-rate models
+- O. Vasicek (1977). "An equilibrium characterization of the term structure." JFE — `models/short_rate.py`.
+- J. Cox, J. Ingersoll, S. Ross (1985). "A theory of the term structure of interest rates." Econometrica — `models/short_rate.py` CIR.
+
+### Fixed-income analytics
+- F. Macaulay (1938). *Some Theoretical Problems Suggested by the Movements of Interest Rates* — duration (`models/bond_analytics.py`).
+- F. Redington (1952). "Review of the principles of life-office valuations." JIA — convexity/immunization (`models/bond_analytics.py`).
 ## Wave 10 references (risk measures, performance & stable laws)
 
 ### Coherent / entropic risk
