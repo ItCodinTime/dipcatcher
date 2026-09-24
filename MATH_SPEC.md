@@ -221,6 +221,22 @@
   power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
   [alpha, 1] scaled by 1/(1-alpha).
 
+## Wave 11 mathematical conventions
+
+- `skew_t.py`: standardised Hansen skew-t with c=Gamma((nu+1)/2)/(sqrt(pi(nu-2))
+  Gamma(nu/2)), a=4 lambda c (nu-2)/(nu-1), b=sqrt(1+3 lambda^2-a^2); density
+  splices (bz+a)/(1-/+lambda); CDF via scaled Student-t of each branch; ML fit.
+- `ar_estimation.py`: Yule-Walker solves R phi = r; Levinson-Durbin recursion
+  k_m=(r_m - sum phi_j r_{m-j})/E_{m-1}, E_m=E_{m-1}(1-k_m^2); Burg minimises
+  forward+backward errors, phi=-a[1:], reflection coeffs per order.
+- `empirical_copula.py`: pseudo-obs U=rank/(n+1); C_n(u)=(1/n) sum_i prod_j
+  1{U_ij<=u_j}; lower/upper tail dependence C(t,t)/t and (1-2t+C)/(1-t).
+- `dcca.py`: integrate profiles, detrend length-(s+1) overlapping windows by an
+  order-1 polynomial, F2_DCCA(s)=mean box cross-cov; rho_DCCA=F2_DCCA/
+  sqrt(F2_DFA_x F2_DFA_y) in [-1,1]; exponent = slope of log|F_DCCA| vs log s.
+- `elliptical.py`: multivariate-t EM with weights w_i=(nu+d)/(nu+maha_i),
+  mu=sum w_i x_i/sum w_i, Sigma=(1/n) sum w_i (x-mu)(x-mu)'; nu by profile-
+  likelihood 1-D search.
 ## Wave 13 mathematical conventions
 
 - `bachelier.py`: d=(F-K)/(sigma sqrt(T)); call=df[(F-K)Phi(d)+sigma sqrt(T)phi(d)];

@@ -205,6 +205,21 @@
 - C. Acerbi (2002). "Spectral measures of risk: a coherent representation of subjective risk aversion." J. Banking & Finance — `metrics/spectral_risk.py`.
 - K. Dowd, J. Cotter, G. Sorwar (2008). "Spectral risk measures: properties and limitations." J. Financial Services Research — exponential (CARA) spectrum (`metrics/spectral_risk.py`).
 
+## Wave 11 references (distributions, AR estimation & cross-correlation)
+
+### Distributions
+- B. E. Hansen (1994). "Autoregressive conditional density estimation." International Economic Review — `models/skew_t.py` skewed Student-t.
+- C. Liu, D. B. Rubin (1995). "ML estimation of the t distribution using EM and its extensions." Statistica Sinica — `models/elliptical.py` multivariate-t EM fit.
+- P. Deheuvels (1979). "La fonction de dependance empirique et ses proprietes." Acad. Roy. Belg. — `models/empirical_copula.py`.
+
+### Autoregressive estimation
+- G. U. Yule (1927); G. Walker (1931). Yule-Walker normal equations — `models/ar_estimation.py`.
+- N. Levinson (1947); J. Durbin (1960). Levinson-Durbin recursion — `models/ar_estimation.py`.
+- J. P. Burg (1975). "Maximum entropy spectral analysis." PhD thesis, Stanford — `models/ar_estimation.py`.
+
+### Cross-correlation
+- B. Podobnik, H. E. Stanley (2008). "Detrended cross-correlation analysis." Physical Review Letters — `metrics/dcca.py`.
+- G. F. Zebende (2011). "DCCA cross-correlation coefficient." Physica A — `metrics/dcca.py` rho_DCCA.
 ## Wave 13 references (derivatives & interest-rate canon)
 
 ### Options
