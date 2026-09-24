@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +13,8 @@ from typing import Any
 import numpy as np
 
 from quant_fund.metrics import inference, snooping
-from quant_fund.research import net_replay, real_benchmark
+from quant_fund.research import cost_allocation, net_replay, real_benchmark
+from quant_fund.research.cost_allocation import AllocationConfig
 from quant_fund.research.net_replay import ReplayConfig, Strategy, market_panel, replay
 from quant_fund.research.real_benchmark import (
     BenchmarkProtocol,
@@ -30,11 +31,68 @@ def _code_hashes() -> dict[str, str]:
         for path in (
             Path(__file__),
             Path(net_replay.__file__),
+            Path(cost_allocation.__file__),
             Path(real_benchmark.__file__),
             Path(inference.__file__),
             Path(snooping.__file__),
         )
     }
+
+
+def _tournament_runtime() -> dict[str, Any]:
+    import importlib.metadata
+
+    return {
+        **_runtime(),
+        **{name: importlib.metadata.version(name) for name in ("cvxpy", "clarabel", "scipy")},
+    }
+
+
+def allocation_ablations(outcomes: dict[str, Any], trials: list[Strategy]) -> list[dict[str, Any]]:
+    """Descriptive matched differences, with no unadjusted significance claim."""
+    reports = []
+    costs = ("commission", "spread", "impact", "borrow", "financing")
+    for candidate in trials:
+        if candidate.allocation is None:
+            continue
+        for control in trials:
+            if replace(candidate, name=control.name, allocation=None) != control:
+                continue
+            a, b = outcomes[candidate.name], outcomes[control.name]
+            row: dict[str, Any] = {
+                "candidate": candidate.name,
+                "control": control.name,
+                "inference": "descriptive_only",
+            }
+            if a["status"] != "completed" or b["status"] != "completed":
+                reports.append({**row, "status": "incomplete_pair"})
+                continue
+            if [d["date"] for d in a["daily"]] != [d["date"] for d in b["daily"]]:
+                raise ValueError("matched allocation calendars differ")
+            reports.append(
+                {
+                    **row,
+                    "status": "completed",
+                    "mean_daily_net_difference": float(
+                        np.mean(
+                            [
+                                x["net_return"] - y["net_return"]
+                                for x, y in zip(a["daily"], b["daily"], strict=True)
+                            ]
+                        )
+                    ),
+                    "total_return_difference": a["total_return"] - b["total_return"],
+                    "max_drawdown_difference": a["max_drawdown"] - b["max_drawdown"],
+                    "total_cost_difference": sum(sum(d[k] for k in costs) for d in a["daily"])
+                    - sum(sum(d[k] for k in costs) for d in b["daily"]),
+                    "traded_notional_difference": sum(
+                        abs(f["quantity"]) * f["price"] for f in a["fills"]
+                    )
+                    - sum(abs(f["quantity"]) * f["price"] for f in b["fills"]),
+                    "both_liquidated": a["liquidation_complete"] and b["liquidation_complete"],
+                }
+            )
+    return reports
 
 
 def _write(path: Path, value: dict[str, Any]) -> None:
@@ -57,12 +115,27 @@ def _spec(raw: dict[str, Any]) -> tuple[ReplayConfig, list[Strategy], Strategy]:
         raise ValueError("tournament specification has missing or unknown keys")
     execution = ReplayConfig(**raw["execution"])
     execution.validate()
-    trials = [Strategy(**item) for item in raw["trials"]]
-    baseline = Strategy(**raw["benchmark"])
+
+    def strategy_from_dict(item: dict[str, Any]) -> Strategy:
+        fields = dict(item)
+        if fields.get("allocation") is not None:
+            fields["allocation"] = AllocationConfig(**fields["allocation"])
+        return Strategy(**fields)
+
+    trials = [strategy_from_dict(item) for item in raw["trials"]]
+    baseline = strategy_from_dict(raw["benchmark"])
     for strategy in [baseline, *trials]:
         strategy.validate()
     if not 1 <= len(trials) <= 50 or len({s.name for s in [baseline, *trials]}) != len(trials) + 1:
         raise ValueError("1..50 uniquely named candidates and a separate benchmark required")
+    for candidate in trials:
+        if candidate.allocation is not None:
+            if execution.funding_apr < execution.cash_apr:
+                raise ValueError("cost-aware allocation requires funding_apr >= cash_apr")
+            if not any(replace(candidate, name=c.name, allocation=None) == c for c in trials):
+                raise ValueError(
+                    "each cost-aware candidate requires an otherwise identical rank control"
+                )
     if baseline.family != "equal_weight":
         raise ValueError("the benchmark must be equal_weight")
     if raw["price_basis"] not in {"raw_price_return", "consistently_adjusted_price_return"}:
@@ -102,7 +175,7 @@ def prepare_tournament(benchmark_run: Path, spec_path: Path, output: Path) -> di
             "benchmark_manifest": benchmark,
             "spec": raw,
             "code_sha256": _code_hashes(),
-            "runtime": _runtime(),
+            "runtime": _tournament_runtime(),
             "candidate_count": len(trials),
             "candidates": [asdict(t) for t in trials],
             "benchmark": asdict(baseline),
@@ -117,6 +190,8 @@ def prepare_tournament(benchmark_run: Path, spec_path: Path, output: Path) -> di
                 "Trades execute at next session open with modeled costs; opening-auction depth is not observed.",
                 "Gross limits are shared; long-only and long-short books can have different factor/net exposures.",
                 "Trial control covers this frozen slate, not undisclosed experiments in other run directories.",
+                "Allocation return/uncertainty inputs are unvalidated proxies; pair ablations are descriptive.",
+                "Impact stress changes realized costs; allocation planning coefficients stay frozen.",
             ],
         }
     )
@@ -184,7 +259,7 @@ def run_tournament(run_dir: Path, phase: str) -> dict[str, Any]:
     if phase not in {"validation", "test"}:
         raise ValueError("phase must be validation or test")
     manifest = _read_receipt(run_dir / "manifest.json")
-    if manifest["code_sha256"] != _code_hashes() or manifest["runtime"] != _runtime():
+    if manifest["code_sha256"] != _code_hashes() or manifest["runtime"] != _tournament_runtime():
         raise ValueError("tournament code/runtime changed")
     selected = None
     validation_digest = None
@@ -225,7 +300,7 @@ def run_tournament(run_dir: Path, phase: str) -> dict[str, Any]:
         ),
     )
     scenarios: dict[str, Any] = {}
-    history = max(20, *[t.lookback for t in [baseline, *trials]])
+    history = max(t.required_history for t in [baseline, *trials])
     for scenario, multiplier in manifest["scenarios"].items():
         outcomes = {}
         for trial in [baseline, *trials]:
@@ -254,7 +329,11 @@ def run_tournament(run_dir: Path, phase: str) -> dict[str, Any]:
             seed=raw["seed"],
             min_dates=protocol.min_score_dates,
         )
-        scenarios[scenario] = {"trials": outcomes, "comparison": comparison}
+        scenarios[scenario] = {
+            "trials": outcomes,
+            "comparison": comparison,
+            "allocation_ablations": allocation_ablations(outcomes, trials),
+        }
     complete = all(
         all(t["status"] == "completed" for t in case["trials"].values())
         for case in scenarios.values()

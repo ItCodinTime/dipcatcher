@@ -320,3 +320,64 @@ def test_tournament_cli_help():
         text=True,
     )
     assert "prepare" in result.stdout and "run" in result.stdout
+
+
+def test_cost_aware_tournament_freezes_config_and_compares_matched_controls(tournament):
+    from quant_fund.research.net_tournament import _read_receipt, _spec
+
+    run_dir, _ = tournament
+    spec_path = run_dir.parent / "slate.json"
+    spec = json.loads(spec_path.read_text())
+    spec["trials"].append(
+        {
+            **spec["trials"][0],
+            "name": "mom_cost",
+            "allocation": {"risk_window": 60, "uncertainty_aversion": 0.0},
+        }
+    )
+    spec_path.write_text(json.dumps(spec))
+    target = run_dir.parent / "cost_tournament"
+    prepared = prepare_tournament(run_dir.parent / "benchmark", spec_path, target)
+    assert prepared["candidate_count"] == 3
+    assert "cost_allocation.py" in prepared["code_sha256"]
+    assert {"cvxpy", "clarabel", "scipy"} <= prepared["runtime"].keys()
+    validation = run_tournament(target, "validation")
+    assert validation["complete"]
+    holdout = run_tournament(target, "test")
+    assert holdout["selected"] == validation["selected"]
+    assert not holdout["promote"]
+    for scenario in holdout["scenarios"].values():
+        assert scenario["trials"]["mom_cost"]["allocations"]
+        ablation = scenario["allocation_ablations"][0]
+        assert (ablation["candidate"], ablation["control"]) == ("mom_cost", "mom")
+        assert ablation["status"] == "completed"
+        assert scenario["comparison"]["tested_candidates"] == ["mom", "rev", "mom_cost"]
+    receipt = _read_receipt(target / "test.json")
+    assert receipt["receipt_sha256"] == holdout["receipt_sha256"]
+    spec["trials"].pop(0)
+    with pytest.raises(ValueError, match="identical rank control"):
+        _spec(spec)
+
+
+def test_cost_solver_failure_is_retained_in_full_slate(tournament, monkeypatch):
+    import quant_fund.research.cost_allocation as module
+
+    run_dir, _ = tournament
+    spec_path = run_dir.parent / "slate.json"
+    spec = json.loads(spec_path.read_text())
+    spec["trials"].append({**spec["trials"][0], "name": "mom_cost", "allocation": {}})
+    spec_path.write_text(json.dumps(spec))
+    target = run_dir.parent / "failed_cost_tournament"
+    prepare_tournament(run_dir.parent / "benchmark", spec_path, target)
+
+    def fail(*args, **kwargs):
+        raise module.cp.error.SolverError("injected solver failure")
+
+    monkeypatch.setattr(module.cp.Problem, "solve", fail)
+    report = run_tournament(target, "validation")
+    assert not report["complete"]
+    assert report["selected"] is None
+    for scenario in report["scenarios"].values():
+        assert scenario["trials"]["mom_cost"]["status"] == "failed"
+        assert scenario["comparison"]["status"] == "incomplete_trials"
+        assert scenario["allocation_ablations"][0]["status"] == "incomplete_pair"

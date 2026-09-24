@@ -13,6 +13,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from quant_fund.research.cost_allocation import AllocationConfig, allocate
+
 
 @dataclass(frozen=True)
 class Strategy:
@@ -21,6 +23,7 @@ class Strategy:
     lookback: int = 20
     fraction: float = 0.25
     long_short: bool = False
+    allocation: AllocationConfig | None = None
 
     def validate(self) -> None:
         if not self.name or any(
@@ -35,6 +38,14 @@ class Strategy:
             raise ValueError("fraction must be in (0, 0.5]")
         if type(self.long_short) is not bool or (self.family == "equal_weight" and self.long_short):
             raise ValueError("equal_weight is long-only; long_short must be a boolean")
+        if self.allocation is not None:
+            if not isinstance(self.allocation, AllocationConfig) or self.family == "equal_weight":
+                raise ValueError("allocation requires AllocationConfig and a forecast strategy")
+            self.allocation.validate()
+
+    @property
+    def required_history(self) -> int:
+        return max(20, self.lookback, self.allocation.risk_window if self.allocation else 0)
 
 
 @dataclass(frozen=True)
@@ -181,7 +192,7 @@ def replay(
     strategy.validate()
     config.validate()
     if (
-        history < max(20, strategy.lookback)
+        history < strategy.required_history
         or not np.isfinite(impact_multiplier)
         or impact_multiplier <= 0
     ):
@@ -196,7 +207,7 @@ def replay(
     shares = np.zeros(len(panel.names))
     cash, last_nav = config.initial_nav, config.initial_nav
     previous_open: int | None = None
-    ledger, fills, rejections = [], [], []
+    ledger, fills, rejections, allocations = [], [], [], []
     rejected = 0
     for i in decision_ids:
         e = i + 1
@@ -216,6 +227,13 @@ def replay(
         target = (
             np.zeros(len(shares)) if terminal else _weights(panel, i, eligible, strategy, config)
         )
+        if strategy.allocation is not None and not terminal:
+            previous = np.zeros(len(shares))
+            previous[held] = shares[held] * signal_prices[held] / signal_nav
+            target, diagnostic = _cost_weights(
+                panel, i, target, previous, adv, sigma, strategy, config, signal_nav
+            )
+            allocations.append({"signal_session": panel.dates[i].isoformat(), **diagnostic})
         desired = np.zeros(len(shares))
         active = target != 0
         desired[active] = target[active] * signal_nav / signal_prices[active]
@@ -350,9 +368,86 @@ def replay(
         "daily": ledger,
         "fills": fills,
         "rejections": rejections,
+        "allocations": allocations,
         "rejected_orders": rejected,
         "total_return": float(values[-1] / values[0] - 1),
         "max_drawdown": float(np.min(values / np.maximum.accumulate(values) - 1)),
         "terminal_residual_gross": ledger[-1]["gross_market_value"],
         "liquidation_complete": bool(np.abs(shares).max() < 1e-10),
+    }
+
+
+def _cost_weights(
+    panel: MarketPanel,
+    i: int,
+    ranked: np.ndarray,
+    previous: np.ndarray,
+    adv: np.ndarray,
+    sigma: np.ndarray,
+    strategy: Strategy,
+    execution: ReplayConfig,
+    nav: float,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Same rank signal/support as the control; size trades from causal estimates.
+
+    Unselected existing positions may only shrink, allowing capacity-limited exits.
+    Planning costs stay frozen when replay stresses actual impact costs.
+    """
+    config = strategy.allocation
+    if config is None:
+        raise ValueError("cost-aware strategy requires allocation settings")
+    ids = np.flatnonzero((ranked != 0) | (previous != 0))
+    target = np.zeros(len(previous))
+    if not ids.size:
+        return target, {"status": "empty_universe", "security_ids": []}
+    prices = panel.close[i - config.risk_window : i + 1, ids]
+    known = panel.known[i - config.risk_window : i + 1, ids]
+    if (
+        len(prices) != config.risk_window + 1
+        or not known.all()
+        or not (np.isfinite(prices) & (prices > 0)).all()
+        or not (np.isfinite(adv[ids]) & (adv[ids] > 0) & np.isfinite(sigma[ids])).all()
+    ):
+        raise ValueError(
+            "allocation requires known risk history and liquidity for held/selected assets"
+        )
+    returns = prices[1:] / prices[:-1] - 1
+    sample = np.atleast_2d(np.cov(returns, rowvar=False, ddof=1))
+    covariance = (1 - config.covariance_shrinkage) * sample + config.covariance_shrinkage * np.diag(
+        np.diag(sample)
+    )
+    # A declared daily return proxy, NOT a fitted expected-return estimate.
+    alpha = np.expm1(
+        np.log(panel.close[i, ids] / panel.close[i - strategy.lookback, ids]) / strategy.lookback
+    )
+    alpha *= config.alpha_scale * (-1 if strategy.family == "reversal" else 1)
+    alpha[ranked[ids] == 0] = 0.0
+    # Dispersion proxy; sqrt(n) assumes independence and is not a confidence bound.
+    uncertainty = np.sqrt(np.maximum(np.diag(covariance), 0) / strategy.lookback)
+    cap = execution.max_name_weight * (1 - execution.target_buffer)
+    lower = np.maximum(-cap, np.minimum(previous[ids], np.where(ranked[ids] < 0, -cap, 0)))
+    upper = np.minimum(cap, np.maximum(previous[ids], np.where(ranked[ids] > 0, cap, 0)))
+    result, diagnostic = allocate(
+        alpha,
+        covariance,
+        uncertainty,
+        previous[ids],
+        lower,
+        upper,
+        execution.participation_limit * adv[ids] / nav,
+        execution.impact_y * sigma[ids] * np.sqrt(nav / adv[ids]),
+        config=config,
+        linear_cost=(execution.commission_bps + execution.half_spread_bps) / 1e4,
+        gross_limit=execution.gross_limit * (1 - execution.target_buffer),
+        name_limit=cap,
+        cash_buffer=execution.target_buffer,
+        borrow_cost=execution.borrow_apr / 252,
+        funding_cost=execution.funding_apr / 252,
+        cash_return=execution.cash_apr / 252,
+    )
+    target[ids] = result
+    return target, {
+        "security_ids": [panel.names[j] for j in ids],
+        "planning_nav": nav,
+        **diagnostic,
     }
