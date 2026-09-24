@@ -216,6 +216,14 @@
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
 
+## Wave 19 references (dimensionality reduction & clustering)
+
+- W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.
+- A. Ng, M. Jordan, Y. Weiss (2002). "On spectral clustering: analysis and an algorithm." NeurIPS — `models/spectral_clustering.py`.
+- P. Rousseeuw (1987). "Silhouettes: a graphical aid to the interpretation and validation of cluster analysis." J. Comput. Appl. Math — `metrics/cluster_validity.py`.
+- T. Calinski, J. Harabasz (1974). "A dendrite method for cluster analysis." Communications in Statistics — `metrics/cluster_validity.py`.
+- D. Davies, D. Bouldin (1979). "A cluster separation measure." IEEE TPAMI — `metrics/cluster_validity.py`.
+
 ## Wave 21 references (forecast accuracy, whitening, MVO & utility)
 
 - H. Theil (1966). *Applied Economic Forecasting* — Theil's U inequality coefficients (`metrics/forecast_accuracy.py`).
