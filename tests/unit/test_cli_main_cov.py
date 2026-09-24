@@ -16,6 +16,7 @@ configs point ``data.root`` at ``tmp_path``.
 from __future__ import annotations
 
 import importlib
+import re
 import runpy
 import sys
 from datetime import UTC, datetime
@@ -34,6 +35,13 @@ from quant_fund.cli.main import _collect_param_value, app
 ingest_mod = importlib.import_module("quant_fund.data.ingest")
 
 runner = CliRunner()
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI styling — typer renders error usage with rich when color is forced."""
+    return _ANSI.sub("", text)
 
 
 def _write_config(tmp_path: Path, body: str) -> Path:
@@ -356,7 +364,7 @@ def test_backtest_rejects_unknown_engine(tmp_path: Path) -> None:
         app, ["backtest", "--engine", "bogus", "--config", str(_data_config(tmp_path))]
     )
     assert result.exit_code != 0
-    assert "--engine must be 'ref' or 'fast'" in result.output
+    assert "--engine must be 'ref' or 'fast'" in _plain(result.output)
 
 
 @pytest.mark.parametrize("engine", ["ref", "fast"])
@@ -438,7 +446,7 @@ def test_candle_book_requires_vendor_for_raw_quotes(tmp_path: Path) -> None:
     pl.DataFrame({"symbol": ["A"], "ts": ["x"]}).write_parquet(quotes)
     result = runner.invoke(app, ["candle-book", "--config", str(cfg), "--book", str(quotes)])
     assert result.exit_code != 0
-    assert "pass --vendor" in result.output
+    assert "pass --vendor" in _plain(result.output)
 
 
 def test_candle_book_vendor_remap_then_bench(
@@ -482,7 +490,7 @@ def test_candle_book_panel_missing_source_fails_closed(
     )
     result = runner.invoke(app, ["candle-book", "--config", str(cfg), "--book", str(book)])
     assert result.exit_code != 0
-    assert "missing source column" in result.output
+    assert "missing source column" in _plain(result.output)
 
 
 def test_candle_book_reads_bars_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -544,7 +552,7 @@ def test_kyle_ofi_requires_vendor_for_raw_quotes(tmp_path: Path) -> None:
     pl.DataFrame({"symbol": ["A"]}).write_parquet(quotes)
     result = runner.invoke(app, ["kyle-ofi", "--config", str(cfg), "--book", str(quotes)])
     assert result.exit_code != 0
-    assert "pass --vendor" in result.output
+    assert "pass --vendor" in _plain(result.output)
 
 
 def test_kyle_ofi_panel_missing_source_fails_closed(
@@ -559,7 +567,7 @@ def test_kyle_ofi_panel_missing_source_fails_closed(
     )
     result = runner.invoke(app, ["kyle-ofi", "--config", str(cfg), "--book", str(book)])
     assert result.exit_code != 0
-    assert "missing source column" in result.output
+    assert "missing source column" in _plain(result.output)
 
 
 def test_kyle_ofi_vendor_remap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -599,7 +607,7 @@ def test_kyle_ofi_synth_book_requires_finite_volume(
     _patch_synthetic_provider(monkeypatch, bars)
     result = runner.invoke(app, ["kyle-ofi", "--config", str(cfg)])
     assert result.exit_code != 0
-    assert fragment in result.output
+    assert fragment in _plain(result.output)
 
 
 def test_kyle_ofi_without_dump_skips_series_write(
@@ -811,7 +819,7 @@ def test_vendor_book_map_columns_dry_run() -> None:
 def test_vendor_book_map_rejects_unknown_vendor() -> None:
     result = runner.invoke(app, ["vendor-book-map", "--vendor", "nope"])
     assert result.exit_code != 0
-    assert "vendor must be one of" in result.output
+    assert "vendor must be one of" in _plain(result.output)
 
 
 def test_vendor_book_map_parquet_remap_writes_panel(tmp_path: Path) -> None:
@@ -1079,7 +1087,7 @@ def test_paper_resume_without_id_fails(tmp_path: Path, monkeypatch: pytest.Monke
     _patch_paper_backend(monkeypatch, latest=None)
     result = runner.invoke(app, ["paper", "--config", str(cfg), "--resume", "--max-steps", "1"])
     assert result.exit_code != 0
-    assert "--resume needs --run-id" in result.output
+    assert "--resume needs --run-id" in _plain(result.output)
 
 
 def test_paper_challenger_scales_and_shadow_disabled(
@@ -1144,7 +1152,7 @@ def test_monitor_requires_run_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     _patch_monitor_backend(monkeypatch, tmp_path, rid=None, broker=None)
     result = runner.invoke(app, ["monitor", "--config", str(cfg)])
     assert result.exit_code != 0
-    assert "no paper run found" in result.output
+    assert "no paper run found" in _plain(result.output)
 
 
 def test_monitor_missing_broker_state_fails(
@@ -1154,7 +1162,7 @@ def test_monitor_missing_broker_state_fails(
     _patch_monitor_backend(monkeypatch, tmp_path, rid="rid1", broker=None)
     result = runner.invoke(app, ["monitor", "--config", str(cfg)])
     assert result.exit_code != 0
-    assert "no broker_state.json" in result.output
+    assert "no broker_state.json" in _plain(result.output)
 
 
 @pytest.mark.parametrize(("status", "code"), [("ok", 0), ("warn", 1), ("breach", 2)])
@@ -1297,7 +1305,7 @@ def test_sim_live_challenger_format_fails(tmp_path: Path, monkeypatch: pytest.Mo
     _patch_sim_live(monkeypatch)
     result = runner.invoke(app, ["sim-live", "--config", str(cfg), "--challenger", "bad"])
     assert result.exit_code != 0
-    assert "name:spec:mode" in result.output
+    assert "name:spec:mode" in _plain(result.output)
 
 
 def test_sim_live_challenger_kv_overrides(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
