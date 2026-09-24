@@ -169,3 +169,35 @@
   each test block.
 - `feature_select.py`: FCD mRMR with |corr| relevance/redundancy.
 
+
+## Wave 8 mathematical conventions
+
+- `ets.py`: SES level l_t = a y_t + (1-a) l_{t-1}; Holt adds trend
+  b_t = beta (l_t - l_{t-1}) + (1-beta) phi b_{t-1} with damped factor
+  phi in [0.8, 1]; multi-step damping sum_{i=1..h} phi^i (= h when phi=1).
+  Holt-Winters additive s_t = gamma (y_t - l_{t-1} - phi b_{t-1}) +
+  (1-gamma) s_{t-m}; multiplicative uses ratios y_t / s_{t-m}. Smoothing
+  params fit by bounded L-BFGS-B on one-step SSE; states seeded from the
+  first one/two seasons; AIC = n ln(SSE/n) + 2k.
+- `theta.py`: theta line Z_t(theta) = theta y_t + (1-theta)(a + b t) with
+  (a, b) the OLS trend. Reconstruction weight 1/theta on the theta line and
+  1 - 1/theta on the trend line (equal 1/2 weights at theta=2). Forecast =
+  (1/theta) SES-extrapolation(Z) + (1 - 1/theta)(a + b(n+h-1)); drift is
+  ~ b/2 (Hyndman-Billah).
+- `croston.py`: SES on non-zero sizes z and inter-arrival intervals p;
+  rate = z_hat / p_hat. SBA scales by (1 - alpha/2). TSB smooths demand
+  probability every period: prob_t = beta 1{y_t>0} + (1-beta) prob_{t-1},
+  size updated only on occurrences; rate = prob_hat * z_hat.
+- `robust_location.py`: Hodges-Lehmann = median of Walsh averages
+  {(x_i + x_j)/2 : i <= j}; two-sample = median{x_i - y_j}. Siegel
+  repeated median slope = median_i median_{j != i} (y_j - y_i)/(x_j - x_i),
+  intercept = median_i (y_i - slope x_i) (50% breakdown).
+- `expectile.py`: tau-expectile minimises E[w_tau(y-mu)(y-mu)^2],
+  w_tau = tau if residual > 0 else 1 - tau; solved by IRLS (WLS with
+  sqrt-weights) which converges on the convex objective. EVaR = tau-expectile
+  of losses, coherent for tau >= 1/2.
+- `spectral_risk.py`: M_phi = sum_i w_i L_(i) over ascending losses, with
+  band weights w_i = integral_{(i-1)/n}^{i/n} phi(p) dp, phi non-negative,
+  non-decreasing, sum 1. Exponential phi(p) = k e^{-k(1-p)}/(1-e^{-k});
+  power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
+  [alpha, 1] scaled by 1/(1-alpha).

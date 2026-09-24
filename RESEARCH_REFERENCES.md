@@ -172,3 +172,26 @@
 - Lopez de Prado (2018), ch. 7 — purged/embargoed k-fold — `metrics/purged_cv.py`.
 - Peng, Long & Ding (2005). "Feature selection based on mutual information." TPAMI — `metrics/feature_select.py` mRMR + forward orthogonalized screen.
 
+
+## Wave 8 references (forecasting, robust location & risk canon)
+
+### Exponential smoothing / classical forecasting
+- C. C. Holt (1957). "Forecasting seasonals and trends by exponentially weighted moving averages." ONR memo (reprinted IJF 2004) — `models/ets.py` Holt linear trend.
+- P. R. Winters (1960). "Forecasting sales by exponentially weighted moving averages." Management Science — `models/ets.py` Holt-Winters additive/multiplicative seasonality.
+- E. S. Gardner, E. McKenzie (1985). "Forecasting trends in time series." Management Science — `models/ets.py` damped-trend extension.
+- R. Hyndman, A. Koehler, J. Ord, R. Snyder (2008). *Forecasting with Exponential Smoothing: The State Space Approach.* Springer — `models/ets.py` initialisation/estimation conventions.
+- V. Assimakopoulos, K. Nikolopoulos (2000). "The theta model: a decomposition approach to forecasting." IJF — `models/theta.py`.
+- R. Hyndman, B. Billah (2003). "Unmasking the Theta method." IJF — theta = SES with half-slope drift (`models/theta.py`).
+- J. D. Croston (1972). "Forecasting and stock control for intermittent demands." Op. Res. Quarterly — `models/croston.py`.
+- A. Syntetos, J. Boylan (2005). "The accuracy of intermittent demand estimates." IJF — SBA bias correction (`models/croston.py`).
+- R. Teunter, A. Syntetos, M. Z. Babai (2011). "Intermittent demand: linking forecasting to inventory obsolescence." EJOR — TSB variant (`models/croston.py`).
+
+### Robust location / slope
+- J. L. Hodges, E. L. Lehmann (1963). "Estimates of location based on rank tests." Ann. Math. Statist. — `metrics/robust_location.py` (one- and two-sample HL).
+- A. F. Siegel (1982). "Robust regression using repeated medians." Biometrika — `metrics/robust_location.py` repeated-median slope/intercept.
+
+### Expectiles & spectral risk
+- W. K. Newey, J. L. Powell (1987). "Asymmetric least squares estimation and testing." Econometrica — `models/expectile.py` expectile regression (IRLS).
+- F. Bellini, E. Di Bernardino (2017). "Risk management with expectiles." Eur. J. Finance — expectile Value-at-Risk / coherence (`models/expectile.py`).
+- C. Acerbi (2002). "Spectral measures of risk: a coherent representation of subjective risk aversion." J. Banking & Finance — `metrics/spectral_risk.py`.
+- K. Dowd, J. Cotter, G. Sorwar (2008). "Spectral risk measures: properties and limitations." J. Financial Services Research — exponential (CARA) spectrum (`metrics/spectral_risk.py`).
