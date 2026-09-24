@@ -1,0 +1,59 @@
+{
+  "dev": {
+    "total_return": 0.32124284485650967,
+    "cagr": 0.14956294583022278,
+    "sharpe": 11.021016376442212,
+    "max_drawdown": -0.004642072605467673,
+    "mean_turnover": 0.018131748281739718,
+    "funding_net": 358619.2721305772,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 6,
+    "n": 730,
+    "eligible": 220
+  },
+  "holdout": {
+    "total_return": 0.06645088114707409,
+    "cagr": 0.03947212379334797,
+    "sharpe": 3.1901426407283244,
+    "max_drawdown": -0.009075713203911984,
+    "mean_turnover": 0.02146858937535838,
+    "funding_net": 112253.22444626923,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 5,
+    "n": 607,
+    "eligible": 288
+  },
+  "full": {
+    "total_return": 0.40422050067488247,
+    "cagr": 0.0971024750426559,
+    "sharpe": 8.414563775782918,
+    "max_drawdown": -0.004642072605467673,
+    "mean_turnover": 0.015039804739096566,
+    "funding_net": 475549.5289621582,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 9,
+    "n": 1338,
+    "eligible": 288
+  },
+  "frozen_config": {
+    "enter": 0.001,
+    "exit_": -0.000125,
+    "lb": 9,
+    "nw": 0.08,
+    "mx": 30,
+    "band": 1.3,
+    "rsr": 0.002,
+    "rsc": 1.5,
+    "rsf": 1.0,
+    "rexp": 0.0,
+    "vlb": null,
+    "vr": 0.04
+  },
+  "selection": "argmax(min(sharpe_h1,sharpe_h2)+0.01*dev_sharpe) \u2014 dev only"
+}
