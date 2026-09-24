@@ -110,7 +110,13 @@ def test_holdout_price_changes_cannot_change_validation_scores(tmp_path, inputs)
     )
     changed = with_frame(modified, protocol)
     other, _ = prepare(tmp_path, changed, "changed")
-    assert score_benchmark(other, "validation")["scores"] == original
+    changed_scores = score_benchmark(other, "validation")["scores"]
+    assert changed_scores.keys() == original.keys()
+    # scores are equal up to float reassociation noise (~1e-17): the contract
+    # is that holdout prices cannot move validation scores, not bit-equality.
+    for model, metrics in original.items():
+        for key, val in metrics.items():
+            assert changed_scores[model][key] == pytest.approx(val, rel=1e-12)
 
 
 def test_hash_and_receipt_tampering_fail(tmp_path, inputs):
