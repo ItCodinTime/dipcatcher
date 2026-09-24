@@ -98,18 +98,35 @@ def basis_pair_events(perp: pl.DataFrame, spot: pl.DataFrame) -> pl.DataFrame:
             out.append({"event_time": date, "security_id": sid, "target_weight": 0.05})
     if not out:
         return pl.DataFrame(
-            schema={"event_time": pl.Datetime(time_zone="UTC"),
-                    "security_id": pl.String, "target_weight": pl.Float64}
+            schema={
+                "event_time": pl.Datetime(time_zone="UTC"),
+                "security_id": pl.String,
+                "target_weight": pl.Float64,
+            }
         )
     return pl.DataFrame(out).sort(keys)
 
 
 def _summary(metrics: dict) -> dict:
-    out = {k: metrics.get(k) for k in (
-        "total_return", "cagr", "sharpe", "max_drawdown", "n", "periods_per_year",
-        "funding_net", "mean_turnover", "liquidation_count", "risk_gate_rejects",
-        "commission", "spread", "impact", "ruined",
-    )}
+    out = {
+        k: metrics.get(k)
+        for k in (
+            "total_return",
+            "cagr",
+            "sharpe",
+            "max_drawdown",
+            "n",
+            "periods_per_year",
+            "funding_net",
+            "mean_turnover",
+            "liquidation_count",
+            "risk_gate_rejects",
+            "commission",
+            "spread",
+            "impact",
+            "ruined",
+        )
+    }
     attribution = metrics.get("pnl_attribution", {})
     out["pnl_attribution_totals"] = attribution.get("totals")
     out["pnl_attribution_conservation_error"] = attribution.get("conservation_error")
@@ -133,8 +150,7 @@ def main() -> None:
     if len(symbols) < 8:
         raise ValueError("need at least eight paired assets with funding")
     files = [
-        sources / f"{sid}_1d.{venue}.parquet"
-        for sid in symbols for venue in ("perp", "spot")
+        sources / f"{sid}_1d.{venue}.parquet" for sid in symbols for venue in ("perp", "spot")
     ] + [sources / f"{sid}.funding.parquet" for sid in symbols]
     hashes = {p.name: _sha256(p) for p in files}
     for name, digest in hashes.items():
@@ -167,8 +183,10 @@ def main() -> None:
     )
     dev = _summary(development.metrics)
     eligible = bool(
-        np.isfinite(dev["sharpe"]) and dev["sharpe"] > 0
-        and dev["cagr"] > 0 and dev["max_drawdown"] > -0.05
+        np.isfinite(dev["sharpe"])
+        and dev["sharpe"] > 0
+        and dev["cagr"] > 0
+        and dev["max_drawdown"] > -0.05
     )
     receipt = {
         "schema": "basis_pair_candidate.v1",
@@ -204,10 +222,22 @@ def main() -> None:
         }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(receipt, indent=2, default=str))
-    print(json.dumps({k: receipt.get(k) for k in (
-        "n_assets", "n_target_events", "development", "development_eligible",
-        "historical_tail_exploratory",
-    )}, indent=2, default=str))
+    print(
+        json.dumps(
+            {
+                k: receipt.get(k)
+                for k in (
+                    "n_assets",
+                    "n_target_events",
+                    "development",
+                    "development_eligible",
+                    "historical_tail_exploratory",
+                )
+            },
+            indent=2,
+            default=str,
+        )
+    )
 
 
 if __name__ == "__main__":

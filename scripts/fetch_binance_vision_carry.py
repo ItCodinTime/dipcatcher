@@ -321,10 +321,15 @@ def main() -> int:
         .sort("event_time")
     )
     perp_df.write_parquet(args.out / "perp_bars.parquet")
-    if not args.skip_spot:
-        spot_df.write_parquet(args.out / "spot_bars.parquet")
-    if not args.skip_funding:
-        fund_df.write_parquet(args.out / "funding.parquet")
+    for name, skipped in (
+        ("spot_bars.parquet", args.skip_spot),
+        ("funding.parquet", args.skip_funding),
+    ):
+        path = args.out / name
+        if skipped:
+            path.unlink(missing_ok=True)
+        else:
+            (spot_df if name.startswith("spot") else fund_df).write_parquet(path)
     print(
         f"wrote {args.out}: perp={perp_df.height} spot={spot_df.height} "
         f"funding={fund_df.height} coins={len(keep)}"

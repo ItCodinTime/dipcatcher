@@ -65,16 +65,12 @@ def _load_assets(eval_dir: Path, horizon: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _pair_deltas(
-    matrix: np.ndarray, models: list[str]
-) -> tuple[list[str], np.ndarray]:
+def _pair_deltas(matrix: np.ndarray, models: list[str]) -> tuple[list[str], np.ndarray]:
     """Per-origin deltas target−challenger for every target×challenger pair."""
     t_idx = [models.index(t) for t in TARGETS if t in models]
     c_idx = [i for i, m in enumerate(models) if m not in TARGETS]
     labels = [f"{models[t]}_minus_{models[c]}" for t in t_idx for c in c_idx]
-    deltas = np.stack(
-        [matrix[:, t] - matrix[:, c] for t in t_idx for c in c_idx], axis=1
-    )
+    deltas = np.stack([matrix[:, t] - matrix[:, c] for t in t_idx for c in c_idx], axis=1)
     return labels, deltas
 
 
@@ -156,15 +152,9 @@ def main() -> int:
     for asset, pack in sorted(assets.items()):
         matrix, models = pack["matrix"], pack["models"]
         labels, deltas = _pair_deltas(matrix, models)
-        t_means = {
-            t: float(np.nanmean(matrix[:, models.index(t)]))
-            for t in TARGETS
-            if t in models
-        }
+        t_means = {t: float(np.nanmean(matrix[:, models.index(t)])) for t in TARGETS if t in models}
         rows.extend(
-            _effect_rows(
-                asset, labels, deltas, t_means, n_boot=args.n_boot, seed=args.seed
-            )
+            _effect_rows(asset, labels, deltas, t_means, n_boot=args.n_boot, seed=args.seed)
         )
         best_chal = min(
             (m for m in models if m not in TARGETS),
@@ -191,9 +181,7 @@ def main() -> int:
     if pooled_deltas:
         pooled = np.concatenate(pooled_deltas, axis=0)
         p_t_means = {
-            t: float(np.nanmean(np.concatenate(v)))
-            for t, v in pooled_target_vals.items()
-            if v
+            t: float(np.nanmean(np.concatenate(v))) for t, v in pooled_target_vals.items() if v
         }
         rows.extend(
             _effect_rows(
@@ -224,9 +212,7 @@ def main() -> int:
             "n_pairs": len(pooled_rows),
             "n_significant_95": n_sig,
             "min_ci95_lo": min_ci,
-            "claim_check": (
-                "all_pairs_ci_above_zero" if n_sig == len(scored) else "mixed"
-            ),
+            "claim_check": ("all_pairs_ci_above_zero" if n_sig == len(scored) else "mixed"),
         },
         "research_only": True,
         "live_pnl_claim": False,

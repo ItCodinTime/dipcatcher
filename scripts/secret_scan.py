@@ -24,7 +24,10 @@ PROVIDER_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("slack_token", re.compile(r"\bxox[baprs]-[0-9a-zA-Z-]{10,}\b")),
     ("openai_key", re.compile(r"\bsk-[0-9a-zA-Z]{20,}\b")),
     ("openai_proj_key", re.compile(r"\bsk-proj-[0-9a-zA-Z_-]{20,}\b")),
-    ("private_key_block", re.compile(r"-----BEGIN (RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY( BLOCK)?-----")),
+    (
+        "private_key_block",
+        re.compile(r"-----BEGIN (RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY( BLOCK)?-----"),
+    ),
     ("generic_webhook_secret", re.compile(r"\bwhsec_[0-9a-zA-Z]{20,}\b")),
     ("stripe_key", re.compile(r"\b(sk|pk)_(live|test)_[0-9a-zA-Z]{16,}\b")),
     ("jwt", re.compile(r"\beyJ[0-9a-zA-Z_-]{10,}\.eyJ[0-9a-zA-Z_-]{10,}\.[0-9a-zA-Z_-]{10,}\b")),

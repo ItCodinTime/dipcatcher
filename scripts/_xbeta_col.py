@@ -124,12 +124,10 @@ def _load_covariate_returns(
         return {}, path, False
     closes = frame["close"].to_numpy().astype(float)
     rets = np.diff(closes) / closes[:-1]
-    return {int(t): float(r) for t, r in zip(times[1:], rets)}, path, True
+    return {int(t): float(r) for t, r in zip(times[1:], rets, strict=True)}, path, True
 
 
-def _xbeta_quantiles(
-    ra: np.ndarray, rm: np.ndarray
-) -> tuple[float, np.ndarray, str]:
+def _xbeta_quantiles(ra: np.ndarray, rm: np.ndarray) -> tuple[float, np.ndarray, str]:
     """(mu, quantiles@LGBM_TAUS, path) for one origin's aligned windows."""
     L = ra.size
     W = min(BETA_WINDOW, L)
@@ -144,9 +142,7 @@ def _xbeta_quantiles(
     eps = ra - (alpha + beta * rm)
     sigma_m = ewma_next_sigma(rm, EWMA_LAM)
     sigma_idio = ewma_next_sigma(eps, EWMA_LAM)
-    sigma = float(
-        np.sqrt(max(0.15, W_MKT) * (beta * sigma_m) ** 2 + W_IDIO * sigma_idio**2)
-    )
+    sigma = float(np.sqrt(max(0.15, W_MKT) * (beta * sigma_m) ** 2 + W_IDIO * sigma_idio**2))
     if not np.isfinite(sigma) or sigma <= 0.0 or not np.isfinite(mu):
         raise ValueError("degenerate sigma/mu")
     # Primary: Student-t with df fitted on residuals (clipped [3, 30]).
@@ -190,8 +186,14 @@ def compute_column(
         r = cov_ret_by_time.get(int(event_times[j]))
         if r is not None:
             cov_at[j] = r
-    stats = {"n_overlap_fail": 0, "n_short_window": 0, "n_path_t": 0,
-             "n_path_emp": 0, "min_overlap": np.nan, "mean_overlap": np.nan}
+    stats = {
+        "n_overlap_fail": 0,
+        "n_short_window": 0,
+        "n_path_t": 0,
+        "n_path_emp": 0,
+        "min_overlap": np.nan,
+        "mean_overlap": np.nan,
+    }
     overlaps: list[float] = []
     for row, i in enumerate(range(first_origin, n - 1)):
         long_start = max(0, i - garch_window)  # returns slice [long_start, i)
@@ -216,9 +218,7 @@ def compute_column(
             for k, tau in enumerate(TAUS):
                 qk = qf_at(LGBM_TAUS, q_grid, tau)
                 if np.isfinite(qk):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([qk]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([qk]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             continue
     if overlaps:
@@ -262,9 +262,7 @@ def main() -> int:
     t0 = time.time()
     out, stats = compute_column(bars, aux_path, cov_ret_by_time, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -274,12 +272,15 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "aux_bars": aux_path.name if aux_path is not None else cov_name,
-        "aux_bars_sha256": _sha256(aux_path) if aux_path is not None and aux_path.is_file() else None,
+        "aux_bars_sha256": _sha256(aux_path)
+        if aux_path is not None and aux_path.is_file()
+        else None,
         "aux_ok": aux_ok,
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "xbeta": {
             "beta_window": BETA_WINDOW,
             "beta_min": BETA_MIN,

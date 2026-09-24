@@ -25,6 +25,7 @@ Verdict: zipline cannot express the shared workload semantics (fractional
 quantities, open t+1 fills, 24/7 calendar) without modifying the incumbent
 itself — so no fair benchmark exists here. Kept for the record.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -109,9 +110,9 @@ def _run_zipline(csvdir: Path, weights: pl.DataFrame, sids: list[str]) -> tuple[
     # Weight panel: decision at bar t -> ordered during bar t -> fills open t+1.
     panel: dict[str, dict[str, float]] = {}
     for row in weights.iter_rows(named=True):
-        panel.setdefault(row["event_time"].strftime("%Y-%m-%d"), {})[
-            row["security_id"]
-        ] = float(row["target_weight"])
+        panel.setdefault(row["event_time"].strftime("%Y-%m-%d"), {})[row["security_id"]] = float(
+            row["target_weight"]
+        )
 
     stats: dict[str, object] = {"orders": 0, "fees": 0.0}
 
@@ -163,9 +164,8 @@ def _run_zipline(csvdir: Path, weights: pl.DataFrame, sids: list[str]) -> tuple[
     stats["n_transactions"] = len(txns)
     stats["n_orders"] = len(orders)
     # Commission lives on the order record, not the transaction dict.
-    stats["total_commission"] = float(
-        sum((o.get("commission") or 0.0) for o in orders)
-    )
+    stats["total_commission"] = float(sum((o.get("commission") or 0.0) for o in orders))
+
     # Per-asset gross exposure over time (diagnostic + correctness evidence).
     def _gross(cell):
         items = cell.values() if isinstance(cell, dict) else (cell or [])
@@ -178,9 +178,7 @@ def _run_zipline(csvdir: Path, weights: pl.DataFrame, sids: list[str]) -> tuple[
         return total
 
     pos = perf["positions"].apply(_gross)
-    stats["gross_exposure_max_over_nav"] = float(
-        (pos / perf["portfolio_value"]).max()
-    )
+    stats["gross_exposure_max_over_nav"] = float((pos / perf["portfolio_value"]).max())
     stats["ending_cash"] = float(perf["ending_cash"].iloc[-1])
     # Dump a few sample transactions for price-level sanity checks.
     sample = [dict(t) for t in txns[:3]]  # raw keys for schema discovery
@@ -194,9 +192,7 @@ def _run_zipline(csvdir: Path, weights: pl.DataFrame, sids: list[str]) -> tuple[
         }
         for t in txns[:10] + txns[-10:]
     ]
-    stats["raw_txn_sample"] = [
-        {k: str(v) for k, v in t.items()} for t in sample
-    ]
+    stats["raw_txn_sample"] = [{k: str(v) for k, v in t.items()} for t in sample]
     # Mid-run account state for the balloon diagnostic.
     mid = perf.iloc[len(perf) // 2]
     midpos = mid["positions"]
@@ -279,9 +275,11 @@ def main() -> int:
     (args.out_dir / "zipline_stats.json").write_text(
         json.dumps(receipt, indent=2, sort_keys=True, default=str) + "\n"
     )
-    print(f"zipline: {stats['n_transactions']} txns, "
-          f"final_nav={float(nav['portfolio_value'].iloc[-1]):.2f}, "
-          f"run={stats['run_seconds']:.1f}s")
+    print(
+        f"zipline: {stats['n_transactions']} txns, "
+        f"final_nav={float(nav['portfolio_value'].iloc[-1]):.2f}, "
+        f"run={stats['run_seconds']:.1f}s"
+    )
     print(f"out: {args.out_dir}")
     return 0
 

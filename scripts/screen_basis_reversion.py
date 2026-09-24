@@ -76,8 +76,7 @@ def main() -> None:
             pl.col("event_time").shift(-1).over("security_id").alias("next_time"),
         )
         .with_columns(
-            (-(pl.col("basis") - pl.col("basis_mu")) / pl.col("basis_sd"))
-            .alias("signal"),
+            (-(pl.col("basis") - pl.col("basis_mu")) / pl.col("basis_sd")).alias("signal"),
             (pl.col("next_close") / pl.col("next_open") - 1.0).alias("future_return"),
             (
                 pl.col("next_spot_close") / pl.col("next_spot_open")
@@ -107,9 +106,7 @@ def main() -> None:
         long = group.tail(k)["future_return"].mean()
         by_date.append((date, float(long - short), group.height))
         rich = group.filter((pl.col("basis") > 0) & (pl.col("signal") < -1.0))
-        hedged_daily.append(
-            float(rich["future_hedged_pair_return"].mean()) if rich.height else 0.0
-        )
+        hedged_daily.append(float(rich["future_hedged_pair_return"].mean()) if rich.height else 0.0)
     if len(by_date) < 40:
         raise ValueError("too few development dates")
     spreads = np.asarray([row[1] for row in by_date], dtype=float)
@@ -142,11 +139,23 @@ def main() -> None:
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(receipt, indent=2))
-    print(json.dumps({k: receipt[k] for k in (
-        "n_dates", "mean_daily_gross_spread", "positive_day_fraction",
-        "four_chronological_fold_means", "hedged_pair_active_date_fraction",
-        "hedged_pair_mean_daily_gross_return", "hedged_pair_four_fold_means",
-    )}, indent=2))
+    print(
+        json.dumps(
+            {
+                k: receipt[k]
+                for k in (
+                    "n_dates",
+                    "mean_daily_gross_spread",
+                    "positive_day_fraction",
+                    "four_chronological_fold_means",
+                    "hedged_pair_active_date_fraction",
+                    "hedged_pair_mean_daily_gross_return",
+                    "hedged_pair_four_fold_means",
+                )
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

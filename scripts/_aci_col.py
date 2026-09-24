@@ -75,9 +75,7 @@ def _garch_t_quantiles(rets_long: np.ndarray) -> np.ndarray:
         mu_g = float(fit.params.get("mu", 0.0)) / 100.0
         sig_g = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0
         scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-        return (
-            st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
-        )
+        return st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
     except Exception:  # noqa: BLE001 - honest NaN base
         return nan
 
@@ -135,9 +133,7 @@ def _aci_column(
         q_emit = q_base if row < warmup else q_adj
         crps[row] = crps_from_quantiles(y, LGBM_TAUS, q_emit)
         for k, ti in enumerate(tau_idx):
-            pin[row, k] = float(
-                pinball_loss(np.array([y]), np.array([q_emit[ti]]), TAUS[k])[0]
-            )
+            pin[row, k] = float(pinball_loss(np.array([y]), np.array([q_emit[ti]]), TAUS[k])[0])
         # ACI update AFTER scoring (never trains on the current origin): the
         # coverage indicator is evaluated at the adjusted-level quantile, per
         # the Gibbs & Candes recursion.
@@ -146,17 +142,13 @@ def _aci_column(
         abs_dev += np.abs(alpha - LGBM_TAUS)
         n_updates += 1
     diag = {
-        "alpha_final": {
-            f"{g:.2f}": float(a) for g, a in zip(LGBM_TAUS, alpha, strict=True)
-        },
+        "alpha_final": {f"{g:.2f}": float(a) for g, a in zip(LGBM_TAUS, alpha, strict=True)},
         "alpha_mean_abs_dev": {
             f"{g:.2f}": float(abs_dev[j] / n_updates) if n_updates else None
             for j, g in enumerate(LGBM_TAUS)
         },
         "alpha_mean_abs_dev_taus": {
-            f"{TAUS[k]:.2f}": (
-                float(abs_dev[tau_idx[k]] / n_updates) if n_updates else None
-            )
+            f"{TAUS[k]:.2f}": (float(abs_dev[tau_idx[k]] / n_updates) if n_updates else None)
             for k in range(len(TAUS))
         },
         "n_alpha_updates": n_updates,
@@ -220,9 +212,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg, gamma=args.gamma, warmup=args.warmup)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     diag = out.pop("aci_diag")
     meta_out = {
         "tool": Path(__file__).name,
@@ -241,9 +231,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "mean_crps": float(np.nanmean(out["crps_col"])),

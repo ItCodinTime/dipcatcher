@@ -151,9 +151,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
     # Same indexing contract as the evaluator: rets_all[j] is the return from
     # bar j to bar j+1; dow[j] is the (known-ahead) weekday of target bar j+1.
     rets_all = np.diff(closes) / closes[:-1]
-    dow = pd.to_datetime(event_times[1:], unit="ns", utc=True).dayofweek.to_numpy(
-        dtype=float
-    )
+    dow = pd.to_datetime(event_times[1:], unit="ns", utc=True).dayofweek.to_numpy(dtype=float)
     XV = _lgbmqv_features(opens, highs, lows, closes, volumes, rets_all, dow)
 
     n_rows = n - 1 - first_origin
@@ -204,9 +202,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -216,9 +212,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "features": list(FEATURES),
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),

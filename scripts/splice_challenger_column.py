@@ -66,9 +66,11 @@ def _load_shard(path: Path) -> dict[str, Any]:
             "aids": z["asset_ids"],
             "names": [str(x) for x in z["model_names"]],
             "meta": json.loads(str(z["meta_json"])),
-            "extra": {k: z[k] for k in z.files
-                      if k not in {"crps_matrix", "pinball_cube", "asset_ids",
-                                   "model_names", "meta_json"}},
+            "extra": {
+                k: z[k]
+                for k in z.files
+                if k not in {"crps_matrix", "pinball_cube", "asset_ids", "model_names", "meta_json"}
+            },
         }
 
 
@@ -133,9 +135,7 @@ def splice_one(
 ) -> dict[str, Any]:
     """Append one validated column to an in-memory shard record."""
     c = _load_col(col_path)
-    model = _check_compatible(
-        s, c, shard_path, col_path, allow_seed_mismatch=allow_seed_mismatch
-    )
+    model = _check_compatible(s, c, shard_path, col_path, allow_seed_mismatch=allow_seed_mismatch)
     s["names"] = s["names"] + [model]
     s["crps"] = np.concatenate([s["crps"], c["crps"][:, None]], axis=1)
     s["pin"] = np.concatenate([s["pin"], c["pin"][:, None, :]], axis=1)
@@ -163,18 +163,20 @@ def splice_one(
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--shard", type=Path, required=True)
-    p.add_argument("--cols", type=Path, nargs="+", required=True,
-                   help="column artifacts to append, in order")
+    p.add_argument(
+        "--cols", type=Path, nargs="+", required=True, help="column artifacts to append, in order"
+    )
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--allow-seed-mismatch", action="store_true",
-                   help="permit column-vs-shard seed difference (deterministic "
-                        "columns only; provenance is recorded per column)")
+    p.add_argument(
+        "--allow-seed-mismatch",
+        action="store_true",
+        help="permit column-vs-shard seed difference (deterministic "
+        "columns only; provenance is recorded per column)",
+    )
     args = p.parse_args(argv)
     s = _load_shard(args.shard)
     for col in args.cols:
-        s = splice_one(
-            s, col, args.shard, allow_seed_mismatch=args.allow_seed_mismatch
-        )
+        s = splice_one(s, col, args.shard, allow_seed_mismatch=args.allow_seed_mismatch)
     np.savez_compressed(
         args.out,
         crps_matrix=s["crps"],

@@ -483,9 +483,7 @@ def _fit_gmm(rets: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def _skt_pdf(z: np.ndarray, alpha: float, nu: float) -> np.ndarray:
     """Azzalini skew-t pdf in standardized units."""
     return (
-        2.0
-        * st.t.pdf(z, nu)
-        * st.t.cdf(alpha * z * np.sqrt((nu + 1.0) / (nu + z * z)), nu + 1.0)
+        2.0 * st.t.pdf(z, nu) * st.t.cdf(alpha * z * np.sqrt((nu + 1.0) / (nu + z * z)), nu + 1.0)
     )
 
 
@@ -501,14 +499,19 @@ def _fit_skt(rets: np.ndarray) -> tuple[float, float, float, float]:
         xi, om, al, lnnu = th
         nu = np.exp(lnnu)
         z = (x - xi) / om
-        lp = np.log(2.0) - np.log(om) + st.t.logpdf(z, nu) + st.t.logcdf(
-            al * z * np.sqrt((nu + 1.0) / (nu + z * z)), nu + 1.0
+        lp = (
+            np.log(2.0)
+            - np.log(om)
+            + st.t.logpdf(z, nu)
+            + st.t.logcdf(al * z * np.sqrt((nu + 1.0) / (nu + z * z)), nu + 1.0)
         )
         return -float(lp.sum())
 
     th0 = np.array([np.mean(x), np.std(x), 0.0, np.log(8.0)])
     r = minimize(
-        nll, th0, method="Nelder-Mead",
+        nll,
+        th0,
+        method="Nelder-Mead",
         options={"maxiter": 4000, "xatol": 1e-8, "fatol": 1e-8},
     )
     xi, om, al, lnnu = r.x
@@ -518,9 +521,7 @@ def _fit_skt(rets: np.ndarray) -> tuple[float, float, float, float]:
     return float(xi), float(om), float(np.clip(al, -80.0, 80.0)), nu
 
 
-def _skt_table(
-    xi: float, om: float, al: float, nu: float
-) -> tuple[np.ndarray, np.ndarray]:
+def _skt_table(xi: float, om: float, al: float, nu: float) -> tuple[np.ndarray, np.ndarray]:
     """Cumulative-trapezoid CDF table of the fitted skew-t (z-grid, cdf)."""
     from scipy.integrate import cumulative_trapezoid
 
@@ -534,9 +535,7 @@ def _skt_table(
     return z, cdf
 
 
-def _skt_quantiles(
-    xi: float, om: float, al: float, nu: float, taus: np.ndarray
-) -> np.ndarray:
+def _skt_quantiles(xi: float, om: float, al: float, nu: float, taus: np.ndarray) -> np.ndarray:
     """Quantiles of the fitted skew-t by monotone interpolation of the CDF."""
     z, cdf = _skt_table(xi, om, al, nu)
     return xi + om * np.interp(taus, cdf, z)
@@ -597,9 +596,7 @@ def _conf_t_quantiles(rets: np.ndarray, taus: np.ndarray) -> np.ndarray:
     return st.t.ppf(np.clip(warped, 1e-9, 1.0 - 1e-9), nu, loc=loc, scale=sc)
 
 
-def _weighted_quantile(
-    vals: np.ndarray, ws: np.ndarray, taus: np.ndarray
-) -> np.ndarray:
+def _weighted_quantile(vals: np.ndarray, ws: np.ndarray, taus: np.ndarray) -> np.ndarray:
     """Weighted empirical quantiles (midpoint interpolation rule)."""
     order = np.argsort(vals)
     v, w = np.asarray(vals)[order], np.asarray(ws)[order]
@@ -725,9 +722,7 @@ def dip_challengers(
 
     try:
         gw, gmu, gsig = _fit_gmm(rets_long)
-        crps["dip_gmm_k"] = float(
-            crps_gaussian_mixture(np.array([y]), gw, gmu, gsig)[0]
-        )
+        crps["dip_gmm_k"] = float(crps_gaussian_mixture(np.array([y]), gw, gmu, gsig)[0])
         quant["dip_gmm_k"] = gaussian_mixture_quantiles(gw, gmu, gsig, TAUS)
     except Exception:  # noqa: BLE001
         crps["dip_gmm_k"] = float("nan")

@@ -20,6 +20,7 @@ Parity-critical Qlib settings:
 
 Research-only: real bars, no live-P&L claim.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -140,12 +141,15 @@ def run_qlib(provider: Path, weights: pl.DataFrame, calendar: list, sids: list[s
                     "total_value": 0.0,
                 }
             )
-            total_value = trade_exchange.calculate_amount_position_value(
-                amount_dict=current_amount_dict,
-                start_time=trade_start_time,
-                end_time=trade_end_time,
-                only_tradable=False,
-            ) + current.get_cash()
+            total_value = (
+                trade_exchange.calculate_amount_position_value(
+                    amount_dict=current_amount_dict,
+                    start_time=trade_start_time,
+                    end_time=trade_end_time,
+                    only_tradable=False,
+                )
+                + current.get_cash()
+            )
             target_amount_dict = {}
             for sid, w in target_weight_position.items():
                 if w <= 0:
@@ -160,24 +164,16 @@ def run_qlib(provider: Path, weights: pl.DataFrame, calendar: list, sids: list[s
                     continue
                 target_amount_dict[sid] = w * total_value / px
             for code in set(current_amount_dict) | set(target_amount_dict):
-                tr = trade_exchange.is_stock_tradable(
-                    code, trade_start_time, trade_end_time
-                )
+                tr = trade_exchange.is_stock_tradable(code, trade_start_time, trade_end_time)
                 if not tr:
                     order_log.append(
                         {
-                            "trade_date": str(
-                                pd.Timestamp(trade_start_time).date()
-                            ),
+                            "trade_date": str(pd.Timestamp(trade_start_time).date()),
                             "code": f"__NOTRADABLE__{code}",
                             "amount": 0.0,
                             "direction": -1,
-                            "target_amount": float(
-                                target_amount_dict.get(code, 0.0)
-                            ),
-                            "cur_amount": float(
-                                current_amount_dict.get(code, 0.0)
-                            ),
+                            "target_amount": float(target_amount_dict.get(code, 0.0)),
+                            "cur_amount": float(current_amount_dict.get(code, 0.0)),
                             "total_value": 0.0,
                         }
                     )
@@ -221,14 +217,10 @@ def run_qlib(provider: Path, weights: pl.DataFrame, calendar: list, sids: list[s
     pos_log: list[dict] = []
 
     class PanelWeightStrategy(WeightStrategyBase):
-        def generate_target_weight_position(
-            self, score, current, trade_start_time, trade_end_time
-        ):
+        def generate_target_weight_position(self, score, current, trade_start_time, trade_end_time):
             s = score["score"] if isinstance(score, pd.DataFrame) else score
             tw = {str(k): float(v) for k, v in s.items() if float(v) != 0.0}
-            row: dict[str, object] = {
-                "trade_date": str(pd.Timestamp(trade_start_time).date())
-            }
+            row: dict[str, object] = {"trade_date": str(pd.Timestamp(trade_start_time).date())}
             row.update({f"pos_{k}": v for k, v in current.get_stock_amount_dict().items()})
             row.update({f"tw_{k}": v for k, v in tw.items()})
             row["cash"] = current.get_cash()
@@ -339,10 +331,7 @@ def main() -> int:
         weights = weights.with_columns(
             (pl.col("target_weight") * args.weight_scale).alias("target_weight")
         )
-    print(
-        f"weight panel: {weights.height} rows, "
-        f"{weights['event_time'].n_unique()} decision dates"
-    )
+    print(f"weight panel: {weights.height} rows, {weights['event_time'].n_unique()} decision dates")
     calendar = frames[sids[0]]["event_time"].to_list()
 
     import qlib as _q
@@ -354,11 +343,15 @@ def main() -> int:
 
         # --- correctness ---------------------------------------------------
         t0 = time.perf_counter()
-        eq_dc, met_dc, fills_dc = run_dipcatcher(pl.concat(list(frames.values())), weights, COMMISSION_BPS)
+        eq_dc, met_dc, fills_dc = run_dipcatcher(
+            pl.concat(list(frames.values())), weights, COMMISSION_BPS
+        )
         t_dc = time.perf_counter() - t0
         eq_q, st_q, rep_q, artifacts = run_qlib(provider, weights, calendar, sids)
-        print(f"dipcatcher: {eq_dc.height} nav rows, {t_dc*1e3:.0f} ms")
-        print(f"qlib final={st_q['final_value']:.2f} orders~{st_q['n_orders']} cost={st_q['total_cost']}")
+        print(f"dipcatcher: {eq_dc.height} nav rows, {t_dc * 1e3:.0f} ms")
+        print(
+            f"qlib final={st_q['final_value']:.2f} orders~{st_q['n_orders']} cost={st_q['total_cost']}"
+        )
         if args.debug_report:
             rep_q.to_csv(args.debug_report)
             artifacts["positions"].to_csv(
@@ -379,9 +372,7 @@ def main() -> int:
 
         nav_dc = {
             _dkey(t): v
-            for t, v in zip(
-                eq_dc["event_time"].to_list(), eq_dc["nav"].to_list(), strict=True
-            )
+            for t, v in zip(eq_dc["event_time"].to_list(), eq_dc["nav"].to_list(), strict=True)
         }
         nav_q = {_dkey(t): float(v) for t, v in eq_q.items()}
         common = sorted(set(nav_dc) & set(nav_q))

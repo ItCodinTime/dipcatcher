@@ -14,7 +14,9 @@ def main() -> None:
     parser.add_argument("receipt", type=Path)
     parser.add_argument("--base-dir", type=Path, default=None)
     args = parser.parse_args()
-    print(json.dumps(verify_receipt(args.receipt, base_dir=args.base_dir), indent=2, sort_keys=True))
+    print(
+        json.dumps(verify_receipt(args.receipt, base_dir=args.base_dir), indent=2, sort_keys=True)
+    )
 
 
 if __name__ == "__main__":
