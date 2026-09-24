@@ -217,3 +217,15 @@
 - `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
   (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
   average the weights and renormalise (Michaud resampled efficiency).
+
+## Wave 16 mathematical conventions
+
+- `american_baw.py`: b=r-q; q2/q1 = (-(N-1) +/- sqrt((N-1)^2+4M/Kc))/2,
+  M=2r/sigma^2, N=2b/sigma^2, Kc=1-e^{-rT}; critical price by root finding;
+  C_A = C_E + A2 (S/S*)^{q2} for S<S*, else S-K (puts analogous with q1).
+- `johnson_sb.py`: SB z=gamma+delta log(u/(1-u)), u=(x-xi)/lambda on (xi,xi+lam);
+  SL z=gamma+delta log(x-xi); fit fixes support then regresses Phi^{-1}(rank)
+  on the transform (slope=delta, intercept=gamma).
+- `carr_madan.py`: psi(v)=e^{-rT} phi(v-(alpha+1)i)/(alpha^2+alpha-v^2+
+  i(2alpha+1)v); C(k)=e^{-alpha k}/pi Re int e^{-ivk} psi dv via FFT with
+  log-strike spacing lambda=2pi/(N eta) and Simpson weights.
