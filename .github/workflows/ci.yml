@@ -186,8 +186,10 @@ jobs:
               for item in scorecard.values()
           ):
               raise SystemExit("research scorecard is incomplete or contains forbidden metrics")
-          run_json = Path(notebook["artifacts"]["immutable_json"])
-          run_md = Path(notebook["artifacts"]["immutable_markdown"])
+          # artifacts are stored relative to the receipt dir (see run_research);
+          # resolve them from the receipt's own directory, not the repo root.
+          run_json = path.parent / notebook["artifacts"]["immutable_json"]
+          run_md = path.parent / notebook["artifacts"]["immutable_markdown"]
           if not run_json.is_file() or not run_md.is_file():
               raise SystemExit("immutable research run artifacts are missing")
           print(f"validated research run {provenance['run_id']}")
