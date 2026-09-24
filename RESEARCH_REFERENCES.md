@@ -215,3 +215,10 @@
 
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Wave 18 references (portfolio credit risk)
+
+- O. Vasicek (2002). "The distribution of loan portfolio value." Risk — `models/vasicek_credit.py` (ASRF large-pool loss).
+- D. Li (2000). "On default correlation: a copula function approach." Journal of Fixed Income — `models/gaussian_copula_default.py`.
+- L. Andersen, J. Sidenius, S. Basu (2003). "All your hedges in one basket." Risk — one-factor loss recursion (`models/gaussian_copula_default.py`).
+- Credit Suisse First Boston (1997). *CreditRisk+: A Credit Risk Management Framework*; H. Panjer (1981). "Recursive evaluation of a family of compound distributions." ASTIN Bulletin — `models/creditrisk_plus.py`.
