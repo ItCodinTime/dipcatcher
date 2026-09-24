@@ -63,6 +63,13 @@ def test_max_positions_out_of_range_raises() -> None:
         optimize_mean_variance(ALPHA, SIG, np.zeros(N), cfg)
 
 
+def test_cvar_mode_requires_scenarios_instead_of_downgrading() -> None:
+    cfg = _cfg()
+    cfg.optimizer.mode = "cvar"
+    with pytest.raises(ValueError, match="scenarios are required.*mean-variance fallback"):
+        optimize_mean_variance(ALPHA, SIG, np.zeros(N), cfg)
+
+
 def test_cvar_mode_runs_with_and_without_limit() -> None:
     rng = np.random.default_rng(7)
     scenarios = rng.normal(0.0, 0.02, size=(64, N))

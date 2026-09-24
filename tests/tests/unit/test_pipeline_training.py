@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import polars as pl
@@ -15,12 +16,148 @@ from quant_fund.pipeline.train import (
     _label_horizon,
     _make_ranker,
     _walk_forward_splits,
+    train_calibration,
+    train_calibration_auto,
     train_distribution,
+    train_distribution_auto,
     train_family,
     train_ranking,
+    train_ranking_auto,
     train_regime,
+    train_reinforcement,
+    train_reinforcement_auto,
     train_volatility,
+    train_volatility_auto,
 )
+
+
+def test_train_distribution_auto_selects_lowest_finite_pinball(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.pipeline import train as train_module
+
+    scores = {
+        "empirical": 0.4,
+        "gaussian": 0.2,
+        "linear_qr": float("nan"),
+        "xgboost": 0.3,
+        "lightgbm": 0.25,
+    }
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"dist_{model_name}.joblib"
+        save_joblib_artifact({"features": ["f0"], "model": model_name}, path)
+        return {
+            "path": str(path),
+            "metrics": {"mean_pinball": scores[model_name], "n_oos_rows": 20},
+        }
+
+    monkeypatch.setattr(train_module, "train_distribution", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    result = train_distribution_auto(cfg)
+    assert result["selected_model"] == "gaussian"
+    assert Path(result["path"]).name == "dist_auto.joblib"
+
+
+def test_train_volatility_auto_selects_lowest_finite_qlike(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.pipeline import train as train_module
+
+    scores = {"rolling": 0.4, "ewma": 0.1, "har": 0.2, "xgboost": float("nan"), "lightgbm": 0.3}
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"vol_{model_name}.joblib"
+        save_joblib_artifact({"features": ["f0"], "model": model_name}, path)
+        return {"path": str(path), "metrics": {"qlike": scores[model_name], "n_oos_rows": 20}}
+
+    monkeypatch.setattr(train_module, "train_volatility", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    result = train_volatility_auto(cfg)
+    assert result["selected_model"] == "ewma"
+    assert Path(result["path"]).name == "vol_auto.joblib"
+
+
+def test_train_distribution_auto_rejects_trivially_small_oos_sample(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.pipeline import train as train_module
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"dist_{model_name}.joblib"
+        save_joblib_artifact({"model": model_name}, path)
+        return {"path": str(path), "metrics": {"mean_pinball": 0.01, "n_oos_rows": 1}}
+
+    monkeypatch.setattr(train_module, "train_distribution", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    with pytest.raises(ValueError, match="no finite candidate metric"):
+        train_distribution_auto(cfg)
+
+
+def test_train_reinforcement_auto_selects_best_finite_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.base import save_joblib_artifact
+    from quant_fund.models.rl import LinUCBRanker
+    from quant_fund.pipeline import train as train_module
+
+    advantages = {
+        "linucb": 0.01,
+        "thompson": 0.05,
+        "quantile_thompson": float("nan"),
+        "policy_gradient": 0.02,
+    }
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"rl_{model_name}.joblib"
+        save_joblib_artifact(
+            {"policy": LinUCBRanker(1), "policy_name": model_name, "features": ["f0"]},
+            path,
+        )
+        return {
+            "path": str(path),
+            "metrics": {"mean_advantage_vs_uniform": advantages[model_name]},
+        }
+
+    monkeypatch.setattr(train_module, "train_reinforcement", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    result = train_reinforcement_auto(cfg)
+    assert result["selected_model"] == "thompson"
+    assert result["selection_metric"] == "mean_advantage_vs_uniform"
+    assert Path(result["path"]).name == "rl_auto.joblib"
+    assert Path(result["path"]).is_file()
+
+
+def test_train_ranking_auto_selects_best_finite_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.ranking import RidgeRanker
+    from quant_fund.pipeline import train as train_module
+
+    scores = {"ridge": 0.01, "elasticnet": 0.04, "neural": float("nan"), "ensemble": 0.02}
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"ranker_{model_name}.joblib"
+        model = RidgeRanker().fit(np.ones((4, 2)), np.arange(4, dtype=float))
+        model.features = ["f0", "f1"]
+        model.save(path)
+        return {"path": str(path), "metrics": {"mean_ic": scores[model_name]}}
+
+    monkeypatch.setattr(train_module, "train_ranking", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    result = train_ranking_auto(cfg)
+    assert result["selected_model"] == "elasticnet"
+    assert result["selection_metric"] == "mean_ic"
+    assert Path(result["path"]).name == "ranker_auto.joblib"
+    assert Path(result["path"]).is_file()
 
 
 def test_label_horizon_uses_configured_forward_target() -> None:
@@ -154,6 +291,24 @@ def test_train_family_unknown_models_fail_closed() -> None:
         train_family(cfg, "tail", "bogus_tail")
 
 
+def test_train_family_dispatches_calibration(monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = load_config("configs/research.yaml")
+    monkeypatch.setattr(
+        "quant_fund.pipeline.train.train_calibration",
+        lambda config, model: {"model": model, "research_only": True},
+    )
+    result = train_family(cfg, "calibration", "platt")
+    assert result == {
+        "model": "platt",
+        "research_only": True,
+        "data_source": "SYNTHETIC",
+        "evidence_report": {
+            "json": "data/metadata/reports/evidence_report.json",
+            "markdown": "data/metadata/reports/evidence_report.md",
+        },
+    }
+
+
 def test_train_ranking_empty_panel_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = load_config("configs/research.yaml")
     empty = pl.DataFrame(
@@ -209,6 +364,74 @@ def test_train_distribution_empty_panel_fail_closed(monkeypatch: pytest.MonkeyPa
         train_distribution(cfg, "gaussian")
 
 
+def test_train_calibration_missing_score_column_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    empty = pl.DataFrame({"event_time": [], cfg.train.ranking_target: []})
+    monkeypatch.setattr("quant_fund.pipeline.train.panel", lambda *a, **k: empty)
+    with pytest.raises(ValueError, match="calibration requires columns"):
+        train_calibration(cfg, "isotonic")
+
+
+def test_train_calibration_persists_causal_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    label = cfg.train.ranking_target
+    frame = pl.DataFrame(
+        {
+            "event_time": [datetime(2020, 1, 1) + timedelta(days=i) for i in range(20)],
+            "cs_pct_mom_20": np.linspace(0.02, 0.98, 20),
+            label: np.where(np.arange(20) % 2 == 0, 0.02, -0.01),
+        }
+    )
+    monkeypatch.setattr("quant_fund.pipeline.train.panel", lambda *a, **k: frame)
+    train_mask = np.zeros(20, dtype=bool)
+    train_mask[:10] = True
+    test_mask = ~train_mask
+    monkeypatch.setattr(
+        "quant_fund.pipeline.train._walk_forward_splits",
+        lambda *a, **k: [(train_mask, test_mask)],
+    )
+    result = train_calibration(cfg, "isotonic")
+    assert result["research_only"] is True
+    assert np.isfinite(result["metrics"]["oos_brier"])
+    assert Path(result["path"]).is_file()
+    assert Path(f"{result['path']}.sha256").is_file()
+    from quant_fund.models.calibration import ProbabilityCalibrator
+
+    loaded = ProbabilityCalibrator.load(Path(result["path"]))
+    assert loaded.score_feature == "cs_pct_mom_20"
+    assert loaded.label == label
+
+
+def test_train_calibration_auto_selects_lowest_finite_brier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quant_fund.models.calibration import ProbabilityCalibrator
+    from quant_fund.pipeline import train as train_module
+
+    briers = {"isotonic": 0.12, "platt": 0.08}
+
+    def fake_train(config, model_name):
+        path = Path(config.data.root) / "metadata" / f"calibrator_{model_name}.joblib"
+        model = ProbabilityCalibrator(model_name).fit(
+            np.linspace(0.1, 0.9, 12), np.asarray([0, 1] * 6, dtype=float)
+        )
+        model.save(path)
+        return {"path": str(path), "metrics": {"oos_brier": briers[model_name]}}
+
+    monkeypatch.setattr(train_module, "train_calibration", fake_train)
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    result = train_calibration_auto(cfg)
+    assert result["selected_model"] == "platt"
+    assert result["selection_metric"] == "oos_brier"
+    assert Path(result["path"]).name == "calibrator_auto.joblib"
+
+
 def test_train_volatility_empty_panel_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = load_config("configs/research.yaml")
     empty = pl.DataFrame(
@@ -252,3 +475,98 @@ def test_train_family_passthrough_families_do_not_train() -> None:
     # No live claim keys.
     assert cov.get("live_pnl_claim") is not True
     assert liq.get("live_pnl_claim") is not True
+
+
+def test_train_reinforcement_persists_research_only_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    label = cfg.train.ranking_target
+    dates = [datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=i) for i in range(8)]
+    rows = []
+    for date in dates:
+        for name, signal in [("A", 1.0), ("B", 0.2), ("C", -0.5), ("D", -1.0)]:
+            rows.append(
+                {
+                    "event_time": date,
+                    "security_id": name,
+                    label: signal,
+                    "ret_1": signal,
+                    "mom_20": signal,
+                    "vol_20": 0.2,
+                    "reversal_1": signal,
+                    "amihud": 1e-6,
+                }
+            )
+    frame = pl.DataFrame(rows)
+    monkeypatch.setattr("quant_fund.pipeline.train.panel", lambda *a, **k: frame)
+    monkeypatch.setattr("quant_fund.pipeline.train.configure_tracking", lambda: None)
+    monkeypatch.setattr("quant_fund.pipeline.train.log_run", lambda **kwargs: "run-test")
+    result = train_reinforcement(cfg)
+    assert result["research_only"] is True
+    assert result["live_pnl_claim"] is False
+    assert Path(result["path"]).is_file()
+    assert result["metrics"]["n_dates"] > 0
+
+
+def test_train_policy_gradient_persists_research_only_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    label = cfg.train.ranking_target
+    dates = [datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=i) for i in range(8)]
+    rows = []
+    for date in dates:
+        for name, signal in [("A", 1.0), ("B", 0.2), ("C", -0.5), ("D", -1.0)]:
+            rows.append(
+                {
+                    "event_time": date,
+                    "security_id": name,
+                    label: signal,
+                    "ret_1": signal,
+                    "mom_20": signal,
+                    "vol_20": 0.2,
+                    "reversal_1": signal,
+                    "amihud": 1e-6,
+                }
+            )
+    monkeypatch.setattr("quant_fund.pipeline.train.panel", lambda *a, **k: pl.DataFrame(rows))
+    monkeypatch.setattr("quant_fund.pipeline.train.configure_tracking", lambda: None)
+    monkeypatch.setattr("quant_fund.pipeline.train.log_run", lambda **kwargs: "run-pg-test")
+    result = train_reinforcement(cfg, "policy_gradient")
+    assert result["research_only"] is True
+    assert result["live_pnl_claim"] is False
+    assert Path(result["path"]).is_file()
+
+
+def test_train_quantile_thompson_persists_research_only_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    label = cfg.train.ranking_target
+    dates = [datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=i) for i in range(8)]
+    rows = []
+    for date in dates:
+        for name, signal in [("A", 1.0), ("B", 0.2), ("C", -0.5), ("D", -1.0)]:
+            rows.append(
+                {
+                    "event_time": date,
+                    "security_id": name,
+                    label: signal,
+                    "ret_1": signal,
+                    "mom_20": signal,
+                    "vol_20": 0.2,
+                    "reversal_1": signal,
+                    "amihud": 1e-6,
+                }
+            )
+    monkeypatch.setattr("quant_fund.pipeline.train.panel", lambda *a, **k: pl.DataFrame(rows))
+    monkeypatch.setattr("quant_fund.pipeline.train.configure_tracking", lambda: None)
+    monkeypatch.setattr("quant_fund.pipeline.train.log_run", lambda **kwargs: "run-qt-test")
+    result = train_reinforcement(cfg, "quantile_thompson")
+    assert result["research_only"] is True
+    assert result["live_pnl_claim"] is False
+    assert Path(result["path"]).is_file()

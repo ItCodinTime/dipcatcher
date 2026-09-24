@@ -11,6 +11,9 @@ from quant_fund.metrics.returns import (
 from quant_fund.metrics.risk import historical_es, historical_var, losses_from_returns
 from quant_fund.metrics.scoring import (
     crps_from_quantiles,
+    crps_gaussian,
+    crps_gaussian_mixture,
+    gaussian_mixture_quantiles,
     pearson_ic,
     pinball_loss,
     qlike,
@@ -117,6 +120,55 @@ def test_crps_approx_nonnegative() -> None:
     q = np.array([[-0.2, 0.0, 0.2], [-0.1, 0.1, 0.3]])
     taus = np.array([0.1, 0.5, 0.9])
     assert crps_from_quantiles(y, q, taus) >= 0
+
+
+def test_crps_gaussian_mixture_single_component_matches_gaussian() -> None:
+    y = np.array([-0.05, 0.0, 0.12])
+    mix = crps_gaussian_mixture(y, np.array([1.0]), np.array([0.01]), np.array([0.03]))
+    ref = crps_gaussian(y, np.full(3, 0.01), np.full(3, 0.03))
+    np.testing.assert_allclose(mix, ref, rtol=0, atol=1e-14)
+
+
+def test_crps_gaussian_mixture_matches_monte_carlo() -> None:
+    rng = np.random.default_rng(0)
+    w = np.array([0.35, 0.5, 0.15])
+    mu = np.array([-0.02, 0.005, 0.05])
+    sig = np.array([0.01, 0.025, 0.06])
+    y = np.array([0.0, 0.04, -0.03])
+    exact = crps_gaussian_mixture(y, w, mu, sig)
+    # CRPS = E|X - y| - 0.5 E|X - X'| on independent draws.
+    n = 2_000_000
+    for k, yi in enumerate(y):
+        c1 = rng.choice(3, size=n, p=w)
+        c2 = rng.choice(3, size=n, p=w)
+        x1 = rng.normal(mu[c1], sig[c1])
+        x2 = rng.normal(mu[c2], sig[c2])
+        mc = np.abs(x1 - yi).mean() - 0.5 * np.abs(x1 - x2).mean()
+        assert abs(exact[k] - mc) < 5e-4
+    assert np.all(exact > 0.0)
+
+
+def test_gaussian_mixture_quantiles_invert_cdf() -> None:
+    from scipy.special import erf
+
+    w = np.array([0.4, 0.6])
+    mu = np.array([-0.01, 0.03])
+    sig = np.array([0.02, 0.05])
+    taus = np.array([0.05, 0.5, 0.95])
+    q = gaussian_mixture_quantiles(w, mu, sig, taus)
+    for qi, tau in zip(q, taus, strict=True):
+        z = (qi - mu) / sig
+        cdf = float((w * (0.5 * (1.0 + erf(z / np.sqrt(2.0))))).sum())
+        assert abs(cdf - tau) < 1e-10
+    assert np.all(np.diff(q) > 0.0)
+
+
+def test_gaussian_mixture_degenerate_fails_closed() -> None:
+    y = np.array([0.0])
+    assert np.all(np.isnan(crps_gaussian_mixture(y, [0.5, 0.5], [0.0, np.nan], [0.1, 0.1])))
+    assert np.all(np.isnan(crps_gaussian_mixture(y, [0.5, 0.5], [0.0, 0.0], [0.1, -0.1])))
+    assert np.all(np.isnan(crps_gaussian_mixture(y, [0.5, 0.4], [0.0, 0.0], [0.1, 0.1])))
+    assert np.all(np.isnan(gaussian_mixture_quantiles([0.5, 0.4], [0.0, 0.0], [0.1, 0.1], [0.5])))
 
 
 def test_ic_perfect() -> None:

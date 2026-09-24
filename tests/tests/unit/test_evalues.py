@@ -68,7 +68,7 @@ def test_bench_e_coverage_keys_and_seeded_final() -> None:
 
 
 def test_module_has_no_sharpe() -> None:
-    text = Path(evalues.__file__).read_text().lower()
+    text = Path(evalues.__file__).read_text(encoding="utf-8").lower()
     assert "sharpe" not in text
     assert not any("sharpe" in name.lower() for name in dir(evalues))
 

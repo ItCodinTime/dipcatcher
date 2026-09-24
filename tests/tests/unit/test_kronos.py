@@ -88,3 +88,44 @@ def test_kronos_pipeline_uses_causal_silver_rows() -> None:
     )
     assert len(state.forecasts) == 1
     assert state.forecasts[0].security_id == "A"
+
+
+def test_kronos_pipeline_fails_closed_without_predictor() -> None:
+    from quant_fund.pipeline.kronos import forecast_kronos_frame
+
+    frame = pl.from_pandas(_bars()).with_columns(pl.lit("A").alias("security_id"))
+    cfg = AppConfig.model_validate({"train": {"kronos": {"lookback": 5, "pred_len": 2}}})
+    with pytest.raises(ValueError, match="enabled"):
+        forecast_kronos_frame(cfg, asof=_bars()["event_time"].iloc[-1], frame=frame, predictor=None)
+
+
+def test_kronos_pipeline_forecasts_each_security_in_sorted_order() -> None:
+    from quant_fund.pipeline.kronos import forecast_kronos_frame
+
+    bars = _bars()
+    frame = pl.concat(
+        [pl.from_pandas(bars).with_columns(pl.lit(sid).alias("security_id")) for sid in ("B", "A")]
+    )
+    state = forecast_kronos_frame(
+        AppConfig.model_validate({"train": {"kronos": {"lookback": 5, "pred_len": 2}}}),
+        asof=bars["event_time"].iloc[-1],
+        frame=frame,
+        predictor=_Predictor(),
+    )
+    assert [f.security_id for f in state.forecasts] == ["A", "B"]
+    assert all(f.model_version.startswith("kronos.") for f in state.forecasts)
+
+
+def test_kronos_pipeline_rejects_empty_or_incomplete_frame() -> None:
+    from quant_fund.pipeline.kronos import forecast_kronos_frame
+
+    cfg = AppConfig.model_validate({"train": {"kronos": {"lookback": 5, "pred_len": 2}}})
+    asof = _bars()["event_time"].iloc[-1]
+    empty = pl.from_pandas(_bars().head(0)).with_columns(pl.lit("A").alias("security_id"))
+    with pytest.raises(ValueError, match="empty"):
+        forecast_kronos_frame(cfg, asof=asof, frame=empty, predictor=_Predictor())
+    incomplete = (
+        pl.from_pandas(_bars()).drop("close").with_columns(pl.lit("A").alias("security_id"))
+    )
+    with pytest.raises(ValueError, match="missing required columns"):
+        forecast_kronos_frame(cfg, asof=asof, frame=incomplete, predictor=_Predictor())

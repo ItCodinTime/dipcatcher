@@ -74,7 +74,7 @@ def test_reality_check_monotone_in_common_shift() -> None:
 def test_spa_variants_and_scale_invariance() -> None:
     f = _winner_panel(3)
     spa = spa_test(f, n_boot=400, seed=5)
-    # Upper never recenters → conservative; lower/consistent reject the winner.
+    # Upper uses the least-favorable centered null; the winner is detectable.
     assert spa.p_upper >= spa.p_consistent
     assert spa.p_upper >= spa.p_lower
     assert spa.p_consistent < 0.05
@@ -86,12 +86,12 @@ def test_spa_variants_and_scale_invariance() -> None:
     assert spa.best_index == 3
 
 
-def test_spa_consistent_equals_lower_without_bad_columns() -> None:
-    """No significantly-negative column → consistent and lower recentering coincide."""
-    f = _winner_panel(4, bump=0.006)
+def test_spa_variants_agree_when_all_sample_means_are_positive() -> None:
+    """Every centering rule agrees when no sample mean is negative."""
+    f = _null_panel(4) + 0.006
+    assert np.all(f.mean(axis=0) > 0.0)
     spa = spa_test(f, n_boot=600, seed=6)
-    assert spa.p_consistent == spa.p_lower
-    assert spa.p_upper > spa.p_consistent
+    assert spa.p_consistent == spa.p_lower == spa.p_upper
 
 
 def test_spa_does_not_reject_when_all_columns_are_bad() -> None:

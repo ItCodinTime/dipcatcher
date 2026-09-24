@@ -3,11 +3,12 @@
 import json
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from quant_fund.backtest.engine import run_backtest
 from quant_fund.config import load_config
-from quant_fund.pipeline.dataset import build_gold
+from quant_fund.pipeline.dataset import build_gold, ensure_silver
 from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
 from quant_fund.pipeline.train import train_family
 
@@ -51,7 +52,35 @@ def test_ingest_train_optimize_backtest(tmp_path: Path) -> None:
         sample = [*sample, dates[-1]]
     weights = build_causal_weight_panel(cfg, sample)
     assert weights["event_time"].n_unique() == len(sample)
-    result = run_backtest(feats, weights, cfg)
+    # Gold features are intentionally universe-filtered; execution/mark bars
+    # must remain the complete silver panel so held positions never appear
+    # stale merely because a name leaves the research universe.
+    bars = ensure_silver(cfg)
+    # The synthetic provider deliberately has no liquidation settlement.  Make
+    # the test portfolio causal by inserting a zero target on the last valid
+    # decision session before each delist, so NEXT_OPEN exits on the event
+    # session.  The engine must otherwise fail closed on an unvalued hold.
+    actions = pl.read_parquet(tmp_path / "bronze" / "corporate_actions.parquet")
+    delists = actions.filter(pl.col("action_type") == "delist")
+    if not delists.is_empty():
+        all_dates = bars["event_time"].unique().sort().to_list()
+        terminal_rows = []
+        for action in delists.iter_rows(named=True):
+            event_time = action["event_time"]
+            prior_dates = [date for date in all_dates if date < event_time]
+            assert prior_dates
+            terminal_rows.append(
+                {
+                    "event_time": prior_dates[-1],
+                    "security_id": str(action["security_id"]),
+                    "target_weight": 0.0,
+                }
+            )
+        terminal = pl.DataFrame(terminal_rows)
+        weights = pl.concat(
+            [weights.select("event_time", "security_id", "target_weight"), terminal]
+        ).unique(subset=["event_time", "security_id"], keep="last", maintain_order=True)
+    result = run_backtest(bars, weights, cfg)
     assert result.source_note == "SYNTHETIC"
     assert "sharpe" in result.metrics
     assert result.frictionless is False

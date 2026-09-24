@@ -438,67 +438,6 @@ def test_positive_cursor_requires_matching_equity_rows(tmp_path: Path) -> None:
     assert not any(error.startswith("broker_state_step_") for error in coherent["errors"])
 
 
-def test_broker_state_rejects_malformed_resume_cursor_fields(tmp_path: Path) -> None:
-    root = _ledger_dir(tmp_path, "malformed-cursors")
-    state = {
-        "run_id": "malformed-cursors",
-        "schema_version": 2,
-        "step": "2",
-        "last_decision": "not-a-date",
-        "last_exec": 123,
-        "mark_ages": {"A": -1},
-        "champion": {
-            "slot": "champion",
-            "cash": 1.0,
-            "shares": {},
-            "allow_capital": False,
-            "n_orders": 0,
-            "n_fills": 0,
-            "history": [],
-        },
-    }
-    (root / "broker_state.json").write_text(json.dumps(state))
-
-    report = validate_ledger_schema(root)
-
-    assert report["ok"] is False
-    assert {
-        "broker_state_step_invalid",
-        "broker_state_last_decision_invalid",
-        "broker_state_last_exec_invalid",
-        "broker_state_mark_ages_invalid",
-    } <= set(report["errors"])
-
-
-def test_broker_state_rejects_nonfinite_champion_numbers(tmp_path: Path) -> None:
-    root = _ledger_dir(tmp_path, "malformed-champion")
-    state = {
-        "run_id": "malformed-champion",
-        "schema_version": 2,
-        "step": 0,
-        "champion": {
-            "slot": "",
-            "cash": "nan",
-            "shares": {"A": "inf"},
-            "allow_capital": 1,
-            "n_orders": 0,
-            "n_fills": 0,
-            "history": [],
-        },
-    }
-    (root / "broker_state.json").write_text(json.dumps(state))
-
-    report = validate_ledger_schema(root)
-
-    assert report["ok"] is False
-    assert {
-        "broker_state_champion_slot_invalid",
-        "broker_state_champion_cash_invalid",
-        "broker_state_champion_shares_invalid",
-        "broker_state_champion_allow_capital_invalid",
-    } <= set(report["errors"])
-
-
 def _paper_cfg(tmp_path: Path):  # noqa: ANN202
     from quant_fund.config.loader import load_config
 

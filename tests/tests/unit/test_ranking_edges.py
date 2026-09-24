@@ -7,11 +7,24 @@ import pytest
 
 from quant_fund.models.ranking import (
     CompositeRanker,
+    EnsembleRanker,
     LGBMLambdaRanker,
     _to_relevance,
     available_features,
     group_sizes,
 )
+
+
+def test_ensemble_ranker_fits_all_members_and_returns_finite_scores() -> None:
+    rng = np.random.default_rng(4)
+    x = rng.normal(size=(32, 4))
+    y = x[:, 0] - 0.5 * x[:, 1] + rng.normal(size=32) * 0.05
+    model = EnsembleRanker(seed=4).fit(x, y)
+    scores = model.predict(x[:7])
+    assert scores.shape == (7,)
+    assert np.isfinite(scores).all()
+    assert model.metadata().name == "ensemble"
+    assert len(model.metadata().extra["members"]) == 3
 
 
 def test_group_sizes_empty_all_same_all_unique() -> None:

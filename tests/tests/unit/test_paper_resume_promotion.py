@@ -7,9 +7,10 @@ from pathlib import Path
 import polars as pl
 import pytest
 
+import quant_fund.paper.ledger as ledger_module
 from quant_fund.config.loader import load_config
 from quant_fund.monitoring.kill_switch import HALT_NEW_ORDERS
-from quant_fund.paper.ledger import load_broker_state, promotion_dry_run
+from quant_fund.paper.ledger import PaperLedger, load_broker_state, promotion_dry_run
 from quant_fund.paper.loop import (
     _merge_divergence_summary,
     _paper_resume_fingerprint,
@@ -59,6 +60,302 @@ def _cfg(tmp_path: Path):
     cfg.paper.promote_min_steps = 3
     cfg.paper.promote_max_mean_l1 = 1.0  # loose for dry-run would_promote_paper
     return cfg
+
+
+def test_paper_resume_reconciles_checkpoint_after_post_save_crash(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    original_save = PaperLedger.save_broker_state
+    calls = 0
+
+    def crash_after_first_save(self, *args, **kwargs):
+        nonlocal calls
+        path = original_save(self, *args, **kwargs)
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("simulated crash after checkpoint publication")
+        return path
+
+    monkeypatch.setattr(PaperLedger, "save_broker_state", crash_after_first_save)
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            run_id="paper-crash-reconcile",
+            prefer_latest=False,
+        )
+
+    monkeypatch.setattr(PaperLedger, "save_broker_state", original_save)
+    resumed = run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=1,
+        resume=True,
+        resume_run_id="paper-crash-reconcile",
+    )
+
+    root = tmp_path / "metadata" / "paper" / "paper-crash-reconcile"
+    equity = pl.read_parquet(root / "equity.parquet")
+    state = load_broker_state(tmp_path, "paper-crash-reconcile")
+    assert state is not None
+    assert resumed.metrics["n_steps"] == 2
+    assert equity.height == 2
+    assert int(state["step"]) == equity.height
+
+
+def test_paper_resume_rejects_missing_equity_before_mutation(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=2,
+        run_id="missing-equity-resume",
+        prefer_latest=False,
+    )
+
+    root = tmp_path / "metadata" / "paper" / "missing-equity-resume"
+    state_before = load_broker_state(tmp_path, "missing-equity-resume")
+    assert state_before is not None
+    assert int(state_before["step"]) == 2
+    (root / "equity.parquet").unlink()
+
+    with pytest.raises(ValueError, match="durable equity"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id="missing-equity-resume",
+        )
+
+    state_after = load_broker_state(tmp_path, "missing-equity-resume")
+    assert state_after == state_before
+    assert not (root / "equity.parquet").exists()
+
+
+def test_paper_resume_rejects_unreadable_equity_before_mutation(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=2,
+        run_id="unreadable-equity-resume",
+        prefer_latest=False,
+    )
+
+    root = tmp_path / "metadata" / "paper" / "unreadable-equity-resume"
+    state_before = load_broker_state(tmp_path, "unreadable-equity-resume")
+    assert state_before is not None
+    (root / "equity.parquet").write_bytes(b"not parquet")
+
+    with pytest.raises(ValueError, match="durable equity.*unreadable"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id="unreadable-equity-resume",
+        )
+
+    assert load_broker_state(tmp_path, "unreadable-equity-resume") == state_before
+    assert (root / "equity.parquet").read_bytes() == b"not parquet"
+
+
+def test_paper_resume_rejects_cursor_equity_mismatch_before_mutation(tmp_path):
+    cfg = _cfg(tmp_path)
+    run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=2,
+        run_id="mismatched-equity-resume",
+        prefer_latest=False,
+    )
+
+    root = tmp_path / "metadata" / "paper" / "mismatched-equity-resume"
+    state_before = load_broker_state(tmp_path, "mismatched-equity-resume")
+    assert state_before is not None
+    equity = pl.read_parquet(root / "equity.parquet")
+    equity.head(1).write_parquet(root / "equity.parquet")
+
+    with pytest.raises(ValueError, match="row count does not match broker cursor"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id="mismatched-equity-resume",
+        )
+
+    assert load_broker_state(tmp_path, "mismatched-equity-resume") == state_before
+    assert pl.read_parquet(root / "equity.parquet").height == 1
+
+
+def test_paper_receipt_atomic_publish_preserves_previous_on_replace_failure(tmp_path, monkeypatch):
+    ledger = PaperLedger(tmp_path, "atomic-receipt")
+    receipt_path = ledger.write_promotion_dry_run({"version": 1, "status": "complete"})
+    previous = receipt_path.read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated receipt publish failure")
+
+    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="simulated receipt publish failure"):
+        ledger.write_promotion_dry_run({"version": 2, "status": "complete"})
+
+    assert receipt_path.read_bytes() == previous
+    assert list(ledger.root.glob(f".{receipt_path.name}.*")) == []
+
+
+def test_paper_ledger_atomic_parquet_publish_preserves_previous_on_replace_failure(
+    tmp_path, monkeypatch
+):
+    ledger = PaperLedger(tmp_path, "atomic-parquet")
+    ledger.record_shadow_equity({"event_time": "2024-01-01", "nav": 1.0})
+    ledger.flush()
+    parquet_path = ledger.root / "shadow_equity.parquet"
+    previous = parquet_path.read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated parquet publish failure")
+
+    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    ledger.record_shadow_equity({"event_time": "2024-01-02", "nav": 1.1})
+    with pytest.raises(OSError, match="simulated parquet publish failure"):
+        ledger.flush()
+
+    assert parquet_path.read_bytes() == previous
+    assert list(ledger.root.glob(f".{parquet_path.name}.*")) == []
+
+
+def test_paper_analytics_export_atomic_publish_preserves_previous_on_replace_failure(
+    tmp_path, monkeypatch
+):
+    ledger = PaperLedger(tmp_path, "atomic-analytics")
+    export_path = ledger.write_analytics_export({"version": 1, "status": "complete"})
+    previous = export_path.read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated analytics publish failure")
+
+    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="simulated analytics publish failure"):
+        ledger.write_analytics_export({"version": 2, "status": "complete"})
+
+    assert export_path.read_bytes() == previous
+    assert list(ledger.root.glob(f".{export_path.name}.*")) == []
+
+
+def test_paper_ledger_serialization_failure_cleans_temporary_parquet(tmp_path, monkeypatch):
+    ledger = PaperLedger(tmp_path, "parquet-serialization-failure")
+    ledger.record_shadow_equity({"event_time": "2024-01-01", "nav": 1.0})
+    parquet_path = ledger.root / "shadow_equity.parquet"
+
+    def fail_write_parquet(_frame, _path):
+        raise OSError("simulated parquet serialization failure")
+
+    monkeypatch.setattr(ledger_module.pl.DataFrame, "write_parquet", fail_write_parquet)
+    with pytest.raises(OSError, match="simulated parquet serialization failure"):
+        ledger.flush()
+
+    assert not parquet_path.exists()
+    assert list(ledger.root.glob(f".{parquet_path.name}.*")) == []
+
+
+def test_paper_resume_recovers_after_final_analytics_publish_failure(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    original_write = PaperLedger.write_analytics_export
+    calls = 0
+
+    def fail_once(self, export):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise OSError("simulated final analytics publish failure")
+        return original_write(self, export)
+
+    monkeypatch.setattr(PaperLedger, "write_analytics_export", fail_once)
+    with pytest.raises(OSError, match="simulated final analytics publish failure"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            run_id="analytics-finalization-recovery",
+            prefer_latest=False,
+        )
+
+    root = tmp_path / "metadata" / "paper" / "analytics-finalization-recovery"
+    state = load_broker_state(tmp_path, "analytics-finalization-recovery")
+    assert state is not None
+    assert int(state["step"]) == pl.read_parquet(root / "equity.parquet").height
+    assert not (root / "analytics_export.json").exists()
+
+    monkeypatch.setattr(PaperLedger, "write_analytics_export", original_write)
+    resumed = run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=1,
+        resume=True,
+        resume_run_id="analytics-finalization-recovery",
+    )
+    state_after = load_broker_state(tmp_path, "analytics-finalization-recovery")
+    assert state_after is not None
+    assert resumed.metrics["resumed"] is True
+    assert int(state_after["step"]) == pl.read_parquet(root / "equity.parquet").height
+    assert (root / "analytics_export.json").is_file()
+
+
+def test_paper_resume_with_no_dates_left_keeps_cursor_and_artifacts_consistent(tmp_path):
+    cfg = _cfg(tmp_path)
+    first = run_paper_loop(
+        _bars(3),
+        cfg,
+        champion_weights=_weights(2),
+        initial_nav=100_000.0,
+        prefer_latest=False,
+        run_id="paper-resume-exhausted",
+    )
+    root = tmp_path / "metadata" / "paper" / "paper-resume-exhausted"
+    before = load_broker_state(tmp_path, "paper-resume-exhausted")
+    assert before is not None
+    assert first.metrics["n_steps_this_run"] == 2
+
+    resumed = run_paper_loop(
+        _bars(3),
+        cfg,
+        champion_weights=_weights(2),
+        initial_nav=100_000.0,
+        max_steps=2,
+        resume=True,
+        resume_run_id="paper-resume-exhausted",
+    )
+
+    after = load_broker_state(tmp_path, "paper-resume-exhausted")
+    assert after is not None
+    assert resumed.metrics["n_steps_this_run"] == 0
+    assert (
+        int(after["step"]) == int(before["step"]) == pl.read_parquet(root / "equity.parquet").height
+    )
+    assert (root / "promotion_dry_run.json").is_file()
 
 
 def test_paper_resume_preserves_cash(tmp_path):

@@ -233,6 +233,21 @@ def test_garch_fallback_exposes_reason() -> None:
         model.in_sample_sigma_and_z()
 
 
+def test_garch_consumer_scope_rejects_pooled_asset_use() -> None:
+    pooled = GARCHVol(series_scope="date_level_equal_weight_cross_section")
+    with pytest.raises(ValueError, match="consumable only by date_level_portfolio"):
+        pooled.assert_consumer_scope("per_security")
+    pooled.assert_consumer_scope("date_level_portfolio")
+
+
+def test_garch_consumer_scope_rejects_unknown_scope() -> None:
+    model = GARCHVol(series_scope="per_security")
+    with pytest.raises(ValueError, match="scope mismatch"):
+        model.assert_consumer_scope("date_level_portfolio")
+    with pytest.raises(ValueError, match="successful fit"):
+        model.in_sample_sigma_and_z()
+
+
 def test_in_sample_sigma_and_z_is_decimal_and_standardized() -> None:
     model = GARCHVol().fit_returns(_returns())
     sigma, z = model.in_sample_sigma_and_z()
