@@ -212,3 +212,52 @@ holdout is flat-to-negative — funding compression post-2025 erases the edge.
 Pathways to Sharpe-5 that remain unexplored: multi-sleeve diversification
 (momentum/trend/dipcatch sleeves in quadrature), vol-targeted overlay, and
 maker-fill variants — all dev-window-only per the contract.
+
+## Execution log — 2026-09-24 round (appended)
+
+**Result: Sharpe > 5 NOT achieved across four books; the best holdout is the
+cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`,
+`.dsh-24x7/evidence-arb-sharpe5-grid.json`,
+`.dsh-24x7/evidence-megaplan-1h.json`, `.dsh-24x7/evidence-megaplan-hl-1h.json`,
+`.dsh-24x7/evidence-arb-1h-grid.json`. All runs used the Phase-E protocol
+(dev-half grid → freeze → one locked holdout eval; failure is a result).
+
+| book / grain | frozen config | dev Sharpe / ret / MDD | holdout Sharpe / ret / MDD | gate |
+|---|---|---|---|---|
+| Binance carry 144c, 1d | only_carry tv=0.15 (unqualified) | 1.42 / +67.3% / −8.7% | −0.40 / −8.8% / −16.0% | NOT PROVEN |
+| Binance carry 144c, 1h | only_carry tv=0.10 (unqualified) | 1.56 / +93.6% / −9.7% | −0.64 / −13.1% / −19.2% | NOT PROVEN |
+| HL↔Binance spread arb, 1d (ARBX/ARBB 286 sids) | g55 enter=5e-4 lb=9 mx=30 | 11.13 / +34.1% / −0.5% | **2.42 / +5.7% / −1.9%** | NOT PROVEN (best) |
+| HL↔Binance spread arb, 1h (Feb–Sep 2026 overlap) | g51 enter=1.7e-4 lb=3 mx=15 | 0.58 / +0.4% / −0.3% | 1.41 / +1.3% / −0.8% | NOT PROVEN |
+| HL-only carry 178c, 1h (Feb–Sep 2026, split 06-01) | only_spike_fade tv=0.10 (unqualified) | 0.20 / +0.0% / −16.1% | −0.00 / −2.6% / −25.2% | NOT PROVEN |
+
+**Findings this round:**
+
+1. **Engine funding bug skewed the daily receipt**: `run_perp_backtest`
+   applies funding only on exact `event_time` matches, so on daily bars only
+   the 00:00-UTC epoch landed — the receipt's `funding_received` was ~3×
+   understated ($14k→$221k holdout after fix). Verdict unchanged (holdout
+   still negative with full credit); the corrected harness now maps each
+   event onto its containing bar (`_funding_on_bars` asof) and records
+   `funding_events_dropped` per eval.
+2. **The venue spread is the only surviving edge, and it compresses too.**
+   HL-vs-Binance funding spread holdout: 2.42 daily (Jan'25–Aug'26),
+   1.41 hourly (Jun–Sep'26), h1→h2 dev decay 2.4→−0.7 within 2026 —
+   direction consistent with the same funding-premium compression that
+   erased the outright carry book.
+3. **1h arb book exposes a divergence tail the daily grain hid**: the
+   continuous full-window run lost −254% via 62 liquidations — venue
+   price-divergence wicks trigger wick-paranoid liquidation on the perp leg
+   while the opposite-venue hedge can't offset the margin breach inside one
+   bar. Segmented (dev/holdout) runs use different eligibility universes so
+   the cascade does not appear in either segment. This is a real risk class
+   for the pair construction, not an artifact: the same mechanism exists at
+   daily grain, just damped.
+4. **HL-only 1h book has no positive sleeve except spike-fade** (dev score
+   1.156), which fails dev MDD>5% at every overlay level — fading funding
+   spikes is profitable-in-mean but has fat tails on HL perps.
+5. **Data limits**: HL `candleSnapshot` 1h history only covers ~7 months
+   (Feb–Sep 2026) — the 1h arb/HL evals split at 2026-06-01 instead of the
+   canonical 2025-01-01; receipts name the window honestly.
+
+Remaining unexplored per the plan's own list: maker-fill variants (needs
+order-book data we do not have), and C5 optional ML sleeve.
