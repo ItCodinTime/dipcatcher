@@ -232,6 +232,7 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | 3-venue arb (HL+BIN+OKX), 1d — 375 pair-sids | g55 enter=5e-4 lb=9 mx=30 | 11.13 / +34.1% / −0.5% | 2.42 / +5.7% / −1.9% | NOT PROVEN |
 | 3-venue arb, extended grid (enter→4e-3, lb→45) | g37 enter=1e-3 lb=9 mx=30 | 11.02 / +32.1% / −0.5% | **3.19 / +6.6% / −0.9%** | NOT PROVEN (best) |
 | 3-venue arb, refine pass around champion | enter=1e-3 lb=9 nw=0.08 (interior) | 11.02 / +32.1% / −0.5% | 3.19 / +6.6% / −0.9% | NOT PROVEN |
+| C5 ML carry (GBR next-funding), Binance 144c 1h | mn0.03_gs1.0 | 1.18 / +56.0% / −9.1% | −1.28 / −17.4% / −18.8% | NOT PROVEN |
 
 **Findings this round:**
 
@@ -271,7 +272,20 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
    optimum, and further tuning is dev-overfitting. The binding constraint
    is the 2026 cross-venue funding-spread compression, not config choice.
    `scripts/build_arb_book_multi.py`, receipts `evidence-arb3-*.json`.
+7. **C5 ML sleeve learns the decaying regime, not a persistent edge.** A
+   dev-only `GradientBoostingRegressor` (300 trees) predicting each symbol's
+   next funding value from strictly-past features (funding lags/rolling stats
+   + as-of perp momentum/vol) reached dev Sharpe 1.18 — better than the
+   static carry dev 1.56→h2 0.65 trajectory but still h2-decaying — and
+   flipped to −1.28 holdout / −18.8% MDD. Prediction std 4.2e-4 vs event
+   scale 4.5e-4 means the model captures real cross-sectional signal, but the
+   signal itself compresses to zero in 2026. `scripts/c5_ml_carry.py`,
+   receipt `.dsh-24x7/evidence-c5-ml-1h.json`.
 
-Remaining unexplored per the plan's own list: maker-fill variants (needs
-order-book data we do not have), and C5 optional ML sleeve (ran this round
-on the 1h Binance book — see the C5 row above).
+Remaining unexplored per the plan's own list: maker-fill variants, which
+require order-book data the venue APIs here do not provide. Every lane
+executable with the data on hand — outright carry (1d/1h, Binance+HL),
+cross-venue spread arb (2- and 3-venue, 1d/1h, base+extended+refined
+grids), per-sleeve blends, and the C5 ML sleeve — has been run under the
+frozen-config protocol and honestly recorded. Best achieved holdout:
+3.19 Sharpe / −0.9% MDD on the 3-venue arb book.
