@@ -170,6 +170,25 @@
 - `feature_select.py`: FCD mRMR with |corr| relevance/redundancy.
 
 
+## Wave 9 mathematical conventions
+
+- `skew_normal.py`: f(x) = (2/omega) phi(z) Phi(alpha z), z=(x-xi)/omega;
+  CDF = Phi(z) - 2 T(z, alpha) (Owen's T). MoM inverts skewness g1 to
+  delta = alpha/sqrt(1+alpha^2) with |g1| capped at 0.995; omega, xi match
+  the first two moments.
+- `johnson_su.py`: z = gamma + delta asinh((x-xi)/lambda). Slifker-Shapiro
+  reads quantiles at z=+/-z0, +/-3z0; delta = 2 z0 / acosh((m/p+n/p)/2),
+  gamma = delta asinh((n/p-m/p)/(2 sqrt(mn/p^2-1))); lambda and xi are
+  recovered exactly from the standardised inner spread p = lambda[sinh((z0-g)/d)
+  - sinh((-z0-g)/d)].
+- `edgeworth.py`: Gram-Charlier A f = phi(z)/sigma [1 + (S/6)He_3 + (K/24)He_4],
+  F = Phi(z) - phi(z)[(S/6)He_2 + (K/24)He_3], He_2=z^2-1, He_3=z^3-3z,
+  He_4=z^4-6z^2+3; integrates to 1 for any (S,K) but may go negative
+  (validity checked on a grid).
+- `tukey_gh.py`: x = A + B (e^{gZ}-1)/g e^{hZ^2/2} (limit B Z e^{hZ^2/2} as
+  g->0). Monotone in Z for h>=0 so CDF/PDF follow by inversion and
+  f(x)=phi(Z)/(dx/dZ). Hoaglin fit: g = (1/Z) ln(UHS/LHS) per symmetric
+  quantile pair; regress ln[FS g/(2 sinh gZ)] on Z^2/2 for (ln B, h).
 ## Wave 8 mathematical conventions
 
 - `ets.py`: SES level l_t = a y_t + (1-a) l_{t-1}; Holt adds trend
