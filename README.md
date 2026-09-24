@@ -24,6 +24,8 @@ For operator procedures and incident handling, see
 For a fixed dataset/split contract with matched forecast baselines, see
 [docs/REAL_DATA_BENCHMARK.md](docs/REAL_DATA_BENCHMARK.md).
 The implementation sequence is tracked in [docs/REPO_IMPROVEMENT_PLAN.md](docs/REPO_IMPROVEMENT_PLAN.md).
+For matched strategy comparisons after modeled execution and carrying costs,
+see [docs/NET_RETURN_TOURNAMENT.md](docs/NET_RETURN_TOURNAMENT.md).
 
 ## What it does not do
 
