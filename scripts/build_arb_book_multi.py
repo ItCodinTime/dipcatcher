@@ -77,6 +77,18 @@ def main() -> int:
         venues[code] = (perp, fund)
         print(f"{code} ({dstr}): perp={perp.height} fund_days={fund.height}")
 
+    # Shared calendar: venues fetched on different dates otherwise poison the
+    # "still listed at window end" eligibility check for every pair-sid.
+    min_end = min(p["event_time"].max() for p, _ in venues.values())
+    venues = {
+        c: (
+            p.filter(pl.col("event_time") <= min_end),
+            f.filter(pl.col("d") <= min_end),
+        )
+        for c, (p, f) in venues.items()
+    }
+    print("common window end:", min_end)
+
     perp_rows: list[pl.DataFrame] = []
     spot_rows: list[pl.DataFrame] = []
     fund_rows: list[pl.DataFrame] = []
