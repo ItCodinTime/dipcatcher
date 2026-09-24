@@ -21,6 +21,9 @@ For the evidence-gated production boundary, see
 [docs/INSTITUTIONAL_READINESS.md](docs/INSTITUTIONAL_READINESS.md).
 For operator procedures and incident handling, see
 [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md).
+For a fixed dataset/split contract with matched forecast baselines, see
+[docs/REAL_DATA_BENCHMARK.md](docs/REAL_DATA_BENCHMARK.md).
+The implementation sequence is tracked in [docs/REPO_IMPROVEMENT_PLAN.md](docs/REPO_IMPROVEMENT_PLAN.md).
 
 ## What it does not do
 
