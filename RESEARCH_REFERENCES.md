@@ -253,6 +253,21 @@
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
 
+## Wave 14 references (nonparametric statistics & econometrics)
+
+### Impulse responses
+- O. Jorda (2005). "Estimation and inference of impulse responses by local projections." American Economic Review — `models/local_projection.py`.
+
+### Nonparametric inference
+- A. Owen (1988). "Empirical likelihood ratio confidence intervals for a single functional." Biometrika; A. Owen (1990). "Empirical likelihood ratio confidence regions." Annals of Statistics — `metrics/empirical_likelihood.py`.
+
+### Density estimation
+- B. W. Silverman (1986). *Density Estimation for Statistics and Data Analysis* — `metrics/kde.py` rule-of-thumb bandwidth.
+- D. W. Scott (1992). *Multivariate Density Estimation* — `metrics/kde.py` normal-reference bandwidth.
+- M. Rudemo (1982); A. Bowman (1984). Least-squares cross-validation bandwidth — `metrics/kde.py`.
+
+### Smoothing
+- W. S. Cleveland (1979). "Robust locally weighted regression and smoothing scatterplots." JASA — `models/lowess.py`.
 ## Wave 19 references (dimensionality reduction & clustering)
 
 - W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.

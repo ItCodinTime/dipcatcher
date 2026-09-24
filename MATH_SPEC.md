@@ -267,6 +267,19 @@
   (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
   average the weights and renormalise (Michaud resampled efficiency).
 
+## Wave 14 mathematical conventions
+
+- `local_projection.py`: for each horizon h regress y_{t+h}=a_h+beta_h x_t+
+  controls+e; IRF(h)=beta_h; Newey-West HAC variance with bandwidth h+1.
+- `empirical_likelihood.py`: W(mu0)=2 sum log(1+lambda(x_i-mu0)) with lambda
+  solving sum (x_i-mu0)/(1+lambda(x_i-mu0))=0 on the feasible interval; W ~
+  chi2_1; CI by inverting W(mu0)<=chi2_{1,level}.
+- `kde.py`: fhat=(1/nh) sum phi((x-x_i)/h); Silverman h=0.9 min(sd,IQR/1.34)
+  n^{-1/5}; Scott h=1.059 sd n^{-1/5}; LSCV minimises
+  (1/n^2) sum (1/(2h sqrt pi)) e^{-d^2/4} - (2/(n(n-1)h)) sum_{i!=j} phi(d).
+- `lowess.py`: local linear fit over the frac*n nearest points with tricube
+  weights (1-|u|^3)^3; robustness iterations reweight by Tukey bisquare
+  (1-(r/6s)^2)^2, s=median|resid|.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
