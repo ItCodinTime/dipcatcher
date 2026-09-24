@@ -27,6 +27,9 @@ The implementation sequence is tracked in [docs/REPO_IMPROVEMENT_PLAN.md](docs/R
 For matched strategy comparisons after modeled execution and carrying costs,
 see [docs/NET_RETURN_TOURNAMENT.md](docs/NET_RETURN_TOURNAMENT.md).
 
+For cost-aware sizing with matched rank-allocation controls, see
+[docs/COST_AWARE_CONSTRUCTION.md](docs/COST_AWARE_CONSTRUCTION.md).
+
 ## What it does not do
 
 - Headline Sharpe, PSR, DSR, or live P&L as research output

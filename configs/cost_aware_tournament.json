@@ -1,0 +1,69 @@
+{
+  "benchmark": {
+    "name": "equal_weight",
+    "family": "equal_weight",
+    "lookback": 20
+  },
+  "trials": [
+    {
+      "name": "momentum_20",
+      "family": "momentum",
+      "lookback": 20,
+      "fraction": 0.25
+    },
+    {
+      "name": "reversal_1",
+      "family": "reversal",
+      "lookback": 1,
+      "fraction": 0.25
+    },
+    {
+      "name": "momentum_20_cost_aware",
+      "family": "momentum",
+      "lookback": 20,
+      "fraction": 0.25,
+      "allocation": {
+        "risk_window": 60,
+        "risk_aversion": 20.0,
+        "uncertainty_aversion": 1.0,
+        "covariance_shrinkage": 0.25,
+        "alpha_scale": 1.0,
+        "turnover_limit": 0.25
+      }
+    },
+    {
+      "name": "reversal_1_cost_aware",
+      "family": "reversal",
+      "lookback": 1,
+      "fraction": 0.25,
+      "allocation": {
+        "risk_window": 60,
+        "risk_aversion": 20.0,
+        "uncertainty_aversion": 1.0,
+        "covariance_shrinkage": 0.25,
+        "alpha_scale": 1.0,
+        "turnover_limit": 0.25
+      }
+    }
+  ],
+  "execution": {
+    "initial_nav": 100000.0,
+    "gross_limit": 0.95,
+    "max_name_weight": 0.2,
+    "participation_limit": 0.01,
+    "commission_bps": 1.0,
+    "half_spread_bps": 5.0,
+    "impact_y": 0.1,
+    "borrow_apr": 0.03,
+    "funding_apr": 0.06,
+    "cash_apr": 0.0,
+    "max_names": 50,
+    "target_buffer": 0.01
+  },
+  "open_column": "open",
+  "volume_column": "volume",
+  "price_basis": "raw_price_return",
+  "n_boot": 2000,
+  "block_sessions": 10,
+  "seed": 17
+}
