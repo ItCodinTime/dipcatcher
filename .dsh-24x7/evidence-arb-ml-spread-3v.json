@@ -1,0 +1,238 @@
+{
+  "stage": {
+    "g0": {
+      "cfg": {
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 12.564483829903642,
+      "h2_sharpe": 10.369184724414318,
+      "score": 10.369184724414318
+    },
+    "g1": {
+      "cfg": {
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 11.394877231891014,
+      "h2_sharpe": 10.979185398138325,
+      "score": 10.979185398138325
+    },
+    "g2": {
+      "cfg": {
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 12.723865155935245,
+      "h2_sharpe": 9.282634718030499,
+      "score": 9.282634718030499
+    },
+    "g3": {
+      "cfg": {
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 12.287326170584386,
+      "h2_sharpe": 11.110248448991438,
+      "score": 11.110248448991438
+    },
+    "g4": {
+      "cfg": {
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 13.400949704979963,
+      "h2_sharpe": 10.786795111867391,
+      "score": 10.786795111867391
+    },
+    "g5": {
+      "cfg": {
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 11.45764563439316,
+      "h2_sharpe": 11.38306498916971,
+      "score": 11.38306498916971
+    },
+    "g6": {
+      "cfg": {
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 13.16726842492894,
+      "h2_sharpe": 10.009315262701724,
+      "score": 10.009315262701724
+    },
+    "g7": {
+      "cfg": {
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 13.244105651890525,
+      "h2_sharpe": 10.515349381088006,
+      "score": 10.515349381088006
+    },
+    "g8": {
+      "cfg": {
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.838881635830525,
+      "h2_sharpe": 8.022265518137711,
+      "score": 7.838881635830525
+    },
+    "g9": {
+      "cfg": {
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.896000248541134,
+      "h2_sharpe": 8.95028784036594,
+      "score": 7.896000248541134
+    },
+    "g10": {
+      "cfg": {
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.674505577277241,
+      "h2_sharpe": 6.605880191594587,
+      "score": 6.605880191594587
+    },
+    "g11": {
+      "cfg": {
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.679553957111205,
+      "h2_sharpe": 7.4458681769520405,
+      "score": 7.4458681769520405
+    }
+  },
+  "frozen": {
+    "id": "g5",
+    "enter_rate": 0.001,
+    "exit_rate": -0.000125,
+    "lookback_events": 9,
+    "name_weight": 0.08,
+    "max_names": 30,
+    "rebalance_band": 1.3,
+    "rate_scale_ref": 0.002,
+    "rate_scale_cap": 1.5,
+    "rate_scale_floor": 1.0,
+    "qualified_on_dev": "True"
+  },
+  "dev": {
+    "total_return": 0.32484355888229954,
+    "cagr": 0.15112937483973843,
+    "sharpe": 10.221538439840389,
+    "max_drawdown": -0.007678307096634196,
+    "mean_turnover": 0.015787581117932114,
+    "funding_net": 361604.7889675342,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 2,
+    "n": 730
+  },
+  "holdout": {
+    "total_return": 0.03989337605822496,
+    "cagr": 0.023817797131593377,
+    "sharpe": 2.507108364793399,
+    "max_drawdown": -0.007616170105981479,
+    "mean_turnover": 0.015315578609839764,
+    "funding_net": 68973.5620774161,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 3,
+    "n": 607
+  },
+  "gate": {
+    "PROVEN": false
+  }
+}
