@@ -215,3 +215,11 @@
 
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Wave 21 references (forecast accuracy, whitening, MVO & utility)
+
+- H. Theil (1966). *Applied Economic Forecasting* — Theil's U inequality coefficients (`metrics/forecast_accuracy.py`).
+- R. Hyndman, A. Koehler (2006). "Another look at measures of forecast accuracy." IJF — MASE (`metrics/forecast_accuracy.py`).
+- A. Kessy, A. Lewin, K. Strimmer (2018). "Optimal whitening and decorrelation." The American Statistician — `models/whitening.py`.
+- H. Markowitz (1952). "Portfolio selection." Journal of Finance — `models/efficient_frontier.py`.
+- J. Pratt (1964). "Risk aversion in the small and in the large." Econometrica; K. Arrow (1965). *Aspects of the Theory of Risk-Bearing* — `metrics/utility.py`.
