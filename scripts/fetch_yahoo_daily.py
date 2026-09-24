@@ -22,28 +22,75 @@ import polars as pl
 
 UNIVERSE: dict[str, str] = {
     # equity beta / styles
-    "SPY": "eq", "QQQ": "eq", "DIA": "eq", "IWM": "eq", "EFA": "eq", "EEM": "eq",
-    "VEA": "eq", "MTUM": "eq", "USMV": "eq", "QUAL": "eq", "VLUE": "eq",
+    "SPY": "eq",
+    "QQQ": "eq",
+    "DIA": "eq",
+    "IWM": "eq",
+    "EFA": "eq",
+    "EEM": "eq",
+    "VEA": "eq",
+    "MTUM": "eq",
+    "USMV": "eq",
+    "QUAL": "eq",
+    "VLUE": "eq",
     # equity sectors
-    "XLF": "eqsec", "XLE": "eqsec", "XLK": "eqsec", "XLV": "eqsec",
-    "XLP": "eqsec", "XLU": "eqsec", "XLI": "eqsec", "XLB": "eqsec",
-    "XLY": "eqsec", "XLC": "eqsec", "XLRE": "eqsec",
+    "XLF": "eqsec",
+    "XLE": "eqsec",
+    "XLK": "eqsec",
+    "XLV": "eqsec",
+    "XLP": "eqsec",
+    "XLU": "eqsec",
+    "XLI": "eqsec",
+    "XLB": "eqsec",
+    "XLY": "eqsec",
+    "XLC": "eqsec",
+    "XLRE": "eqsec",
     # real estate
-    "VNQ": "reit", "IYR": "reit",
+    "VNQ": "reit",
+    "IYR": "reit",
     # rates / credit
-    "TLT": "bond", "IEF": "bond", "IEI": "bond", "SHY": "bond", "BIL": "bond",
-    "LQD": "bond", "HYG": "bond", "TIP": "bond", "EMB": "bond", "MUB": "bond",
-    "AGG": "bond", "VCIT": "bond", "BND": "bond", "TLH": "bond",
+    "TLT": "bond",
+    "IEF": "bond",
+    "IEI": "bond",
+    "SHY": "bond",
+    "BIL": "bond",
+    "LQD": "bond",
+    "HYG": "bond",
+    "TIP": "bond",
+    "EMB": "bond",
+    "MUB": "bond",
+    "AGG": "bond",
+    "VCIT": "bond",
+    "BND": "bond",
+    "TLH": "bond",
     # commodities
-    "GLD": "cmd", "SLV": "cmd", "USO": "cmd", "UNG": "cmd", "DBC": "cmd",
-    "PPLT": "cmd", "CPER": "cmd", "DBB": "cmd",
+    "GLD": "cmd",
+    "SLV": "cmd",
+    "USO": "cmd",
+    "UNG": "cmd",
+    "DBC": "cmd",
+    "PPLT": "cmd",
+    "CPER": "cmd",
+    "DBB": "cmd",
     # fx
-    "UUP": "fx", "FXE": "fx", "FXY": "fx", "FXB": "fx", "FXF": "fx", "FXA": "fx",
+    "UUP": "fx",
+    "FXE": "fx",
+    "FXY": "fx",
+    "FXB": "fx",
+    "FXF": "fx",
+    "FXA": "fx",
     # vol risk premium (short-vol sleeve; DD-governed)
-    "SVXY": "vol", "VXX": "vol",
+    "SVXY": "vol",
+    "VXX": "vol",
     # indices (features/long history)
-    "^GSPC": "idx", "^IXIC": "idx", "^DJI": "idx", "^RUT": "idx",
-    "^VIX": "idx", "^TNX": "idx", "^IRX": "idx", "^FVX": "idx",
+    "^GSPC": "idx",
+    "^IXIC": "idx",
+    "^DJI": "idx",
+    "^RUT": "idx",
+    "^VIX": "idx",
+    "^TNX": "idx",
+    "^IRX": "idx",
+    "^FVX": "idx",
 }
 
 
@@ -118,7 +165,7 @@ def main() -> int:
     syms = args.syms.split(",") if args.syms else list(UNIVERSE)
     manifest = {}
     for sym in syms:
-        dest = args.outdir / f"{sym.replace('^','').lower()}_1d.parquet"
+        dest = args.outdir / f"{sym.replace('^', '').lower()}_1d.parquet"
         try:
             df = to_frame(fetch_chart(sym), sym)
         except Exception:  # noqa: BLE001 - retry once then record failure

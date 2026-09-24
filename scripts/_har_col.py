@@ -89,9 +89,7 @@ def _har_forecast(sv: np.ndarray) -> tuple[float, np.ndarray] | None:
     if not np.isfinite(beta).all():
         return None
     beta = np.maximum(beta, 0.0)
-    f = np.array(
-        [1.0, sv[-1], sv[-HAR_LAG_WEEK:].mean(), sv[-HAR_LAG_MONTH:].mean()]
-    )
+    f = np.array([1.0, sv[-1], sv[-HAR_LAG_WEEK:].mean(), sv[-HAR_LAG_MONTH:].mean()])
     return max(float(f @ beta), 1e-6), beta
 
 
@@ -181,9 +179,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             crps[row] = crps_from_quantiles(y, LGBM_TAUS, q_lgbm)
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q_taus[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q_taus[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q_taus[k]]), tau)[0])
             betas[row] = stats["beta"]
             n_pk[row] = stats["n_parkinson"]
             n_r2[row] = stats["n_r2_fallback"]
@@ -239,9 +235,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     fitted = np.isfinite(out["har_betas"]).all(axis=1)
     meta_out = {
         "tool": Path(__file__).name,
@@ -252,9 +246,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "har": {
@@ -270,9 +265,7 @@ def main() -> int:
                 "parkinson_bars": int(out["n_parkinson"].sum()),
                 "r2_fallback_bars": int(out["n_r2_fallback"].sum()),
             },
-            "sigma_hat_mean": float(np.nanmean(out["sigma_hat"]))
-            if fitted.any()
-            else None,
+            "sigma_hat_mean": float(np.nanmean(out["sigma_hat"])) if fitted.any() else None,
         },
         "elapsed_s": round(time.time() - t0, 3),
     }

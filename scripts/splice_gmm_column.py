@@ -41,9 +41,11 @@ def _load_shard(path: Path) -> dict[str, Any]:
             "aids": z["asset_ids"],
             "names": [str(x) for x in z["model_names"]],
             "meta": json.loads(str(z["meta_json"])),
-            "extra": {k: z[k] for k in z.files
-                      if k not in {"crps_matrix", "pinball_cube", "asset_ids",
-                                   "model_names", "meta_json"}},
+            "extra": {
+                k: z[k]
+                for k in z.files
+                if k not in {"crps_matrix", "pinball_cube", "asset_ids", "model_names", "meta_json"}
+            },
         }
 
 
@@ -101,15 +103,24 @@ def splice(shard_path: Path, col_path: Path) -> dict[str, Any]:
     }
     meta["appended_columns"] = appended
     return {
-        "crps": crps, "pin": pin, "aids": s["aids"], "names": names,
-        "meta": meta, "extra": s["extra"],
+        "crps": crps,
+        "pin": pin,
+        "aids": s["aids"],
+        "names": names,
+        "meta": meta,
+        "extra": s["extra"],
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--pairs", type=Path, nargs="+", required=True,
-                   help="shard.npz col.gmmk.npz pairs (even count)")
+    p.add_argument(
+        "--pairs",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="shard.npz col.gmmk.npz pairs (even count)",
+    )
     p.add_argument("--suffix", default=".withgmm.npz")
     args = p.parse_args(argv)
     if len(args.pairs) % 2:
@@ -118,9 +129,11 @@ def main(argv: list[str] | None = None) -> int:
         shard, col = args.pairs[i], args.pairs[i + 1]
         out_data = splice(shard, col)
         out = shard.with_suffix("")  # strip .npz
-        out = Path(str(out)[: -len(".losses")] + args.suffix) if str(out).endswith(
-            ".losses"
-        ) else Path(str(shard) + args.suffix)
+        out = (
+            Path(str(out)[: -len(".losses")] + args.suffix)
+            if str(out).endswith(".losses")
+            else Path(str(shard) + args.suffix)
+        )
         np.savez_compressed(
             out,
             crps_matrix=out_data["crps"],

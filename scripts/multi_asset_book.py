@@ -41,29 +41,90 @@ from quant_fund.backtest.perp_engine import run_perp_backtest  # noqa: E402
 from quant_fund.config.loader import load_config  # noqa: E402
 
 CLASSES: dict[str, str] = {
-    "SPY": "eq", "QQQ": "eq", "DIA": "eq", "IWM": "eq", "EFA": "eq", "EEM": "eq",
-    "VEA": "eq", "MTUM": "eq", "USMV": "eq", "QUAL": "eq", "VLUE": "eq",
-    "XLF": "eqsec", "XLE": "eqsec", "XLK": "eqsec", "XLV": "eqsec",
-    "XLP": "eqsec", "XLU": "eqsec", "XLI": "eqsec", "XLB": "eqsec",
-    "XLY": "eqsec", "XLC": "eqsec", "XLRE": "eqsec",
-    "VNQ": "reit", "IYR": "reit",
-    "TLT": "bond", "IEF": "bond", "IEI": "bond", "SHY": "bond", "BIL": "bond",
-    "LQD": "bond", "HYG": "bond", "TIP": "bond", "EMB": "bond", "MUB": "bond",
-    "AGG": "bond", "VCIT": "bond", "BND": "bond", "TLH": "bond",
-    "GLD": "cmd", "SLV": "cmd", "USO": "cmd", "UNG": "cmd", "DBC": "cmd",
-    "PPLT": "cmd", "CPER": "cmd", "DBB": "cmd",
-    "UUP": "fx", "FXE": "fx", "FXY": "fx", "FXB": "fx", "FXF": "fx", "FXA": "fx",
-    "SVXY": "vol", "VXX": "vol",
-    "IAU": "cmd", "IVV": "eq", "VOO": "eq", "SCHF": "eq",
-    "BIV": "bond", "BSV": "bond", "SGOV": "cash", "SHV": "cash",
+    "SPY": "eq",
+    "QQQ": "eq",
+    "DIA": "eq",
+    "IWM": "eq",
+    "EFA": "eq",
+    "EEM": "eq",
+    "VEA": "eq",
+    "MTUM": "eq",
+    "USMV": "eq",
+    "QUAL": "eq",
+    "VLUE": "eq",
+    "XLF": "eqsec",
+    "XLE": "eqsec",
+    "XLK": "eqsec",
+    "XLV": "eqsec",
+    "XLP": "eqsec",
+    "XLU": "eqsec",
+    "XLI": "eqsec",
+    "XLB": "eqsec",
+    "XLY": "eqsec",
+    "XLC": "eqsec",
+    "XLRE": "eqsec",
+    "VNQ": "reit",
+    "IYR": "reit",
+    "TLT": "bond",
+    "IEF": "bond",
+    "IEI": "bond",
+    "SHY": "bond",
+    "BIL": "bond",
+    "LQD": "bond",
+    "HYG": "bond",
+    "TIP": "bond",
+    "EMB": "bond",
+    "MUB": "bond",
+    "AGG": "bond",
+    "VCIT": "bond",
+    "BND": "bond",
+    "TLH": "bond",
+    "GLD": "cmd",
+    "SLV": "cmd",
+    "USO": "cmd",
+    "UNG": "cmd",
+    "DBC": "cmd",
+    "PPLT": "cmd",
+    "CPER": "cmd",
+    "DBB": "cmd",
+    "UUP": "fx",
+    "FXE": "fx",
+    "FXY": "fx",
+    "FXB": "fx",
+    "FXF": "fx",
+    "FXA": "fx",
+    "SVXY": "vol",
+    "VXX": "vol",
+    "IAU": "cmd",
+    "IVV": "eq",
+    "VOO": "eq",
+    "SCHF": "eq",
+    "BIV": "bond",
+    "BSV": "bond",
+    "SGOV": "cash",
+    "SHV": "cash",
 }
-FEATURE_SYMS = {"VIX": "vix", "TNX": "tnx", "IRX": "irx", "FVX": "fvx",
-                "GSPC": "gspc", "IXIC": "ixic", "DJI": "dji", "RUT": "rut"}
+FEATURE_SYMS = {
+    "VIX": "vix",
+    "TNX": "tnx",
+    "IRX": "irx",
+    "FVX": "fvx",
+    "GSPC": "gspc",
+    "IXIC": "ixic",
+    "DJI": "dji",
+    "RUT": "rut",
+}
 REV_CLASSES = {"eq", "eqsec", "reit"}
 TSMOM_LOOKBACKS = (21, 63, 126, 252)
 # Near-duplicate ETF pairs — tight cointegration, mean-reversion legs.
-PAIRS = [("TLT", "TLH"), ("AGG", "BND"), ("EFA", "VEA"), ("GLD", "IAU"),
-         ("SPY", "IVV"), ("SPY", "VOO")]
+PAIRS = [
+    ("TLT", "TLH"),
+    ("AGG", "BND"),
+    ("EFA", "VEA"),
+    ("GLD", "IAU"),
+    ("SPY", "IVV"),
+    ("SPY", "VOO"),
+]
 XSEC_CLASSES = {"eqsec": 3, "bond": 3, "cmd": 2, "fx": 2}
 CASH_LEGS = ("SGOV", "BIL", "SHV")
 
@@ -74,7 +135,9 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _load_universe(src: Path, stocks_src: Path | None = None) -> tuple[pl.DataFrame, dict[str, pl.Series]]:
+def _load_universe(
+    src: Path, stocks_src: Path | None = None
+) -> tuple[pl.DataFrame, dict[str, pl.Series]]:
     """Load traded symbols -> normalized-daily bars; feature series -> date->value.
 
     Files under ``stocks_src`` get class "stk" (single-name equity L/S pool).
@@ -102,18 +165,28 @@ def _load_universe(src: Path, stocks_src: Path | None = None) -> tuple[pl.DataFr
             pl.col("close").alias("close_total_return"),
             pl.lit("yahoo").alias("source"),
         )
-        bars_parts.append(df.select(
-            "security_id", "event_time", "open", "high", "low", "close",
-            "close_total_return", "volume", "source",
-        ))
+        bars_parts.append(
+            df.select(
+                "security_id",
+                "event_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "close_total_return",
+                "volume",
+                "source",
+            )
+        )
     if not bars_parts:
         raise SystemExit(f"no traded symbol bars under {src}")
     return pl.concat(bars_parts), features
 
 
 def _close_matrix(bars: pl.DataFrame) -> tuple[list[datetime], list[str], np.ndarray]:
-    piv = bars.pivot(on="security_id", index="event_time", values="close",
-                     aggregate_function="last").sort("event_time")
+    piv = bars.pivot(
+        on="security_id", index="event_time", values="close", aggregate_function="last"
+    ).sort("event_time")
     times = piv["event_time"].to_list()
     sids = [c for c in piv.columns if c != "event_time"]
     mat = piv.select(sids).to_numpy()
@@ -142,11 +215,7 @@ def build_weights(
     out: dict[datetime, dict[str, float]] = {}
     svxy_j = sids.index("SVXY") if "SVXY" in sids else -1
     vix_map = feats_by_date.get("vix", {})
-    pair_idx = [
-        (sids.index(a), sids.index(b), a, b)
-        for a, b in PAIRS
-        if a in sids and b in sids
-    ]
+    pair_idx = [(sids.index(a), sids.index(b), a, b) for a, b in PAIRS if a in sids and b in sids]
     xsec_groups: dict[str, list[int]] = {}
     for j, sid in enumerate(sids):
         cls = CLASSES.get(sid)
@@ -170,8 +239,11 @@ def build_weights(
                 if signs:
                     acc += float(np.mean(signs)) * args.tsmom_risk / v
             if "rev" in sleeves and CLASSES.get(sid) in REV_CLASSES and i >= 5:
-                r5 = logc[i, j] - logc[i - 5, j] if np.isfinite(logc[i, j]) and np.isfinite(
-                    logc[i - 5, j]) else np.nan
+                r5 = (
+                    logc[i, j] - logc[i - 5, j]
+                    if np.isfinite(logc[i, j]) and np.isfinite(logc[i - 5, j])
+                    else np.nan
+                )
                 if np.isfinite(r5) and v > 0:
                     z = float(np.clip(-r5 / (v / np.sqrt(252.0) * np.sqrt(5.0)), -1.5, 1.5))
                     if abs(z) > args.rev_gate:
@@ -196,9 +268,12 @@ def build_weights(
             for cls, k in XSEC_CLASSES.items():
                 idxs = xsec_groups.get(cls, [])
                 mom = np.array(
-                    [logc[i, j] - logc[i - 63, j]
-                     if np.isfinite(logc[i, j]) and np.isfinite(logc[i - 63, j]) else np.nan
-                     for j in idxs]
+                    [
+                        logc[i, j] - logc[i - 63, j]
+                        if np.isfinite(logc[i, j]) and np.isfinite(logc[i - 63, j])
+                        else np.nan
+                        for j in idxs
+                    ]
                 )
                 finite = np.isfinite(mom)
                 if finite.sum() < k + 1:
@@ -268,9 +343,7 @@ def build_weights(
             mode = args.vrp_mode
             spike_ok = False
             if mode in ("spike", "both") and vix is not None:
-                recent = [
-                    vix_map.get(times[k]) for k in range(max(0, i - 63), i)
-                ]
+                recent = [vix_map.get(times[k]) for k in range(max(0, i - 63), i)]
                 spike_ok = (
                     any(x is not None and x > args.vix_spike for x in recent)
                     and vix < args.vix_gate
@@ -313,16 +386,23 @@ def _weights_frame(
         per = wmap.get(dt, {})
         for sid in sids:
             rows.append((dt, sid, per.get(sid, 0.0)))
-    return pl.DataFrame(
-        rows, schema=["event_time", "security_id", "target_weight"], orient="row"
-    )
+    return pl.DataFrame(rows, schema=["event_time", "security_id", "target_weight"], orient="row")
 
 
 def _metrics(result_metrics: dict) -> dict:
     keys = (
-        "total_return", "cagr", "sharpe", "max_drawdown", "n",
-        "periods_per_year", "mean_turnover", "liquidation_count",
-        "margin_rejects", "ruined", "flag_high_sharpe", "risk_gate_rejects",
+        "total_return",
+        "cagr",
+        "sharpe",
+        "max_drawdown",
+        "n",
+        "periods_per_year",
+        "mean_turnover",
+        "liquidation_count",
+        "margin_rejects",
+        "ruined",
+        "flag_high_sharpe",
+        "risk_gate_rejects",
     )
     return {k: result_metrics.get(k) for k in keys if k in result_metrics}
 
@@ -418,9 +498,7 @@ def main() -> int:
                 min_scale=0.0,
                 max_scale=args.max_scale,
             ),
-            DrawdownGovernor(
-                dd_soft=args.dd_soft, dd_hard=args.dd_hard, floor=args.dd_floor
-            ),
+            DrawdownGovernor(dd_soft=args.dd_soft, dd_hard=args.dd_hard, floor=args.dd_floor),
         ]
     )
 
@@ -438,14 +516,21 @@ def main() -> int:
         "seg1": str(seg1),
         "sleeves": args.sleeves,
         "params": {
-            "tsmom_risk": args.tsmom_risk, "rev_risk": args.rev_risk,
-            "rev_gate": args.rev_gate, "vrp_risk": args.vrp_risk,
-            "vix_gate": args.vix_gate, "gross_cap": args.gross_cap,
-            "pair_risk": args.pair_risk, "pair_gate": args.pair_gate,
+            "tsmom_risk": args.tsmom_risk,
+            "rev_risk": args.rev_risk,
+            "rev_gate": args.rev_gate,
+            "vrp_risk": args.vrp_risk,
+            "vix_gate": args.vix_gate,
+            "gross_cap": args.gross_cap,
+            "pair_risk": args.pair_risk,
+            "pair_gate": args.pair_gate,
             "xsec_risk": args.xsec_risk,
-            "name_cap": args.name_cap, "target_vol": args.target_vol,
-            "vol_window": args.vol_window, "max_scale": args.max_scale,
-            "dd_soft": args.dd_soft, "dd_hard": args.dd_hard,
+            "name_cap": args.name_cap,
+            "target_vol": args.target_vol,
+            "vol_window": args.vol_window,
+            "max_scale": args.max_scale,
+            "dd_soft": args.dd_soft,
+            "dd_hard": args.dd_hard,
             "dd_floor": args.dd_floor,
             "commission_bps": args.commission_bps,
             "half_spread_bps": args.half_spread_bps,

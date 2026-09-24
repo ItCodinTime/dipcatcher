@@ -196,7 +196,6 @@ def main() -> int:
         for r in uni.select(["security_id", "onboard_ms"]).iter_rows(named=True)
     }
 
-
     jobs: list[tuple[str, str, dict, str]] = []
     for symbol in symbols:
         start_ms = onboard[symbol]

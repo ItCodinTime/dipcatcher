@@ -14,6 +14,7 @@ Dimensions scored:
 
 Research-only: synthetic-order-free, real bars, no live-P&L claim.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -104,9 +105,7 @@ def build_weight_panel(frames: dict[str, pl.DataFrame], sma_window: int) -> pl.D
     )
 
 
-def run_dipcatcher(
-    bars: pl.DataFrame, weights: pl.DataFrame, cost_bps: float, engine: str = "ref"
-):
+def run_dipcatcher(bars: pl.DataFrame, weights: pl.DataFrame, cost_bps: float, engine: str = "ref"):
     from quant_fund.config.models import AppConfig, CostConfig, RiskGateConfig
 
     if engine == "fast":
@@ -215,16 +214,14 @@ def fault_injection(bars: pl.DataFrame, weights: pl.DataFrame) -> dict:
     tail_start = len(all_dates) - 8  # > stale_price_bars=3
     stale = bars.with_columns(
         pl.when(
-            (pl.col("security_id") == sid_hold)
-            & pl.col("event_time").is_in(all_dates[tail_start:])
+            (pl.col("security_id") == sid_hold) & pl.col("event_time").is_in(all_dates[tail_start:])
         )
         .then(None)
         .otherwise(pl.col("close"))
         .alias("close")
     ).with_columns(
         pl.when(
-            (pl.col("security_id") == sid_hold)
-            & pl.col("event_time").is_in(all_dates[tail_start:])
+            (pl.col("security_id") == sid_hold) & pl.col("event_time").is_in(all_dates[tail_start:])
         )
         .then(None)
         .otherwise(pl.col("close_total_return"))
@@ -288,17 +285,12 @@ def main() -> int:
     print(f"assets: {sids}")
 
     weights = build_weight_panel(frames, SMA_WINDOW)
-    print(f"weight panel: {weights.height} rows, "
-          f"{weights['event_time'].n_unique()} decision dates")
+    print(f"weight panel: {weights.height} rows, {weights['event_time'].n_unique()} decision dates")
 
     bars = pl.concat(list(frames.values()))
     idx = pd.DatetimeIndex(pd.to_datetime(frames[sids[0]]["event_time"].to_list()))
-    open_px = pd.DataFrame(
-        {sid: frames[sid]["open"].to_numpy() for sid in sids}, index=idx
-    )
-    close_px = pd.DataFrame(
-        {sid: frames[sid]["close"].to_numpy() for sid in sids}, index=idx
-    )
+    open_px = pd.DataFrame({sid: frames[sid]["open"].to_numpy() for sid in sids}, index=idx)
+    close_px = pd.DataFrame({sid: frames[sid]["close"].to_numpy() for sid in sids}, index=idx)
     wmat = (
         weights.to_pandas()
         .assign(event_time=lambda d: pd.to_datetime(d["event_time"]))
@@ -309,16 +301,12 @@ def main() -> int:
 
     # --- correctness -------------------------------------------------------
     t0 = time.perf_counter()
-    eq_dc, met_dc, fills_dc = run_dipcatcher(
-        bars, weights, COMMISSION_BPS, engine=args.engine
-    )
+    eq_dc, met_dc, fills_dc = run_dipcatcher(bars, weights, COMMISSION_BPS, engine=args.engine)
     t_dc = time.perf_counter() - t0
     eq_vb, st_vb, pf_vb = run_vectorbt(open_px, close_px, wmat, COMMISSION_BPS)
-    print(f"dipcatcher: {eq_dc.height} nav rows, {t_dc*1e3:.0f} ms")
+    print(f"dipcatcher: {eq_dc.height} nav rows, {t_dc * 1e3:.0f} ms")
 
-    nav_dc = dict(
-        zip(eq_dc["event_time"].to_list(), eq_dc["nav"].to_list(), strict=True)
-    )
+    nav_dc = dict(zip(eq_dc["event_time"].to_list(), eq_dc["nav"].to_list(), strict=True))
     nav_vb = {t.to_pydatetime(): float(v) for t, v in eq_vb.items()}
     common = sorted(set(nav_dc) & set(nav_vb))
     diffs = np.array([nav_dc[t] - nav_vb[t] for t in common])
@@ -337,7 +325,11 @@ def main() -> int:
         "vectorbt_total_fees": st_vb["total_fees"],
         "dipcatcher_metrics_keys": sorted(met_dc.keys())[:40],
     }
-    print(json.dumps({k: v for k, v in correctness.items() if k != "dipcatcher_metrics_keys"}, indent=2))
+    print(
+        json.dumps(
+            {k: v for k, v in correctness.items() if k != "dipcatcher_metrics_keys"}, indent=2
+        )
+    )
 
     # --- latency -----------------------------------------------------------
     reps = args.reps
@@ -358,8 +350,10 @@ def main() -> int:
         "dipcatcher_ms_all": [round(t * 1e3, 2) for t in ts_dc],
         "vectorbt_ms_all": [round(t * 1e3, 2) for t in ts_vb],
     }
-    print(f"latency: dipcatcher {latency['dipcatcher_ms_median']:.0f} ms | "
-          f"vectorbt {latency['vectorbt_ms_median']:.0f} ms")
+    print(
+        f"latency: dipcatcher {latency['dipcatcher_ms_median']:.0f} ms | "
+        f"vectorbt {latency['vectorbt_ms_median']:.0f} ms"
+    )
 
     # --- reliability / operability ----------------------------------------
     faults = fault_injection(bars, weights)
@@ -371,10 +365,16 @@ def main() -> int:
         dup_w = wmat.copy()
         dup_w.iloc[5] = 0.99  # abrupt conflicting target - vbt accepts silently
         pf2 = vbt.Portfolio.from_orders(
-            close=close_px, size=dup_w.shift(1).fillna(0.0),
-            size_type="targetpercent", price=open_px,
-            fees=COMMISSION_BPS / 1e4, init_cash=INIT_NAV,
-            cash_sharing=True, direction="longonly", freq="1D", group_by=True,
+            close=close_px,
+            size=dup_w.shift(1).fillna(0.0),
+            size_type="targetpercent",
+            price=open_px,
+            fees=COMMISSION_BPS / 1e4,
+            init_cash=INIT_NAV,
+            cash_sharing=True,
+            direction="longonly",
+            freq="1D",
+            group_by=True,
         )
         vbt_faults["conflicting_target"] = f"accepted, final={float(pf2.value().iloc[-1]):.2f}"
     except Exception as e:  # noqa: BLE001
@@ -383,10 +383,16 @@ def main() -> int:
     stale_close.iloc[-30:, 0] = np.nan
     try:
         pf3 = vbt.Portfolio.from_orders(
-            close=stale_close, size=wmat.shift(1).fillna(0.0),
-            size_type="targetpercent", price=open_px,
-            fees=COMMISSION_BPS / 1e4, init_cash=INIT_NAV,
-            cash_sharing=True, direction="longonly", freq="1D", group_by=True,
+            close=stale_close,
+            size=wmat.shift(1).fillna(0.0),
+            size_type="targetpercent",
+            price=open_px,
+            fees=COMMISSION_BPS / 1e4,
+            init_cash=INIT_NAV,
+            cash_sharing=True,
+            direction="longonly",
+            freq="1D",
+            group_by=True,
         )
         v = pf3.value()
         vbt_faults["stale_marks"] = (

@@ -76,19 +76,19 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
         tt[row] = int(event_times[i + 1])
         try:
             w, mu, sig = _fit_gmm(rets_long)
-            crps[row] = float(
-                crps_gaussian_mixture(np.array([y]), w, mu, sig)[0]
-            )
+            crps[row] = float(crps_gaussian_mixture(np.array([y]), w, mu, sig)[0])
             q = gaussian_mixture_quantiles(w, mu, sig, np.asarray(TAUS))
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q[k]]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             pass
-    return {"crps_col": crps, "pin_cols": pin, "target_time_ns": tt,
-            "bar_interval_ns": np.asarray(interval, dtype=np.int64)}
+    return {
+        "crps_col": crps,
+        "pin_cols": pin,
+        "target_time_ns": tt,
+        "bar_interval_ns": np.asarray(interval, dtype=np.int64),
+    }
 
 
 def main() -> int:
@@ -111,9 +111,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -123,9 +121,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "elapsed_s": round(time.time() - t0, 3),

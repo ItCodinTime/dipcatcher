@@ -79,7 +79,8 @@ def main() -> int:
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--holdout-frac", type=float, default=0.2)
     parser.add_argument(
-        "--band-search", action="store_true",
+        "--band-search",
+        action="store_true",
         help="Compare predeclared target-change bands on development data only",
     )
     args = parser.parse_args()
@@ -122,19 +123,32 @@ def main() -> int:
             bars, funding, lookback_events=24, max_name=0.1, gross_scale=0.5, vol_window=96
         ),
         "fade": funding_spike_fade_weights(
-            bars, funding, lookback_events=30, z_threshold=2.0,
-            max_name=0.05, gross_scale=0.5, vol_window=48,
+            bars,
+            funding,
+            lookback_events=30,
+            z_threshold=2.0,
+            max_name=0.05,
+            gross_scale=0.5,
+            vol_window=48,
         ),
         "momentum": cross_sectional_momentum_weights(
-            bars, lookback_bars=168, skip_bars=4, max_name=0.05,
-            gross_scale=0.5, vol_window=48,
+            bars,
+            lookback_bars=168,
+            skip_bars=4,
+            max_name=0.05,
+            gross_scale=0.5,
+            vol_window=48,
         ),
         "sweep": sweep_reclaim_weights(
             bars, lookback=24, hold_bars=8, max_name=0.05, gross_scale=0.5
         ),
         "trend": slow_trend_weights(
-            bars, fast_bars=168, slow_bars=720, max_name=0.05,
-            gross_scale=0.5, vol_window=48,
+            bars,
+            fast_bars=168,
+            slow_bars=720,
+            max_name=0.05,
+            gross_scale=0.5,
+            vol_window=48,
         ),
     }
     targets = {name: dense_targets(bars, p) for name, p in proposals.items()}
@@ -210,18 +224,14 @@ def main() -> int:
         args.out.write_text(json.dumps(receipt, indent=2, default=str))
         print(f"receipt -> {args.out}")
         return 0
-    paper_diagnostics = {
-        name: _segments(equity, cut, ppy) for name, equity in paper.items()
-    }
+    paper_diagnostics = {name: _segments(equity, cut, ppy) for name, equity in paper.items()}
     allocation_means = {}
     for label, predicate in (
         ("development", pl.col("event_time") < cut),
         ("historical_tail_exploratory", pl.col("event_time") >= cut),
     ):
         frame = allocation.filter(predicate)
-        allocation_means[label] = {
-            name: float(frame[name].mean()) for name in sorted(targets)
-        }
+        allocation_means[label] = {name: float(frame[name].mean()) for name in sorted(targets)}
     results = {}
     for name, alpha in (("adaptive", allocation), ("equal", equal)):
         mixed = mix_targets(targets, alpha)
@@ -231,9 +241,7 @@ def main() -> int:
             "segments": _segments(result.equity, cut, ppy),
             "full_path_risk_gate_rejects": result.metrics["risk_gate_rejects"],
             "full_path_liquidations": result.metrics["liquidation_count"],
-            "full_path_costs": {
-                k: result.metrics[k] for k in ("commission", "spread", "impact")
-            },
+            "full_path_costs": {k: result.metrics[k] for k in ("commission", "spread", "impact")},
         }
         print(f"combined {name} complete", flush=True)
     receipt = {
@@ -247,8 +255,10 @@ def main() -> int:
         "bar_count": bars.height,
         "holdout_cut": str(cut),
         "allocator": {
-            "window": args.window, "min_obs": args.min_obs,
-            "temperature": args.temperature, "equal_anchor": 0.2,
+            "window": args.window,
+            "min_obs": args.min_obs,
+            "temperature": args.temperature,
+            "equal_anchor": 0.2,
             "input": "costed sleeve NAV through completed close",
             "fill": "following bar open",
         },

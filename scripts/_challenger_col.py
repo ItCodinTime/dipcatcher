@@ -133,9 +133,7 @@ def _stack_base_quantiles(model: str, rets_long: np.ndarray) -> np.ndarray:
             mu_g = float(fit.params.get("mu", 0.0)) / 100.0
             sig_g = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0
             scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-            return (
-                st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
-            )
+            return st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
         if model == "dip_fhs":
             fit = _arch_fit(rets_long * 100.0, vol="GARCH", dist="normal", o=1)
             sig_next = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0
@@ -160,9 +158,7 @@ def _stack_base_quantiles(model: str, rets_long: np.ndarray) -> np.ndarray:
     raise ValueError(f"unknown stack base {model}")
 
 
-def _stack_fit(
-    buf_q: np.ndarray, buf_y: np.ndarray
-) -> np.ndarray:
+def _stack_fit(buf_q: np.ndarray, buf_y: np.ndarray) -> np.ndarray:
     """Per-tau simplex weights (T,B)->(B,T) via exponentiated gradient on pinball.
 
     ``buf_q`` is (n_past, n_bases, n_taus); ``buf_y`` is (n_past,). Deterministic:
@@ -213,9 +209,7 @@ def _stack_column(
         y = float(closes[i + 1] / closes[i] - 1.0)
         tt[row] = int(event_times[i + 1])
         try:
-            base_q = np.stack(
-                [_stack_base_quantiles(m, rets_long) for m in STACK_BASES]
-            )  # (B, T)
+            base_q = np.stack([_stack_base_quantiles(m, rets_long) for m in STACK_BASES])  # (B, T)
             finite = np.isfinite(base_q).all(axis=1)
             if finite.sum() < 2:
                 continue  # honest NaN: too few bases this origin
@@ -225,8 +219,7 @@ def _stack_column(
                     np.asarray(buf_y[-STACK_BUFFER:]),
                 )
             else:
-                w = np.full((len(STACK_BASES), LGBM_TAUS.size),
-                            1.0 / len(STACK_BASES))
+                w = np.full((len(STACK_BASES), LGBM_TAUS.size), 1.0 / len(STACK_BASES))
             w_f = w[finite]
             w_f = w_f / w_f.sum(axis=0, keepdims=True)
             q_stack = np.einsum("bt,bt->t", w_f, base_q[finite])
@@ -294,13 +287,15 @@ def compute_column(bars_path: Path, cfg: dict, model: str) -> dict[str, np.ndarr
             crps[row] = c
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q[k]]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             pass
-    return {"crps_col": crps, "pin_cols": pin, "target_time_ns": tt,
-            "bar_interval_ns": np.asarray(interval, dtype=np.int64)}
+    return {
+        "crps_col": crps,
+        "pin_cols": pin,
+        "target_time_ns": tt,
+        "bar_interval_ns": np.asarray(interval, dtype=np.int64),
+    }
 
 
 def main() -> int:
@@ -324,9 +319,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg, args.model)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": args.model,
@@ -336,9 +329,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "elapsed_s": round(time.time() - t0, 3),

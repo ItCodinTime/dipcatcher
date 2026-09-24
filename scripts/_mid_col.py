@@ -214,9 +214,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             for k, tau in enumerate(TAUS):
                 q_k = qf_at(LGBM_TAUS, q9, tau)
                 if np.isfinite(q_k):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q_k]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q_k]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             continue
     return {
@@ -266,9 +264,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     finite_tilt = np.isfinite(out["tilt"])
     meta_out = {
         "tool": Path(__file__).name,
@@ -288,18 +284,17 @@ def main() -> int:
         "n_tilt_clip_hi": int(out["n_tilt_clip_hi"]),
         "frac_tilt_clip_lo": round(float(out["n_tilt_clip_lo"]) / n_rows, 4),
         "frac_tilt_clip_hi": round(float(out["n_tilt_clip_hi"]) / n_rows, 4),
-        "mean_tilt": round(float(np.nanmean(out["tilt"])), 6)
-        if finite_tilt.any()
-        else None,
+        "mean_tilt": round(float(np.nanmean(out["tilt"])), 6) if finite_tilt.any() else None,
         "shard": args.shard.name,
         "shard_sha256": _sha256(args.shard),
         "bars": bars.name,
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "elapsed_s": round(time.time() - t0, 3),

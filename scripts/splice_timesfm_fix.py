@@ -96,18 +96,22 @@ def splice_pair(original: Path, corrected: Path) -> dict[str, Any]:
             raise ValueError(f"{original.name}: protocol mismatch: {field}")
     # The corrected shard is a timesfm-only rerun; its artifact hash binds the
     # same model weights (equal) — the *adapter* is what changed.
-    if (
-        am["artifact_sha256"].get(TARGET) != bm["artifact_sha256"].get(TARGET)
-        and bm["artifact_sha256"].get(TARGET)
-    ):
+    if am["artifact_sha256"].get(TARGET) != bm["artifact_sha256"].get(TARGET) and bm[
+        "artifact_sha256"
+    ].get(TARGET):
         raise ValueError(f"{original.name}: corrected model weights differ")
 
     # Pure-deterministic shared columns must be bit-identical — that is what
     # proves the rows are the same origins. Optimizer-dependent columns
     # (student_t/garch/fhs/lgbm/blend) may legitimately differ across fitter
     # versions; they are reported, not required.
-    DETERMINISTIC = {"dip_gauss", "dip_ewma_t", "dip_empirical", "dip_empirical_long",
-                     "dip_ewma_emp"}
+    DETERMINISTIC = {
+        "dip_gauss",
+        "dip_ewma_t",
+        "dip_empirical",
+        "dip_empirical_long",
+        "dip_ewma_emp",
+    }
     shared = [
         n for n in a["names"] if n in b["names"] and n != TARGET and n not in am.get("targets", [])
     ]
@@ -120,9 +124,7 @@ def splice_pair(original: Path, corrected: Path) -> dict[str, Any]:
             raise ValueError(f"{original.name}: {name} differs — origins not aligned")
         if not (crps_eq and pin_eq):
             with np.errstate(invalid="ignore"):
-                diffs[name] = float(
-                    np.nanmax(np.abs(a["crps"][:, ai0] - b["crps"][:, bi0]))
-                )
+                diffs[name] = float(np.nanmax(np.abs(a["crps"][:, ai0] - b["crps"][:, bi0])))
 
     ai, bi = a["names"].index(TARGET), b["names"].index(TARGET)
     if np.array_equal(a["crps"][:, ai], b["crps"][:, bi], equal_nan=True):
@@ -143,9 +145,7 @@ def splice_pair(original: Path, corrected: Path) -> dict[str, Any]:
             },
             "alignment": {
                 "bars_asset_ids_protocol_equal": True,
-                "shared_columns_bit_identical": [
-                    n for n in shared if n not in diffs
-                ],
+                "shared_columns_bit_identical": [n for n in shared if n not in diffs],
                 "optimizer_dependent_column_max_abs_diff": diffs,
                 "origin_timestamps_verified": False,
                 "note": "Legacy positional rows; source shards contain no origin timestamps.",

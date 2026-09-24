@@ -178,7 +178,7 @@ def _volm_quantiles(
         return nan, diag
 
     sigma_base = ewma_next_sigma(rets_long, lam=EWMA_LAM)
-    mult = float(np.clip(s_val ** gamma_hat, MULT_LO, MULT_HI))
+    mult = float(np.clip(s_val**gamma_hat, MULT_LO, MULT_HI))
     diag["mult"] = mult
     sigma_cond = sigma_base * mult
     if not np.isfinite(sigma_cond) or sigma_cond <= 0.0:
@@ -248,9 +248,7 @@ def compute_column(bars_path: Path, cfg: dict) -> tuple[dict[str, np.ndarray], d
             for k, tau in enumerate(TAUS):
                 qk = qf_at(LGBM_TAUS, q, tau)
                 if np.isfinite(qk):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([qk]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([qk]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             pass
     stats = {
@@ -292,9 +290,7 @@ def main() -> int:
     t0 = time.time()
     out, stats = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -304,9 +300,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "volm_params": {
             "vol_base_win": VOL_BASE_WIN,
             "vol_s_win": VOL_S_WIN,
