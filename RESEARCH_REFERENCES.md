@@ -215,3 +215,15 @@
 
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Wave 17 references (implied vol, fast trees & tempered stable)
+
+### Implied-volatility approximations
+- M. Brenner, M. Subrahmanyam (1988). "A simple formula to compute the implied standard deviation." Financial Analysts Journal — `models/iv_approx.py`.
+- C. Corrado, T. Miller (1996). "A note on a simple, accurate formula to compute implied standard deviations." Journal of Banking & Finance — `models/iv_approx.py`.
+
+### Binomial convergence
+- D. Leisen, M. Reimer (1996). "Binomial models for option valuation -- examining and improving convergence." Applied Mathematical Finance — `models/leisen_reimer.py`.
+
+### Levy processes
+- P. Carr, H. Geman, D. Madan, M. Yor (2002). "The fine structure of asset returns: an empirical investigation." Journal of Business — `models/tempered_stable.py` (CGMY).
