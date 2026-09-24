@@ -201,6 +201,7 @@ def test_timesfm_point_channel_is_never_scored_as_a_quantile():
     ],
 )
 def test_chronos_adapters_use_native_batch_and_variates_axes(adapter, native_shape):
+    pytest.importorskip("torch", reason="install dipcatcher[nn] to test PyTorch adapters")
     captured = {}
 
     def predict(context, **kwargs):

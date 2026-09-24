@@ -17,9 +17,11 @@ synthetic fixture passes.
 | Paper / shadow operation | Implemented as simulation | Crash-resumable simulated broker; resume appends prior orders/equity/shadow-equity/positions/cash rows and fill receipts; deterministic target/exposure ordering; kill switch, champion/shadow dry-run, no live capital |
 | Promotion | Fail-closed | Synthetic evidence, missing metrics, non-finite metrics, and invalid receipts cannot promote |
 | CI reproducibility | Implemented | Frozen `uv.lock`, lock consistency check, full tests, type/lint checks, canonical receipt verification |
+| CI token scope | Implemented | Workflow `GITHUB_TOKEN` is restricted to repository contents read access; no job in CI requires write access |
+| Package distribution | Implemented | CI builds wheel and source distribution, installs the wheel without the checkout installed, and runs the installed `dipcatcher --help` entry point |
 | API security boundary | Implemented for local/service operation | API-key authentication, loopback fail-closed default, constant-time key comparison, secure response headers, artifact-root containment, 64 KiB streamed request-body cap, and strict request schemas |
 | Dependency and code security | Implemented as CI gates | Locked dependency `pip-audit` report, medium/high Bandit gate, and retained machine-readable audit artifact |
-| Container operations | Hardened research service image | Non-root runtime user, loopback default, healthcheck, immutable dependency sync, and host-local optional MLflow binding |
+| Container operations | CI-gated | Non-root runtime user, loopback default, healthcheck, immutable dependency sync, host-local optional MLflow binding; CI builds the image and waits for its healthcheck |
 | Vendor market data | Not implemented | Only synthetic and local CSV/Parquet adapters are available; no vendor entitlement is implied |
 | Live broker connectivity | Not implemented | No live orders, broker credentials, or live P&L claims are supported |
 | Live readiness | Blocked by missing external evidence | Requires authorized vendor data, broker adapter, operational controls, and independently verified holdout/forward evidence |
