@@ -225,3 +225,15 @@
   >= 64/128 observations), reusing the entropy/fractal/serial metric modules; the
   resulting family blobs contain only finite floats with no sharpe/sortino/
   calmar/pnl/nav key tokens, so the verify.py scorecard honesty gates pass.
+## Wave 21 mathematical conventions
+
+- `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
+  sqrt(sum(f-a)^2)/sqrt(sum(a_t-a_{t-1})^2); MASE=mean|a-f|/mean|a_t-a_{t-m}|.
+- `whitening.py`: Sigma=U Lambda U'; PCA W=Lambda^{-1/2}U'; ZCA W=U Lambda^{-1/2}
+  U' (symmetric); whitened Cov = I.
+- `efficient_frontier.py`: A=1'S^{-1}1, B=1'S^{-1}mu, C=mu'S^{-1}mu, D=AC-B^2;
+  min-var w=S^{-1}1/A; frontier w=g+h m, var=(A m^2-2B m+C)/D; tangency=
+  S^{-1}(mu-rf)/1'S^{-1}(mu-rf).
+- `utility.py`: u(w)=(w^{1-gamma}-1)/(1-gamma) (log for gamma=1); CE gross =
+  (mean gross^{1-gamma})^{1/(1-gamma)} (geometric mean for gamma=1); CE<mean for
+  gamma>0.
