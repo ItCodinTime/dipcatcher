@@ -215,3 +215,17 @@
 
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Wave 20 references (rank association & calibration)
+
+### Rank association / concordance
+- L. Goodman, W. Kruskal (1954). "Measures of association for cross classifications." JASA — `metrics/concordance.py` gamma.
+- R. Somers (1962). "A new asymmetric measure of association for ordinal variables." American Sociological Review — `metrics/concordance.py`.
+- M. Kendall (tau-b, tie-corrected rank correlation) — `metrics/concordance.py`.
+- F. Harrell (1982). Concordance (c-) index — `metrics/concordance.py`.
+
+### Calibration
+- D. Spiegelhalter (1986). "Probabilistic prediction in patient management and clinical trials." Statistics in Medicine — `metrics/calibration_tests.py`.
+
+### Nonparametric regression
+- T. Hastie, R. Tibshirani (1986). "Generalized additive models." Statistical Science — `models/gam.py` (backfitting).

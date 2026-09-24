@@ -217,3 +217,15 @@
 - `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
   (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
   average the weights and renormalise (Michaud resampled efficiency).
+
+## Wave 20 mathematical conventions
+
+- `concordance.py`: from concordant C, discordant D, ties Tx/Ty: gamma=(C-D)/(C+D);
+  Somers' D_{y|x}=(C-D)/(C+D+Ty); tau-b=(C-D)/sqrt((C+D+Tx)(C+D+Ty)); c-index =
+  (#{s_pos>s_neg}+0.5 #ties)/(n_pos n_neg) (= AUC).
+- `calibration_tests.py`: Spiegelhalter Z = sum (y-p)(1-2p)/sqrt(sum (1-2p)^2
+  p(1-p)) ~ N(0,1) under calibration; insensitive to symmetric additive shifts,
+  sensitive to over/under-confidence.
+- `gam.py`: backfitting y=intercept+sum_j f_j(x_j); each f_j refit from the
+  partial residual with a Gaussian local-linear smoother (Silverman bandwidth)
+  and centred to zero mean; iterate to convergence.
