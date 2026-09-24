@@ -201,3 +201,19 @@
   non-decreasing, sum 1. Exponential phi(p) = k e^{-k(1-p)}/(1-e^{-k});
   power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
   [alpha, 1] scaled by 1/(1-alpha).
+
+## Wave 10 mathematical conventions
+
+- `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp
+  stabilised). EVaR_{1-alpha} = inf_{z>0} (1/z) log(E[e^{zL}]/(1-alpha)),
+  minimised over log z; satisfies EVaR >= CVaR >= VaR.
+- `perf_ratios.py`: ASR = SR[1 + (S/6)SR - ((K-3)/24)SR^2] (Pezier-White);
+  M^2 = rf + SR * sigma_benchmark; Rachev = E[x | x >= Q_{1-beta}] /
+  (-E[x | x <= Q_alpha]); gain-to-pain = sum(x)/sum(max(-x,0)); UPR =
+  E[(x-mar)_+] / sqrt(E[((x-mar)_-)^2]).
+- `stable.py`: Chambers-Mallows-Stuck sampler with U~Unif(-pi/2,pi/2), W~Exp(1);
+  zeta=-beta tan(pi alpha/2), xi=atan(-zeta)/alpha. ECF fit regresses
+  log(-log|phi(t)|) on log|t|: slope=alpha, intercept=alpha log c; loc=median.
+- `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
+  (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
+  average the weights and renormalise (Michaud resampled efficiency).
