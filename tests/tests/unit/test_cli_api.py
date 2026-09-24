@@ -236,6 +236,32 @@ def test_models_endpoint_reports_backend_availability() -> None:
     assert "robinhood_plus" in payload["kline_foundation"]
     assert payload["robinhood_plus"]["core_engine"] is True
     assert payload["catalog_claim"]
+    from quant_fund.pipeline.train import RANKING_MODEL_NAMES
+
+    assert set(payload["ranking"]) == RANKING_MODEL_NAMES
+    assert {
+        "rff",
+        "sdf_ridge",
+        "ipca",
+        "fm",
+        "pcr",
+        "pls",
+        "tprf",
+        "gbrt",
+        "pp",
+        "combo",
+        "alasso",
+        "classic",
+        "fm_ridge",
+        "combo_ic",
+        "reversal",
+        "classic_st",
+        "ridge_st",
+        "ridge_neut",
+        "fm_st",
+        "combo_ic_st",
+        "combo_msfe",
+    } <= set(payload["ranking"])
 
 
 def test_drift_endpoint_is_explicitly_unmeasured() -> None:

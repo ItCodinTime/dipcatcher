@@ -46,6 +46,13 @@ def test_drawdown_empty_and_nan() -> None:
     assert np.isnan(max_drawdown(np.array([0.1, -0.5, np.nan])))
 
 
+def test_drawdown_includes_initial_capital_before_first_loss() -> None:
+    returns = np.array([-0.2, 0.1, 0.0])
+    assert np.allclose(drawdown_series(returns), [-0.2, -0.12, -0.12])
+    assert max_drawdown(returns) == pytest.approx(-0.2)
+    assert max_drawdown(np.array([-0.2])) == pytest.approx(-0.2)
+
+
 def test_cagr_empty_nan_nonfinite() -> None:
     assert np.isnan(cagr(np.array([])))
     assert np.isnan(cagr(np.array([np.nan])))

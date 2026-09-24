@@ -13,6 +13,7 @@ from quant_fund.data.point_in_time import validate_feature_frame
 from quant_fund.data.universe import membership_asof
 from quant_fund.features.cross_sectional import apply_cross_sectional
 from quant_fund.features.engine import add_market_features
+from quant_fund.features.metadata import FEATURE_SET_VERSION
 from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.schemas.pit import assert_pit_safe
 
@@ -346,6 +347,27 @@ def test_cs_transform_excludes_late_available_rows() -> None:
     assert t0_rows["cs_pct_x"].to_list() == [0.5, None]
 
 
+def test_cs_z_falls_back_to_sd_when_mad_is_zero() -> None:
+    """More than half the names share one value: MAD=0 must not explode to ~1e10."""
+    t0 = datetime(2020, 1, 2, tzinfo=UTC)
+    df = pl.DataFrame(
+        {
+            "event_time": [t0] * 6,
+            "security_id": list("abcdef"),
+            "available_time": [t0] * 6,
+            "x": [0.0, 0.0, 0.0, 0.0, -0.10, -0.30],
+            "flat": [1.0] * 6,
+            "sector": ["s1"] * 3 + ["s2"] * 3,
+        }
+    )
+    out = apply_cross_sectional(df, ["x", "flat"], 0.0, sector="sector")
+    z = out["cs_z_x"].to_numpy()
+    assert float(abs(z).max()) < 10.0
+    assert z[-1] < z[-2] < 0.0
+    assert out["cs_z_flat"].to_list() == [0.0] * 6
+    assert float(out["cs_z_sector_x"].abs().max()) < 10.0
+
+
 def test_market_aggregates_exclude_late_available_rows() -> None:
     t0 = datetime(2020, 1, 2, tzinfo=UTC)
     t1 = datetime(2020, 1, 3, tzinfo=UTC)
@@ -631,6 +653,11 @@ def test_make_provider_synthetic_vs_file_routing(tmp_path: Path) -> None:
     )
     assert isinstance(make_provider(syn), SyntheticMarketProvider)
 
+    public = AppConfig.model_validate(
+        {"data": {"root": str(tmp_path / "public"), "source": "binance_public_data"}}
+    )
+    assert make_provider(public).__class__.__name__ == "PublicMarketProvider"
+
     raw = tmp_path / "raw"
     raw.mkdir()
     for src in ("file", "parquet"):
@@ -639,6 +666,35 @@ def test_make_provider_synthetic_vs_file_routing(tmp_path: Path) -> None:
         )
         prov = make_provider(cfg)
         assert isinstance(prov, ParquetMarketProvider)
+
+
+def test_make_provider_itch_routes_path_to_fetch_not_constructor(tmp_path: Path) -> None:
+    """nasdaq_itch/fi_2010 pass data.source_path to fetch, never __init__."""
+    csv_path = tmp_path / "itch.csv"
+    csv_path.write_text(
+        "security_id,event_time,open,high,low,close,volume\n"
+        "A,2024-01-02T00:00:00Z,10,11,9,10.5,100\n"
+    )
+    cfg = AppConfig.model_validate(
+        {
+            "data": {
+                "root": str(tmp_path / "itch"),
+                "source": "nasdaq_itch",
+                "source_path": str(csv_path),
+            }
+        }
+    )
+    prov = make_provider(cfg)
+    assert prov.__class__.__name__ == "PublicMarketProvider"
+    bars = prov.get_bars()
+    assert bars.height == 1
+    assert bars["security_id"][0] == "A"
+
+    missing = AppConfig.model_validate(
+        {"data": {"root": str(tmp_path / "none"), "source": "nasdaq_itch"}}
+    )
+    with pytest.raises(ValueError, match="source_path"):
+        make_provider(missing)
 
 
 def test_make_provider_unknown_source_fail_closed(tmp_path: Path) -> None:
@@ -665,7 +721,7 @@ def test_cached_panel_validation_uses_row_event_time(tmp_path: Path) -> None:
             "security_id": ["A", "A"],
             "event_time": times,
             "available_time": times,
-            "feature_set_version": ["features.v1", "features.v1"],
+            "feature_set_version": [FEATURE_SET_VERSION, FEATURE_SET_VERSION],
             "ret_1": [0.1, 0.2],
         }
     )

@@ -94,3 +94,48 @@ def test_drift_report_mean_shift_only_alert() -> None:
     assert report["alert"] is True
     assert report["status"] == "alert"
     assert float(report["mean_shift"]) == pytest.approx(3.0, abs=1e-9)
+
+
+def test_model_health_report_is_fail_closed_for_missing_and_invalid_inputs(tmp_path) -> None:
+    from quant_fund.monitoring.drift import model_health_report
+
+    report = model_health_report(
+        {"momentum": np.arange(20.0)},
+        {"momentum": np.arange(20.0), "vol": np.arange(20.0)},
+        artifact_paths={"missing": tmp_path / "missing.joblib"},
+    )
+    assert report["status"] == "invalid"
+    assert "missing_feature:vol" in report["errors"]
+    assert any(error.startswith("invalid_artifact:missing") for error in report["errors"])
+
+
+def test_model_health_report_surfaces_feature_drift_without_promotion_side_effects() -> None:
+    from quant_fund.monitoring.drift import model_health_report
+
+    report = model_health_report(
+        {"momentum": np.arange(20.0)},
+        {"momentum": np.arange(20.0) + 100.0},
+    )
+    assert report["status"] == "alert"
+    assert report["alerts"] == ["momentum"]
+    assert report["research_only"] is True
+    assert report["live_pnl_claim"] is False
+
+
+def test_model_health_report_surfaces_calibration_drift() -> None:
+    from quant_fund.monitoring.drift import model_health_report
+
+    report = model_health_report(
+        {"momentum": np.arange(20.0)},
+        {"momentum": np.arange(20.0)},
+        calibration_windows=(
+            np.full(20, 0.5),
+            np.zeros(20),
+            np.full(20, 0.9),
+            np.zeros(20),
+        ),
+        calibration_alert_delta=0.05,
+    )
+    assert report["status"] == "alert"
+    assert report["calibration"]["alert"] is True
+    assert "calibration" in report["alerts"]
