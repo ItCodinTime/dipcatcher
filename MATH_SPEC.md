@@ -217,3 +217,13 @@
 - `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
   (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
   average the weights and renormalise (Michaud resampled efficiency).
+
+## Wave 15 mathematical conventions
+
+- `fgls_ar1.py`: estimate rho from OLS residuals (rho=sum r_t r_{t-1}/sum r_{t-1}^2);
+  Cochrane-Orcutt quasi-differences y_t-rho y_{t-1} (drops obs 1); Prais-Winsten
+  keeps obs 1 scaled by sqrt(1-rho^2); iterate to convergence.
+- `twosample.py`: KS D=max|F_x-F_y|, p via Kolmogorov asymptotic with the
+  Stephens small-sample correction on sqrt(ne) D, ne=n_x n_y/(n_x+n_y); energy
+  distance E=2 mean|x_i-y_j| - mean|x_i-x_j| - mean|y_i-y_j|; permutation
+  p-values (count of shuffled statistics >= observed, +1 smoothing).
