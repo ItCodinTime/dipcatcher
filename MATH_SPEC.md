@@ -170,6 +170,25 @@
 - `feature_select.py`: FCD mRMR with |corr| relevance/redundancy.
 
 
+## Wave 9 mathematical conventions
+
+- `skew_normal.py`: f(x) = (2/omega) phi(z) Phi(alpha z), z=(x-xi)/omega;
+  CDF = Phi(z) - 2 T(z, alpha) (Owen's T). MoM inverts skewness g1 to
+  delta = alpha/sqrt(1+alpha^2) with |g1| capped at 0.995; omega, xi match
+  the first two moments.
+- `johnson_su.py`: z = gamma + delta asinh((x-xi)/lambda). Slifker-Shapiro
+  reads quantiles at z=+/-z0, +/-3z0; delta = 2 z0 / acosh((m/p+n/p)/2),
+  gamma = delta asinh((n/p-m/p)/(2 sqrt(mn/p^2-1))); lambda and xi are
+  recovered exactly from the standardised inner spread p = lambda[sinh((z0-g)/d)
+  - sinh((-z0-g)/d)].
+- `edgeworth.py`: Gram-Charlier A f = phi(z)/sigma [1 + (S/6)He_3 + (K/24)He_4],
+  F = Phi(z) - phi(z)[(S/6)He_2 + (K/24)He_3], He_2=z^2-1, He_3=z^3-3z,
+  He_4=z^4-6z^2+3; integrates to 1 for any (S,K) but may go negative
+  (validity checked on a grid).
+- `tukey_gh.py`: x = A + B (e^{gZ}-1)/g e^{hZ^2/2} (limit B Z e^{hZ^2/2} as
+  g->0). Monotone in Z for h>=0 so CDF/PDF follow by inversion and
+  f(x)=phi(Z)/(dx/dZ). Hoaglin fit: g = (1/Z) ln(UHS/LHS) per symmetric
+  quantile pair; regress ln[FS g/(2 sinh gZ)] on Z^2/2 for (ln B, h).
 ## Wave 8 mathematical conventions
 
 - `ets.py`: SES level l_t = a y_t + (1-a) l_{t-1}; Holt adds trend
@@ -202,6 +221,20 @@
   power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
   [alpha, 1] scaled by 1/(1-alpha).
 
+## Wave 13 mathematical conventions
+
+- `bachelier.py`: d=(F-K)/(sigma sqrt(T)); call=df[(F-K)Phi(d)+sigma sqrt(T)phi(d)];
+  ATM=df sigma sqrt(T/(2 pi)); implied normal vol by brentq.
+- `short_rate.py`: Vasicek/CIR affine bonds P=A(tau) e^{-B(tau) r}; Vasicek exact
+  AR(1) discretisation r_{t+1}=r_t e^{-kappa dt}+theta(1-e^{-kappa dt})+sd Z, OLS
+  calibration recovers (kappa,theta,sigma); CIR B=2(e^{g tau}-1)/((g+kappa)
+  (e^{g tau}-1)+2g), g=sqrt(kappa^2+2 sigma^2), full-truncation Euler sim.
+- `bond_analytics.py`: continuous compounding P=sum c_i e^{-y t_i}; Macaulay
+  D=(1/P)sum t_i c_i e^{-y t_i} (=modified under continuous comp.); convexity
+  (1/P)sum t_i^2 c_i e^{-y t_i}; YTM by brentq; DV01=D*P*1e-4.
+- `variance_swap.py`: DDKZ fair strike K_var=(2/T)e^{rT} sum (dK_i/K_i^2) Q(K_i)
+  - (1/T)(F/K0-1)^2 with OTM puts below K0 and calls at/above; equals sigma^2
+  under flat Black-Scholes vol.
 ## Wave 10 mathematical conventions
 
 - `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp
@@ -229,6 +262,16 @@
 - `gam.py`: backfitting y=intercept+sum_j f_j(x_j); each f_j refit from the
   partial residual with a Gaussian local-linear smoother (Silverman bandwidth)
   and centred to zero mean; iterate to convergence.
+## Wave 19 mathematical conventions
+
+- `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
+  Gaussian R ~ N(0,1/k); Achlioptas sparse R entries sqrt(s/k){+1,0,-1} at
+  probs {1/2s, 1-1/s, 1/2s}, s=1/density.
+- `spectral_clustering.py`: W=exp(-||xi-xj||^2/(2 sigma^2)) (median-heuristic
+  sigma, zero diagonal); L_sym=I-D^{-1/2}WD^{-1/2}; embed with k smallest
+  eigenvectors, row-normalise, k-means.
+- `cluster_validity.py`: silhouette s=(b-a)/max(a,b); Calinski-Harabasz
+  (B/(k-1))/(W/(n-k)); Davies-Bouldin mean_i max_{j!=i}(s_i+s_j)/d_ij.
 ## Wave 21 mathematical conventions
 
 - `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
