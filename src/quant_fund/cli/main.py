@@ -1643,22 +1643,28 @@ def sim_live(
     symbols: str = typer.Option(
         "BNBUSDT,BTCUSDT,ETHUSDT,SOLUSDT,XRPUSDT", help="Comma-separated symbols"
     ),
-    spec: str = typer.Option("fhs", help="Champion forecaster: fhs|evt|garch_t|egarch_l|empirical|ewma_emp"),
+    spec: str = typer.Option(
+        "fhs", help="Champion forecaster: fhs|evt|garch_t|egarch_l|empirical|ewma_emp"
+    ),
     mode: str = typer.Option("long_flat", help="Champion policy: long_flat|symmetric"),
     challenger: list[str] = typer.Option(
-        [], "--challenger",
+        [],
+        "--challenger",
         help="Book 'name:spec:mode[:entry_bps[:kappa]]' (repeatable; shadows in full runs)",
     ),
     gross: float = typer.Option(1.0, help="Book gross cap"),
     name_cap: float = typer.Option(0.25, help="Per-name |weight| cap"),
     kappa: float = typer.Option(0.30, help="Size per unit predicted Sharpe"),
-    entry_bps: float = typer.Option(20.0, help="|mu| entry gate in per-bar bps (z units if --gate-on edge)"),
+    entry_bps: float = typer.Option(
+        20.0, help="|mu| entry gate in per-bar bps (z units if --gate-on edge)"
+    ),
     gate_on: str = typer.Option("mu", help="Gate metric: 'mu' (bps) | 'edge' (mu/disp z-score)"),
     deadband: float = typer.Option(0.01, help="Min |Δtarget| before re-emit"),
     window: int = typer.Option(750, help="Trailing returns window per origin"),
     tail_bars: int | None = typer.Option(None, help="Use only last N bars per asset"),
     eval_tail: int | None = typer.Option(
-        None, "--eval-tail",
+        None,
+        "--eval-tail",
         help="OOS eval: panels on full history, loop/bench on last N shared dates",
     ),
     sizing: str = typer.Option("edge", help="Sizing law: 'edge' (k*edge) | 'risk' (k*edge/disp)"),
@@ -1675,9 +1681,7 @@ def sim_live(
     mkt_disp_cut: float | None = typer.Option(
         None, help="Market vol breaker: flat book when median cross-asset disp exceeds this"
     ),
-    top_k: int | None = typer.Option(
-        None, help="Keep only the k largest |target| names per date"
-    ),
+    top_k: int | None = typer.Option(None, help="Keep only the k largest |target| names per date"),
     gate_out: float | None = typer.Option(
         None, help="Exit threshold hysteresis (held names exit below this)"
     ),
@@ -1706,6 +1710,11 @@ def sim_live(
     bench_only: bool = typer.Option(
         False, "--bench-only", help="Skip paper loop; leaderboard of books only (fast)"
     ),
+    shared_calendar: bool = typer.Option(
+        True,
+        "--shared-calendar/--no-shared-calendar",
+        help="Clip all assets to the common span (off: each trades its own history)",
+    ),
     out: Path = typer.Option(Path(".dsh-24x7/lane-simlive"), "--out"),
 ) -> None:
     """Simulated-live PnL: proven quantile forecasters trade the paper loop on real bars."""
@@ -1717,9 +1726,12 @@ def sim_live(
 
     cfg = _cfg(config)
     try:
-        git_sha = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=False
-        ).stdout.strip() or None
+        git_sha = (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=False
+            ).stdout.strip()
+            or None
+        )
     except Exception:  # noqa: BLE001
         git_sha = None
     champion_policy = QuantilePolicy(
@@ -1756,8 +1768,8 @@ def sim_live(
         c_gate_on = parts[5] if len(parts) > 5 else gate_on
         c_sizing = parts[6] if len(parts) > 6 else sizing
         # Trailing key=value overrides: bvt=<book_vol_target> tg=<tail_gate>
-        # pb= xp= tk= rb= (ints) · gross= nc= db= go= meta= ac= cut= le= (floats)
-        # · lead=<SID> (string)
+        # pb= xp= tk= rb= rvlb= (ints) · gross= nc= db= go= meta= ac= cut= le=
+        # rvol= epow= (floats) · lead=<SID> (string)
         kv: dict[str, float] = {}
         kv_str: dict[str, str] = {}
         for extra in parts[7:]:
@@ -1768,25 +1780,37 @@ def sim_live(
                 else:
                     kv[k.strip()] = float(v)
         challengers.append(
-            StrategySlot(name=cname, spec=cspec, policy=QuantilePolicy(
-                mode=cmode, kappa=c_kappa, gross_target=kv.get("gross", gross),
-                name_cap=kv.get("nc", name_cap),
-                cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
-                deadband=kv.get("db", deadband), gate_on=c_gate_on, sizing=c_sizing,
-                book_vol_target=kv.get("bvt"), tail_gate=kv.get("tg"),
-                persist_bars=int(kv.get("pb", persist)),
-                exit_persist=int(kv.get("xp", exit_persist)),
-                mkt_disp_cut=kv.get("cut"),
-                top_k=int(kv["tk"]) if "tk" in kv else top_k,
-                gate_out=kv.get("go", gate_out),
-                meta_min=kv.get("meta", meta_min),
-                rebal_every=int(kv.get("rb", rebal_every)),
-                accel_min=kv.get("ac"),
-                leader_sid=kv_str.get("lead"),
-                leader_edge_min=kv.get("le", 0.0),
-                w_alpha=kv.get("wa", 1.0),
-                breadth_gross=bool(kv.get("bg", 0.0)),
-            ))
+            StrategySlot(
+                name=cname,
+                spec=cspec,
+                policy=QuantilePolicy(
+                    mode=cmode,
+                    kappa=c_kappa,
+                    gross_target=kv.get("gross", gross),
+                    name_cap=kv.get("nc", name_cap),
+                    cost_gate=c_bps / 1e4 if c_gate_on == "mu" else c_bps,
+                    deadband=kv.get("db", deadband),
+                    gate_on=c_gate_on,
+                    sizing=c_sizing,
+                    book_vol_target=kv.get("bvt"),
+                    tail_gate=kv.get("tg"),
+                    persist_bars=int(kv.get("pb", persist)),
+                    exit_persist=int(kv.get("xp", exit_persist)),
+                    mkt_disp_cut=kv.get("cut"),
+                    top_k=int(kv["tk"]) if "tk" in kv else top_k,
+                    gate_out=kv.get("go", gate_out),
+                    meta_min=kv.get("meta", meta_min),
+                    rebal_every=int(kv.get("rb", rebal_every)),
+                    accel_min=kv.get("ac"),
+                    leader_sid=kv_str.get("lead"),
+                    leader_edge_min=kv.get("le", 0.0),
+                    w_alpha=kv.get("wa", 1.0),
+                    breadth_gross=bool(kv.get("bg", 0.0)),
+                    edge_pow=kv.get("epow", 1.0),
+                    rvol_target=kv.get("rvol"),
+                    rvol_lookback=int(kv.get("rvlb", 20)),
+                ),
+            )
         )
     result = run_sim_live(
         bars_root=Path("data/raw/sources"),
@@ -1807,6 +1831,7 @@ def sim_live(
         resume_run_id=run_id if resume else None,
         bench=bench,
         bench_only=bench_only,
+        shared_calendar=shared_calendar,
     )
     typer.echo(f"DATA_LABEL={result.receipt['data_label']}")
     typer.echo(f"run_id={result.run_id}")

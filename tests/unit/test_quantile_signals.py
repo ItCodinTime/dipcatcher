@@ -100,9 +100,7 @@ def _q(mu: float, disp: float, taus: np.ndarray = TAUS) -> np.ndarray:
 
 def test_policy_long_flat_never_shorts() -> None:
     pol = QuantilePolicy(mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0)
-    out = weights_from_quantiles(
-        {"A": _q(-0.05, 0.02), "B": _q(0.05, 0.02)}, TAUS, pol
-    )
+    out = weights_from_quantiles({"A": _q(-0.05, 0.02), "B": _q(0.05, 0.02)}, TAUS, pol)
     assert "A" not in out or out["A"] == 0.0
     assert out.get("B", 0.0) > 0.0
     assert all(w >= 0.0 for w in out.values())
@@ -189,11 +187,15 @@ def test_policy_gate_on_validation() -> None:
 def test_policy_risk_sizing_scales_inverse_disp() -> None:
     """sizing='risk': w = kappa*edge/disp — quiet regimes size up, loud size down."""
     pol = QuantilePolicy(
-        mode="symmetric", kappa=0.015, cost_gate=0.0, sizing="risk",
-        name_cap=10.0, gross_target=10.0,
+        mode="symmetric",
+        kappa=0.015,
+        cost_gate=0.0,
+        sizing="risk",
+        name_cap=10.0,
+        gross_target=10.0,
     )
     quiet = weights_from_quantiles({"A": _q(0.01, 0.01)}, TAUS, pol)  # edge=1, disp=0.01
-    loud = weights_from_quantiles({"A": _q(0.01, 0.10)}, TAUS, pol)   # edge=0.1, disp=0.10
+    loud = weights_from_quantiles({"A": _q(0.01, 0.10)}, TAUS, pol)  # edge=0.1, disp=0.10
     assert quiet["A"] == pytest.approx(0.015 * 1.0 / 0.01)
     assert loud["A"] == pytest.approx(0.015 * 0.1 / 0.10)
     assert quiet["A"] > loud["A"]
@@ -208,8 +210,13 @@ def test_policy_persist_bars_requires_consecutive_passes() -> None:
     """persist_bars=2: first qualifying bar does not enter; second does; a
     failing bar resets the streak."""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
-        gate_on="edge", deadband=0.0, persist_bars=2,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.5,
+        gate_on="edge",
+        deadband=0.0,
+        persist_bars=2,
     )
     streaks: dict[str, int] = {}
     first = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol, {}, streaks)
@@ -229,8 +236,13 @@ def test_policy_persist_bars_requires_consecutive_passes() -> None:
 def test_policy_book_vol_target_scales_both_ways() -> None:
     """bvt as a target: quiet book scales up (bounded by gross), loud book down."""
     pol = QuantilePolicy(
-        mode="symmetric", kappa=0.001, cost_gate=0.0, sizing="risk",
-        name_cap=10.0, gross_target=10.0, book_vol_target=0.05,
+        mode="symmetric",
+        kappa=0.001,
+        cost_gate=0.0,
+        sizing="risk",
+        name_cap=10.0,
+        gross_target=10.0,
+        book_vol_target=0.05,
     )
     quiet = weights_from_quantiles({"A": _q(0.5, 0.01)}, TAUS, pol)  # raw book_vol tiny
     loud = weights_from_quantiles({"A": _q(0.5, 1.0)}, TAUS, pol)
@@ -246,12 +258,14 @@ def test_mkt_disp_cut_flattens_book() -> None:
     storm = np.vstack([_q(0.02, 0.02)] * 2 + [_q(0.02, 0.20), _q(0.02, 0.02)])
     storm = np.vstack([_q(0.02, 0.02)] * 2 + [_q(0.02, 0.20), _q(0.02, 0.02)])
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        deadband=0.0, mkt_disp_cut=0.10,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        deadband=0.0,
+        mkt_disp_cut=0.10,
     )
-    w = quantile_panels_to_weights(
-        {"A": storm, "B": storm}, {"A": times, "B": times}, pol, TAUS
-    )
+    w = quantile_panels_to_weights({"A": storm, "B": storm}, {"A": times, "B": times}, pol, TAUS)
     day2 = w.filter(pl.col("event_time") == times[2])
     # Median disp on day2 = 0.20 > cut -> explicit flat for held names
     assert day2.height == 2
@@ -259,12 +273,8 @@ def test_mkt_disp_cut_flattens_book() -> None:
     day3 = w.filter(pl.col("event_time") == times[3])
     assert day3.height == 2 and (day3["target_weight"] > 0.0).all()
     # sanity: without the cut, day2 trades
-    pol2 = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0
-    )
-    w2 = quantile_panels_to_weights(
-        {"A": storm, "B": storm}, {"A": times, "B": times}, pol2, TAUS
-    )
+    pol2 = QuantilePolicy(mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0)
+    w2 = quantile_panels_to_weights({"A": storm, "B": storm}, {"A": times, "B": times}, pol2, TAUS)
     assert (w2.filter(pl.col("event_time") == times[2])["target_weight"] > 0.0).all()
 
 
@@ -272,8 +282,13 @@ def test_policy_exit_persist_holds_through_single_fail() -> None:
     """exit_persist=3: a held name survives one failing bar at its prior
     target; consecutive fails >= xp still flatten."""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
-        gate_on="edge", deadband=0.0, exit_persist=3,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.5,
+        gate_on="edge",
+        deadband=0.0,
+        exit_persist=3,
     )
     streaks: dict[str, int] = {}
     fails: dict[str, int] = {}
@@ -291,12 +306,20 @@ def test_policy_exit_persist_holds_through_single_fail() -> None:
 
 def test_policy_top_k_keeps_largest_targets() -> None:
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, cost_gate=0.0, gate_on="edge",
-        sizing="edge", name_cap=10.0, gross_target=10.0, deadband=0.0, top_k=2,
+        mode="long_flat",
+        kappa=1.0,
+        cost_gate=0.0,
+        gate_on="edge",
+        sizing="edge",
+        name_cap=10.0,
+        gross_target=10.0,
+        deadband=0.0,
+        top_k=2,
     )
     out = weights_from_quantiles(
         {"A": _q(0.09, 0.02), "B": _q(0.05, 0.02), "C": _q(0.01, 0.02)},
-        TAUS, pol,
+        TAUS,
+        pol,
     )
     assert set(out) == {"A", "B"}
     assert out["A"] > out["B"]
@@ -305,8 +328,14 @@ def test_policy_top_k_keeps_largest_targets() -> None:
 def test_policy_leader_gate_blocks_alts() -> None:
     """Alts flatten when the leader's edge <= min; the leader still trades."""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        gate_on="edge", deadband=0.0, leader_sid="BTC", leader_edge_min=0.0,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        gate_on="edge",
+        deadband=0.0,
+        leader_sid="BTC",
+        leader_edge_min=0.0,
     )
     rows = {"BTC": _q(-0.01, 0.02), "ETH": _q(0.05, 0.02)}  # BTC edge < 0
     out = weights_from_quantiles(rows, TAUS, pol)
@@ -321,8 +350,13 @@ def test_policy_leader_gate_blocks_alts() -> None:
 
 def test_policy_mkt_edge_min_flattens_book() -> None:
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        gate_on="edge", deadband=0.0, mkt_edge_min=0.0,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        gate_on="edge",
+        deadband=0.0,
+        mkt_edge_min=0.0,
     )
     # mean edge = (1.0 - 0.5)/2 > 0 -> both trade
     out = weights_from_quantiles({"A": _q(0.02, 0.02), "B": _q(-0.01, 0.02)}, TAUS, pol)
@@ -335,8 +369,13 @@ def test_policy_mkt_edge_min_flattens_book() -> None:
 
 def test_policy_w_alpha_smooths_toward_prior() -> None:
     pol = QuantilePolicy(
-        mode="symmetric", kappa=1.0, name_cap=10.0, gross_target=10.0,
-        cost_gate=0.0, deadband=0.0, w_alpha=0.5,
+        mode="symmetric",
+        kappa=1.0,
+        name_cap=10.0,
+        gross_target=10.0,
+        cost_gate=0.0,
+        deadband=0.0,
+        w_alpha=0.5,
     )
     first = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol)
     raw = first["A"]  # a=0.5, prior=0 -> w = 0.5*raw_target
@@ -350,8 +389,13 @@ def test_policy_gate_out_hysteresis() -> None:
     """gate_out < cost_gate: a held name survives a mid-band signal that
     would block a fresh entry; exits only below gate_out."""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.5,
-        gate_on="edge", deadband=0.0, gate_out=0.2,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.5,
+        gate_on="edge",
+        deadband=0.0,
+        gate_out=0.2,
     )
     prev = weights_from_quantiles({"A": _q(0.02, 0.02)}, TAUS, pol)  # edge=1.0 -> enter
     assert prev["A"] == pytest.approx(0.5)  # kappa*edge=1.0 clipped to name_cap
@@ -367,12 +411,22 @@ def test_rebal_every_skips_dates_and_carries() -> None:
     """rebal_every=2: only every 2nd decision date emits; book carries between."""
     times = np.array([T0 + timedelta(hours=4 * i) for i in range(6)])
     # alternating strong/flat signal rows
-    rows = [_q(0.02, 0.02), _q(-0.02, 0.02), _q(0.02, 0.02), _q(-0.02, 0.02),
-            _q(0.02, 0.02), _q(-0.02, 0.02)]
+    rows = [
+        _q(0.02, 0.02),
+        _q(-0.02, 0.02),
+        _q(0.02, 0.02),
+        _q(-0.02, 0.02),
+        _q(0.02, 0.02),
+        _q(-0.02, 0.02),
+    ]
     panel = np.vstack(rows)
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        deadband=0.0, rebal_every=2,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        deadband=0.0,
+        rebal_every=2,
     )
     w = quantile_panels_to_weights({"A": panel}, {"A": times}, pol, TAUS)
     emitted_dates = set(w["event_time"].to_list())
@@ -385,33 +439,29 @@ def test_meta_min_gates_entries_by_signal_sharpe() -> None:
     losing cannot re-enter until its rolling signal-Sharpe recovers.
     (Entries are gated; exits are never gated.)"""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        gate_on="edge", deadband=0.0, meta_min=0.05, meta_lookback=10,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        gate_on="edge",
+        deadband=0.0,
+        meta_min=0.05,
+        meta_lookback=10,
     )
     n = 40
     times = np.array([T0 + timedelta(hours=4 * i) for i in range(n)])
     # edge: +1 (long) bars 0-14, -1 (flat) 15-24, +1 (long) 25+
-    panel = np.vstack(
-        [_q(0.02, 0.02)] * 15 + [_q(-0.02, 0.02)] * 10 + [_q(0.02, 0.02)] * 15
-    )
+    panel = np.vstack([_q(0.02, 0.02)] * 15 + [_q(-0.02, 0.02)] * 10 + [_q(0.02, 0.02)] * 15)
     # realized returns: long signal loses bars 1-14; flat bars 15-24 book
     # sign(-1)*+0.01 = -0.01 (whipsaw losses); bars 25+ win +0.02.
-    realized = np.concatenate(
-        [[np.nan], np.full(14, -0.01), np.full(10, 0.01), np.full(15, 0.02)]
-    )
-    w = quantile_panels_to_weights(
-        {"A": panel}, {"A": times}, pol, TAUS, realized={"A": realized}
-    )
-    blocked = w.filter(
-        (pl.col("event_time") >= times[24]) & (pl.col("event_time") <= times[28])
-    )
+    realized = np.concatenate([[np.nan], np.full(14, -0.01), np.full(10, 0.01), np.full(15, 0.02)])
+    w = quantile_panels_to_weights({"A": panel}, {"A": times}, pol, TAUS, realized={"A": realized})
+    blocked = w.filter((pl.col("event_time") >= times[24]) & (pl.col("event_time") <= times[28]))
     assert blocked.height == 0 or (blocked["target_weight"] == 0.0).all()
     late = w.filter(pl.col("event_time") >= times[29])
     assert late.height > 0 and (late["target_weight"] > 0.0).all()
     # Without the meta gate the same panels re-enter immediately at bar 25
-    pol2 = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0
-    )
+    pol2 = QuantilePolicy(mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0, deadband=0.0)
     w2 = quantile_panels_to_weights({"A": panel}, {"A": times}, pol2, TAUS)
     assert w2.filter(pl.col("event_time") == times[25])["target_weight"][0] > 0.0
 
@@ -419,20 +469,28 @@ def test_meta_min_gates_entries_by_signal_sharpe() -> None:
 def test_policy_breadth_gross_scales_by_participation() -> None:
     """gross cap = gross_target * fraction of names with positive edge."""
     pol = QuantilePolicy(
-        mode="long_flat", kappa=10.0, name_cap=10.0, gross_target=1.0,
-        cost_gate=0.0, gate_on="edge", deadband=0.0, breadth_gross=True,
+        mode="long_flat",
+        kappa=10.0,
+        name_cap=10.0,
+        gross_target=1.0,
+        cost_gate=0.0,
+        gate_on="edge",
+        deadband=0.0,
+        breadth_gross=True,
     )
     # 2 of 3 names positive edge -> cap = 1.0 * 2/3
     out = weights_from_quantiles(
         {"A": _q(0.05, 0.02), "B": _q(0.04, 0.02), "C": _q(-0.03, 0.02)},
-        TAUS, pol,
+        TAUS,
+        pol,
     )
     gross = sum(abs(w) for w in out.values())
     assert gross == pytest.approx(2.0 / 3.0, rel=1e-6)
     # all-positive breadth -> full gross
     out2 = weights_from_quantiles(
         {"A": _q(0.05, 0.02), "B": _q(0.04, 0.02), "C": _q(0.03, 0.02)},
-        TAUS, pol,
+        TAUS,
+        pol,
     )
     assert sum(abs(w) for w in out2.values()) == pytest.approx(1.0, rel=1e-6)
 
@@ -443,13 +501,15 @@ def test_fund_cut_flattens_on_crowding() -> None:
     times = np.array([T0 + timedelta(hours=4 * i) for i in range(4)])
     panel = np.vstack([_q(0.02, 0.02)] * 4)
     pol = QuantilePolicy(
-        mode="long_flat", kappa=1.0, name_cap=0.5, cost_gate=0.0,
-        deadband=0.0, fund_cut=0.01,
+        mode="long_flat",
+        kappa=1.0,
+        name_cap=0.5,
+        cost_gate=0.0,
+        deadband=0.0,
+        fund_cut=0.01,
     )
     mkt = {times[0]: 0.0, times[1]: 0.0, times[2]: 0.05}  # hot at t2; t3 missing
-    w = quantile_panels_to_weights(
-        {"A": panel}, {"A": times}, pol, TAUS, mkt_series=mkt
-    )
+    w = quantile_panels_to_weights({"A": panel}, {"A": times}, pol, TAUS, mkt_series=mkt)
     d2 = w.filter(pl.col("event_time") == times[2])
     assert d2.height == 1 and d2["target_weight"][0] == 0.0  # held -> flat
     d3 = w.filter(pl.col("event_time") == times[3])
@@ -517,9 +577,7 @@ def test_weight_panel_disjoint_calendars() -> None:
     pa, _ = compute_quantile_panel(closes_a, "empirical", TAUS, window=120)
     pb, _ = compute_quantile_panel(closes_b, "empirical", TAUS, window=120)
     pol = QuantilePolicy(mode="long_flat", kappa=1.0, cost_gate=0.0)
-    w = quantile_panels_to_weights(
-        {"A": pa, "B": pb}, {"A": times_a, "B": times_b}, pol, TAUS
-    )
+    w = quantile_panels_to_weights({"A": pa, "B": pb}, {"A": times_a, "B": times_b}, pol, TAUS)
     assert w.height > 0
     dup = w.group_by(["event_time", "security_id"]).len().filter(pl.col("len") > 1)
     assert dup.height == 0
@@ -551,9 +609,7 @@ def test_sim_live_end_to_end_synthetic(tmp_path: Path) -> None:
         interval="1d",
         config=cfg,
         champion=StrategySlot(name="empirical_long_flat", spec="empirical", policy=pol),
-        challengers=[
-            StrategySlot(name="ewma_emp_long_flat", spec="ewma_emp", policy=pol)
-        ],
+        challengers=[StrategySlot(name="ewma_emp_long_flat", spec="ewma_emp", policy=pol)],
         window=120,
         out_dir=tmp_path / "out",
         run_id="test-sim-live",

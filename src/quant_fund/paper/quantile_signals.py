@@ -36,6 +36,7 @@ research-only; no live-PnL claim — simulated fills only.
 
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -51,9 +52,7 @@ from scipy import stats as st
 # Forecasters: (rets_window, taus) -> quantile vector | raise -> honest skip
 # ---------------------------------------------------------------------------
 
-DEFAULT_TAUS: tuple[float, ...] = tuple(
-    float(x) for x in np.linspace(0.05, 0.95, 19)
-)
+DEFAULT_TAUS: tuple[float, ...] = tuple(float(x) for x in np.linspace(0.05, 0.95, 19))
 
 
 def _ewma_next_sigma(rets: np.ndarray, lam: float = 0.94) -> float:
@@ -63,7 +62,7 @@ def _ewma_next_sigma(rets: np.ndarray, lam: float = 0.94) -> float:
     if r.size < 2:
         return float("nan")
     w = lam ** np.arange(r.size - 1, -1, -1.0)
-    var = float((1.0 - lam) * np.sum(w * r * r) + (lam ** r.size) * r[0] ** 2)
+    var = float((1.0 - lam) * np.sum(w * r * r) + (lam**r.size) * r[0] ** 2)
     return float(np.sqrt(var)) if var > 0 else float("nan")
 
 
@@ -71,8 +70,14 @@ def _arch_fit(
     rets_pct: np.ndarray,
     vol: Literal["GARCH", "ARCH", "EGARCH", "FIGARCH", "APARCH", "HARCH"],
     dist: Literal[
-        "normal", "gaussian", "t", "studentst", "skewstudent", "skewt",
-        "ged", "generalized error",
+        "normal",
+        "gaussian",
+        "t",
+        "studentst",
+        "skewstudent",
+        "skewt",
+        "ged",
+        "generalized error",
     ],
     o: int,
 ):
@@ -281,7 +286,9 @@ class QuantilePolicy:
     gate_on: str = "mu"  # "mu": |mu| return gate | "edge": |mu/disp| z-gate
     sizing: str = "edge"  # "edge": w=kappa*edge | "risk": w=kappa*edge/disp (vol-parity)
     book_vol_target: float | None = None  # scale book so Σ|w·disp| <= this
-    tail_gate: float | None = None  # longs need q_lo > -tail_gate; shorts q_hi < +tail_gate (return units)
+    tail_gate: float | None = (
+        None  # longs need q_lo > -tail_gate; shorts q_hi < +tail_gate (return units)
+    )
     persist_bars: int = 1  # consecutive gate-passing dates before (re-)entry
     exit_persist: int = 1  # consecutive gate-FAILING dates before exit (1 = instant)
     mkt_disp_cut: float | None = None  # flat book when median cross-asset disp exceeds this
@@ -297,6 +304,9 @@ class QuantilePolicy:
     rebal_every: int = 1  # emit targets only every k-th decision date
     breadth_gross: bool = False  # scale gross by fraction of names with edge>0
     fund_cut: float | None = None  # flat book when mkt_series (funding) > this
+    edge_pow: float = 1.0  # sizing exponent: w ~ sign(edge)*|edge|^p (convex conviction)
+    rvol_target: float | None = None  # trailing *realized* book-vol target (per-bar)
+    rvol_lookback: int = 20  # bars of realized book returns for rvol_target
 
     def __post_init__(self) -> None:
         if self.mode not in {"long_flat", "symmetric"}:
@@ -305,7 +315,7 @@ class QuantilePolicy:
             raise ValueError("gate_on must be 'mu' or 'edge'")
         if self.sizing not in {"edge", "risk"}:
             raise ValueError("sizing must be 'edge' or 'risk'")
-        for name in ("book_vol_target", "tail_gate", "mkt_disp_cut", "fund_cut"):
+        for name in ("book_vol_target", "tail_gate", "mkt_disp_cut", "fund_cut", "rvol_target"):
             v = getattr(self, name)
             if v is not None and (not np.isfinite(float(v)) or float(v) < 0):
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -325,6 +335,10 @@ class QuantilePolicy:
             raise ValueError("meta_lookback must be >= 2")
         if int(self.rebal_every) < 1:
             raise ValueError("rebal_every must be >= 1")
+        if not np.isfinite(float(self.edge_pow)) or float(self.edge_pow) <= 0:
+            raise ValueError("edge_pow must be finite and positive")
+        if int(self.rvol_lookback) < 2:
+            raise ValueError("rvol_lookback must be >= 2")
         for name in ("kappa", "gross_target", "name_cap", "cost_gate", "deadband"):
             if not np.isfinite(float(getattr(self, name))) or float(getattr(self, name)) < 0:
                 raise ValueError(f"{name} must be finite and non-negative")
@@ -332,7 +346,9 @@ class QuantilePolicy:
             raise ValueError("band taus must satisfy 0 < lo < hi < 1")
 
 
-def quantile_moments(q: np.ndarray, taus: np.ndarray, policy: QuantilePolicy) -> tuple[float, float]:
+def quantile_moments(
+    q: np.ndarray, taus: np.ndarray, policy: QuantilePolicy
+) -> tuple[float, float]:
     """(mu, disp) from a quantile row: grid mean + central-band dispersion."""
     q = np.asarray(q, dtype=float)
     taus = np.asarray(taus, dtype=float)
@@ -352,6 +368,7 @@ def weights_from_quantiles(
     streaks: dict[str, int] | None = None,
     fail_streaks: dict[str, int] | None = None,
     entry_mask: dict[str, bool] | None = None,
+    book_scale: float = 1.0,
 ) -> dict[str, float]:
     """Map per-name quantile rows to target weights under ``policy``.
 
@@ -424,19 +441,27 @@ def weights_from_quantiles(
             streaks[sid] = streaks.get(sid, 0) + 1 if passed else 0
         if fail_streaks is not None:
             fail_streaks[sid] = 0 if passed else fail_streaks.get(sid, 0) + 1
-        confirmed = policy.persist_bars <= 1 or abs(prior) > 1e-12 or (
-            streaks is not None and streaks.get(sid, 0) >= policy.persist_bars
+        confirmed = (
+            policy.persist_bars <= 1
+            or abs(prior) > 1e-12
+            or (streaks is not None and streaks.get(sid, 0) >= policy.persist_bars)
         )
         if not passed or not confirmed:
             held = abs(prior) > 1e-12
-            if held and not passed and policy.exit_persist > 1 and (
-                fail_streaks is None or fail_streaks.get(sid, 0) < policy.exit_persist
+            if (
+                held
+                and not passed
+                and policy.exit_persist > 1
+                and (fail_streaks is None or fail_streaks.get(sid, 0) < policy.exit_persist)
             ):
                 w = prior  # slow exit: hold through a single failing bar
             else:
                 w = 0.0
         else:
-            raw_w = policy.kappa * edge if policy.sizing == "edge" else policy.kappa * edge / disp
+            signed = math.copysign(abs(edge) ** policy.edge_pow, edge)
+            raw_w = (
+                policy.kappa * signed if policy.sizing == "edge" else policy.kappa * signed / disp
+            )
             w = float(np.clip(raw_w, -policy.name_cap, policy.name_cap))
             if policy.mode == "long_flat":
                 w = max(w, 0.0)
@@ -459,6 +484,11 @@ def weights_from_quantiles(
         if book_vol > 0.0 and policy.book_vol_target > 0.0:
             scale = policy.book_vol_target / book_vol
             raw = {sid: w * scale for sid, w in raw.items()}
+    if book_scale != 1.0:
+        # Realized-vol throttle (rvol_target): the whole book scales by the
+        # factor computed in quantile_panels_to_weights from trailing book
+        # returns — before the gross cap so leverage stays hard-bounded.
+        raw = {sid: w * book_scale for sid, w in raw.items()}
     gross_cap = policy.gross_target
     if policy.breadth_gross and edge_map:
         # Breadth-scaled gross: fraction of names with positive edge scales
@@ -580,6 +610,7 @@ def quantile_panels_to_weights(
     fail_streaks: dict[str, int] = {}
     sig_pnl: dict[str, list[float]] = {}
     prev_edge: dict[str, float] = {}
+    book_rets: list[float] = []  # realized per-date returns of the emitted book
     out_t: list[Any] = []
     out_s: list[str] = []
     out_w: list[float] = []
@@ -593,6 +624,8 @@ def quantile_panels_to_weights(
     timeline = sorted({t for sid in panels for t in event_times[sid]})
     for step_i, t_i in enumerate(timeline):
         q_rows = {}
+        book_ret_t = 0.0
+        book_seen = False
         for sid, panel in panels.items():
             i = row_index[sid].get(t_i)
             if i is None:
@@ -603,11 +636,18 @@ def quantile_panels_to_weights(
             if realized is not None and sid in realized:
                 r = float(realized[sid][i])
                 e_prev = prev_edge.get(sid)
-                if np.isfinite(r) and e_prev is not None:
-                    sig_pnl.setdefault(sid, []).append(float(np.sign(e_prev)) * r)
+                if np.isfinite(r):
+                    if e_prev is not None:
+                        sig_pnl.setdefault(sid, []).append(float(np.sign(e_prev)) * r)
+                    # Realized book return over the bar ending at t_i — the
+                    # previously emitted targets earning this bar's move.
+                    book_ret_t += float(prev.get(sid, 0.0)) * r
+                    book_seen = True
             q = panel[i]
             if np.isfinite(q).all():
                 q_rows[sid] = q
+        if book_seen:
+            book_rets.append(book_ret_t)
         if not q_rows:
             continue
         # Refresh prev_edge for names with a valid row (used by accel gate
@@ -629,7 +669,7 @@ def quantile_panels_to_weights(
             for sid in q_rows:
                 ok = True
                 if policy.meta_min is not None:
-                    hist = sig_pnl.get(sid, [])[-policy.meta_lookback:]
+                    hist = sig_pnl.get(sid, [])[-policy.meta_lookback :]
                     if len(hist) >= max(10, policy.meta_lookback // 4):
                         mu_h = float(np.mean(hist))
                         sd_h = float(np.std(hist, ddof=1))
@@ -672,8 +712,22 @@ def quantile_panels_to_weights(
                 out_s.append(sid)
                 out_w.append(w)
             continue
+        book_scale = 1.0
+        if policy.rvol_target is not None:
+            # Realized-vol targeting: scale the book by target / trailing
+            # realized book-return sigma. Complements book_vol_target (which
+            # uses forecast dispersion): this reacts to what the strategy's
+            # own returns actually did — cuts after vol shock clusters,
+            # adds when the realized book has been calm. Capped at 3x so a
+            # quiet patch cannot lever the book past reason; gross_target
+            # remains the hard bound downstream.
+            hist = book_rets[-policy.rvol_lookback :]
+            if len(hist) >= max(10, policy.rvol_lookback // 4):
+                rv = float(np.std(hist, ddof=1))
+                if rv > 0.0 and policy.rvol_target > 0.0:
+                    book_scale = min(3.0, policy.rvol_target / rv)
         targets = weights_from_quantiles(
-            q_rows, taus, policy, prev, streaks, fail_streaks, entry_mask
+            q_rows, taus, policy, prev, streaks, fail_streaks, entry_mask, book_scale
         )
         # The emitted dict IS the carried book: names dropped from it are
         # flattened by the engine, so the deadband reference resets wholesale.
@@ -683,9 +737,9 @@ def quantile_panels_to_weights(
             out_t.append(t_i)
             out_s.append(sid)
             out_w.append(w)
-    return pl.DataFrame(
-        {"event_time": out_t, "security_id": out_s, "target_weight": out_w}
-    ).sort(["event_time", "security_id"])
+    return pl.DataFrame({"event_time": out_t, "security_id": out_s, "target_weight": out_w}).sort(
+        ["event_time", "security_id"]
+    )
 
 
 def load_deep_bars(
@@ -726,9 +780,7 @@ def load_deep_bars(
         t1 = cast(Any, bounds["t1"].min())
         if t0 is None or t1 is None or t0 >= t1:
             raise ValueError("no shared calendar span across symbols")
-        panel = panel.filter(
-            (pl.col("event_time") >= t0) & (pl.col("event_time") <= t1)
-        )
+        panel = panel.filter((pl.col("event_time") >= t0) & (pl.col("event_time") <= t1))
     if "available_time" in panel.columns:
         bad = panel.filter(pl.col("available_time") < pl.col("event_time"))
         if bad.height:

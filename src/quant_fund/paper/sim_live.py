@@ -75,10 +75,14 @@ def _equity_stats(equity: pl.DataFrame, bars_per_year: float) -> dict[str, Any]:
     peak = np.maximum.accumulate(nav)
     dd = nav / peak - 1.0
     ann_ret = float(nav[-1] / nav[0]) ** (bars_per_year / max(nav.size - 1, 1)) - 1.0
-    ann_vol = float(np.std(rets, ddof=1) * np.sqrt(bars_per_year)) if rets.size > 1 else float("nan")
-    sharpe = float(np.mean(rets) / np.std(rets, ddof=1) * np.sqrt(bars_per_year)) if (
-        rets.size > 1 and np.std(rets, ddof=1) > 0
-    ) else float("nan")
+    ann_vol = (
+        float(np.std(rets, ddof=1) * np.sqrt(bars_per_year)) if rets.size > 1 else float("nan")
+    )
+    sharpe = (
+        float(np.mean(rets) / np.std(rets, ddof=1) * np.sqrt(bars_per_year))
+        if (rets.size > 1 and np.std(rets, ddof=1) > 0)
+        else float("nan")
+    )
     return {
         "status": "ok",
         "n_marks": int(nav.size),
@@ -154,6 +158,7 @@ def run_sim_live(
     bench_only: bool = False,
     prefer_latest: bool = True,
     eval_tail_bars: int | None = None,
+    shared_calendar: bool = True,
 ) -> SimLiveResult:
     """Run the simulated-live book end to end and write the receipt."""
     taus = np.asarray(DEFAULT_TAUS if taus is None else taus, dtype=float)
@@ -166,9 +171,9 @@ def run_sim_live(
         #   agree(a,b) — emit a's row only when sign(mean(a)) == sign(mean(b));
         #     disagreement emits a degenerate near-flat row (name goes flat).
         if spec.startswith("vincent(") and spec.endswith(")"):
-            return spec[len("vincent("):-1].split("+")
+            return spec[len("vincent(") : -1].split("+")
         if spec.startswith("agree(") and spec.endswith(")"):
-            return spec[len("agree("):-1].split(",")
+            return spec[len("agree(") : -1].split(",")
         return [spec]
 
     specs = sorted({m for slot in slots for m in _member_specs(slot.spec)})
@@ -182,7 +187,7 @@ def run_sim_live(
                 bar_files[sym.upper()] = _sha256(p)
                 break
 
-    bars = load_deep_bars(bars_root, symbols, interval)
+    bars = load_deep_bars(bars_root, symbols, interval, shared_calendar=shared_calendar)
     if "close_total_return" not in bars.columns:
         # Spot crypto: no dividends/splits → total-return close equals raw
         # close. run_backtest selects the column; the paper loop prefers it.
@@ -213,7 +218,9 @@ def run_sim_live(
             fund = pl.read_parquet(fund_path).sort("event_time")
             f_times = fund["event_time"].to_list()
             f_vals = fund["value"].to_numpy().astype(float)
-            ref_times = per_sid.get("BTCUSDT", (None, sorted({t for s in per_sid for t in per_sid[s][1]})))[1]
+            ref_times = per_sid.get(
+                "BTCUSDT", (None, sorted({t for s in per_sid for t in per_sid[s][1]}))
+            )[1]
             ref_arr = np.asarray(ref_times)
             # Assign each funding event to the bar containing it; bars with
             # no events get 0; then rolling 7-bar (daily) / 42-bar (4h) sum.
@@ -306,8 +313,12 @@ def run_sim_live(
             r[1:] = c[1:] / c[:-1] - 1.0
             realized[sid] = r
         return quantile_panels_to_weights(
-            panels, times, slot.policy, taus,
-            realized=realized, mkt_series=mkt_series,
+            panels,
+            times,
+            slot.policy,
+            taus,
+            realized=realized,
+            mkt_series=mkt_series,
         )
 
     champion_w = _panel_for(champion)
@@ -321,8 +332,7 @@ def run_sim_live(
         bars = bars.filter(pl.col("event_time") >= tail_cut)
         champion_w = champion_w.filter(pl.col("event_time") >= tail_cut)
         challenger_w = {
-            name: w.filter(pl.col("event_time") >= tail_cut)
-            for name, w in challenger_w.items()
+            name: w.filter(pl.col("event_time") >= tail_cut) for name, w in challenger_w.items()
         }
 
     result: PaperLoopResult | None = None
@@ -339,8 +349,8 @@ def run_sim_live(
             resume_run_id=resume_run_id,
             prefer_latest=prefer_latest,
         )
-    effective_run_id = result.run_id if result is not None else (
-        run_id or f"bench-{interval}-{champion.name}"
+    effective_run_id = (
+        result.run_id if result is not None else (run_id or f"bench-{interval}-{champion.name}")
     )
 
     stats: dict[str, Any] = {}
@@ -358,7 +368,9 @@ def run_sim_live(
             panel = champion_w if slot.name == champion.name else challenger_w[slot.name]
             try:
                 bench_res = run_backtest(
-                    bars, panel, config,
+                    bars,
+                    panel,
+                    config,
                     initial_nav=float(initial_nav or config.paper.initial_nav),
                 )
                 book_stats[slot.name] = {
@@ -366,14 +378,18 @@ def run_sim_live(
                     "n_fills": int(bench_res.fills.height),
                 }
             except Exception as exc:  # noqa: BLE001 — bench failure is reported, not hidden
-                book_stats[slot.name] = {"status": "bench_failed", "error": f"{type(exc).__name__}: {exc}"}
+                book_stats[slot.name] = {
+                    "status": "bench_failed",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
     if not stats and champion.name in book_stats:
         stats = book_stats[champion.name]
     forecaster_stats = {
         f"{sid}:{spec}": quantile_cache[(sid, spec)][1] for sid in per_sid for spec in specs
     }
     data_label = (
-        result.source_note if result is not None
+        result.source_note
+        if result is not None
         else str(getattr(config.data.source, "value", config.data.source))
     )
     receipt: dict[str, Any] = {
@@ -392,11 +408,17 @@ def run_sim_live(
             "sha256": bar_files,
             "tail_bars": tail_bars,
             "eval_tail_bars": eval_tail_bars,
+            "shared_calendar": shared_calendar,
         },
         "strategy": {
-            "champion": {"name": champion.name, "spec": champion.spec, "policy": asdict(champion.policy)},
+            "champion": {
+                "name": champion.name,
+                "spec": champion.spec,
+                "policy": asdict(champion.policy),
+            },
             "challengers": [
-                {"name": s.name, "spec": s.spec, "policy": asdict(s.policy)} for s in (challengers or [])
+                {"name": s.name, "spec": s.spec, "policy": asdict(s.policy)}
+                for s in (challengers or [])
             ],
             "taus": [float(t) for t in taus],
             "window": int(window),
@@ -413,7 +435,8 @@ def run_sim_live(
                 "kill_switch_halts": result.metrics.get("kill_switch_halts"),
                 "resumed": result.metrics.get("resumed"),
             }
-            if result is not None else {"status": "bench_only_no_paper_loop"}
+            if result is not None
+            else {"status": "bench_only_no_paper_loop"}
         ),
         "champion_equity_stats": stats,
         "book_stats": book_stats,
