@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -59,6 +62,53 @@ jobs:
           name: dipcatcher-dependency-audit
           path: dependency-audit.json
           if-no-files-found: error
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync locked dependencies without installing the workspace
+        run: uv sync --frozen --all-groups --no-install-project
+      - name: Build wheel and source distribution
+        run: uv build
+      - name: Install wheel and smoke-test the installed console script
+        run: |
+          uv pip install --python .venv/bin/python --no-deps dist/*.whl
+          .venv/bin/dipcatcher --help
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime image
+        run: docker build --pull --tag dipcatcher-ci .
+      - name: Start container
+        run: docker run --detach --name dipcatcher-ci dipcatcher-ci
+      - name: Wait for container health check
+        run: |
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect --format='{{.State.Health.Status}}' dipcatcher-ci)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              docker logs dipcatcher-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs dipcatcher-ci
+          exit 1
+      - name: Remove runtime container
+        if: always()
+        run: docker rm --force dipcatcher-ci || true
 
   test:
     runs-on: ubuntu-latest
