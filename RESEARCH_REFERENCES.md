@@ -222,3 +222,10 @@
 - D. Li (2000). "On default correlation: a copula function approach." Journal of Fixed Income — `models/gaussian_copula_default.py`.
 - L. Andersen, J. Sidenius, S. Basu (2003). "All your hedges in one basket." Risk — one-factor loss recursion (`models/gaussian_copula_default.py`).
 - Credit Suisse First Boston (1997). *CreditRisk+: A Credit Risk Management Framework*; H. Panjer (1981). "Recursive evaluation of a family of compound distributions." ASTIN Bulletin — `models/creditrisk_plus.py`.
+## Wave 21 references (forecast accuracy, whitening, MVO & utility)
+
+- H. Theil (1966). *Applied Economic Forecasting* — Theil's U inequality coefficients (`metrics/forecast_accuracy.py`).
+- R. Hyndman, A. Koehler (2006). "Another look at measures of forecast accuracy." IJF — MASE (`metrics/forecast_accuracy.py`).
+- A. Kessy, A. Lewin, K. Strimmer (2018). "Optimal whitening and decorrelation." The American Statistician — `models/whitening.py`.
+- H. Markowitz (1952). "Portfolio selection." Journal of Finance — `models/efficient_frontier.py`.
+- J. Pratt (1964). "Risk aversion in the small and in the large." Econometrica; K. Arrow (1965). *Aspects of the Theory of Risk-Bearing* — `metrics/utility.py`.

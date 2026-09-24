@@ -230,3 +230,15 @@
 - `creditrisk_plus.py`: G(z)=exp(sum pd_i(z^{v_i}-1)); Panjer recursion p_0=
   exp(-sum pd_i), p_n=(1/n) sum_{k=1}^n k a_k p_{n-k}, a_k=sum_{i:v_i=k} pd_i;
   E[loss]=sum pd_i v_i, Var=sum pd_i v_i^2.
+## Wave 21 mathematical conventions
+
+- `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
+  sqrt(sum(f-a)^2)/sqrt(sum(a_t-a_{t-1})^2); MASE=mean|a-f|/mean|a_t-a_{t-m}|.
+- `whitening.py`: Sigma=U Lambda U'; PCA W=Lambda^{-1/2}U'; ZCA W=U Lambda^{-1/2}
+  U' (symmetric); whitened Cov = I.
+- `efficient_frontier.py`: A=1'S^{-1}1, B=1'S^{-1}mu, C=mu'S^{-1}mu, D=AC-B^2;
+  min-var w=S^{-1}1/A; frontier w=g+h m, var=(A m^2-2B m+C)/D; tangency=
+  S^{-1}(mu-rf)/1'S^{-1}(mu-rf).
+- `utility.py`: u(w)=(w^{1-gamma}-1)/(1-gamma) (log for gamma=1); CE gross =
+  (mean gross^{1-gamma})^{1/(1-gamma)} (geometric mean for gamma=1); CE<mean for
+  gamma>0.
