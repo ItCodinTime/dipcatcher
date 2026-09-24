@@ -215,3 +215,18 @@
 
 ### Portfolio construction
 - R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Optional scorecard families (research/benches_extra.py)
+
+New optional research benches expose descriptive proper-score diagnostics of the
+SYNTHETIC return panel as scorecard families (never live-P&L / headline ratios):
+
+- `complexity` — Bandt-Pompe permutation entropy, Richman-Moorman sample entropy,
+  spectral entropy, and Lempel-Ziv complexity (see `metrics/entropy.py`).
+- `roughness` — rescaled-range and DFA Hurst exponents and Higuchi fractal
+  dimension (see `metrics/fractal.py`).
+- `serial_randomness` — Lo-MacKinlay variance-ratio, Wald-Wolfowitz runs, and
+  Ljung-Box tests (see `metrics/serial.py`).
+
+These are registered in `OPTIONAL_BENCHMARK_FAMILIES` and pass the fail-closed
+honesty gates (executed / nonempty / finite / forbidden-metrics-absent).

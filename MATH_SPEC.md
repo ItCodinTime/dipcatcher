@@ -217,3 +217,11 @@
 - `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
   (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
   average the weights and renormalise (Michaud resampled efficiency).
+
+## Optional scorecard families (benches_extra)
+
+- `complexity` / `roughness` / `serial_randomness` benches average per-asset
+  proper-score diagnostics over the SYNTHETIC panel's `ret_1` series (assets with
+  >= 64/128 observations), reusing the entropy/fractal/serial metric modules; the
+  resulting family blobs contain only finite floats with no sharpe/sortino/
+  calmar/pnl/nav key tokens, so the verify.py scorecard honesty gates pass.
