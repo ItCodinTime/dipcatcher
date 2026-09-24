@@ -211,15 +211,21 @@ def _parse_funding_csv(raw: bytes, coin: str) -> list[dict]:
     return rows
 
 
-def fetch_symbol(coin: str, interval: str = "1d") -> tuple[str, list[dict], list[dict], list[dict]]:
+def fetch_symbol(
+    coin: str,
+    interval: str = "1d",
+    *,
+    want_spot: bool = True,
+    want_funding: bool = True,
+) -> tuple[str, list[dict], list[dict], list[dict]]:
     sym = f"{coin}USDT"
     pk = f"data/futures/um/monthly/klines/{sym}/{interval}/"
     sk = f"data/spot/monthly/klines/{sym}/{interval}/"
     fk = f"data/futures/um/monthly/fundingRate/{sym}/"
     p_months = set(_months_from_keys(list_keys(pk)))
-    s_months = set(_months_from_keys(list_keys(sk)))
-    f_months = set(_months_from_keys(list_keys(fk)))
-    if not p_months or not s_months:
+    s_months = set(_months_from_keys(list_keys(sk))) if want_spot else set()
+    f_months = set(_months_from_keys(list_keys(fk))) if want_funding else set()
+    if not p_months or (want_spot and not s_months):
         return coin, [], [], []
     all_months = sorted(p_months | s_months | f_months)
     perp_rows: list[dict] = []
@@ -247,6 +253,8 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=Path("data/binance_carry"))
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--interval", default="1d")
+    ap.add_argument("--skip-spot", action="store_true")
+    ap.add_argument("--skip-funding", action="store_true")
     args = ap.parse_args()
     coins = args.coins.split()
     print(f"fetching {len(coins)} candidate coins")
@@ -255,7 +263,16 @@ def main() -> int:
     funds: list[dict] = []
     keep: list[str] = []
     with cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(fetch_symbol, c, args.interval): c for c in coins}
+        futs = {
+            ex.submit(
+                fetch_symbol,
+                c,
+                args.interval,
+                want_spot=not args.skip_spot,
+                want_funding=not args.skip_funding,
+            ): c
+            for c in coins
+        }
         for fut in cf.as_completed(futs):
             coin = futs[fut]
             try:
@@ -263,7 +280,8 @@ def main() -> int:
             except Exception as e:  # noqa: BLE001
                 print(f"  {coin}: FAILED {e}")
                 continue
-            if not p or not s or not f:
+            need_ok = bool(p) and (args.skip_spot or s) and (args.skip_funding or f)
+            if not need_ok:
                 print(f"  {coin}: incomplete p={len(p)} s={len(s)} f={len(f)}")
                 continue
             keep.append(coin)
@@ -303,8 +321,10 @@ def main() -> int:
         .sort("event_time")
     )
     perp_df.write_parquet(args.out / "perp_bars.parquet")
-    spot_df.write_parquet(args.out / "spot_bars.parquet")
-    fund_df.write_parquet(args.out / "funding.parquet")
+    if not args.skip_spot:
+        spot_df.write_parquet(args.out / "spot_bars.parquet")
+    if not args.skip_funding:
+        fund_df.write_parquet(args.out / "funding.parquet")
     print(
         f"wrote {args.out}: perp={perp_df.height} spot={spot_df.height} "
         f"funding={fund_df.height} coins={len(keep)}"
