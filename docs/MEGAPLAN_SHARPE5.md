@@ -229,6 +229,9 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | HL↔Binance spread arb, 1d (ARBX/ARBB 286 sids) | g55 enter=5e-4 lb=9 mx=30 | 11.13 / +34.1% / −0.5% | **2.42 / +5.7% / −1.9%** | NOT PROVEN (best) |
 | HL↔Binance spread arb, 1h (Feb–Sep 2026 overlap) | g51 enter=1.7e-4 lb=3 mx=15 | 0.58 / +0.4% / −0.3% | 1.41 / +1.3% / −0.8% | NOT PROVEN |
 | HL-only carry 178c, 1h (Feb–Sep 2026, split 06-01) | only_spike_fade tv=0.10 (unqualified) | 0.20 / +0.0% / −16.1% | −0.00 / −2.6% / −25.2% | NOT PROVEN |
+| 3-venue arb (HL+BIN+OKX), 1d — 375 pair-sids | g55 enter=5e-4 lb=9 mx=30 | 11.13 / +34.1% / −0.5% | 2.42 / +5.7% / −1.9% | NOT PROVEN |
+| 3-venue arb, extended grid (enter→4e-3, lb→45) | g37 enter=1e-3 lb=9 mx=30 | 11.02 / +32.1% / −0.5% | **3.19 / +6.6% / −0.9%** | NOT PROVEN (best) |
+| 3-venue arb, refine pass around champion | enter=1e-3 lb=9 nw=0.08 (interior) | 11.02 / +32.1% / −0.5% | 3.19 / +6.6% / −0.9% | NOT PROVEN |
 
 **Findings this round:**
 
@@ -259,5 +262,16 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
    (Feb–Sep 2026) — the 1h arb/HL evals split at 2026-06-01 instead of the
    canonical 2025-01-01; receipts name the window honestly.
 
+6. **Third venue (OKX) widens the book but not the edge.** OKX's public
+   funding API only serves ~6 months of history (565 events/coin), so its
+   ~90 added pair-sids are holdout-window-only — the 3-venue book's frozen
+   champion reproduces the 2-venue holdout exactly (2.42). The extended and
+   refined grids lift the frozen config to enter=1e-3/lb=9 and holdout to
+   3.19/MDD−0.9% — the parameter surface is now mapped to an interior
+   optimum, and further tuning is dev-overfitting. The binding constraint
+   is the 2026 cross-venue funding-spread compression, not config choice.
+   `scripts/build_arb_book_multi.py`, receipts `evidence-arb3-*.json`.
+
 Remaining unexplored per the plan's own list: maker-fill variants (needs
-order-book data we do not have), and C5 optional ML sleeve.
+order-book data we do not have), and C5 optional ML sleeve (ran this round
+on the 1h Binance book — see the C5 row above).
