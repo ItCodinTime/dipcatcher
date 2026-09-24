@@ -479,9 +479,17 @@ def _replay_kernel(
             delta = desired - current
             if abs(delta) * price < 1.0:
                 continue
-            adv_a = adv[exec_t, a]
-            adv_eff = adv_a if np.isfinite(adv_a) and adv_a > 0 else 1.0
-            vol_a = vol[exec_t, a]
+            adv_a = adv[i, a]
+            if (
+                not np.isfinite(adv_a)
+                or adv_a <= 0
+                or not np.isfinite(participation_limit)
+                or not 0 < participation_limit <= 1
+            ):
+                reject_count += 1
+                continue
+            adv_eff = adv_a
+            vol_a = vol[i, a]
             vol_eff = vol_a if np.isfinite(vol_a) and vol_a > 0 else 0.02
             delta_np64 = nav_np64 or share_np64[a]
 
@@ -513,7 +521,7 @@ def _replay_kernel(
                 bps_per_turnover,
             )
             max_qty = participation_limit * (adv_eff / price)
-            if abs(delta) > max_qty > 0:
+            if abs(delta) > max_qty:
                 delta = np.sign(delta) * max_qty
                 delta_np64 = True
                 comm, spr, imp, total = _order_costs_nb(
@@ -1075,8 +1083,8 @@ def run_backtest_fast(
                 break
 
             esrc = src_l[exec_t]
-            adv_row = adv_l[exec_t]
-            vol_row = vol_l[exec_t]
+            adv_row = adv_l[i]
+            vol_row = vol_l[i]
             dec_l = dec_l_i
             dec_ok_d = dec_ok_i
             # ``ids = exec | shares | target``; unpriced sids are skipped inside.
@@ -1111,7 +1119,15 @@ def run_backtest_fast(
                 current = shares[a]
                 delta = desired - current
                 adv_a = adv_row[a]
-                adv_eff = adv_a if math.isfinite(adv_a) and adv_a > 0 else 1.0
+                if (
+                    not math.isfinite(adv_a)
+                    or adv_a <= 0
+                    or not math.isfinite(costs_cfg.participation_limit)
+                    or not 0 < costs_cfg.participation_limit <= 1
+                ):
+                    reject_count += 1
+                    continue
+                adv_eff = adv_a
                 vol_a = vol_row[a]
                 vol_eff = vol_a if math.isfinite(vol_a) and vol_a > 0 else 0.02
 
@@ -1119,7 +1135,7 @@ def run_backtest_fast(
                     delta, price, adv_eff, vol_eff, costs_cfg
                 )
                 max_qty = costs_cfg.participation_limit * (adv_eff / price)
-                if abs(delta) > max_qty > 0:
+                if abs(delta) > max_qty:
                     # np.sign() yields np.float64; the reference does NOT coerce it
                     # back — the np.float64 delta contaminates shares/cash and
                     # degrades later sum() calls to the naive path. Replicate.
