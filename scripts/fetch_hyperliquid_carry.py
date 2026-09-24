@@ -108,7 +108,7 @@ def list_spot_pairs() -> dict[str, str]:
 
 
 def fetch_candles(coin: str, interval: str = "1d") -> list[dict]:
-    """All daily candles for coin (perp name or spot universe entry name)."""
+    """All candles for coin (perp name or spot universe entry name)."""
     rows: list[dict] = []
     end = int(datetime.now(tz=UTC).timestamp() * MS)
     start = 1672531200000  # HL mainnet genesis era; snapshot returns from listing
@@ -250,14 +250,20 @@ def _fund_frame(coin: str, events: list[dict]) -> pl.DataFrame:
     )
 
 
-def _one(coin: str, spot_name: str | None) -> tuple[str, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-    perp = _bars_frame(coin, fetch_candles(coin), "hyperliquid")
+def _one(
+    coin: str,
+    spot_name: str | None,
+    interval: str = "1d",
+    want_spot: bool = True,
+    want_funding: bool = True,
+) -> tuple[str, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    perp = _bars_frame(coin, fetch_candles(coin, interval), "hyperliquid")
     spot = (
         _bars_frame(coin, fetch_candles(spot_name), "hyperliquid")
-        if spot_name
+        if spot_name and want_spot
         else _bars_frame(coin, [], "hyperliquid")
     )
-    fund = _fund_frame(coin, fetch_funding(coin))
+    fund = _fund_frame(coin, fetch_funding(coin)) if want_funding else _fund_frame(coin, [])
     return coin, perp, spot, fund
 
 
@@ -266,6 +272,9 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=Path("data/hyperliquid_carry"))
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--coins", type=str, default="", help="comma list override")
+    ap.add_argument("--interval", default="1d", help="candle interval for perp bars")
+    ap.add_argument("--skip-spot", action="store_true")
+    ap.add_argument("--skip-funding", action="store_true")
     ap.add_argument(
         "--prescreen",
         action="store_true",
@@ -286,7 +295,12 @@ def main() -> int:
 
     perps, spots, funds = [], [], []
     with cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(_one, c, spot_map.get(c)): c for c in coins}
+        futs = {
+            ex.submit(
+                _one, c, spot_map.get(c), args.interval, not args.skip_spot, not args.skip_funding
+            ): c
+            for c in coins
+        }
         for fut in cf.as_completed(futs):
             coin = futs[fut]
             try:
@@ -309,8 +323,10 @@ def main() -> int:
     spot_df = pl.concat(spots) if spots else pl.DataFrame()
     fund_df = pl.concat(funds) if funds else pl.DataFrame()
     perp_df.write_parquet(args.out / "perp_bars.parquet")
-    spot_df.write_parquet(args.out / "hl_spot_bars.parquet")
-    fund_df.write_parquet(args.out / "funding.parquet")
+    if not args.skip_spot:
+        spot_df.write_parquet(args.out / "hl_spot_bars.parquet")
+    if not args.skip_funding:
+        fund_df.write_parquet(args.out / "funding.parquet")
     print(
         f"wrote {args.out}: perp={perp_df.height} hl_spot={spot_df.height} "
         f"funding={fund_df.height} coins={len(perps)}"

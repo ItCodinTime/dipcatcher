@@ -267,4 +267,20 @@ Universe: 89 currently-listed perp+spot pairs (22 perp-only excluded, 1 coverage
 
 **P&L attribution is closed-form** (per-symbol decomposition reconciles to NAV at ~1e-10): funding +$121k (1d dev) / +$651k (1h dev), normal realized ≈ flat, fees −$52k/−$59k, liquidation P&L $0. The carry edge is real but thin — post-2025 funding compression makes the locked holdout roughly breakeven after fees.
 
+### Phase-E megaplan battery (2026-09-24)
+
+`scripts/megaplan_eval.py` (dev-half grid → freeze → one locked holdout eval) over five books. Receipts: `.dsh-24x7/evidence-megaplan-{1d,1h,hl-1h}.json`, `.dsh-24x7/evidence-arb-{sharpe5-grid,1h-grid}.json`. All gates NOT PROVEN; best holdout = cross-venue funding-spread arb 2.42 daily.
+
+| book / grain | dev Sharpe | holdout Sharpe / ret / MDD | gate |
+|---|---|---|---|
+| Binance carry 144c, 1d | 1.42 | −0.40 / −8.8% / −16.0% | NOT PROVEN |
+| Binance carry 144c, 1h | 1.56 | −0.64 / −13.1% / −19.2% | NOT PROVEN |
+| HL↔Binance spread arb, 1d | 11.13 | **2.42 / +5.7% / −1.9%** | NOT PROVEN (best) |
+| HL↔Binance spread arb, 1h | 0.58 | 1.41 / +1.3% / −0.8% | NOT PROVEN |
+| HL-only carry 178c, 1h | 0.20 | −0.00 / −2.6% / −25.2% | NOT PROVEN |
+
+Late-2026-09-24 additions (same protocol): C5 ML sleeve (dev-only GBR next-funding predictor) dev 1.18 → holdout −1.28/MDD−18.8% NOT PROVEN (`evidence-c5-ml-1h.json`); 3-venue arb book (HL+BIN+OKX, 375 pair-sids) frozen-config holdout 2.42 unchanged — OKX funding API only serves ~6mo; extended grid (enter→4e-3, lb→45) found interior optimum `enter=1e-3, lb=9` → **holdout 3.19/MDD−0.9%, the best achieved** — refine pass confirms it is an interior dev optimum, NOT PROVEN (`evidence-arb3-*.json`).
+
+Correction vs the earlier 1d row above: an engine bug dropped non-00:00-UTC funding events on daily bars (~3× understated carry income); the corrected receipt still shows negative holdout — verdict direction unchanged but numbers differ. See `docs/MEGAPLAN_SHARPE5.md` 2026-09-24 log for the full findings (venue-spread decay inside 2026, the 1h arb book's −254% liquidation-cascade tail on divergence wicks, HL 1h data limits).
+
 **Defects found and fixed en route (the reason prior runs showed −122%):** (1) the liquidation check marked perp shorts at bar-*high* while pricing the spot hedge at bar-*low* — a fabricated cross-venue spread that triggered an impossible margin breach on 2021-04-18 and realized a ~$1.34M phantom loss across 11 names; now the venue leg keeps wick paranoia but the hedge unwinds at a coherent close with normal costs. (2) Fixed-unit positions drifted to ~4.4× NAV gross by 2021 — the leverage cap only bound at order entry; the sleeve's `rebalance_band` now re-emits target weights when drift breaches 1.5×. Failed receipts preserved under remote `receipts/` (`carry_1d.band15.json` lineage).

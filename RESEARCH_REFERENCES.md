@@ -208,3 +208,30 @@
 ### Archimedean copulas
 - M. J. Frank (1979). "On the simultaneous associativity of F(x,y) and x+y-F(x,y)." Aequationes Math. — `models/archimedean_extra.py` Frank copula.
 - H. Joe (1990/1997). *Multivariate Models and Dependence Concepts* — `models/archimedean_extra.py` Joe copula.
+## Wave 10 references (risk measures, performance & stable laws)
+
+### Coherent / entropic risk
+- H. Follmer, A. Schied (2011). *Stochastic Finance* (3rd ed.) — entropic risk measure (`metrics/entropic_risk.py`).
+- A. Ahmadi-Javid (2012). "Entropic value-at-risk: a new coherent risk measure." J. Optimization Theory and Applications — `metrics/entropic_risk.py`.
+
+### Performance ratios
+- J. Pezier, A. White (2006). "The relative merits of alternative investments." — adjusted (skew/kurtosis) Sharpe ratio (`metrics/perf_ratios.py`).
+- F. Modigliani, L. Modigliani (1997). "Risk-adjusted performance." J. Portfolio Management — M^2 (`metrics/perf_ratios.py`).
+- A. Biglova, S. Ortobelli, S. Rachev, S. Stoyanov (2004). "Different approaches to risk estimation in portfolio theory." J. Portfolio Management — Rachev ratio (`metrics/perf_ratios.py`).
+- J. Schwager (2012). *Hedge Fund Market Wizards* — gain-to-pain ratio (`metrics/perf_ratios.py`).
+- F. Sortino, R. van der Meer, A. Plantinga (1999). "The Dutch triangle." J. Portfolio Management — upside potential ratio (`metrics/perf_ratios.py`).
+
+### Alpha-stable distributions
+- J. M. Chambers, C. L. Mallows, B. W. Stuck (1976). "A method for simulating stable random variables." JASA — `models/stable.py` sampler.
+- S. J. Press (1972). "Estimation in univariate and multivariate stable distributions." JASA; A. Koutrouvelis (1980). "Regression-type estimation of the parameters of stable laws." JASA — ECF fit (`models/stable.py`).
+
+### Portfolio construction
+- R. Michaud (1998). *Efficient Asset Management*; R. Michaud, R. Michaud (2008) — resampled efficiency (`portfolio/resampled.py`).
+
+## Wave 21 references (forecast accuracy, whitening, MVO & utility)
+
+- H. Theil (1966). *Applied Economic Forecasting* — Theil's U inequality coefficients (`metrics/forecast_accuracy.py`).
+- R. Hyndman, A. Koehler (2006). "Another look at measures of forecast accuracy." IJF — MASE (`metrics/forecast_accuracy.py`).
+- A. Kessy, A. Lewin, K. Strimmer (2018). "Optimal whitening and decorrelation." The American Statistician — `models/whitening.py`.
+- H. Markowitz (1952). "Portfolio selection." Journal of Finance — `models/efficient_frontier.py`.
+- J. Pratt (1964). "Risk aversion in the small and in the large." Econometrica; K. Arrow (1965). *Aspects of the Theory of Risk-Bearing* — `metrics/utility.py`.

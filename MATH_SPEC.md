@@ -216,3 +216,31 @@
   Joe C=1-(a+b-ab)^{1/theta}, a=(1-u)^theta, density c=S^{1/theta-2}
   ((1-u)(1-v))^{theta-1}(theta-1+S), fit by ML. Both sampled by conditional
   inversion of dC/du.
+## Wave 10 mathematical conventions
+
+- `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp
+  stabilised). EVaR_{1-alpha} = inf_{z>0} (1/z) log(E[e^{zL}]/(1-alpha)),
+  minimised over log z; satisfies EVaR >= CVaR >= VaR.
+- `perf_ratios.py`: ASR = SR[1 + (S/6)SR - ((K-3)/24)SR^2] (Pezier-White);
+  M^2 = rf + SR * sigma_benchmark; Rachev = E[x | x >= Q_{1-beta}] /
+  (-E[x | x <= Q_alpha]); gain-to-pain = sum(x)/sum(max(-x,0)); UPR =
+  E[(x-mar)_+] / sqrt(E[((x-mar)_-)^2]).
+- `stable.py`: Chambers-Mallows-Stuck sampler with U~Unif(-pi/2,pi/2), W~Exp(1);
+  zeta=-beta tan(pi alpha/2), xi=atan(-zeta)/alpha. ECF fit regresses
+  log(-log|phi(t)|) on log|t|: slope=alpha, intercept=alpha log c; loc=median.
+- `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
+  (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
+  average the weights and renormalise (Michaud resampled efficiency).
+
+## Wave 21 mathematical conventions
+
+- `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
+  sqrt(sum(f-a)^2)/sqrt(sum(a_t-a_{t-1})^2); MASE=mean|a-f|/mean|a_t-a_{t-m}|.
+- `whitening.py`: Sigma=U Lambda U'; PCA W=Lambda^{-1/2}U'; ZCA W=U Lambda^{-1/2}
+  U' (symmetric); whitened Cov = I.
+- `efficient_frontier.py`: A=1'S^{-1}1, B=1'S^{-1}mu, C=mu'S^{-1}mu, D=AC-B^2;
+  min-var w=S^{-1}1/A; frontier w=g+h m, var=(A m^2-2B m+C)/D; tangency=
+  S^{-1}(mu-rf)/1'S^{-1}(mu-rf).
+- `utility.py`: u(w)=(w^{1-gamma}-1)/(1-gamma) (log for gamma=1); CE gross =
+  (mean gross^{1-gamma})^{1/(1-gamma)} (geometric mean for gamma=1); CE<mean for
+  gamma>0.
