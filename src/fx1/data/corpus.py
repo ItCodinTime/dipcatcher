@@ -79,8 +79,7 @@ def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
         reasons.append("it is not marked research_only")
     reason = " and ".join(reasons) or "it fails eligibility"
     user = (
-        f"Can we use this receipt (schema {record.schema_name}) as evidence of trading "
-        "performance?"
+        f"Can we use this receipt (schema {record.schema_name}) as evidence of trading performance?"
     )
     assistant = (
         f"No. This receipt is ineligible as fx-1 evidence because {reason}. "

@@ -120,8 +120,8 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [tool.pytest.ini_options]
-# Canonical discovery: the fx-1 suite runs via `make fx1-test`, and the
-# tracked compatibility mirror under tests/tests stays out of the default run.
+# Canonical discovery: the fx-1 suite runs via `make fx1-test` (tests/fx1 is
+# intentionally outside testpaths; the dead tests/tests mirror was removed).
 testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end"]
 addopts = "-q --strict-markers"
 markers = [

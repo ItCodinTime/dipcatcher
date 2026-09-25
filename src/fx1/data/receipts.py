@@ -56,9 +56,7 @@ def _eligibility(payload: dict) -> tuple[bool, bool]:
     Anything else fails closed: not research-scoped, live claim assumed.
     """
     claim = payload.get("claim")
-    research_only = bool(payload.get("research_only", False)) or (
-        claim == "research_only"
-    )
+    research_only = bool(payload.get("research_only", False)) or (claim == "research_only")
     if "live_pnl_claim" in payload:
         live_pnl_claim = bool(payload["live_pnl_claim"])
     else:
@@ -98,9 +96,7 @@ def load_receipts(
                     research_only=research_only,
                     live_pnl_claim=live_pnl_claim,
                     disclaimer=str(payload.get("disclaimer", "")),
-                    evidence_class=(
-                        "synthetic" if payload.get("synthetic") else "research"
-                    ),
+                    evidence_class=("synthetic" if payload.get("synthetic") else "research"),
                     payload=payload,
                 )
             )

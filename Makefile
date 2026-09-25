@@ -1,7 +1,7 @@
 .PHONY: test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval
 
 sync:
-	uv sync --frozen --all-groups
+	uv sync --frozen --all-groups --all-extras
 
 test:
 	uv run pytest
@@ -42,6 +42,8 @@ fx1-lint: ## fx-1 lint
 	uv run ruff check src/fx1 tests/fx1
 
 fx1-corpus: ## Build fx-1 SFT corpus from harness receipts + lab research runs
+	# data/metadata/research/runs is host-local (gitignored, regenerable via
+	# the lab research pipeline); the build degrades gracefully without it.
 	uv run fx1 corpus build --receipts-dir receipts \
 		--receipts-dir data/metadata/research/runs --out data/fx1/corpus.jsonl
 

@@ -41,7 +41,9 @@ Seed corpus built from `receipts/`: 5 receipts loaded, 5 eligible (positive),
 manifest schema (`data/metadata/research/runs/*.json`: `claim: "research_only"`
 + `synthetic` flag): 88 manifests → 77 positive (all labeled SYNTHETIC —
 simulated-data evidence, never market evidence) + 11 negative (no claim →
-fail-closed refusal examples). The corpus grows automatically as Phases 1–3 of
+fail-closed refusal examples). That directory is host-local (gitignored) —
+regenerate it with the lab research pipeline; the corpus build degrades
+gracefully without it. The corpus grows automatically as Phases 1–3 of
 the roadmap (real-data benchmark, tournament, Dip Quality Score bench,
 leaderboard) produce new gate-passed receipts — the lab's research output *is*
 fx-1's training data flywheel.
