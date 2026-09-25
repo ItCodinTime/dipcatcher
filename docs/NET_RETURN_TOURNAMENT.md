@@ -104,6 +104,9 @@ the source benchmark, including vendor survivorship and a previously examined
 holdout, are carried into every result. Equal gross limits also do not imply
 equal beta, net exposure, or sector risk across strategies.
 
-As with step 1, execution against the large tracked market dataset remains
-pending in the authoring environment. Generated-data tests establish
-accounting and timing behavior; no real-market return improvement is claimed.
+The tracked market snapshot can be recovered from a normal checkout and used
+with the fixed step-1 protocol. Generated-data tests establish accounting and
+timing behavior; any market-snapshot run must publish its complete candidate
+slate, both impact scenarios and sealed validation/test receipts. A passing
+simulation remains retrospective evidence, subject to the source disclosures
+above, and cannot authorize live execution.

@@ -30,12 +30,11 @@ remain unverified. It is a starting contract, not a validated dataset or a
 production acceptance report. Its fixed split dates were not selected from
 new benchmark scores.
 
-The market-data run has not been executed in the authoring environment: the
-large tracked Parquet file could not be recovered through the available
-connector. The expected SHA-256 comes from the existing data manifest.
-Preparation must succeed on the actual bytes before scores can be reported.
-If it rejects timestamps or coverage, investigate the source; do not change
-the hash or timing rules merely to pass the gate.
+The tracked Parquet snapshot is available through a normal Git checkout. Its
+SHA-256 must match the frozen protocol (`e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117`)
+before any scores are reported. Git LFS gold features and labels are not inputs
+to this workflow. If preparation rejects timestamps or coverage, investigate
+the source; do not change the hash or timing rules merely to pass the gate.
 
 ## Data and timing contract
 
@@ -84,6 +83,11 @@ dataset hash, code hash, runtime versions, eligibility counts and limitations.
 It validates the whole panel for integrity but emits no test performance.
 `score` checks the same data/code/runtime, requires the matching validation
 receipt before the test phase, and refuses to overwrite either phase.
+The sealed manifest records a dataset path relative to its run directory so a
+complete checkout (including both `data/file_us_wide/` and the run directory)
+can be moved without rewriting the receipt. Move the entire directory layout
+together; a moved run alone cannot resolve its dataset. The tournament likewise
+records the relative location and exact sealed contents of this benchmark run.
 
 These controls prevent accidental reuse within a run directory. A user can
 copy data, inspect it elsewhere or recreate a run, so this is not cryptographic
