@@ -344,6 +344,17 @@
 - `creditrisk_plus.py`: G(z)=exp(sum pd_i(z^{v_i}-1)); Panjer recursion p_0=
   exp(-sum pd_i), p_n=(1/n) sum_{k=1}^n k a_k p_{n-k}, a_k=sum_{i:v_i=k} pd_i;
   E[loss]=sum pd_i v_i, Var=sum pd_i v_i^2.
+## Wave 20 mathematical conventions
+
+- `concordance.py`: from concordant C, discordant D, ties Tx/Ty: gamma=(C-D)/(C+D);
+  Somers' D_{y|x}=(C-D)/(C+D+Ty); tau-b=(C-D)/sqrt((C+D+Tx)(C+D+Ty)); c-index =
+  (#{s_pos>s_neg}+0.5 #ties)/(n_pos n_neg) (= AUC).
+- `calibration_tests.py`: Spiegelhalter Z = sum (y-p)(1-2p)/sqrt(sum (1-2p)^2
+  p(1-p)) ~ N(0,1) under calibration; insensitive to symmetric additive shifts,
+  sensitive to over/under-confidence.
+- `gam.py`: backfitting y=intercept+sum_j f_j(x_j); each f_j refit from the
+  partial residual with a Gaussian local-linear smoother (Silverman bandwidth)
+  and centred to zero mean; iterate to convergence.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));

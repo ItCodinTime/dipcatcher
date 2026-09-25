@@ -332,6 +332,19 @@ honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
 - D. Li (2000). "On default correlation: a copula function approach." Journal of Fixed Income — `models/gaussian_copula_default.py`.
 - L. Andersen, J. Sidenius, S. Basu (2003). "All your hedges in one basket." Risk — one-factor loss recursion (`models/gaussian_copula_default.py`).
 - Credit Suisse First Boston (1997). *CreditRisk+: A Credit Risk Management Framework*; H. Panjer (1981). "Recursive evaluation of a family of compound distributions." ASTIN Bulletin — `models/creditrisk_plus.py`.
+## Wave 20 references (rank association & calibration)
+
+### Rank association / concordance
+- L. Goodman, W. Kruskal (1954). "Measures of association for cross classifications." JASA — `metrics/concordance.py` gamma.
+- R. Somers (1962). "A new asymmetric measure of association for ordinal variables." American Sociological Review — `metrics/concordance.py`.
+- M. Kendall (tau-b, tie-corrected rank correlation) — `metrics/concordance.py`.
+- F. Harrell (1982). Concordance (c-) index — `metrics/concordance.py`.
+
+### Calibration
+- D. Spiegelhalter (1986). "Probabilistic prediction in patient management and clinical trials." Statistics in Medicine — `metrics/calibration_tests.py`.
+
+### Nonparametric regression
+- T. Hastie, R. Tibshirani (1986). "Generalized additive models." Statistical Science — `models/gam.py` (backfitting).
 ## Wave 19 references (dimensionality reduction & clustering)
 
 - W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.
