@@ -1,0 +1,80 @@
+{
+  "frozen_champion": {
+    "enter_rate": 0.001,
+    "exit_rate": -0.000125,
+    "lookback_events": 9,
+    "name_weight": 0.08,
+    "max_names": 30,
+    "rebalance_band": 1.3,
+    "rate_scale_ref": 0.002,
+    "rate_scale_cap": 1.5,
+    "rate_scale_floor": 1.0
+  },
+  "rows": {
+    "k1": {
+      "nw_mult": 1.0,
+      "name_weight": 0.08,
+      "max_leverage": 5,
+      "total_return": 0.06645088114707409,
+      "cagr": 0.03947212379334797,
+      "sharpe": 3.1901426407283244,
+      "max_drawdown": -0.009075713203911984,
+      "funding_net": 112253.22444626923,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "n": 607
+    },
+    "k2": {
+      "nw_mult": 2.0,
+      "name_weight": 0.16,
+      "max_leverage": 7,
+      "total_return": 0.05332915705068264,
+      "cagr": 0.031757169533691565,
+      "sharpe": 1.6887410655301869,
+      "max_drawdown": -0.020177501133754827,
+      "funding_net": 102229.66960690726,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "n": 607
+    },
+    "k3": {
+      "nw_mult": 3.0,
+      "name_weight": 0.24,
+      "max_leverage": 10,
+      "total_return": 0.048620070989758624,
+      "cagr": 0.02897912742986075,
+      "sharpe": 1.2038474939762622,
+      "max_drawdown": -0.03033583186727018,
+      "funding_net": 109489.9269774371,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "n": 607
+    },
+    "k4": {
+      "nw_mult": 4.0,
+      "name_weight": 0.32,
+      "max_leverage": 12,
+      "total_return": 0.06083010365130237,
+      "cagr": 0.03617202748813453,
+      "sharpe": 1.717595102349423,
+      "max_drawdown": -0.026497828110524924,
+      "funding_net": 118130.13753264508,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "n": 607
+    },
+    "k5": {
+      "nw_mult": 5.0,
+      "name_weight": 0.4,
+      "max_leverage": 14,
+      "total_return": 0.078772203149992,
+      "cagr": 0.04668213341591643,
+      "sharpe": 3.927507427037591,
+      "max_drawdown": -0.011177036206355462,
+      "funding_net": 126204.01883884594,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "n": 607
+    }
+  }
+}
