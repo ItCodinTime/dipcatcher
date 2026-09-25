@@ -1,7 +1,7 @@
 [project]
-name = "dipcatcher"
-version = "1.0.0"
-description = "Artificial Hedge proprietary agentic probability and statistics research centre. Not a promise of live profit."
+name = "fx-1"
+version = "0.1.0"
+description = "fx-1: a quant LLM fine-tuned from Kimi K3 open weights. dipcatcher is the harness - data engine, evaluation, and verification for fx-1. Not a promise of live profit."
 readme = "README.md"
 authors = [
     { name = "Advaith Vaithianathan", email = "140935487+cosmic-hydra@users.noreply.github.com" }
@@ -40,9 +40,11 @@ dependencies = [
 nn = ["torch>=2.4"]
 
 [project.scripts]
+fx1 = "fx1.cli:app"
+# Harness aliases: dipcatcher remains the lab/harness CLI used to build,
+# evaluate, and verify fx-1.
 quant = "quant_fund.cli.main:app"
 dipcatcher = "quant_fund.cli.main:app"
-fx1 = "fx1.cli:main"
 
 [dependency-groups]
 dev = [
@@ -61,7 +63,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/quant_fund", "src/fx1"]
+packages = ["src/fx1", "src/quant_fund"]
 
 [tool.ruff]
 target-version = "py312"
@@ -84,11 +86,10 @@ strict = false
 # 2026-09-17: warn_return_any + warn_unused_ignores are enforced per-module via
 # the overrides below (11 numeric modules verified clean); extend module by
 # module as diagnostics are fixed. Do not loosen the ratcheted modules.
-# fx-1 (src/fx1) is held to the full gate: mypy src/fx1 clean.
 check_untyped_defs = true
 warn_return_any = false
 disallow_untyped_defs = false
-packages = ["quant_fund"]
+packages = ["fx1", "quant_fund"]
 ignore_missing_imports = true
 warn_unused_ignores = false
 
@@ -131,7 +132,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["quant_fund"]
+source = ["fx1", "quant_fund"]
 branch = true
 omit = ["*/__main__.py"]
 
