@@ -146,7 +146,7 @@ def meta_labels(side: Array, barrier_labels: Array) -> Array:
         raise ValueError("side and barrier_labels must be finite")
     if not np.all(np.isin(np.unique(s), (-1.0, 0.0, 1.0))):
         raise ValueError("side must take values in {-1, 0, +1}")
-    return (s * label > 0.0).astype(float)
+    return np.asarray(s * label > 0.0, dtype=float)
 
 
 def trend_scanning_labels(close: Array, window: int = 20, *, min_t: float = 0.0) -> Array:

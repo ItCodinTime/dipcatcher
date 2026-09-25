@@ -263,7 +263,7 @@ def _csum(v: np.ndarray, f: np.ndarray) -> float:
             k0 = j
             break
     if k0 == n:
-        return _neumaier(v)
+        return float(_neumaier(v))
     hi = 0.0
     lo = 0.0
     for j in range(k0):

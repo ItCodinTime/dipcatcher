@@ -108,7 +108,7 @@ def pow_law_total_impact(
     e = _finite_scalar(exponent, "exponent", positive=True)
     if q < 0.0:
         raise ValueError("quantity must be non-negative")
-    return s * (q / v) ** e
+    return float(s * (q / v) ** e)
 
 
 def pov_schedule(quantity: float, volume_forecast: Array, participation: float) -> Array:

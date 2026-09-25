@@ -45,7 +45,7 @@ class HttpClient:
         for attempt in range(self.retries + 1):
             try:
                 with urlopen(request, timeout=self.timeout) as response:  # noqa: S310  # nosec B310
-                    body = response.read(self.max_bytes + 1)
+                    body = bytes(response.read(self.max_bytes + 1))
                 if len(body) > self.max_bytes:
                     raise SourceError(f"response exceeded {self.max_bytes} bytes: {url}")
                 return body
