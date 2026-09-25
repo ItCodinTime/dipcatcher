@@ -242,6 +242,16 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | 2-venue arb 1h, epoch-snipe (hold ±{1,4}h of payment) | lead=1 wh=4 enter=1e-3 lb=1 | 0.96 / +0.1% / −0.1% | **3.33 / +1.4% / −0.3%** | NOT PROVEN (dev-weak) |
 | 3-venue arb, basis-divergence fade (−z of mark basis) | zl=60 ze=2.0 zx=0.0 lb=9 | −0.57 / −0.7% / −1.0% | −5.29 / −2.0% / −2.0% | NOT PROVEN |
 | 3-venue arb, leverage profile (nw×{1..5} on frozen champion) | post-hoc sizing, not a grid | — | 3.19@1x → 1.69@2x → 3.93@5x | NOT PROVEN (cash-wall polluted) |
+| Venue-pair decomposition (frozen champion per sub-book) | hb / ho / bo / unions | dev 11.02 | 3.19 (hb ≡ full book) | OKX inert — no dev coverage, never picked |
+| Funding-mass universe screen (topk by dev Σspread) | k=120 on h↔b | dev 10.62 | **4.02 / +4.9% / −0.25%** | NOT PROVEN (<5) |
+| Count-of-events screen (topk by #(spread>enter)) | k=90 on h↔b | dev 11.81 | **4.18 / +4.0% / −0.22%** | NOT PROVEN (<5), NEW BEST |
+| Asymmetric enter per direction (enter_rate_by_prefix) | b>h bar {2,4,8}e-3 | dev ≤10.4 | — | loses on dev |
+| Direction-restricted universe (h>b only) | topk {30,60,120} | dev ≤9.0 | — | loses on dev |
+| Recency-weighted screens (h2/18mo/12mo mass) | k=120 | dev ≤10.4 | — | full-dev window wins |
+| Per-name dev-Sharpe screen | k=120 | dev ≤11.0 | — | mass screen better |
+| Mass-proportional static tilt (w×(mass/med)^p) | p=0.5, cap=1.5 | dev 11.25 | 3.96 | NOT PROVEN |
+| Open-door rule (all holdout-eligible names) | no frozen universe | — | 3.19 | screen is the lift |
+| Coin dedup (one direction per coin) | dedup-90 | dev 10.84 | — | bidirectional names not redundant |
 
 **Findings this round:**
 
@@ -327,15 +337,35 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
    `scripts/arb_lev_profile.py`; receipts
    `evidence-arb_{zscore,zfade,zhybrid,basis_fade,snipe_1h,lev_profile}.json`.
 
+10. **Universe screening is the one lift that survived holdout.** The
+    venue-pair decomposition showed the "3-venue" book is effectively h↔b —
+    OKX sids have no dev coverage and are never picked even when
+    holdout-eligible; the 2.42→3.19 lift was the refined grid, not the third
+    venue. Freezing the universe to the top-120 names by dev funding mass
+    lifted holdout 3.19 → 4.02; ranking by count-of-events-above-enter did
+    better still at 4.18 / −0.22% MDD (dev-consistent, min-split score
+    11.38). Every subsequent variation — asymmetric per-direction enter
+    bars, direction-restricted universes, recency-weighted screening,
+    per-name dev-Sharpe ranking, static mass tilts, coin dedup, sizing
+    re-tunes, finer k — converges at or below the same plateau; k-neighbor
+    swaps (80/90/120) move holdout ±0.4, i.e. the screen direction is real
+    and the exact k is noise. An open-door rule (all holdout-eligible
+    names) reproduces the unscreened 3.19, confirming the screen itself —
+    not eligibility luck — is what lifts the book. `scripts/arb_pair_decomp.py`,
+    `scripts/arb_elig_screen.py`, `scripts/arb_asym_enter.py`,
+    `scripts/arb_screen_sizing.py`, `scripts/arb_mass_tilt.py`; receipts
+    `evidence-arb3_pairdecomp.json`, `evidence-arb_{elig,cnt}_screen*.json`,
+    `evidence-arb_{asym_enter,screen_sizing,mass_tilt,cnt80,recency,finek}.json`.
+
 Remaining unexplored per the plan's own list: maker-fill variants, which
 require order-book data the venue APIs here do not provide. Every lane
 executable with the data on hand — outright carry (1d/1h, Binance+HL),
 cross-venue spread arb (2-, 3- and 4-venue, 1d/1h,
 base+extended+refined+tilt grids), per-sleeve blends, the C5 ML sleeve, the
 ML spread-entry variant, the z-score entry family (momentum/fade/hybrid),
-epoch-sniping, basis-divergence fading, and leverage scaling — has been run
-under the frozen-config protocol and honestly recorded (Bybit, Gate.io,
+epoch-sniping, basis-divergence fading, leverage scaling, venue-pair
+decomposition, and the universe-screen family — has been run under the
+frozen-config protocol and honestly recorded (Bybit, Gate.io,
 Kraken-futures, HTX and BitMEX funding feeds are unreachable or dead from
-this environment). Best achieved holdout: 3.19 Sharpe / −0.9% MDD on the
-3-venue arb book; the 1h epoch-snipe variant posts 3.33 on its short window
-with a weak (−0.97) dev qualifier.
+this environment). Best achieved holdout: 4.18 Sharpe / −0.22% MDD on the
+h↔b book screened to the top-90 names by dev count-of-events-above-enter.
