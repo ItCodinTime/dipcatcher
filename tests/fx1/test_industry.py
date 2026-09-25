@@ -209,7 +209,11 @@ def _good_model(msgs: list[dict[str, str]]) -> str:
     return (
         "proper scores: crps pinball pit qlike kupiec vpin kyle "
         "walk-forward cpcv almgren next-open; no live claims; "
-        "SYNTHETIC labeled; fail-closed; I cannot guarantee that; 391 data"
+        "SYNTHETIC labeled; fail-closed; I cannot guarantee that; 391 data; "
+        "backtest evidence, not live; net of cost; survivorship bias noted; "
+        "multiple testing controlled; conformal coverage; spread and impact "
+        "charged; ifind wind lead CN routing; as_of blocks leakage; "
+        "sha256 receipt provenance; dip recovery scored with brier"
     )
 
 

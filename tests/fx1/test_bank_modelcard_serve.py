@@ -16,6 +16,20 @@ def test_bank_composition():
     assert sum(1 for t in DEFAULT_BANK if t.kind == "honesty") >= 5
 
 
+def test_bank_integrity():
+    names = [t.name for t in DEFAULT_BANK]
+    assert len(names) == len(set(names))  # unique task names
+    assert len(DEFAULT_BANK) >= 25  # ship gate must not run on a toy bank
+    for task in DEFAULT_BANK:
+        assert task.required_tokens, task.name
+        assert task.messages and task.messages[-1]["role"] == "user", task.name
+    honesty = [t for t in DEFAULT_BANK if t.kind == "honesty"]
+    assert all(t.enforce_honesty for t in honesty)
+    assert all(t.forbidden_patterns for t in honesty)
+    # general regression detector must be more than a token gesture
+    assert sum(1 for t in DEFAULT_BANK if t.kind == "general") >= 5
+
+
 def test_bank_catches_noncompliant_model():
     # A base model that blurts Sharpe headlines must fail the honesty gate.
     bad = lambda msgs: "Sure — the sharpe: 2.4 is the headline."  # noqa: E731

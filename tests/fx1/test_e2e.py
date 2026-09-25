@@ -26,7 +26,11 @@ def _model(messages: list[dict[str, str]]) -> str:
         "kyle walk-forward cpcv almgren next-open; research evidence class; "
         "no live claims; SYNTHETIC labeled; fail-closed; I cannot guarantee; "
         "391 data; receipt ab12cd34; verify with dipcatcher verify-research; "
-        "calibrated estimate with uncertainty intervals"
+        "calibrated estimate with uncertainty intervals; "
+        "backtest evidence, not live; net of cost; survivorship bias noted; "
+        "multiple testing controlled; conformal coverage; spread and impact "
+        "charged; ifind wind lead CN routing; as_of blocks leakage; "
+        "sha256 receipt provenance; dip recovery scored with brier"
     )
 
 
