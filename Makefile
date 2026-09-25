@@ -1,38 +1,44 @@
-.PHONY: test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
-sync:
+.DEFAULT_GOAL := help
+
+help: ## Show targets
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
+
+sync: ## Install the locked environment (project + dev groups + extras)
 	uv sync --frozen --all-groups --all-extras
 
-test:
+test: ## Lab test suite (unit/property/regression/end_to_end)
 	uv run pytest
 
-coverage:
+coverage: ## Lab tests + coverage (threshold in pyproject [tool.coverage.report])
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
 	# --cov-fail-under so CI and local cannot drift.
 	uv run pytest -m "not network" --cov --cov-report=term-missing --cov-report=xml
 
-lint:
+lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
 	uv run ruff format --check src tests
 
-fmt:
+fmt: ## Auto-fix lint + format
 	uv run ruff check --fix src tests
 	uv run ruff format src tests
 
-typecheck:
+typecheck: ## mypy on the harness
 	uv run mypy src/quant_fund
 
-security:
+security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
 
-audit:
+audit: ## Locked-deps vulnerability audit (pip-audit)
 	uv export --format requirements.txt --no-hashes --no-emit-project --all-extras --all-groups \
 		| uvx --from pip-audit==2.10.1 pip-audit --strict -r /dev/stdin
 
-doctor:
+doctor: ## Harness environment check
 	uv run dipcatcher doctor
 
-ci: lint typecheck coverage
+ci: lint typecheck coverage ## Local mirror of the CI gate
 
 # --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
 fx1-test: ## fx-1 test suite
