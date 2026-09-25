@@ -223,7 +223,9 @@ omit = ["*/__main__.py"]
 [tool.coverage.report]
 # Single source of truth for the coverage gate (CI/Makefile pass no inline
 # --cov-fail-under so the threshold cannot drift between the two).
-fail_under = 70
+# Ratcheted 2026-09-25: measured 84.93% local (macOS) and 81.51% on CI
+# (Linux) — floor set at 80 with cross-platform headroom. Raise, never lower.
+fail_under = 80
 show_missing = true
 skip_covered = true
 exclude_also = [
