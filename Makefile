@@ -1,4 +1,4 @@
-.PHONY: test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval
+.PHONY: test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 sync:
 	uv sync --frozen --all-groups --all-extras
@@ -54,3 +54,9 @@ fx1-corpus-full: ## Full corpus: receipts + research runs + notebooks + ledgers
 
 fx1-eval: ## Run eval task bank (requires MOONSHOT_API_KEY for hosted_k3)
 	uv run fx1 eval --backend hosted_k3 --out data/fx1/eval.json
+
+fx1-gate: fx1-lint ## Full fx-1 CI gate locally: lint + types + tests + honesty + corpus smoke
+	uv run mypy src/fx1
+	PYTHONPATH=src uv run pytest tests/fx1 -q
+	PYTHONPATH=src uv run pytest tests/fx1 -q -k honesty
+	uv run fx1 corpus build --receipts-dir receipts --out data/fx1/corpus_ci_smoke.jsonl
