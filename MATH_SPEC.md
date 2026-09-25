@@ -251,6 +251,20 @@
 - `variance_swap.py`: DDKZ fair strike K_var=(2/T)e^{rT} sum (dK_i/K_i^2) Q(K_i)
   - (1/T)(F/K0-1)^2 with OTM puts below K0 and calls at/above; equals sigma^2
   under flat Black-Scholes vol.
+## Wave 12 mathematical conventions
+
+- `nig_vg.py`: NIG f=(alpha delta/pi) exp(delta gamma + beta(x-mu)) K_1(alpha g)/g,
+  g=sqrt(delta^2+(x-mu)^2), gamma=sqrt(alpha^2-beta^2); closed-form MoM inverts
+  (mean,var,skew,exkurt) with bar_beta^2 = r/(3-4r), r=s^2/k. VG uses the
+  Madan-Carr-Chang density with K_{1/nu-1/2}; both sampled as normal
+  mean-variance mixtures (inverse-Gaussian / gamma subordinators).
+- `mic.py`: MIC = max over grids with n_x n_y <= n^0.6 of I(X;Y)/log(min(n_x,n_y))
+  using equi-frequency (quantile) bins; value in [0,1].
+- `archimedean_extra.py`: Frank C=-1/theta log(1+ (e^{-theta u}-1)(e^{-theta v}-1)/
+  (e^{-theta}-1)), tau=1-4/theta+4 D_1(theta)/theta (Debye), fit by tau inversion;
+  Joe C=1-(a+b-ab)^{1/theta}, a=(1-u)^theta, density c=S^{1/theta-2}
+  ((1-u)(1-v))^{theta-1}(theta-1+S), fit by ML. Both sampled by conditional
+  inversion of dC/du.
 ## Wave 10 mathematical conventions
 
 - `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp

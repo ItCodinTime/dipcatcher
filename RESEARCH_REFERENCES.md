@@ -233,6 +233,18 @@
 ### Fixed-income analytics
 - F. Macaulay (1938). *Some Theoretical Problems Suggested by the Movements of Interest Rates* — duration (`models/bond_analytics.py`).
 - F. Redington (1952). "Review of the principles of life-office valuations." JIA — convexity/immunization (`models/bond_analytics.py`).
+## Wave 12 references (heavy-tailed laws, information & Archimedean copulas)
+
+### Heavy-tailed distributions
+- O. E. Barndorff-Nielsen (1997). "Normal inverse Gaussian distributions and stochastic volatility modelling." Scand. J. Statist. — `models/nig_vg.py` NIG.
+- D. Madan, E. Seneta (1990). "The variance gamma model for share market returns." J. Business; D. Madan, P. Carr, E. Chang (1998). "The variance gamma process and option pricing." Eur. Finance Review — `models/nig_vg.py` VG.
+
+### Information-theoretic dependence
+- D. Reshef et al. (2011). "Detecting novel associations in large data sets." Science — `metrics/mic.py` (equipartition MIC approximation).
+
+### Archimedean copulas
+- M. J. Frank (1979). "On the simultaneous associativity of F(x,y) and x+y-F(x,y)." Aequationes Math. — `models/archimedean_extra.py` Frank copula.
+- H. Joe (1990/1997). *Multivariate Models and Dependence Concepts* — `models/archimedean_extra.py` Joe copula.
 ## Wave 10 references (risk measures, performance & stable laws)
 
 ### Coherent / entropic risk
