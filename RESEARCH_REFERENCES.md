@@ -294,6 +294,16 @@ SYNTHETIC return panel as scorecard families (never live-P&L / headline ratios):
 
 These are registered in `OPTIONAL_BENCHMARK_FAMILIES` and pass the fail-closed
 honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
+## Wave 15 references (GLS with autocorrelation & two-sample tests)
+
+### Feasible GLS
+- D. Cochrane, G. Orcutt (1949). "Application of least squares regression to relationships containing autocorrelated error terms." JASA — `models/fgls_ar1.py`.
+- S. Prais, C. Winsten (1954). "Trend estimators and serial correlation." Cowles Commission Discussion Paper — `models/fgls_ar1.py`.
+
+### Two-sample tests
+- N. Smirnov (1939). Two-sample Kolmogorov-Smirnov test — `metrics/twosample.py`.
+- G. Szekely, M. Rizzo (2004, 2013). "Energy statistics." — energy distance / test (`metrics/twosample.py`).
+- T. W. Anderson (1962). "On the distribution of the two-sample Cramer-von Mises criterion." Ann. Math. Statist. — `metrics/twosample.py`.
 ## Wave 19 references (dimensionality reduction & clustering)
 
 - W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.

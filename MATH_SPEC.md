@@ -301,6 +301,15 @@
   >= 64/128 observations), reusing the entropy/fractal/serial metric modules; the
   resulting family blobs contain only finite floats with no sharpe/sortino/
   calmar/pnl/nav key tokens, so the verify.py scorecard honesty gates pass.
+## Wave 15 mathematical conventions
+
+- `fgls_ar1.py`: estimate rho from OLS residuals (rho=sum r_t r_{t-1}/sum r_{t-1}^2);
+  Cochrane-Orcutt quasi-differences y_t-rho y_{t-1} (drops obs 1); Prais-Winsten
+  keeps obs 1 scaled by sqrt(1-rho^2); iterate to convergence.
+- `twosample.py`: KS D=max|F_x-F_y|, p via Kolmogorov asymptotic with the
+  Stephens small-sample correction on sqrt(ne) D, ne=n_x n_y/(n_x+n_y); energy
+  distance E=2 mean|x_i-y_j| - mean|x_i-x_j| - mean|y_i-y_j|; permutation
+  p-values (count of shuffled statistics >= observed, +1 smoothing).
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
