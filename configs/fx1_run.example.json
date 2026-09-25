@@ -1,0 +1,20 @@
+{
+  "run_name": "fx-1.proxy.example",
+  "stage": "proxy",
+  "base_model": "moonshotai/Kimi-K3",
+  "corpus_jsonl": "data/fx1/corpus.jsonl",
+  "eval_results_json": "data/fx1/eval.json",
+  "lora": {
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj"]
+  },
+  "epochs": 1,
+  "learning_rate": 0.0001,
+  "estimated_nodes": 1,
+  "estimated_gpu_hours": 4.0,
+  "estimated_cost_usd": 250.0,
+  "license_tier": "internal_research",
+  "preserve_reasoning_content": true
+}

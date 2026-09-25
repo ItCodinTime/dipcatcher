@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
+import os
 import re
 from pathlib import Path
 
@@ -120,4 +122,8 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
     status["robinhood_plus_sizes_book"] = bool(
         cfg.robinhood_plus.enabled and cfg.robinhood_plus.blend_weight > 0.0
     )
+    # fx-1 harness status — presence flags only, never secret values.
+    status["fx1_package"] = "ok" if importlib.util.find_spec("fx1") else "missing"
+    status["fx1_moonshot_key"] = "set" if os.environ.get("MOONSHOT_API_KEY") else "unset"
+    status["fx1_signing_key"] = "set" if os.environ.get("FX1_SIGNING_KEY") else "unset"
     return status

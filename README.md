@@ -50,7 +50,16 @@ fx-1 lifecycle:
 fx1 corpus build                       # receipts -> SFT corpus (JSONL, provenance-hashed)
 fx1 harness list                       # lab commands fx-1 may invoke
 fx1 harness run verify-research        # verify harness artifacts
-fx1 train manifest --config fx1_run.json   # immutable training-run manifest
+```
+
+Training requires a corpus and a base-model eval on record first — the
+manifest builder fails closed without them:
+
+```
+make fx1-corpus                        # -> data/fx1/corpus.jsonl
+make fx1-eval                          # -> data/fx1/eval.json (needs MOONSHOT_API_KEY)
+cp configs/fx1_run.example.json fx1_run.json   # fill in run_name + cost estimates
+fx1 train manifest --config fx1_run.json       # immutable training-run manifest
 ```
 
 Professional datasources (18 sources, all installed finance plugins):

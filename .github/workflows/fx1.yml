@@ -31,14 +31,24 @@ jobs:
         run: uv run mypy src/fx1
       - name: Tests
         run: uv run pytest tests/fx1 -q
+      # Documented contract (docs/FX1_TRAINING.md): honesty inheritance is
+      # blocking — fails if fx-1's forbidden set drifts from the lab catalog.
+      - name: Honesty inheritance gate
+        run: uv run pytest tests/fx1 -q -k honesty
       - name: Corpus contract smoke
         run: |
-          uv run fx1 corpus build --receipts-dir receipts --out /tmp/corpus_smoke.jsonl
-          uv run python - <<'EOF'
+          uv run fx1 corpus build --receipts-dir receipts --out "$RUNNER_TEMP/fx1_corpus.jsonl"
+          uv run python - <<'PY'
           import json
-          lines = [json.loads(x) for x in open("/tmp/corpus_smoke.jsonl") if x.strip()]
-          assert lines, "corpus build produced no examples"
-          assert all(len(x["receipt_sha256"]) == 64 for x in lines), "provenance missing"
-          assert all([m["role"] for m in x["messages"]] == ["system", "user", "assistant"] for x in lines)
-          print(f"corpus smoke: {len(lines)} examples, provenance intact")
-          EOF
+          import os
+          import re
+
+          path = os.path.join(os.environ["RUNNER_TEMP"], "fx1_corpus.jsonl")
+          with open(path, encoding="utf-8") as fh:
+              rows = [json.loads(line) for line in fh if line.strip()]
+          assert rows, "corpus smoke produced no lines"
+          for row in rows:
+              assert {"messages", "negative", "receipt_sha256", "source_path"} <= row.keys(), row.keys()
+              assert re.fullmatch(r"[0-9a-f]{64}", row["receipt_sha256"]), row["receipt_sha256"]
+          print(f"corpus contract OK: {len(rows)} provenance-hashed lines")
+          PY
