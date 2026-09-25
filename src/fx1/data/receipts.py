@@ -24,6 +24,12 @@ class ReceiptRecord(BaseModel):
     research_only: bool
     live_pnl_claim: bool
     disclaimer: str = ""
+    evidence_class: str = Field(
+        default="research",
+        description="Explicit evidence class: research | synthetic (from the "
+        "payload's `synthetic` flag). Synthetic evidence is eligible only "
+        "when research-scoped and is always labeled as simulated.",
+    )
     payload: dict = Field(default_factory=dict)
 
     @property
@@ -34,6 +40,29 @@ class ReceiptRecord(BaseModel):
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _eligibility(payload: dict) -> tuple[bool, bool]:
+    """Resolve (research_only, live_pnl_claim) across receipt schemas.
+
+    Two schemas are recognized, both explicit:
+
+    - boolean contract: ``research_only: true`` + ``live_pnl_claim: false``.
+    - lab run-manifest contract: ``claim: "research_only"`` declares the
+      research scope; an explicit ``live_pnl_claim`` key always wins, and in
+      its absence the research-only declaration implies no live claim.
+
+    Anything else fails closed: not research-scoped, live claim assumed.
+    """
+    claim = payload.get("claim")
+    research_only = bool(payload.get("research_only", False)) or (
+        claim == "research_only"
+    )
+    if "live_pnl_claim" in payload:
+        live_pnl_claim = bool(payload["live_pnl_claim"])
+    else:
+        live_pnl_claim = claim != "research_only"
+    return research_only, live_pnl_claim
 
 
 def load_receipts(receipts_dir: str | Path) -> list[ReceiptRecord]:
@@ -51,14 +80,20 @@ def load_receipts(receipts_dir: str | Path) -> list[ReceiptRecord]:
             continue
         if not isinstance(payload, dict):
             continue
+        research_only, live_pnl_claim = _eligibility(payload)
         records.append(
             ReceiptRecord(
                 path=str(path),
                 sha256=_sha256(path),
-                schema_name=str(payload.get("schema", "unknown")),
-                research_only=bool(payload.get("research_only", False)),
-                live_pnl_claim=bool(payload.get("live_pnl_claim", True)),
+                schema_name=str(
+                    payload.get("schema", payload.get("schema_version", "unknown"))
+                ),
+                research_only=research_only,
+                live_pnl_claim=live_pnl_claim,
                 disclaimer=str(payload.get("disclaimer", "")),
+                evidence_class=(
+                    "synthetic" if payload.get("synthetic") else "research"
+                ),
                 payload=payload,
             )
         )

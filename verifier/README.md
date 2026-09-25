@@ -13,3 +13,5 @@ Append-only index of acceptance-criteria versions. Each version lives in
 | v5 | 2026-09-25 | uniqueness deep research: audit + 6-domain landscape + 4 sequenced moves + boundaries; standalone report deliverable | research deliverable, not code |
 | v5 | 2026-09-25 | four uniqueness moves: leakage-proof eval (masking/memory-gap/time-partition/contamination audit), attested inference (signing/TEE/zkML), hash-chained corpus ledger, MRM dossier | 84 tests |
 | v6 | 2026-09-25 | auditor-grade: mypy gate, e2e lifecycle test, hypothesis property tests, SECURITY.md, architecture doc, API stability policy, SBOM generation | 91 tests, triple gate |
+| v7 | 2026-09-25 | professional datasource layer: 18-source registry, adapters (agent-gw/xhcj/finance-fetch/MCP), routing, PIT/leakage ingest gate, hash-chained provenance, live verification | 137 tests |
+| v8 | 2026-09-25 | host-independent gate (stub-plugin fixture), unique-date property fix, run-manifest eligibility (`claim: "research_only"`), SYNTHETIC labeling, corpus flywheel over research runs (77+11) | 139 tests |

@@ -37,10 +37,14 @@
 ## Corpus status
 
 Seed corpus built from `receipts/`: 5 receipts loaded, 5 eligible (positive),
-0 ineligible. The corpus grows automatically as Phases 1–3 of the roadmap
-(real-data benchmark, tournament, Dip Quality Score bench, leaderboard)
-produce new gate-passed receipts — the lab's research output *is* fx-1's
-training data flywheel.
+0 ineligible. Since v8 the loader also recognizes the lab's research-run
+manifest schema (`data/metadata/research/runs/*.json`: `claim: "research_only"`
++ `synthetic` flag): 88 manifests → 77 positive (all labeled SYNTHETIC —
+simulated-data evidence, never market evidence) + 11 negative (no claim →
+fail-closed refusal examples). The corpus grows automatically as Phases 1–3 of
+the roadmap (real-data benchmark, tournament, Dip Quality Score bench,
+leaderboard) produce new gate-passed receipts — the lab's research output *is*
+fx-1's training data flywheel.
 
 ## Industry-grade pipeline (v3)
 

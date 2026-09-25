@@ -39,13 +39,21 @@ def _system_prompt() -> str:
 def _positive_example(record: ReceiptRecord, system: str) -> SFTExample:
     correctness = record.payload.get("correctness", {})
     summary = json.dumps(correctness, indent=2, sort_keys=True) if correctness else "{}"
+    synthetic_note = (
+        "This is SYNTHETIC evidence — produced on simulated data, not market "
+        "data — and must always be presented as such.\n"
+        if record.evidence_class == "synthetic"
+        else ""
+    )
     user = (
         f"Summarize the verified result of this dipcatcher receipt "
         f"(schema {record.schema_name}) and state what it does and does not establish."
     )
     assistant = (
-        f"Receipt {record.sha256[:16]}… (schema `{record.schema}`) is research-scoped "
-        f"evidence. Key correctness metrics:\n```json\n{summary}\n```\n"
+        f"Receipt {record.sha256[:16]}… (schema `{record.schema_name}`) is research-scoped "
+        f"evidence (class: {record.evidence_class}). Key correctness metrics:\n"
+        f"```json\n{summary}\n```\n"
+        f"{synthetic_note}"
         f"Disclaimer: {record.disclaimer or 'research/backtest/simulated evidence only'}.\n"
         "This establishes correctness within the recorded workload only; it is not "
         "live performance evidence and cannot authorize promotion or live execution. "

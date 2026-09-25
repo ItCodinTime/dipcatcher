@@ -45,3 +45,56 @@ def test_build_corpus_provenance_and_negatives(tmp_path: Path):
     neg = next(x for x in lines if x["negative"])
     assert "verify-research" in pos["messages"][-1]["content"]
     assert "No." in neg["messages"][-1]["content"]  # refusal taught
+
+
+def _write_run_manifest(
+    path: Path, *, claim: str | None, synthetic: bool = True,
+    live_pnl_claim: bool | None = None,
+) -> None:
+    """Lab research-run manifest schema (data/metadata/research/runs)."""
+    payload: dict = {
+        "schema_version": 1,
+        "synthetic": synthetic,
+        "disclaimer": "SYNTHETIC research. Not a live-P&L claim.",
+        "families": {},
+        "correctness": {"metric": 1.0},
+    }
+    if claim is not None:
+        payload["claim"] = claim
+    if live_pnl_claim is not None:
+        payload["live_pnl_claim"] = live_pnl_claim
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_run_manifest_schema_is_eligible_and_labeled_synthetic(tmp_path: Path):
+    _write_run_manifest(tmp_path / "run.json", claim="research_only")
+    records = load_receipts(tmp_path)
+    assert len(records) == 1
+    record = records[0]
+    assert record.eligible
+    assert record.evidence_class == "synthetic"
+    out = tmp_path / "corpus.jsonl"
+    stats = build_corpus(tmp_path, out)
+    assert stats["positive"] == 1 and stats["negative"] == 0
+    line = json.loads(out.read_text().splitlines()[0])
+    assistant = line["messages"][-1]["content"]
+    assert "SYNTHETIC" in assistant and "simulated data" in assistant
+
+
+def test_run_manifest_without_claim_fails_closed(tmp_path: Path):
+    _write_run_manifest(tmp_path / "run.json", claim=None)
+    record = load_receipts(tmp_path)[0]
+    assert not record.eligible
+    assert record.live_pnl_claim  # live claim assumed, fail-closed
+
+
+def test_explicit_live_claim_overrides_research_only_claim(tmp_path: Path):
+    _write_run_manifest(
+        tmp_path / "run.json", claim="research_only", live_pnl_claim=True
+    )
+    record = load_receipts(tmp_path)[0]
+    assert record.research_only and record.live_pnl_claim
+    assert not record.eligible
+    out = tmp_path / "corpus.jsonl"
+    stats = build_corpus(tmp_path, out)
+    assert stats["negative"] == 1
