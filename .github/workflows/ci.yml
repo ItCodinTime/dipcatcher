@@ -57,7 +57,7 @@ jobs:
             | uvx --from pip-audit==2.10.1 pip-audit --strict --format json -r /dev/stdin \
             | tee dependency-audit.json
       - name: Upload dependency audit
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-dependency-audit
           path: dependency-audit.json
@@ -130,7 +130,7 @@ jobs:
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage
         if: matrix.python == '3.12'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-coverage
           path: coverage.xml
@@ -193,7 +193,7 @@ jobs:
           print("validated paper shadow smoke")
           PY
       - name: Upload paper shadow evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-paper-shadow-smoke
           path: data/metadata/paper/
@@ -245,7 +245,7 @@ jobs:
           print(f"validated research run {provenance['run_id']}")
           PY
       - name: Upload research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-research-notebook
           path: |
