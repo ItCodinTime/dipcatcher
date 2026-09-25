@@ -252,6 +252,10 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | Mass-proportional static tilt (w×(mass/med)^p) | p=0.5, cap=1.5 | dev 11.25 | 3.96 | NOT PROVEN |
 | Open-door rule (all holdout-eligible names) | no frozen universe | — | 3.19 | screen is the lift |
 | Coin dedup (one direction per coin) | dedup-90 | dev 10.84 | — | bidirectional names not redundant |
+| Cross-sectional percentile entry (rank within day) | enter_p {0.5..0.9} | dev ≤7.8 | — | loses magnitude info, dead on dev |
+| Composite screen (cnt90 ∩ mass120, 71 names) | frozen intersection | dev 11.46 | 3.25 | NOT PROVEN (< parents) |
+| Expanded concurrency on cnt90 (mx {45,60,75}) | mx30 not binding | dev ≤11.4 | — | no lift |
+| Day-of-week gate | weekday spread seasonality | none (~0 μ) | — | no signal to gate on |
 
 **Findings this round:**
 
@@ -369,3 +373,7 @@ frozen-config protocol and honestly recorded (Bybit, Gate.io,
 Kraken-futures, HTX and BitMEX funding feeds are unreachable or dead from
 this environment). Best achieved holdout: 4.18 Sharpe / −0.22% MDD on the
 h↔b book screened to the top-90 names by dev count-of-events-above-enter.
+Cross-sectional percentile entry (regime-adaptive gates on the day's rank)
+and the composite screen were also run — percentile space loses spread
+magnitude and dies on dev (≤7.8); the composite lands at 3.25, i.e. the
+k-neighbor variance is ±0.9 and 4.18 stands.
