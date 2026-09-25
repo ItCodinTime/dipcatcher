@@ -6,9 +6,19 @@ modeled costs to choose target weights. It can keep cash or leave positions
 unchanged when the expected benefit of trading is too small.
 
 This is an engineering implementation, not measured market uplift. The tracked
-real-price Parquet snapshot remains unavailable in this workspace. Generated
-price tests verify mechanics; they do not establish profitability. The existing
-vendor universe also has survivorship bias and an already-inspected holdout.
+real-price Parquet snapshot can be recovered from a normal Git checkout.
+Generated-price tests verify mechanics; they do not establish profitability.
+The existing vendor universe has survivorship bias and an already-inspected
+holdout. A rejected CLARABEL solve records its status, iteration count and
+solve time when available, with `weights_accepted=false`; it does not fall
+back to an approximate portfolio.
+
+The 2026-09-25 frozen snapshot run is a blocked validation: both cost-aware
+variants returned `optimal_inaccurate`. Its sealed failure and control ledgers
+are in `data/metadata/research/phase1_20260925.md`, linked by
+`data/metadata/research/phase1_evidence_index.json`. There is no selected
+candidate and no test receipt. The test command below applies only after a
+new frozen run has selected a validation candidate.
 
 ## Run a matched comparison
 

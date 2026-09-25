@@ -39,6 +39,29 @@ class AllocationConfig:
             raise ValueError("covariance_shrinkage must be in [0, 1]")
 
 
+class AllocationFailure(ValueError):
+    """A rejected solve with diagnostics; it never provides tradable weights."""
+
+    def __init__(self, message: str, diagnostic: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.diagnostic = diagnostic
+
+
+def _failed_solve_diagnostic(problem: cp.Problem, status: str) -> dict[str, Any]:
+    stats = problem.solver_stats
+    iterations = getattr(stats, "num_iters", None) if stats is not None else None
+    elapsed = getattr(stats, "solve_time", None) if stats is not None else None
+    return {
+        "solver": "CLARABEL",
+        "status": status,
+        "iterations": iterations if type(iterations) is int and iterations >= 0 else None,
+        "solve_time_seconds": float(elapsed)
+        if isinstance(elapsed, (int, float)) and np.isfinite(elapsed) and elapsed >= 0
+        else None,
+        "weights_accepted": False,
+    }
+
+
 def allocate(
     alpha: np.ndarray,
     covariance: np.ndarray,
@@ -133,9 +156,15 @@ def allocate(
     try:
         problem.solve(solver="CLARABEL", tol_gap_abs=1e-8, tol_feas=1e-8, tol_gap_rel=1e-8)
     except cp.error.SolverError as exc:
-        raise ValueError(f"allocation solver failed: {exc}") from exc
+        raise AllocationFailure(
+            f"allocation solver failed: {exc}",
+            _failed_solve_diagnostic(problem, "solver_error"),
+        ) from exc
     if problem.status != cp.OPTIMAL or w.value is None:
-        raise ValueError(f"allocation failed: {problem.status}")
+        raise AllocationFailure(
+            f"allocation failed: {problem.status}",
+            _failed_solve_diagnostic(problem, str(problem.status)),
+        )
     result = np.asarray(w.value, dtype=float).reshape(-1)
     if not np.isfinite(result).all():
         raise ValueError("allocation solver returned nonfinite weights")

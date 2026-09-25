@@ -233,6 +233,18 @@ def test_validation_selection_is_frozen_and_every_trial_retained(tournament):
         run_tournament(run_dir, "test")
 
 
+def test_tournament_binds_a_portable_benchmark_run(tournament):
+    from pathlib import Path
+
+    run_dir, _ = tournament
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    assert not Path(manifest["benchmark_run"]).is_absolute()
+    moved = run_dir.parent.parent / f"{run_dir.parent.name}_moved"
+    run_dir.parent.rename(moved)
+    result = run_tournament(moved / run_dir.name, "validation")
+    assert set(result["scenarios"]) == {"configured", "double_impact"}
+
+
 def test_failure_is_retained_and_blocks_comparison(tournament, monkeypatch):
     import quant_fund.research.net_tournament as module
 
@@ -379,5 +391,6 @@ def test_cost_solver_failure_is_retained_in_full_slate(tournament, monkeypatch):
     assert report["selected"] is None
     for scenario in report["scenarios"].values():
         assert scenario["trials"]["mom_cost"]["status"] == "failed"
+        assert scenario["trials"]["mom_cost"]["solver_diagnostic"]["weights_accepted"] is False
         assert scenario["comparison"]["status"] == "incomplete_trials"
         assert scenario["allocation_ablations"][0]["status"] == "incomplete_pair"

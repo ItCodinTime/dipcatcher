@@ -1340,16 +1340,34 @@ def northset(
 def verify_research(
     path: Path = typer.Argument(Path("data/metadata/research/latest.json")),
 ) -> None:
-    """Verify a persisted research receipt and its immutable artifacts.
+    """Verify a notebook, completed Phase-1 run directory, or evidence index.
 
     Soft-verify includes ``northset_session_means_honesty_errors`` (dispatcher
     over session mean helpers). Research diagnostic only; never live Sharpe.
     """
     import json
 
-    from quant_fund.research.verify import verify_research_artifact
+    if path.is_dir():
+        from quant_fund.research.phase1_verify import verify_phase1_run
 
-    result = verify_research_artifact(path)
+        result = verify_phase1_run(path)
+    elif path.is_file() and path.name.endswith(".json"):
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            payload = None
+        if isinstance(payload, dict) and payload.get("kind") == "phase1_evidence_index":
+            from quant_fund.research.phase1_verify import verify_phase1_index
+
+            result = verify_phase1_index(path)
+        else:
+            from quant_fund.research.verify import verify_research_artifact
+
+            result = verify_research_artifact(path)
+    else:
+        from quant_fund.research.verify import verify_research_artifact
+
+        result = verify_research_artifact(path)
     typer.echo(json.dumps(result, indent=2))
     raise typer.Exit(code=0 if result["valid"] else 1)
 
