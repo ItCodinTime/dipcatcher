@@ -332,6 +332,18 @@
 - `tempered_stable.py`: psi(u)=C Gamma(-Y)[(M-iu)^Y-M^Y+(G+iu)^Y-G^Y]; cumulants
   c_k=C Gamma(k-Y)[M^{Y-k}+(-1)^k G^{Y-k}]; density by numerical inversion
   f(x)=(1/pi) int_0^inf Re(e^{-iux} e^{psi(u)}) du.
+## Wave 18 mathematical conventions
+
+- `vasicek_credit.py`: P(L<=x)=Phi((sqrt(1-rho)Phi^{-1}(x)-Phi^{-1}(pd))/sqrt(rho));
+  density sqrt((1-rho)/rho) exp(0.5 Phi^{-1}(x)^2 - 0.5/rho(sqrt(1-rho)Phi^{-1}(x)
+  -Phi^{-1}(pd))^2); VaR_q=Phi((Phi^{-1}(pd)+sqrt(rho)Phi^{-1}(q))/sqrt(1-rho));
+  mean loss = pd.
+- `gaussian_copula_default.py`: p_i(m)=Phi((Phi^{-1}(pd_i)-sqrt(rho)m)/sqrt(1-rho));
+  conditional default-count pmf by convolving [1-p_i, p_i] (ASB recursion),
+  integrated over M with Gauss-Hermite quadrature.
+- `creditrisk_plus.py`: G(z)=exp(sum pd_i(z^{v_i}-1)); Panjer recursion p_0=
+  exp(-sum pd_i), p_n=(1/n) sum_{k=1}^n k a_k p_{n-k}, a_k=sum_{i:v_i=k} pd_i;
+  E[loss]=sum pd_i v_i, Var=sum pd_i v_i^2.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
