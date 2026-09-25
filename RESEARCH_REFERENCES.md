@@ -268,6 +268,20 @@
 
 ### Smoothing
 - W. S. Cleveland (1979). "Robust locally weighted regression and smoothing scatterplots." JASA — `models/lowess.py`.
+## Optional scorecard families (research/benches_extra.py)
+
+New optional research benches expose descriptive proper-score diagnostics of the
+SYNTHETIC return panel as scorecard families (never live-P&L / headline ratios):
+
+- `complexity` — Bandt-Pompe permutation entropy, Richman-Moorman sample entropy,
+  spectral entropy, and Lempel-Ziv complexity (see `metrics/entropy.py`).
+- `roughness` — rescaled-range and DFA Hurst exponents and Higuchi fractal
+  dimension (see `metrics/fractal.py`).
+- `serial_randomness` — Lo-MacKinlay variance-ratio, Wald-Wolfowitz runs, and
+  Ljung-Box tests (see `metrics/serial.py`).
+
+These are registered in `OPTIONAL_BENCHMARK_FAMILIES` and pass the fail-closed
+honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
 ## Wave 19 references (dimensionality reduction & clustering)
 
 - W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.

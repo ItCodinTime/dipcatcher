@@ -51,7 +51,17 @@ REQUIRED_BENCHMARK_FAMILIES = frozenset(
 # but are never required by the benchmark catalog. ``candle_order_book`` is the
 # optional candlestick+L2 family emitted by the ``candle-book`` CLI; without
 # this allow-list the verify.py candle honesty dispatch could never run.
-OPTIONAL_BENCHMARK_FAMILIES = frozenset({"candle_order_book", "robinhood_plus"})
+OPTIONAL_BENCHMARK_FAMILIES = frozenset(
+    {
+        "candle_order_book",
+        "robinhood_plus",
+        # Descriptive proper-score diagnostics of the SYNTHETIC return panel
+        # (see research/benches_extra.py); never live-P&L or headline ratios.
+        "complexity",
+        "roughness",
+        "serial_randomness",
+    }
+)
 
 BENCHMARK_FAMILY_ORDER = (
     "ranking",

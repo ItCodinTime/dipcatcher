@@ -280,6 +280,13 @@
 - `lowess.py`: local linear fit over the frac*n nearest points with tricube
   weights (1-|u|^3)^3; robustness iterations reweight by Tukey bisquare
   (1-(r/6s)^2)^2, s=median|resid|.
+## Optional scorecard families (benches_extra)
+
+- `complexity` / `roughness` / `serial_randomness` benches average per-asset
+  proper-score diagnostics over the SYNTHETIC panel's `ret_1` series (assets with
+  >= 64/128 observations), reusing the entropy/fractal/serial metric modules; the
+  resulting family blobs contain only finite floats with no sharpe/sortino/
+  calmar/pnl/nav key tokens, so the verify.py scorecard honesty gates pass.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));

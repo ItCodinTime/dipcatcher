@@ -64,6 +64,11 @@ from quant_fund.research.benches import (
     bench_volatility,
     bench_weighted_conformal,
 )
+from quant_fund.research.benches_extra import (
+    bench_complexity,
+    bench_roughness,
+    bench_serial_randomness,
+)
 from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
@@ -1559,6 +1564,9 @@ def run_research(config: AppConfig) -> ResearchNotebook:
         "online_crc": bench_online_crc_from_panel(df, config),
         "portfolio_conformal": bench_portfolio_from_panel(df, config),
         "northset": bench_northset(northset_frame, config),
+        "complexity": bench_complexity(df),
+        "roughness": bench_roughness(df),
+        "serial_randomness": bench_serial_randomness(df),
     }
 
     hyps = _build_hypotheses(families, rankers)
