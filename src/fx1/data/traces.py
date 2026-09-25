@@ -39,9 +39,7 @@ class Trajectory(BaseModel):
     steps: list[TraceStep]
     verify_ok: bool = False
     artifact_receipts: list[str] = Field(default_factory=list)
-    recorded_utc: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    recorded_utc: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     @property
     def sha256(self) -> str:
@@ -57,18 +55,12 @@ class Trajectory(BaseModel):
         for step in self.steps:
             content = step.assistant_content
             if step.reasoning_content:
-                content = (
-                    f"<reasoning>{step.reasoning_content}</reasoning>\n{content}"
-                )
+                content = f"<reasoning>{step.reasoning_content}</reasoning>\n{content}"
             if step.tool_call is not None:
-                content += (
-                    f"\n<tool_call>{step.tool_call.model_dump_json()}</tool_call>"
-                )
+                content += f"\n<tool_call>{step.tool_call.model_dump_json()}</tool_call>"
             messages.append({"role": "assistant", "content": content.strip()})
             if step.tool_result is not None:
-                messages.append(
-                    {"role": "tool", "content": step.tool_result}
-                )
+                messages.append({"role": "tool", "content": step.tool_result})
         return messages
 
 

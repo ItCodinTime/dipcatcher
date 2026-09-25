@@ -71,9 +71,7 @@ def ngram_containment_scan(
             continue
         containment = len(shingles & eval_shingles) / len(shingles)
         if containment >= threshold:
-            findings.append(
-                NGramFinding(example_index=i, containment=containment)
-            )
+            findings.append(NGramFinding(example_index=i, containment=containment))
     return findings
 
 

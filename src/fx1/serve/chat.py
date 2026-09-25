@@ -22,8 +22,10 @@ def cited_complete(
     response = backend.complete(messages)
     validate_fx1_output(response)  # fail-closed on contract violations
     if receipt_hashes:
-        footer = "\n\nEvidence: " + ", ".join(
-            f"`{h[:16]}…`" for h in receipt_hashes
-        ) + " — verify with `dipcatcher verify-research`."
+        footer = (
+            "\n\nEvidence: "
+            + ", ".join(f"`{h[:16]}…`" for h in receipt_hashes)
+            + " — verify with `dipcatcher verify-research`."
+        )
         response += footer
     return response

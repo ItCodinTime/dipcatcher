@@ -16,10 +16,10 @@ from pathlib import Path
 
 
 class Level(IntEnum):
-    CONTRACTS = 0       # system rules, evidence classes, honesty vocabulary
+    CONTRACTS = 0  # system rules, evidence classes, honesty vocabulary
     INTERPRETATION = 1  # reading receipts, scorecards, ledgers
-    RESEARCH_LOOP = 2   # hypothesis → bench → verdict traces
-    REFUSAL = 3         # negative examples under pressure
+    RESEARCH_LOOP = 2  # hypothesis → bench → verdict traces
+    REFUSAL = 3  # negative examples under pressure
 
 
 def classify(example: dict) -> Level:
@@ -54,9 +54,11 @@ def build_curriculum(
     for level in Level:
         bucket = buckets[level]
         # Deterministic within-level shuffle keyed on content hash + seed.
-        bucket.sort(key=lambda e: hashlib.sha256(
-            (str(seed) + json.dumps(e, sort_keys=True)).encode()
-        ).hexdigest())
+        bucket.sort(
+            key=lambda e: hashlib.sha256(
+                (str(seed) + json.dumps(e, sort_keys=True)).encode()
+            ).hexdigest()
+        )
         rng.shuffle(bucket)  # seeded, reproducible
         ordered.extend(bucket)
         counts[level.name.lower()] = len(bucket)

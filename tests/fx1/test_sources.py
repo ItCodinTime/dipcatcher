@@ -43,10 +43,24 @@ from fx1.data.sources.router import (
 
 SYSTEM = "You are fx-1."
 EXPECTED_SOURCES = {
-    "wind", "ifind", "gildata", "sp_data", "sec_edgar", "yahoo_finance",
-    "dongcai", "cls", "caixin", "binance_crypto", "imf", "world_bank",
-    "igo_open_data", "xhcj", "finance_research", "tianyancha",
-    "finance_fetch", "finenter",
+    "wind",
+    "ifind",
+    "gildata",
+    "sp_data",
+    "sec_edgar",
+    "yahoo_finance",
+    "dongcai",
+    "cls",
+    "caixin",
+    "binance_crypto",
+    "imf",
+    "world_bank",
+    "igo_open_data",
+    "xhcj",
+    "finance_research",
+    "tianyancha",
+    "finance_fetch",
+    "finenter",
 }
 
 
@@ -68,8 +82,7 @@ def _stub_plugin_scripts(tmp_path, monkeypatch):
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("# test stub\n", encoding="utf-8")
     monkeypatch.setenv("FX1_PLUGIN_ROOTS", str(root))
-    for name in ("KIMI_API_KEY", "AGENT_GW_TOKEN", "DATASOURCE_BASE_URL",
-                 "DATASOURCE_API_KEY"):
+    for name in ("KIMI_API_KEY", "AGENT_GW_TOKEN", "DATASOURCE_BASE_URL", "DATASOURCE_API_KEY"):
         monkeypatch.setenv(name, "test-dummy")
 
 
@@ -153,9 +166,7 @@ def test_probe_no_credentials_named_not_valued(monkeypatch, tmp_path):
     monkeypatch.delenv("AGENT_GW_TOKEN", raising=False)
     script = tmp_path / "wind_tool.py"
     script.write_text("# stub", encoding="utf-8")
-    spec = get_spec("wind").model_copy(
-        update={"script_candidates": ["wind_tool.py"]}
-    )
+    spec = get_spec("wind").model_copy(update={"script_candidates": ["wind_tool.py"]})
     probe = build_adapter(spec).probe()
     assert probe.status is SourceStatus.NO_CREDENTIALS
     assert "KIMI_API_KEY" in probe.detail
@@ -166,9 +177,7 @@ def test_probe_never_leaks_secret_values(monkeypatch, tmp_path):
     monkeypatch.setenv("KIMI_API_KEY", secret)
     monkeypatch.setenv("FX1_PLUGIN_ROOTS", str(tmp_path))
     (tmp_path / "wind_tool.py").write_text("# stub", encoding="utf-8")
-    spec = get_spec("wind").model_copy(
-        update={"script_candidates": ["wind_tool.py"]}
-    )
+    spec = get_spec("wind").model_copy(update={"script_candidates": ["wind_tool.py"]})
     probe = build_adapter(spec).probe()
     assert probe.status is SourceStatus.READY
     assert secret not in probe.model_dump_json()
@@ -192,8 +201,7 @@ def test_agent_gw_fetch_argv_and_success():
     recorder = _ArgvRecorder(RunOutcome(returncode=0, stdout="price: 42", stderr=""))
     adapter = AgentGwAdapter(get_spec("yahoo_finance"), runner=recorder)
     result = adapter.fetch(
-        FetchRequest(api="get_stock_info", params={"ticker": "AAPL"},
-                     as_of="2026-09-24")
+        FetchRequest(api="get_stock_info", params={"ticker": "AAPL"}, as_of="2026-09-24")
     )
     assert result.ok
     assert result.payload_sha256 == FetchResult.hash_payload("price: 42")
@@ -220,8 +228,7 @@ def test_caixin_describe_uses_search():
 def test_xhcj_key_value_grammar():
     recorder = _ArgvRecorder(RunOutcome(returncode=0, stdout="news", stderr=""))
     adapter = XhcjAdapter(get_spec("xhcj"), runner=recorder)
-    adapter.fetch(FetchRequest(api="get_AStock_News_byStockName",
-                               params={"stockName": "京东方A"}))
+    adapter.fetch(FetchRequest(api="get_AStock_News_byStockName", params={"stockName": "京东方A"}))
     argv = recorder.calls[0]
     assert argv[2:] == ["call", "get_AStock_News_byStockName", "stockName=京东方A"]
 
@@ -242,9 +249,7 @@ def test_finance_fetch_envelope_ok_false_is_honest_failure():
 
 def test_finance_fetch_envelope_ok_true_passes():
     envelope = json.dumps({"ok": True, "data": {"revenue": 1}})
-    adapter = FinanceFetchAdapter(
-        get_spec("finance_fetch"), runner=_ok_runner(envelope)
-    )
+    adapter = FinanceFetchAdapter(get_spec("finance_fetch"), runner=_ok_runner(envelope))
     assert adapter.fetch(FetchRequest(api="quote", params={"ticker": "NVDA"})).ok
 
 
@@ -267,8 +272,7 @@ def test_fetch_failure_never_carries_payload():
 
 def test_fetch_timeout_is_honest():
     def timeout_runner(argv, *, timeout_s, extra_env=None):
-        return RunOutcome(returncode=124, stdout="", stderr="timeout",
-                          timed_out=True)
+        return RunOutcome(returncode=124, stdout="", stderr="timeout", timed_out=True)
 
     result = AgentGwAdapter(get_spec("imf"), runner=timeout_runner).fetch(
         FetchRequest(api="weo_query")
@@ -286,9 +290,14 @@ def test_empty_output_is_failure_not_empty_success():
 
 def test_custom_cli_guard_rejects_unknown_grammar():
     spec = SourceSpec(
-        name="mystery", display="mystery", owner_plugins=["x"],
-        kind=SourceKind.CUSTOM_CLI, script_candidates=["x.py"],
-        markets=["cn"], assets=["news"], latency="news",
+        name="mystery",
+        display="mystery",
+        owner_plugins=["x"],
+        kind=SourceKind.CUSTOM_CLI,
+        script_candidates=["x.py"],
+        markets=["cn"],
+        assets=["news"],
+        latency="news",
     )
     with pytest.raises(ValueError, match="mystery"):
         build_adapter(spec)
@@ -316,9 +325,7 @@ def test_classification(question, need, market):
 
 def test_cn_quote_routes_specific_first():
     plan = route("贵州茅台最新股价", market="cn", need="quote")
-    assert [c.source for c in plan.candidates] == [
-        "ifind", "wind", "gildata", "dongcai"
-    ]
+    assert [c.source for c in plan.candidates] == ["ifind", "wind", "gildata", "dongcai"]
 
 
 def test_us_fundamentals_routes_sp_first_yahoo_last():
@@ -341,8 +348,7 @@ def test_fetch_routed_first_success_wins():
     plan = route("q", market="cn", need="quote")
     result = fetch_routed(
         plan,
-        api_by_source={"ifind": "q", "wind": "q", "gildata": "q",
-                       "dongcai": "q"},
+        api_by_source={"ifind": "q", "wind": "q", "gildata": "q", "dongcai": "q"},
         runner=_ok_runner("data"),
     )
     assert result.ok and result.text == "data"
@@ -352,8 +358,7 @@ def test_fetch_routed_aggregates_failures():
     plan = route("q", market="cn", need="quote")
     result = fetch_routed(
         plan,
-        api_by_source={"ifind": "q", "wind": "q", "gildata": "q",
-                       "dongcai": "q"},
+        api_by_source={"ifind": "q", "wind": "q", "gildata": "q", "dongcai": "q"},
         runner=_fail_runner(stderr="vendor down"),
     )
     assert not result.ok
@@ -374,8 +379,11 @@ def test_fetch_routed_all_unavailable_is_described(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------
 def _good_result(**over) -> FetchResult:
     base = {
-        "ok": True, "source": "wind", "api": "get_stock_price_indicators",
-        "text": "600519.SH close 1680.0", "as_of": "2026-09-24",
+        "ok": True,
+        "source": "wind",
+        "api": "get_stock_price_indicators",
+        "text": "600519.SH close 1680.0",
+        "as_of": "2026-09-24",
     }
     base.update(over)
     result = FetchResult(**base)
@@ -385,8 +393,7 @@ def _good_result(**over) -> FetchResult:
 
 def test_ingest_refuses_failed_fetch():
     decision = fetch_to_example(
-        FetchResult.failure(source="wind", api="x", error="down",
-                            status=SourceStatus.READY),
+        FetchResult.failure(source="wind", api="x", error="down", status=SourceStatus.READY),
         SYSTEM,
     )
     assert not decision.accepted and "fetch failed" in decision.reason
@@ -427,9 +434,7 @@ def test_ingest_research_source_does_not_require_as_of():
 def test_ledger_chains_ingest_and_exclusion(tmp_path):
     ledger = CorpusLedger(tmp_path / "ledger.jsonl")
     record_fetch_in_ledger(ledger, fetch_to_example(_good_result(), SYSTEM))
-    record_fetch_in_ledger(
-        ledger, fetch_to_example(_good_result(as_of=None), SYSTEM)
-    )
+    record_fetch_in_ledger(ledger, fetch_to_example(_good_result(as_of=None), SYSTEM))
     export = ledger.audit_export()
     assert export["examples"] == 1
     assert export["exclusions"] == 1
@@ -451,15 +456,11 @@ def test_cli_sources_probe_json():
     result = CliRunner().invoke(app, ["sources", "probe", "wind"])
     assert result.exit_code == 0
     report = json.loads(result.output)
-    assert report["probes"][0]["credentials"] == list(
-        ("KIMI_API_KEY", "AGENT_GW_TOKEN")
-    )
+    assert report["probes"][0]["credentials"] == list(("KIMI_API_KEY", "AGENT_GW_TOKEN"))
 
 
 def test_cli_fetch_unknown_source_fails():
-    result = CliRunner().invoke(
-        app, ["sources", "fetch", "bloomberg", "--api", "x"]
-    )
+    result = CliRunner().invoke(app, ["sources", "fetch", "bloomberg", "--api", "x"])
     assert result.exit_code != 0
 
 
@@ -476,9 +477,19 @@ def test_cli_ingest_refused_without_as_of(tmp_path):
     # finance_fetch envelope failure guarantees an unsuccessful fetch offline
     result = CliRunner().invoke(
         app,
-        ["corpus", "ingest-source", "wind", "--api", "get_stock_price_indicators",
-         "--params-json", "{}", "--ledger-path", str(tmp_path / "l.jsonl"),
-         "--out", str(tmp_path / "c.jsonl")],
+        [
+            "corpus",
+            "ingest-source",
+            "wind",
+            "--api",
+            "get_stock_price_indicators",
+            "--params-json",
+            "{}",
+            "--ledger-path",
+            str(tmp_path / "l.jsonl"),
+            "--out",
+            str(tmp_path / "c.jsonl"),
+        ],
     )
     assert result.exit_code == 1
     assert "ingest refused" in result.output

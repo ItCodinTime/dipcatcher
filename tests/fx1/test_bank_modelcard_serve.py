@@ -78,9 +78,7 @@ def test_hosted_backend_requires_env_key(monkeypatch):
 def test_local_backend_fail_closed(tmp_path: Path):
     with pytest.raises(FileNotFoundError, match="model card"):
         LocalFx1Backend(tmp_path)
-    _card(eval_delta=_delta(honesty_gate_candidate=False)).save(
-        tmp_path / "modelcard.json"
-    )
+    _card(eval_delta=_delta(honesty_gate_candidate=False)).save(tmp_path / "modelcard.json")
     with pytest.raises(RuntimeError, match="ship gate"):
         LocalFx1Backend(tmp_path)
 

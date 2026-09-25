@@ -79,13 +79,14 @@ def detect_dip_events(
                 if end > len(closes):
                     recovered[horizon] = None
                 else:
-                    recovered[horizon] = any(
-                        closes[j] >= peak for j in range(i, end)
-                    )
+                    recovered[horizon] = any(closes[j] >= peak for j in range(i, end))
             events.append(
                 DipEvent(
-                    asset=asset, peak_date=peak_date, trough_date=date,
-                    depth=depth, recovered=recovered,
+                    asset=asset,
+                    peak_date=peak_date,
+                    trough_date=date,
+                    depth=depth,
+                    recovered=recovered,
                 )
             )
             in_dip = True
@@ -149,15 +150,11 @@ def evaluate_forecasts(
             continue
         all_pairs.extend(pairs)
         metrics[f"brier_{horizon}"] = sum(_brier(p, y) for p, y in pairs) / len(pairs)
-        metrics[f"log_loss_{horizon}"] = (
-            sum(_log_loss(p, y) for p, y in pairs) / len(pairs)
-        )
+        metrics[f"log_loss_{horizon}"] = sum(_log_loss(p, y) for p, y in pairs) / len(pairs)
         metrics[f"ece_{horizon}"] = _ece(pairs, n_bins=n_bins)
         metrics[f"n_{horizon}"] = float(len(pairs))
     if all_pairs:
-        metrics["brier_overall"] = (
-            sum(_brier(p, y) for p, y in all_pairs) / len(all_pairs)
-        )
+        metrics["brier_overall"] = sum(_brier(p, y) for p, y in all_pairs) / len(all_pairs)
     return metrics
 
 
@@ -180,6 +177,4 @@ def assert_bench_output_honest(metrics: dict[str, float]) -> None:
     for key in metrics:
         tokens = set(key.lower().replace("-", "_").split("_"))
         if tokens & _FORBIDDEN_TOKENS:
-            raise ValueError(
-                f"bench metric key {key!r} contains a forbidden headline token"
-            )
+            raise ValueError(f"bench metric key {key!r} contains a forbidden headline token")

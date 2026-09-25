@@ -45,13 +45,9 @@ class ResearchTrace(BaseModel):
 
     def to_sft_messages(self, system: str) -> list[dict[str, str]]:
         verdict_text = (
-            f"Gate verdict: {self.verdict.value}."
-            if self.verdict
-            else "Gate verdict: pending."
+            f"Gate verdict: {self.verdict.value}." if self.verdict else "Gate verdict: pending."
         )
-        scores_text = "\n".join(
-            f"- {k}: {v}" for k, v in sorted(self.scores.items())
-        )
+        scores_text = "\n".join(f"- {k}: {v}" for k, v in sorted(self.scores.items()))
         user = (
             f"Hypothesis: {self.hypothesis}\n\n"
             f"Config change under test:\n```\n{self.config_diff}\n```\n"
@@ -76,9 +72,22 @@ class ResearchTrace(BaseModel):
 # trace's scores is rejected fail-closed (headline metrics are not scores).
 _ALLOWED_SCORE_TOKENS = frozenset(
     {
-        "crps", "pinball", "pit", "qlike", "brier", "logloss", "log_loss",
-        "ece", "kupiec", "hmm", "likelihood", "coverage", "sharpness",
-        "rank_ic", "spearman", "auc",
+        "crps",
+        "pinball",
+        "pit",
+        "qlike",
+        "brier",
+        "logloss",
+        "log_loss",
+        "ece",
+        "kupiec",
+        "hmm",
+        "likelihood",
+        "coverage",
+        "sharpness",
+        "rank_ic",
+        "spearman",
+        "auc",
     }
 )
 

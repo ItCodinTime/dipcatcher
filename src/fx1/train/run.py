@@ -30,9 +30,7 @@ def _validate_corpus(corpus_path: Path) -> dict[str, int]:
                 continue
             record = json.loads(line)
             if not record.get("receipt_sha256"):
-                raise ValueError(
-                    f"corpus line {lineno} lacks receipt_sha256 provenance"
-                )
+                raise ValueError(f"corpus line {lineno} lacks receipt_sha256 provenance")
             stats["lines"] += 1
             key = "negative" if record.get("negative") else "positive"
             stats[key] += 1
@@ -58,8 +56,7 @@ def build_training_manifest(config: TrainConfig, out_path: str | Path) -> dict:
         raise FileNotFoundError(f"corpus not found: {corpus_path}")
     if not eval_path.exists():
         raise FileNotFoundError(
-            f"eval results not found: {eval_path} — the eval harness runs "
-            "before any training"
+            f"eval results not found: {eval_path} — the eval harness runs before any training"
         )
     corpus_stats = _validate_corpus(corpus_path)
     _validate_eval_gate(eval_path)

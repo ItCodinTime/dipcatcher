@@ -13,10 +13,7 @@ def test_sbom_from_real_uv_lock():
         lock = Path(__file__).parents[2] / "tests" / "fx1" / "_test_uv.lock"
         lock.write_text(
             '[[package]]\nname = "pydantic"\nversion = "2.11.4"\n'
-            + "\n".join(
-                f'[[package]]\nname = "pkg{i}"\nversion = "1.0.{i}"'
-                for i in range(60)
-            ),
+            + "\n".join(f'[[package]]\nname = "pkg{i}"\nversion = "1.0.{i}"' for i in range(60)),
             encoding="utf-8",
         )
     sbom = generate_sbom(lock)

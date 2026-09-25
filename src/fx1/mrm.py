@@ -48,9 +48,7 @@ class MRMDossier(BaseModel):
     """The compiled five-activity model-risk dossier."""
 
     model_version: str
-    compiled_utc: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    compiled_utc: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     base_model: str
     sections: list[DossierSection]
     contamination_flagged: bool
@@ -85,9 +83,7 @@ def compile_dossier(
     for activity, artifact in artifacts.items():
         path = Path(artifact)
         if not path.exists():
-            raise FileNotFoundError(
-                f"dossier artifact for {activity!r} missing: {path}"
-            )
+            raise FileNotFoundError(f"dossier artifact for {activity!r} missing: {path}")
         hashes.setdefault(activity, {})[str(path)] = _sha(path)
         if activity == "validation" and "contamination" in path.name:
             try:

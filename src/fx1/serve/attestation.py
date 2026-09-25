@@ -34,21 +34,17 @@ class TEEQuote(BaseModel):
     platform: str = Field(pattern="^(sev-snp|tdx|nvidia-cc|simulated)$")
     checkpoint_sha256: str = Field(min_length=64, max_length=64)
     measurement: str = Field(description="enclave measurement (hex)")
-    report_data: str = Field(
-        description="caller nonce echoed into the quote (anti-replay)"
-    )
+    report_data: str = Field(description="caller nonce echoed into the quote (anti-replay)")
     signature: str = Field(description="platform signature over the quote")
 
     @property
     def binds_checkpoint(self) -> bool:
         return self.report_data.endswith(self.checkpoint_sha256) or (
-            hashlib.sha256(self.checkpoint_sha256.encode()).hexdigest()
-            in self.report_data
+            hashlib.sha256(self.checkpoint_sha256.encode()).hexdigest() in self.report_data
         )
 
 
-def verify_quote(quote: TEEQuote, *, expected_checkpoint_sha256: str,
-                 nonce: str) -> bool:
+def verify_quote(quote: TEEQuote, *, expected_checkpoint_sha256: str, nonce: str) -> bool:
     """Structural verification: checkpoint binding + anti-replay nonce.
 
     Cryptographic verification of the platform signature requires the vendor
@@ -80,8 +76,7 @@ class OperatorProofManifest(BaseModel):
         missing = set(self.covered_operators) - set(self.proof_artifacts)
         if missing:
             raise ValueError(
-                f"operators claimed covered without proof artifacts: "
-                f"{sorted(missing)}"
+                f"operators claimed covered without proof artifacts: {sorted(missing)}"
             )
         return self
 
@@ -108,9 +103,7 @@ def attestation_ladder_status(checkpoint_dir: str | Path) -> dict[str, bool]:
             manifest = OperatorProofManifest.model_validate_json(
                 manifest_path.read_text(encoding="utf-8")
             )
-            status[AttestationTier.SELECTIVE_ZKML.value] = (
-                manifest.verify_artifacts_exist()
-            )
+            status[AttestationTier.SELECTIVE_ZKML.value] = manifest.verify_artifacts_exist()
         except Exception:  # noqa: BLE001 - fail closed
             status[AttestationTier.SELECTIVE_ZKML.value] = False
     return status

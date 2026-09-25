@@ -67,7 +67,6 @@ class TrainConfig(BaseModel):
                 )
             if not self.preserve_reasoning_content:
                 raise ValueError(
-                    "K3 requires preserved reasoning_content + tool_calls "
-                    "in training data"
+                    "K3 requires preserved reasoning_content + tool_calls in training data"
                 )
         return self

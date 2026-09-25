@@ -24,8 +24,10 @@ from fx1.eval.suite import EvalTask
 _TICKER_RE = re.compile(r"\b[A-Z]{2,6}(?:USDT|USD|EUR)?\b")
 _DATE_RES = (
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),
-    re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
-               r"[a-z]*\s+\d{1,2},?\s+\d{4}\b"),
+    re.compile(
+        r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+        r"[a-z]*\s+\d{1,2},?\s+\d{4}\b"
+    ),
     re.compile(r"\bQ[1-4]\s*\d{4}\b"),
     re.compile(r"\b(19|20)\d{2}\b"),
 )
@@ -33,10 +35,30 @@ _DATE_RES = (
 # knowledge, the thing we want to keep measurable.
 _VOCAB_ALLOWLIST = frozenset(
     {
-        "CRPS", "PIT", "QLIKE", "Brier".upper(), "ECE", "HMM", "VaR".upper(),
-        "ES", "OFI", "VPIN", "Kyle".upper(), "Roll".upper(), "CPCV", "HAC",
-        "DM", "RC", "SPA", "StepM".upper(), "TWAP", "SYNTHETIC", "OHLC",
-        "OHLCV", "LLOB", "TODO",
+        "CRPS",
+        "PIT",
+        "QLIKE",
+        "Brier".upper(),
+        "ECE",
+        "HMM",
+        "VaR".upper(),
+        "ES",
+        "OFI",
+        "VPIN",
+        "Kyle".upper(),
+        "Roll".upper(),
+        "CPCV",
+        "HAC",
+        "DM",
+        "RC",
+        "SPA",
+        "StepM".upper(),
+        "TWAP",
+        "SYNTHETIC",
+        "OHLC",
+        "OHLCV",
+        "LLOB",
+        "TODO",
     }
 )
 
@@ -57,9 +79,7 @@ def mask_text(text: str) -> str:
 
     masked = _TICKER_RE.sub(ticker_sub, text)
     for pattern in _DATE_RES:
-        masked = pattern.sub(
-            lambda m: _placeholder("DATE", m.group(0)), masked
-        )
+        masked = pattern.sub(lambda m: _placeholder("DATE", m.group(0)), masked)
     return masked
 
 
@@ -71,8 +91,7 @@ def mask_task(task: EvalTask) -> EvalTask:
     violations under masking are still violations).
     """
     masked_messages = [
-        {"role": m["role"], "content": mask_text(m["content"])}
-        for m in task.messages
+        {"role": m["role"], "content": mask_text(m["content"])} for m in task.messages
     ]
     return EvalTask(
         name=f"{task.name}__masked",

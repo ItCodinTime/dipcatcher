@@ -44,9 +44,7 @@ class HarnessCommand(BaseModel):
     description: str
 
 
-def _cmd(
-    name: str, role: HarnessRole, description: str, timeout_s: int = 300
-) -> HarnessCommand:
+def _cmd(name: str, role: HarnessRole, description: str, timeout_s: int = 300) -> HarnessCommand:
     return HarnessCommand(
         name=name, role=role, argv=[name], timeout_s=timeout_s, description=description
     )
@@ -58,60 +56,118 @@ def _cmd(
 # network-serving ``api`` command are deliberately excluded.
 HARNESS_REGISTRY: tuple[HarnessCommand, ...] = (
     # --- Verification ---
-    _cmd("doctor", HarnessRole.VERIFICATION,
-         "Verify data manifest and latest research receipt before trusting state."),
-    _cmd("verify-research", HarnessRole.VERIFICATION,
-         "Verify immutable provenance, scorecards, and research artifacts."),
-    _cmd("validate", HarnessRole.VERIFICATION,
-         "Fail-closed causal / walk-forward / promotion gates for a model id."),
-    _cmd("monitor", HarnessRole.VERIFICATION,
-         "Operational monitoring surface for the harness runtime."),
+    _cmd(
+        "doctor",
+        HarnessRole.VERIFICATION,
+        "Verify data manifest and latest research receipt before trusting state.",
+    ),
+    _cmd(
+        "verify-research",
+        HarnessRole.VERIFICATION,
+        "Verify immutable provenance, scorecards, and research artifacts.",
+    ),
+    _cmd(
+        "validate",
+        HarnessRole.VERIFICATION,
+        "Fail-closed causal / walk-forward / promotion gates for a model id.",
+    ),
+    _cmd(
+        "monitor",
+        HarnessRole.VERIFICATION,
+        "Operational monitoring surface for the harness runtime.",
+    ),
     # --- Data engine ---
-    _cmd("ingest", HarnessRole.DATA_ENGINE,
-         "Bronze/silver lake ingest; writes data_manifest.json with SHA-256 hashes.",
-         timeout_s=1800),
-    _cmd("collect", HarnessRole.DATA_ENGINE,
-         "Explicit opt-in public-feed collection (binance, fred) with receipts."),
-    _cmd("build-features", HarnessRole.DATA_ENGINE,
-         "Feature construction on the PIT lake.", timeout_s=1800),
-    _cmd("build-labels", HarnessRole.DATA_ENGINE,
-         "Label construction on the PIT lake.", timeout_s=1800),
+    _cmd(
+        "ingest",
+        HarnessRole.DATA_ENGINE,
+        "Bronze/silver lake ingest; writes data_manifest.json with SHA-256 hashes.",
+        timeout_s=1800,
+    ),
+    _cmd(
+        "collect",
+        HarnessRole.DATA_ENGINE,
+        "Explicit opt-in public-feed collection (binance, fred) with receipts.",
+    ),
+    _cmd(
+        "build-features",
+        HarnessRole.DATA_ENGINE,
+        "Feature construction on the PIT lake.",
+        timeout_s=1800,
+    ),
+    _cmd(
+        "build-labels",
+        HarnessRole.DATA_ENGINE,
+        "Label construction on the PIT lake.",
+        timeout_s=1800,
+    ),
     # --- Evaluation ---
-    _cmd("research", HarnessRole.EVALUATION,
-         "Scientific benches (proper scores; SYNTHETIC labeled).", timeout_s=3600),
-    _cmd("northset", HarnessRole.EVALUATION,
-         "Order-book/candlestick slice: identities, OHLC vol, Kyle/Roll/OFI/VPIN.",
-         timeout_s=1800),
-    _cmd("backtest", HarnessRole.EVALUATION,
-         "Next-open fills, costs, participation; tamper-evident artifacts.",
-         timeout_s=1800),
-    _cmd("forecast", HarnessRole.EVALUATION,
-         "Forecast surface for validated models."),
-    _cmd("kronos-forecast", HarnessRole.EVALUATION,
-         "Research-only local Kronos candlestick adapter (no network)."),
-    _cmd("candle-book", HarnessRole.EVALUATION,
-         "Candle/order-book reconstruction benches.", timeout_s=900),
-    _cmd("kyle-ofi", HarnessRole.EVALUATION,
-         "Kyle lambda / OFI microstructure benches.", timeout_s=900),
-    _cmd("session-book", HarnessRole.EVALUATION,
-         "Session-level order-book benches.", timeout_s=900),
-    _cmd("vendor-book-map", HarnessRole.EVALUATION,
-         "Vendor book mapping diagnostics."),
-    _cmd("book-panel", HarnessRole.EVALUATION,
-         "Book panel aggregation benches.", timeout_s=900),
-    _cmd("report", HarnessRole.EVALUATION,
-         "Research notebook/report generation."),
-    _cmd("tearsheet", HarnessRole.EVALUATION,
-         "Backtest tearsheet diagnostics (analytics export, live_pnl_claim=false)."),
+    _cmd(
+        "research",
+        HarnessRole.EVALUATION,
+        "Scientific benches (proper scores; SYNTHETIC labeled).",
+        timeout_s=3600,
+    ),
+    _cmd(
+        "northset",
+        HarnessRole.EVALUATION,
+        "Order-book/candlestick slice: identities, OHLC vol, Kyle/Roll/OFI/VPIN.",
+        timeout_s=1800,
+    ),
+    _cmd(
+        "backtest",
+        HarnessRole.EVALUATION,
+        "Next-open fills, costs, participation; tamper-evident artifacts.",
+        timeout_s=1800,
+    ),
+    _cmd("forecast", HarnessRole.EVALUATION, "Forecast surface for validated models."),
+    _cmd(
+        "kronos-forecast",
+        HarnessRole.EVALUATION,
+        "Research-only local Kronos candlestick adapter (no network).",
+    ),
+    _cmd(
+        "candle-book",
+        HarnessRole.EVALUATION,
+        "Candle/order-book reconstruction benches.",
+        timeout_s=900,
+    ),
+    _cmd(
+        "kyle-ofi",
+        HarnessRole.EVALUATION,
+        "Kyle lambda / OFI microstructure benches.",
+        timeout_s=900,
+    ),
+    _cmd(
+        "session-book", HarnessRole.EVALUATION, "Session-level order-book benches.", timeout_s=900
+    ),
+    _cmd("vendor-book-map", HarnessRole.EVALUATION, "Vendor book mapping diagnostics."),
+    _cmd("book-panel", HarnessRole.EVALUATION, "Book panel aggregation benches.", timeout_s=900),
+    _cmd("report", HarnessRole.EVALUATION, "Research notebook/report generation."),
+    _cmd(
+        "tearsheet",
+        HarnessRole.EVALUATION,
+        "Backtest tearsheet diagnostics (analytics export, live_pnl_claim=false).",
+    ),
     # --- Model training (lab surfaces; curriculum + tool-use traces) ---
-    _cmd("train", HarnessRole.MODEL_TRAINING,
-         "Lab model training families (ranking/distribution/calibration/"
-         "volatility/alpha/covariance/regime/tail/reinforcement/liquidity).",
-         timeout_s=7200),
-    _cmd("optimize", HarnessRole.MODEL_TRAINING,
-         "Hyperparameter optimization under fail-closed gates.", timeout_s=7200),
-    _cmd("paper", HarnessRole.MODEL_TRAINING,
-         "Simulated broker shadow runs (no live fills).", timeout_s=1800),
+    _cmd(
+        "train",
+        HarnessRole.MODEL_TRAINING,
+        "Lab model training families (ranking/distribution/calibration/"
+        "volatility/alpha/covariance/regime/tail/reinforcement/liquidity).",
+        timeout_s=7200,
+    ),
+    _cmd(
+        "optimize",
+        HarnessRole.MODEL_TRAINING,
+        "Hyperparameter optimization under fail-closed gates.",
+        timeout_s=7200,
+    ),
+    _cmd(
+        "paper",
+        HarnessRole.MODEL_TRAINING,
+        "Simulated broker shadow runs (no live fills).",
+        timeout_s=1800,
+    ),
 )
 
 
@@ -180,9 +236,7 @@ class Harness:
             resolved = config.resolve()
             configs_dir = (Path.cwd() / "configs").resolve()
             if configs_dir not in resolved.parents and resolved != configs_dir:
-                raise ValueError(
-                    f"config path {resolved} escapes the configs/ allowlist"
-                )
+                raise ValueError(f"config path {resolved} escapes the configs/ allowlist")
             argv += ["--config", str(resolved)]
         if extra_args:
             argv += list(extra_args)

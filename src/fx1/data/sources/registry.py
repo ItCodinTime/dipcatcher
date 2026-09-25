@@ -114,9 +114,13 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "ifind",
         "iFinD 同花顺",
-        ["financial-market-terminal", "xtt-public-markets-investing",
-         "xtt-corporate-finance-accounting",
-         "xtt-investment-banking-private-equity", "institutional-finance-kit"],
+        [
+            "financial-market-terminal",
+            "xtt-public-markets-investing",
+            "xtt-corporate-finance-accounting",
+            "xtt-investment-banking-private-equity",
+            "institutional-finance-kit",
+        ],
         SourceKind.AGENT_GW,
         [
             "financial-market-terminal/skills/mkt-datasource-ifind/scripts/ifind_tool.py",
@@ -132,8 +136,7 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "gildata",
         "Gildata 恒生聚源",
-        ["gildata-aifinmarket", "financial-market-terminal",
-         "xtt-public-markets-investing"],
+        ["gildata-aifinmarket", "financial-market-terminal", "xtt-public-markets-investing"],
         SourceKind.AGENT_GW,
         [
             "gildata-aifinmarket/scripts/gildata_tool.py",
@@ -172,8 +175,7 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "yahoo_finance",
         "Yahoo Finance",
-        ["yahoo_finance", "financial-market-terminal",
-         "xtt-public-markets-investing"],
+        ["yahoo_finance", "financial-market-terminal", "xtt-public-markets-investing"],
         SourceKind.AGENT_GW,
         ["yahoo_finance/scripts/yahoo_finance_tool.py"],
         ["us", "global", "hk"],
@@ -192,8 +194,7 @@ _SPECS: list[SourceSpec] = [
             "financial-market-terminal/skills/mkt-datasource-dongcai/scripts/dongcai_cli.py",
         ],
         ["cn", "hk", "us"],
-        ["equity", "fund", "bond", "index", "macro", "news", "research",
-         "sentiment"],
+        ["equity", "fund", "bond", "index", "macro", "news", "research", "sentiment"],
         LatencyClass.DAILY,
         describe_verb="desc",
         notes="Cross-market quotes/financials/macro/screener/news plus stock "
@@ -219,16 +220,23 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "caixin",
         "财新数据",
-        ["caixin-data-agent", "financial-market-terminal",
-         "xtt-public-markets-investing"],
+        ["caixin-data-agent", "financial-market-terminal", "xtt-public-markets-investing"],
         SourceKind.AGENT_GW,
         [
             "caixin-data-agent/scripts/caixin_tool.py",
             "financial-market-terminal/skills/mkt-datasource-caixin/scripts/caixin_tool.py",
         ],
         ["cn"],
-        ["bond", "fund", "macro", "enterprise", "sentiment", "industry_chain",
-         "equity", "research"],
+        [
+            "bond",
+            "fund",
+            "macro",
+            "enterprise",
+            "sentiment",
+            "industry_chain",
+            "equity",
+            "research",
+        ],
         LatencyClass.DAILY,
         notes="CN bonds/funds/futures/macro/enterprise-integrity/sentiment/"
         "industry chains. APIs addressed by full Chinese name.",
@@ -246,8 +254,7 @@ _SPECS: list[SourceSpec] = [
         ["crypto"],
         ["crypto"],
         LatencyClass.REALTIME,
-        notes="Crypto spot prices, K-lines, 24h stats, volume. The only "
-        "sanctioned crypto source.",
+        notes="Crypto spot prices, K-lines, 24h stats, volume. The only sanctioned crypto source.",
     ),
     _spec(
         "imf",
@@ -276,8 +283,7 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "igo_open_data",
         "IGO Open Data + FRED",
-        ["igo_open_data", "financial-market-terminal",
-         "xtt-public-markets-investing"],
+        ["igo_open_data", "financial-market-terminal", "xtt-public-markets-investing"],
         SourceKind.AGENT_GW,
         ["igo_open_data/scripts/igo_open_data_tool.py"],
         ["global"],
@@ -306,8 +312,7 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "finance_research",
         "Finance Research (sell-side)",
-        ["financial-market-terminal", "xtt-public-markets-investing",
-         "institutional-finance-kit"],
+        ["financial-market-terminal", "xtt-public-markets-investing", "institutional-finance-kit"],
         SourceKind.AGENT_GW,
         [
             "financial-market-terminal/skills/mkt-datasource-finance-research/"
@@ -325,8 +330,11 @@ _SPECS: list[SourceSpec] = [
     _spec(
         "tianyancha",
         "天眼查",
-        ["xtt-public-markets-investing", "xtt-corporate-finance-accounting",
-         "xtt-investment-banking-private-equity"],
+        [
+            "xtt-public-markets-investing",
+            "xtt-corporate-finance-accounting",
+            "xtt-investment-banking-private-equity",
+        ],
         SourceKind.AGENT_GW,
         [
             "xtt-public-markets-investing/skills/datasource-router/subskills/"
@@ -374,9 +382,7 @@ def get_spec(name: str) -> SourceSpec:
     try:
         return REGISTRY[name]
     except KeyError:
-        raise KeyError(
-            f"unknown datasource {name!r}; known: {sorted(REGISTRY)}"
-        ) from None
+        raise KeyError(f"unknown datasource {name!r}; known: {sorted(REGISTRY)}") from None
 
 
 def list_sources() -> list[SourceSpec]:
@@ -394,11 +400,13 @@ ROUTING_RULES: list[tuple[str, tuple[str, ...], list[str]]] = [
     ("quote", ("cn",), ["ifind", "wind", "gildata", "dongcai"]),
     ("quote", ("hk",), ["wind", "ifind", "gildata", "dongcai"]),
     ("quote", ("us",), ["sp_data", "yahoo_finance", "dongcai"]),
-    ("fundamentals", ("cn",), ["ifind", "gildata", "wind", "dongcai",
-                               "finance_fetch"]),
+    ("fundamentals", ("cn",), ["ifind", "gildata", "wind", "dongcai", "finance_fetch"]),
     ("fundamentals", ("hk",), ["gildata", "wind", "ifind", "finance_fetch"]),
-    ("fundamentals", ("us",), ["sp_data", "gildata", "sec_edgar",
-                               "yahoo_finance", "finance_fetch"]),
+    (
+        "fundamentals",
+        ("us",),
+        ["sp_data", "gildata", "sec_edgar", "yahoo_finance", "finance_fetch"],
+    ),
     ("screen", ("cn", "hk"), ["gildata", "ifind", "wind", "dongcai"]),
     ("screen", ("us",), ["sp_data", "dongcai"]),
     # funds / bonds / indices
@@ -407,19 +415,16 @@ ROUTING_RULES: list[tuple[str, tuple[str, ...], list[str]]] = [
     ("index", ("cn", "hk"), ["wind", "dongcai", "ifind"]),
     # filings & announcements
     ("filings", ("us",), ["sec_edgar", "sp_data", "finance_fetch"]),
-    ("filings", ("cn", "hk"), ["wind", "gildata", "dongcai", "caixin",
-                               "xhcj"]),
+    ("filings", ("cn", "hk"), ["wind", "gildata", "dongcai", "caixin", "xhcj"]),
     # news & sentiment
     ("news", ("cn",), ["cls", "xhcj", "dongcai", "wind", "caixin"]),
     ("news", ("hk",), ["dongcai", "gildata", "wind"]),
     ("news", ("us", "global"), ["yahoo_finance", "finance_research"]),
     ("sentiment", ("cn",), ["caixin", "dongcai"]),
     # research opinion
-    ("research", _ANY, ["finance_research", "gildata", "dongcai",
-                        "finenter"]),
+    ("research", _ANY, ["finance_research", "gildata", "dongcai", "finenter"]),
     # macro
-    ("macro", _ANY, ["imf", "world_bank", "igo_open_data", "wind",
-                     "dongcai", "caixin"]),
+    ("macro", _ANY, ["imf", "world_bank", "igo_open_data", "wind", "dongcai", "caixin"]),
     # crypto
     ("crypto", ("crypto",), ["binance_crypto"]),
     # enterprise / credit

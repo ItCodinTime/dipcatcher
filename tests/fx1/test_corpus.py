@@ -48,7 +48,10 @@ def test_build_corpus_provenance_and_negatives(tmp_path: Path):
 
 
 def _write_run_manifest(
-    path: Path, *, claim: str | None, synthetic: bool = True,
+    path: Path,
+    *,
+    claim: str | None,
+    synthetic: bool = True,
     live_pnl_claim: bool | None = None,
 ) -> None:
     """Lab research-run manifest schema (data/metadata/research/runs)."""
@@ -89,9 +92,7 @@ def test_run_manifest_without_claim_fails_closed(tmp_path: Path):
 
 
 def test_explicit_live_claim_overrides_research_only_claim(tmp_path: Path):
-    _write_run_manifest(
-        tmp_path / "run.json", claim="research_only", live_pnl_claim=True
-    )
+    _write_run_manifest(tmp_path / "run.json", claim="research_only", live_pnl_claim=True)
     record = load_receipts(tmp_path)[0]
     assert record.research_only and record.live_pnl_claim
     assert not record.eligible

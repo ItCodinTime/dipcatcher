@@ -37,26 +37,34 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
     # 1. receipts -> corpus
     receipts = tmp_path / "receipts"
     receipts.mkdir()
-    (receipts / "r1.json").write_text(json.dumps({
-        "schema": "bench/v1", "research_only": True, "live_pnl_claim": False,
-        "correctness": {"crps": 0.31}, "disclaimer": "research only"}))
-    (receipts / "r2.json").write_text(json.dumps({
-        "schema": "bench/v1", "research_only": False, "live_pnl_claim": True}))
+    (receipts / "r1.json").write_text(
+        json.dumps(
+            {
+                "schema": "bench/v1",
+                "research_only": True,
+                "live_pnl_claim": False,
+                "correctness": {"crps": 0.31},
+                "disclaimer": "research only",
+            }
+        )
+    )
+    (receipts / "r2.json").write_text(
+        json.dumps({"schema": "bench/v1", "research_only": False, "live_pnl_claim": True})
+    )
     corpus_path = tmp_path / "corpus.jsonl"
     stats = build_corpus(receipts, corpus_path)
     assert stats["positive"] == 1 and stats["negative"] == 1
 
     # 2. quality gate + frozen split, recorded in the ledger
     examples = [json.loads(x) for x in corpus_path.read_text().splitlines()]
-    prompts = [m["content"] for t in DEFAULT_BANK for m in t.messages
-               if m["role"] == "user"]
+    prompts = [m["content"] for t in DEFAULT_BANK for m in t.messages if m["role"] == "user"]
     kept, report = dedup_and_filter(examples, eval_prompts=prompts)
     assert report.kept == 2
     ledger = CorpusLedger(tmp_path / "ledger.jsonl")
     for ex in kept:
-        ledger.record_example(source_sha256=ex["receipt_sha256"],
-                              transform_sha256="t" * 64,
-                              example_sha256="e" * 64)
+        ledger.record_example(
+            source_sha256=ex["receipt_sha256"], transform_sha256="t" * 64, example_sha256="e" * 64
+        )
     assert ledger.verify_chain()
     split = frozen_split(kept, tmp_path / "corpus")
     assert split.train_count + split.val_count == 2
@@ -71,7 +79,8 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
     gap = memory_gap_report([True] * 10, [True] * 9 + [False], budget=0.25)
     assert gap.within_budget
     audit = run_contamination_audit(
-        [" ".join(m["content"] for m in e["messages"]) for e in kept], prompts)
+        [" ".join(m["content"] for m in e["messages"]) for e in kept], prompts
+    )
     audit_path = tmp_path / "contamination_report.json"
     audit_path.write_text(audit.model_dump_json())
 
@@ -80,13 +89,19 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
     cfg_path.write_text(json.dumps({"run": "fx-1.v0.1"}))
     receipt_path = tmp_path / "training_receipt.json"
     issue_receipt(
-        run_name="fx-1.v0.1", repo_root=tmp_path, config_path=cfg_path,
+        run_name="fx-1.v0.1",
+        repo_root=tmp_path,
+        config_path=cfg_path,
         corpus_path=corpus_path,
         split_manifest_path=tmp_path / "corpus.split.json",
-        eval_base_path=base_path, seed=17, out_path=receipt_path,
+        eval_base_path=base_path,
+        seed=17,
+        out_path=receipt_path,
     )
     assert verify_training_receipt(
-        receipt_path, config_path=cfg_path, corpus_path=corpus_path,
+        receipt_path,
+        config_path=cfg_path,
+        corpus_path=corpus_path,
         split_manifest_path=tmp_path / "corpus.split.json",
         eval_base_path=base_path,
     )
@@ -103,11 +118,15 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
     ckpt = tmp_path / "ckpt"
     ckpt.mkdir()
     card = ModelCard(
-        version="fx-1.v0.1", corpus_sha256="a" * 64,
-        corpus_receipt_range="b..c", training_manifest_sha256="b" * 64,
+        version="fx-1.v0.1",
+        corpus_sha256="a" * 64,
+        corpus_receipt_range="b..c",
+        training_manifest_sha256="b" * 64,
         eval_delta=EvalDelta(
-            domain_pass_rate_base=0.8, domain_pass_rate_candidate=0.9,
-            general_pass_rate_base=0.9, general_pass_rate_candidate=0.9,
+            domain_pass_rate_base=0.8,
+            domain_pass_rate_candidate=0.9,
+            general_pass_rate_base=0.9,
+            general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
         ),
     )

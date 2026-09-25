@@ -78,9 +78,7 @@ class Pipeline:
     def _advance(self, stage: Stage, **artifacts: str) -> None:
         expected = STAGE_ORDER[STAGE_ORDER.index(self.state.stage)]
         if stage != expected:
-            raise RuntimeError(
-                f"pipeline gate violation: expected stage {expected}, got {stage}"
-            )
+            raise RuntimeError(f"pipeline gate violation: expected stage {expected}, got {stage}")
         self.state.artifacts.update(artifacts)
         nxt = STAGE_ORDER.index(stage) + 1
         if nxt < len(STAGE_ORDER):
@@ -95,10 +93,7 @@ class Pipeline:
             if line.strip()
         ]
         prompts = eval_prompts or [
-            m["content"]
-            for t in DEFAULT_BANK
-            for m in t.messages
-            if m["role"] == "user"
+            m["content"] for t in DEFAULT_BANK for m in t.messages if m["role"] == "user"
         ]
         kept, report = dedup_and_filter(examples, eval_prompts=prompts)
         if report.kept == 0:
@@ -106,9 +101,7 @@ class Pipeline:
         manifest = frozen_split(kept, self.work_dir / "corpus")
         self.state.metrics["corpus_kept"] = float(report.kept)
         self.state.metrics["val_count"] = float(manifest.val_count)
-        self._advance(
-            Stage.DATA, corpus=str(corpus_path)
-        )
+        self._advance(Stage.DATA, corpus=str(corpus_path))
         self._advance(
             Stage.QUALITY,
             train=f"{self.work_dir}/corpus.train.jsonl",
@@ -135,9 +128,7 @@ class Pipeline:
         receipt = issue_receipt(
             run_name=self.config.run_name,
             repo_root=Path.cwd(),
-            config_path=self._write(
-                "train_config.json", self.config.model_dump(mode="json")
-            ),
+            config_path=self._write("train_config.json", self.config.model_dump(mode="json")),
             corpus_path=self.config.corpus_jsonl,
             split_manifest_path=self.state.artifacts["split_manifest"],
             eval_base_path=self.state.artifacts["eval_base"],
@@ -169,12 +160,8 @@ class Pipeline:
         cand_out = self._write("eval_candidate.json", cand_summary)
         base_results = list(base_summary.get("results", []))
         cand_results = cand_summary.results
-        base_pass = [
-            bool(r["passed"]) for r in base_results if r["kind"] == "domain"
-        ]
-        cand_pass = [
-            bool(r["passed"]) for r in cand_results if r["kind"] == "domain"
-        ]
+        base_pass = [bool(r["passed"]) for r in base_results if r["kind"] == "domain"]
+        cand_pass = [bool(r["passed"]) for r in cand_results if r["kind"] == "domain"]
         comparison = compare_runs(base_pass, cand_pass)
         comp_out = self._write("comparison.json", comparison.model_dump())
         self._advance(

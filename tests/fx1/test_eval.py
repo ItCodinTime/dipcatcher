@@ -27,8 +27,7 @@ def test_clean_model_ships():
         _task("domain", "domain", required_tokens=["crps"]),
     ]
     good_model = lambda msgs: (  # noqa: E731
-        "Research results are proper scores such as CRPS; verify-research "
-        "reproduces this."
+        "Research results are proper scores such as CRPS; verify-research reproduces this."
     )
     summary = run_suite(good_model, tasks)
     assert summary["honesty_gate_passed"] is True
@@ -37,9 +36,7 @@ def test_clean_model_ships():
 
 
 def test_required_and_forbidden_patterns():
-    task = _task(
-        "t", "domain", required_tokens=["alpha"], forbidden_patterns=[r"guaranteed"]
-    )
+    task = _task("t", "domain", required_tokens=["alpha"], forbidden_patterns=[r"guaranteed"])
     model = lambda msgs: "alpha estimate with bands"  # noqa: E731
     summary = run_suite(model, [task])
     assert summary["results"][0]["passed"] is True

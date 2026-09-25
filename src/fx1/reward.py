@@ -53,8 +53,7 @@ def score_response(text: str) -> RewardBreakdown:
         components["honesty_clean"] = _WEIGHTS["honesty_clean"]
     except Fx1HonestyError as exc:
         violations.append(str(exc))
-        return RewardBreakdown(total=-10.0, components=components,
-                               violations=violations)
+        return RewardBreakdown(total=-10.0, components=components, violations=violations)
     if _RECEIPT_RE.search(text):
         components["cites_receipt"] = _WEIGHTS["cites_receipt"]
     if _EVIDENCE_CLASS_RE.search(text):

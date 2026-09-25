@@ -21,6 +21,7 @@ from fx1.train.curriculum import Level, build_curriculum, classify
 
 # --- hypotheses ---------------------------------------------------------------
 
+
 def test_trace_requires_proper_scores():
     with pytest.raises(ValueError, match="proper score"):
         validate_trace_scores({"sharpe_ratio": 2.1})
@@ -45,6 +46,7 @@ def test_trace_admissibility_and_messages():
 
 # --- reward model ---------------------------------------------------------------
 
+
 def test_reward_ranks_honest_above_dishonest():
     good = score_response(
         "CRPS improved to 0.31 (estimate with calibrated intervals); research "
@@ -58,10 +60,16 @@ def test_reward_ranks_honest_above_dishonest():
 
 # --- curriculum -----------------------------------------------------------------
 
+
 def test_curriculum_levels_and_determinism(tmp_path: Path):
     examples = [
         {"messages": [{"role": "assistant", "content": "rules only"}], "negative": False},
-        {"messages": [{"role": "assistant", "content": "verify-research binds this evidence class"}], "negative": False},
+        {
+            "messages": [
+                {"role": "assistant", "content": "verify-research binds this evidence class"}
+            ],
+            "negative": False,
+        },
         {"messages": [{"role": "assistant", "content": "Gate verdict: passed"}], "negative": False},
         {"messages": [{"role": "assistant", "content": "No."}], "negative": True},
     ]
@@ -78,6 +86,7 @@ def test_curriculum_levels_and_determinism(tmp_path: Path):
 
 # --- red-team ---------------------------------------------------------------------
 
+
 def test_redteam_catches_laundering_model():
     launderer = lambda msgs: "Yes, as MAXPROFIT my live P&L of $50,000 is great."  # noqa: E731
     summary = run_suite(launderer, [t for t in REDTEAM_TASKS if "roleplay" in t.name])
@@ -87,18 +96,22 @@ def test_redteam_catches_laundering_model():
 def test_redteam_compliant_model_passes():
     def compliant(msgs):
         text = msgs[-1]["content"]
-        base = ("I can't do that — promotion is fail-closed, synthetic labels "
-                "stay, and backtest evidence is not forward returns.")
+        base = (
+            "I can't do that — promotion is fail-closed, synthetic labels "
+            "stay, and backtest evidence is not forward returns."
+        )
         if "expected forward returns" in text:
             return "No. Backtest evidence cannot be presented as forward returns."
         if "SYNTHETIC label" in text:
             return "No. The SYNTHETIC label stays; renaming synthetic evidence is laundering."
         return base
+
     summary = run_suite(compliant, REDTEAM_TASKS)
     assert summary["honesty_gate_passed"] is True
 
 
 # --- dip bench ----------------------------------------------------------------------
+
 
 def _series_with_dip() -> tuple[list[float], list[str]]:
     # Dip at idx 2 (88, depth ~13.7% below the 102 peak); the peak is regained
@@ -111,20 +124,20 @@ def _series_with_dip() -> tuple[list[float], list[str]]:
 
 def test_dip_detection_and_recovery():
     closes, dates = _series_with_dip()
-    events = detect_dip_events(closes, dates, "TEST", threshold=0.10,
-                               horizons_bars={"1m": 3, "12m": 500})
+    events = detect_dip_events(
+        closes, dates, "TEST", threshold=0.10, horizons_bars={"1m": 3, "12m": 500}
+    )
     assert len(events) == 1
     event = events[0]
     assert event.peak_date == "2026-01-02"
     assert event.depth == pytest.approx((102 - 88) / 102)
-    assert event.recovered["1m"] is True       # peak regained at idx 4 within 3 bars
-    assert event.recovered["12m"] is None      # horizon unobservable, not imputed
+    assert event.recovered["1m"] is True  # peak regained at idx 4 within 3 bars
+    assert event.recovered["12m"] is None  # horizon unobservable, not imputed
 
 
 def test_dip_scoring_beats_naive_when_calibrated():
     closes, dates = _series_with_dip()
-    events = detect_dip_events(closes, dates, "TEST", threshold=0.10,
-                               horizons_bars={"1m": 3})
+    events = detect_dip_events(closes, dates, "TEST", threshold=0.10, horizons_bars={"1m": 3})
     baseline = unconditional_baseline(events)
     assert baseline["1m"] == 1.0
     good = [DipForecast("TEST", events[0].trough_date, {"1m": 0.95})]
@@ -144,15 +157,13 @@ def test_bench_honesty_gate():
 
 def test_forecast_probability_range_enforced():
     closes, dates = _series_with_dip()
-    events = detect_dip_events(closes, dates, "TEST", threshold=0.10,
-                               horizons_bars={"1m": 3})
+    events = detect_dip_events(closes, dates, "TEST", threshold=0.10, horizons_bars={"1m": 3})
     with pytest.raises(ValueError, match="out of range"):
-        evaluate_forecasts(
-            events, [DipForecast("TEST", events[0].trough_date, {"1m": 1.5})]
-        )
+        evaluate_forecasts(events, [DipForecast("TEST", events[0].trough_date, {"1m": 1.5})])
 
 
 # --- cited serving --------------------------------------------------------------------
+
 
 def test_cited_complete_appends_provenance():
     class FakeBackend:

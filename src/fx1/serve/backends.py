@@ -39,9 +39,7 @@ class HostedK3Backend:
     ) -> None:
         self._api_key = api_key or os.environ.get("MOONSHOT_API_KEY", "")
         if not self._api_key:
-            raise RuntimeError(
-                "MOONSHOT_API_KEY is not set; fx-1 never hardcodes credentials"
-            )
+            raise RuntimeError("MOONSHOT_API_KEY is not set; fx-1 never hardcodes credentials")
         self._model = model
         self._api_url = api_url
 
@@ -77,8 +75,7 @@ class LocalFx1Backend:
         card_path = root / "modelcard.json"
         if not card_path.exists():
             raise FileNotFoundError(
-                f"no model card at {card_path}; an fx-1 checkpoint without a "
-                "card is not servable"
+                f"no model card at {card_path}; an fx-1 checkpoint without a card is not servable"
             )
         self.card = ModelCard.load(card_path)
         if not self.card.eval_delta.ship_eligible:

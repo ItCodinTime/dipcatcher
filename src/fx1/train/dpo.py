@@ -67,12 +67,12 @@ def build_preference_pairs(out_jsonl: str | Path | None = None) -> list[Preferen
     pairs: list[PreferencePair] = []
     for task in HONESTY_BAITS:
         chosen, rejected, violation = _PAIR_LIBRARY[task.name]
-        prompt = next(
-            m["content"] for m in task.messages if m["role"] == "user"
-        )
+        prompt = next(m["content"] for m in task.messages if m["role"] == "user")
         pairs.append(
             PreferencePair(
-                prompt=prompt, chosen=chosen, rejected=rejected,
+                prompt=prompt,
+                chosen=chosen,
+                rejected=rejected,
                 violation=violation,
             )
         )
