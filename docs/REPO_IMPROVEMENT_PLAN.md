@@ -5,9 +5,9 @@ Return improvement must be measured on the target market after costs.
 
 | Order | Work | Status and acceptance evidence |
 |---|---|---|
-| 1 | Real-data benchmark | Runner, protocol, disclosures, matched baselines and 18 contract tests implemented. Lint and type checks pass. Real-data execution is pending recovery of the tracked Parquet snapshot; no market result is claimed. See REAL_DATA_BENCHMARK.md. |
-| 2 | Net-return tournament | Implemented for equal-weight, momentum and reversal adapters. Frozen trial slate, causal common universe, shared next-open replay, costs/borrow/financing, two impact scenarios, full ledgers, validation-only selection and existing RC/SPA/StepM inference. The new bounded replay is independent of the legacy paths in PR #28. Real-market execution remains pending. See NET_RETURN_TOURNAMENT.md. |
-| 3 | Cost-aware construction | Implemented opt-in convex sizing in the tournament: forecast/uncertainty proxies, shrunk covariance, turnover/impact/holding costs, capacity and exposure constraints, solver diagnostics and matched allocation ablations. Engineering validation uses generated inputs; real-market uplift remains unmeasured. See COST_AWARE_CONSTRUCTION.md. |
+| 1 | Real-data benchmark | Executed against the tracked 424-name snapshot with sealed validation and previously inspected test scores. Zero forecast won validation MSE; ridge's small test advantage has no economic interpretation. See REAL_DATA_BENCHMARK.md and the Phase 1 evidence report. |
+| 2 | Net-return tournament | Executed the frozen equal-weight, momentum-20 and reversal-1 slate with full ledgers and both impact scenarios. Validation selected momentum-20, which underperformed equal weight on the inspected test; the economic evidence gate is false. See NET_RETURN_TOURNAMENT.md and the Phase 1 evidence report. |
+| 3 | Cost-aware construction | The matched validation run retained both failed cost-aware candidates: CLARABEL returned `optimal_inaccurate`. No candidate was selected, so there is no cost-aware test or uplift estimate. Constraints remain fail-closed. See COST_AWARE_CONSTRUCTION.md and the Phase 1 evidence report. |
 | 4 | Forward shadow record | Pending. Freeze the strategy before collecting subsequent outcomes; record decision times, orders, fills, rejects, positions and cash; reconcile restarts and benchmark results. Determine required evidence length from dependence and statistical power, not an arbitrary calendar count. |
 | 5 | Performance and operations | Pending. Profile measured bottlenecks, establish representative workload budgets, preserve reference/fast-path economics, run required CI gates to completion, and test recovery and observability. |
 
@@ -16,3 +16,9 @@ for the 2025 holdout. It can support retrospective diagnostics. Stronger
 evidence requires verified data availability/adjustments and a fresh externally
 timestamped forward period. A passing forecast benchmark alone cannot promote
 a strategy or authorize live execution.
+
+The sealed Phase 1 report is `data/metadata/research/phase1_20260925.md`;
+`data/metadata/research/phase1_evidence_index.json` links its complete and
+blocked runs to the frozen configs and source commit. Use
+`dipcatcher verify-research data/metadata/research/phase1_evidence_index.json`
+in a checkout containing the tracked snapshot and published ledgers.

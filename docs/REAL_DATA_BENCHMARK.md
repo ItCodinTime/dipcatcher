@@ -5,6 +5,11 @@ boundaries explicit before publishing any model score. It complements the
 existing scientific benches and promotion gates. It always reports
 `promote=false` and `live_pnl_claim=false`.
 
+The 2026-09-25 snapshot run and its sealed validation/test scores are recorded
+in `data/metadata/research/phase1_20260925.md` and linked by
+`data/metadata/research/phase1_evidence_index.json`. These retrospective
+forecast diagnostics do not establish executable net returns.
+
 ## Run
 
 From an installed checkout with the tracked dataset present:

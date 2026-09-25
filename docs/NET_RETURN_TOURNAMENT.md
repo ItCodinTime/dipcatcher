@@ -110,3 +110,8 @@ timing behavior; any market-snapshot run must publish its complete candidate
 slate, both impact scenarios and sealed validation/test receipts. A passing
 simulation remains retrospective evidence, subject to the source disclosures
 above, and cannot authorize live execution.
+
+The 2026-09-25 frozen snapshot run, full ledgers, and negative economic result
+are documented in `data/metadata/research/phase1_20260925.md`. The portable
+index at `data/metadata/research/phase1_evidence_index.json` verifies the
+receipt chain and links the frozen configuration.

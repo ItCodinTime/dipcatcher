@@ -13,6 +13,13 @@ holdout. A rejected CLARABEL solve records its status, iteration count and
 solve time when available, with `weights_accepted=false`; it does not fall
 back to an approximate portfolio.
 
+The 2026-09-25 frozen snapshot run is a blocked validation: both cost-aware
+variants returned `optimal_inaccurate`. Its sealed failure and control ledgers
+are in `data/metadata/research/phase1_20260925.md`, linked by
+`data/metadata/research/phase1_evidence_index.json`. There is no selected
+candidate and no test receipt. The test command below applies only after a
+new frozen run has selected a validation candidate.
+
 ## Run a matched comparison
 
 After preparing the benchmark manifest as described in REAL_DATA_BENCHMARK.md:
