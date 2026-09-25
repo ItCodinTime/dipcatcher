@@ -321,6 +321,17 @@
 - `carr_madan.py`: psi(v)=e^{-rT} phi(v-(alpha+1)i)/(alpha^2+alpha-v^2+
   i(2alpha+1)v); C(k)=e^{-alpha k}/pi Re int e^{-ivk} psi dv via FFT with
   log-strike spacing lambda=2pi/(N eta) and Simpson weights.
+## Wave 17 mathematical conventions
+
+- `iv_approx.py`: Brenner-Subrahmanyam sigma = sqrt(2 pi/T) C/S (ATM);
+  Corrado-Miller sigma = sqrt(2pi/T)/(S+Ke^{-rT}) [(C-X/2)+sqrt((C-X/2)^2-X^2/pi)],
+  X = S - K e^{-rT} (radicand floored at 0).
+- `leisen_reimer.py`: p=PP(d2,n), p'=PP(d1,n) with Peizer-Pratt method-2
+  PP(z,n)=0.5+sign(z)0.5 sqrt(1-exp(-(z/(n+1/3+0.1/(n+1)))^2 (n+1/6))); u=e^{(r-q)dt}
+  p'/p, d=(e^{(r-q)dt}-p u)/(1-p); odd n; backward induction (+early exercise).
+- `tempered_stable.py`: psi(u)=C Gamma(-Y)[(M-iu)^Y-M^Y+(G+iu)^Y-G^Y]; cumulants
+  c_k=C Gamma(k-Y)[M^{Y-k}+(-1)^k G^{Y-k}]; density by numerical inversion
+  f(x)=(1/pi) int_0^inf Re(e^{-iux} e^{psi(u)}) du.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));

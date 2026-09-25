@@ -315,6 +315,17 @@ honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
 
 ### Transform methods
 - P. Carr, D. Madan (1999). "Option valuation using the fast Fourier transform." Journal of Computational Finance — `models/carr_madan.py`.
+## Wave 17 references (implied vol, fast trees & tempered stable)
+
+### Implied-volatility approximations
+- M. Brenner, M. Subrahmanyam (1988). "A simple formula to compute the implied standard deviation." Financial Analysts Journal — `models/iv_approx.py`.
+- C. Corrado, T. Miller (1996). "A note on a simple, accurate formula to compute implied standard deviations." Journal of Banking & Finance — `models/iv_approx.py`.
+
+### Binomial convergence
+- D. Leisen, M. Reimer (1996). "Binomial models for option valuation -- examining and improving convergence." Applied Mathematical Finance — `models/leisen_reimer.py`.
+
+### Levy processes
+- P. Carr, H. Geman, D. Madan, M. Yor (2002). "The fine structure of asset returns: an empirical investigation." Journal of Business — `models/tempered_stable.py` (CGMY).
 ## Wave 19 references (dimensionality reduction & clustering)
 
 - W. Johnson, J. Lindenstrauss (1984). "Extensions of Lipschitz mappings into a Hilbert space."; D. Achlioptas (2003). "Database-friendly random projections." JCSS — `models/random_projection.py`.
