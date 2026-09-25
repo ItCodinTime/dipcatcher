@@ -90,15 +90,20 @@ def test_short_borrow_and_cash_opportunity_cost():
 
 
 def test_infeasible_and_failed_solver_never_fall_back(monkeypatch):
-    with pytest.raises(ValueError, match="infeasible"):
+    from quant_fund.research.cost_allocation import AllocationFailure
+
+    with pytest.raises(AllocationFailure, match="infeasible") as infeasible:
         solve(previous=(0.8,), capacity=np.array([0.01]))
+    assert infeasible.value.diagnostic["status"] == "infeasible"
+    assert infeasible.value.diagnostic["weights_accepted"] is False
 
     def broken(*args, **kwargs):
         raise cp.error.SolverError("injected")
 
     monkeypatch.setattr(cp.Problem, "solve", broken)
-    with pytest.raises(ValueError, match="solver failed"):
+    with pytest.raises(AllocationFailure, match="solver failed") as failed:
         solve()
+    assert failed.value.diagnostic["status"] == "solver_error"
 
 
 @pytest.mark.parametrize(

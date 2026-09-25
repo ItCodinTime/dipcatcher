@@ -1,0 +1,122 @@
+{
+  "mass120_dev": {
+    "dev": {
+      "total_return": 0.35602006459117863,
+      "cagr": 0.1646042065916351,
+      "sharpe": 11.072031344486202,
+      "max_drawdown": -0.004219566260970309,
+      "mean_turnover": 0.01777285607166295,
+      "funding_net": 394789.7622508168,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 6,
+      "n": 730
+    },
+    "h2": {
+      "total_return": 0.1701368420679017,
+      "cagr": 0.17026277536521994,
+      "sharpe": 11.595917847836885,
+      "max_drawdown": -0.0015034018763262491,
+      "mean_turnover": 0.021264899775039366,
+      "funding_net": 186796.77213520047,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 365
+    },
+    "score": 11.182751657931064,
+    "n_names": 120
+  },
+  "mass120_h2": {
+    "dev": {
+      "total_return": 0.3089225247455616,
+      "cagr": 0.14418700160784748,
+      "sharpe": 9.44850561384924,
+      "max_drawdown": -0.004027928575617845,
+      "mean_turnover": 0.01628169209676826,
+      "funding_net": 344123.7109660539,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 730
+    },
+    "h2": {
+      "total_return": 0.1701368420679017,
+      "cagr": 0.17026277536521994,
+      "sharpe": 11.595917847836885,
+      "max_drawdown": -0.0015034018763262491,
+      "mean_turnover": 0.021264899775039366,
+      "funding_net": 186796.77213520047,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 365
+    },
+    "score": 9.542990669987732,
+    "n_names": 120
+  },
+  "mass120_18mo": {
+    "dev": {
+      "total_return": 0.3199887095758305,
+      "cagr": 0.14901685500112083,
+      "sharpe": 10.266711425423324,
+      "max_drawdown": -0.004156304857890869,
+      "mean_turnover": 0.016955490021208552,
+      "funding_net": 356678.5864789004,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 6,
+      "n": 730
+    },
+    "h2": {
+      "total_return": 0.1701368420679017,
+      "cagr": 0.17026277536521994,
+      "sharpe": 11.595917847836885,
+      "max_drawdown": -0.0015034018763262491,
+      "mean_turnover": 0.021264899775039366,
+      "funding_net": 186796.77213520047,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 365
+    },
+    "score": 10.369378539677557,
+    "n_names": 120
+  },
+  "mass120_12mo": {
+    "dev": {
+      "total_return": 0.3089225247455616,
+      "cagr": 0.14418700160784748,
+      "sharpe": 9.44850561384924,
+      "max_drawdown": -0.004027928575617845,
+      "mean_turnover": 0.01628169209676826,
+      "funding_net": 344123.7109660539,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 730
+    },
+    "h2": {
+      "total_return": 0.1701368420679017,
+      "cagr": 0.17026277536521994,
+      "sharpe": 11.595917847836885,
+      "max_drawdown": -0.0015034018763262491,
+      "mean_turnover": 0.021264899775039366,
+      "funding_net": 186796.77213520047,
+      "funding_events_dropped": 0,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "risk_gate_rejects": 7,
+      "n": 365
+    },
+    "score": 9.542990669987732,
+    "n_names": 120
+  }
+}

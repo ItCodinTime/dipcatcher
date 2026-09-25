@@ -98,6 +98,15 @@ def test_complete_workflow_requires_validation_and_preserves_disclosures(tmp_pat
         score_benchmark(run, "test")
 
 
+def test_frozen_benchmark_can_be_verified_after_checkout_moves(tmp_path, inputs):
+    _, protocol = inputs
+    run, manifest = prepare(tmp_path, protocol)
+    assert not Path(manifest["protocol"]["dataset_path"]).is_absolute()
+    moved = tmp_path.parent / f"{tmp_path.name}_moved"
+    tmp_path.rename(moved)
+    assert score_benchmark(moved / run.name, "validation")["scores"]["zero"]["n_dates"] > 0
+
+
 def test_holdout_price_changes_cannot_change_validation_scores(tmp_path, inputs):
     frame, protocol = inputs
     run, _ = prepare(tmp_path, protocol)

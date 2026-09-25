@@ -10,8 +10,9 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import platform
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -269,6 +270,16 @@ def _runtime() -> dict[str, str]:
     return {"python": platform.python_version(), "numpy": np.__version__, "polars": pl.__version__}
 
 
+def protocol_for_run(manifest: dict[str, Any], run_dir: Path) -> BenchmarkProtocol:
+    """Resolve a sealed, run-relative dataset path without changing the receipt."""
+    recorded = BenchmarkProtocol(**manifest["protocol"])
+    recorded.validate()
+    return replace(
+        recorded,
+        dataset_path=str((run_dir.resolve() / recorded.dataset_path).resolve()),
+    )
+
+
 def prepare_benchmark(protocol_path: Path, output_dir: Path) -> dict[str, Any]:
     raw = json.loads(protocol_path.read_text())
     raw["dataset_path"] = str((protocol_path.parent / raw["dataset_path"]).resolve())
@@ -276,11 +287,15 @@ def prepare_benchmark(protocol_path: Path, output_dir: Path) -> dict[str, Any]:
     protocol.validate()
     frame = _load_bars(protocol)
     _, audit = _samples(frame, protocol)
+    # The manifest moves with its run directory. An absolute authoring-machine
+    # path would make an otherwise identical independent clone unverifiable.
+    recorded_protocol = asdict(protocol)
+    recorded_protocol["dataset_path"] = os.path.relpath(protocol.dataset_path, output_dir.resolve())
     manifest = _seal(
         {
             "schema_version": 1,
             "created_at": datetime.now(UTC).isoformat(),
-            "protocol": asdict(protocol),
+            "protocol": recorded_protocol,
             "code_sha256": _code_sha(),
             "audit": audit,
             "runtime": _runtime(),
@@ -359,8 +374,7 @@ def score_benchmark(run_dir: Path, phase: str) -> dict[str, Any]:
         raise ValueError("benchmark code changed; prepare a new protocol")
     if manifest["runtime"] != _runtime():
         raise ValueError("benchmark runtime changed; reproduce with the recorded versions")
-    protocol = BenchmarkProtocol(**manifest["protocol"])
-    protocol.validate()
+    protocol = protocol_for_run(manifest, run_dir)
     if phase == "test":
         validation = _read_receipt(run_dir / "validation.json")
         if (

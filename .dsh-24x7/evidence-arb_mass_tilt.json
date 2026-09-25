@@ -1,0 +1,1217 @@
+{
+  "frozen": "p0.5:c1.5",
+  "holdout": {
+    "total_return": 0.048255668948835595,
+    "cagr": 0.028763947981008897,
+    "sharpe": 3.960632636794957,
+    "n": 607,
+    "periods_per_year": 365.25,
+    "max_drawdown": -0.003229201849923924,
+    "mean_turnover": 0.011881017190673249,
+    "commission": 1479.7518462596406,
+    "spread": 7398.759231298203,
+    "impact": 12034.086588253635,
+    "funding_received_total": 96872.91821081849,
+    "funding_paid_total": 30591.395909219318,
+    "funding_net": 66281.52230159918,
+    "funding_events_applied": 7715,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "liquidation_cost": 0.0,
+    "margin_rejects": 0,
+    "ruined": false,
+    "flag_high_sharpe": false,
+    "risk_gate_rejects": 9,
+    "kill_switch_halts": 0,
+    "analytics": {
+      "label": "CARRY_BACKTEST_SIM",
+      "data_source": "file",
+      "research_only": true,
+      "live_pnl_claim": false,
+      "disclaimer": "Simulated/paper book diagnostics \u2014 not a live P&L claim.",
+      "exposure": {
+        "gross_mean": 0.5041884678416837,
+        "gross_max": 0.9453206552028223,
+        "net_mean": 0.5041884678416837,
+        "net_abs_mean": 0.5041884678416837
+      },
+      "execution": {
+        "realized_vol_ann": 0.005952863517787681,
+        "max_drawdown": -0.003229201849923924,
+        "calmar_diagnostic": 6.11852409658395,
+        "n_returns": 607,
+        "role": 1.0
+      },
+      "equity": {
+        "n_points": 608,
+        "nav_start": 1.0,
+        "nav_end": 1.0482556689488347,
+        "nav_peak": 1.0482556689488347,
+        "total_return": 0.04825566894883471,
+        "max_drawdown_nav": -0.003229201849923924,
+        "max_underwater_duration": 56,
+        "n_underwater_episodes": 94,
+        "realized_vol_ann": 0.005952863517787613,
+        "role": 1.0
+      },
+      "drawdown_duration": {
+        "n_bars": 607,
+        "n_episodes": 94,
+        "max_underwater_duration": 56,
+        "mean_underwater_duration": 4.4787234042553195,
+        "time_underwater_frac": 0.6935749588138386,
+        "current_underwater_duration": 0,
+        "deepest_trough": -0.003229201849923924,
+        "episodes": [
+          {
+            "start_idx": 1,
+            "end_idx": 1,
+            "duration": 1,
+            "trough": -0.00010012097757250427,
+            "trough_idx": 1,
+            "recovered": true
+          },
+          {
+            "start_idx": 5,
+            "end_idx": 6,
+            "duration": 2,
+            "trough": -0.0001516773420259243,
+            "trough_idx": 6,
+            "recovered": true
+          },
+          {
+            "start_idx": 11,
+            "end_idx": 16,
+            "duration": 6,
+            "trough": -0.00027638212290248543,
+            "trough_idx": 15,
+            "recovered": true
+          },
+          {
+            "start_idx": 21,
+            "end_idx": 21,
+            "duration": 1,
+            "trough": -8.807176296654617e-05,
+            "trough_idx": 21,
+            "recovered": true
+          },
+          {
+            "start_idx": 23,
+            "end_idx": 25,
+            "duration": 3,
+            "trough": -0.00017749020292268103,
+            "trough_idx": 23,
+            "recovered": true
+          },
+          {
+            "start_idx": 27,
+            "end_idx": 39,
+            "duration": 13,
+            "trough": -0.0007947518103134099,
+            "trough_idx": 30,
+            "recovered": true
+          },
+          {
+            "start_idx": 43,
+            "end_idx": 45,
+            "duration": 3,
+            "trough": -0.00028858270496889826,
+            "trough_idx": 45,
+            "recovered": true
+          },
+          {
+            "start_idx": 47,
+            "end_idx": 49,
+            "duration": 3,
+            "trough": -0.000425991267230752,
+            "trough_idx": 48,
+            "recovered": true
+          },
+          {
+            "start_idx": 56,
+            "end_idx": 60,
+            "duration": 5,
+            "trough": -0.0003514145251255485,
+            "trough_idx": 57,
+            "recovered": true
+          },
+          {
+            "start_idx": 65,
+            "end_idx": 68,
+            "duration": 4,
+            "trough": -0.00047523585672315516,
+            "trough_idx": 65,
+            "recovered": true
+          },
+          {
+            "start_idx": 70,
+            "end_idx": 70,
+            "duration": 1,
+            "trough": -0.00024155149951066157,
+            "trough_idx": 70,
+            "recovered": true
+          },
+          {
+            "start_idx": 72,
+            "end_idx": 90,
+            "duration": 19,
+            "trough": -0.001867894507171286,
+            "trough_idx": 76,
+            "recovered": true
+          },
+          {
+            "start_idx": 93,
+            "end_idx": 93,
+            "duration": 1,
+            "trough": -0.00011926411733431674,
+            "trough_idx": 93,
+            "recovered": true
+          },
+          {
+            "start_idx": 95,
+            "end_idx": 96,
+            "duration": 2,
+            "trough": -0.0003326674928054718,
+            "trough_idx": 95,
+            "recovered": true
+          },
+          {
+            "start_idx": 103,
+            "end_idx": 103,
+            "duration": 1,
+            "trough": -0.00016988116257776742,
+            "trough_idx": 103,
+            "recovered": true
+          },
+          {
+            "start_idx": 106,
+            "end_idx": 106,
+            "duration": 1,
+            "trough": -9.127447166290548e-05,
+            "trough_idx": 106,
+            "recovered": true
+          },
+          {
+            "start_idx": 108,
+            "end_idx": 114,
+            "duration": 7,
+            "trough": -0.0004748279218338425,
+            "trough_idx": 112,
+            "recovered": true
+          },
+          {
+            "start_idx": 116,
+            "end_idx": 118,
+            "duration": 3,
+            "trough": -0.00032367338018324254,
+            "trough_idx": 116,
+            "recovered": true
+          },
+          {
+            "start_idx": 120,
+            "end_idx": 132,
+            "duration": 13,
+            "trough": -0.0006770272473344274,
+            "trough_idx": 122,
+            "recovered": true
+          },
+          {
+            "start_idx": 134,
+            "end_idx": 143,
+            "duration": 10,
+            "trough": -0.0014306668782002596,
+            "trough_idx": 136,
+            "recovered": true
+          },
+          {
+            "start_idx": 145,
+            "end_idx": 145,
+            "duration": 1,
+            "trough": -7.710444370279124e-05,
+            "trough_idx": 145,
+            "recovered": true
+          },
+          {
+            "start_idx": 150,
+            "end_idx": 151,
+            "duration": 2,
+            "trough": -4.4220999358191015e-05,
+            "trough_idx": 151,
+            "recovered": true
+          },
+          {
+            "start_idx": 156,
+            "end_idx": 156,
+            "duration": 1,
+            "trough": -0.00010575103079579762,
+            "trough_idx": 156,
+            "recovered": true
+          },
+          {
+            "start_idx": 159,
+            "end_idx": 159,
+            "duration": 1,
+            "trough": -0.00010138628202138733,
+            "trough_idx": 159,
+            "recovered": true
+          },
+          {
+            "start_idx": 164,
+            "end_idx": 164,
+            "duration": 1,
+            "trough": -0.00044079603165680936,
+            "trough_idx": 164,
+            "recovered": true
+          },
+          {
+            "start_idx": 166,
+            "end_idx": 166,
+            "duration": 1,
+            "trough": -0.000286769485701166,
+            "trough_idx": 166,
+            "recovered": true
+          },
+          {
+            "start_idx": 169,
+            "end_idx": 169,
+            "duration": 1,
+            "trough": -4.417375386756017e-05,
+            "trough_idx": 169,
+            "recovered": true
+          },
+          {
+            "start_idx": 172,
+            "end_idx": 172,
+            "duration": 1,
+            "trough": -0.0001546890390872191,
+            "trough_idx": 172,
+            "recovered": true
+          },
+          {
+            "start_idx": 177,
+            "end_idx": 178,
+            "duration": 2,
+            "trough": -0.00030152584207265853,
+            "trough_idx": 178,
+            "recovered": true
+          },
+          {
+            "start_idx": 180,
+            "end_idx": 180,
+            "duration": 1,
+            "trough": -9.46557355782085e-05,
+            "trough_idx": 180,
+            "recovered": true
+          },
+          {
+            "start_idx": 182,
+            "end_idx": 182,
+            "duration": 1,
+            "trough": -0.0002799485889971587,
+            "trough_idx": 182,
+            "recovered": true
+          },
+          {
+            "start_idx": 186,
+            "end_idx": 190,
+            "duration": 5,
+            "trough": -0.0003418037360558568,
+            "trough_idx": 188,
+            "recovered": true
+          },
+          {
+            "start_idx": 193,
+            "end_idx": 195,
+            "duration": 3,
+            "trough": -0.0003164562236350754,
+            "trough_idx": 193,
+            "recovered": true
+          },
+          {
+            "start_idx": 198,
+            "end_idx": 199,
+            "duration": 2,
+            "trough": -0.000612788706699563,
+            "trough_idx": 199,
+            "recovered": true
+          },
+          {
+            "start_idx": 201,
+            "end_idx": 201,
+            "duration": 1,
+            "trough": -0.0012186409858986336,
+            "trough_idx": 201,
+            "recovered": true
+          },
+          {
+            "start_idx": 204,
+            "end_idx": 205,
+            "duration": 2,
+            "trough": -0.0008674682676984569,
+            "trough_idx": 204,
+            "recovered": true
+          },
+          {
+            "start_idx": 208,
+            "end_idx": 211,
+            "duration": 4,
+            "trough": -0.0008735237188449707,
+            "trough_idx": 208,
+            "recovered": true
+          },
+          {
+            "start_idx": 213,
+            "end_idx": 213,
+            "duration": 1,
+            "trough": -2.6928534042069963e-05,
+            "trough_idx": 213,
+            "recovered": true
+          },
+          {
+            "start_idx": 216,
+            "end_idx": 220,
+            "duration": 5,
+            "trough": -0.00035930549653795385,
+            "trough_idx": 217,
+            "recovered": true
+          },
+          {
+            "start_idx": 222,
+            "end_idx": 222,
+            "duration": 1,
+            "trough": -2.254675575341647e-05,
+            "trough_idx": 222,
+            "recovered": true
+          },
+          {
+            "start_idx": 230,
+            "end_idx": 230,
+            "duration": 1,
+            "trough": -2.9018224280363825e-05,
+            "trough_idx": 230,
+            "recovered": true
+          },
+          {
+            "start_idx": 232,
+            "end_idx": 233,
+            "duration": 2,
+            "trough": -0.0003717454425178346,
+            "trough_idx": 232,
+            "recovered": true
+          },
+          {
+            "start_idx": 238,
+            "end_idx": 238,
+            "duration": 1,
+            "trough": -0.00040991217820396386,
+            "trough_idx": 238,
+            "recovered": true
+          },
+          {
+            "start_idx": 240,
+            "end_idx": 241,
+            "duration": 2,
+            "trough": -0.0005276216442756665,
+            "trough_idx": 241,
+            "recovered": true
+          },
+          {
+            "start_idx": 243,
+            "end_idx": 245,
+            "duration": 3,
+            "trough": -0.00012022712476922326,
+            "trough_idx": 244,
+            "recovered": true
+          },
+          {
+            "start_idx": 248,
+            "end_idx": 249,
+            "duration": 2,
+            "trough": -0.0004918067991446229,
+            "trough_idx": 249,
+            "recovered": true
+          },
+          {
+            "start_idx": 252,
+            "end_idx": 252,
+            "duration": 1,
+            "trough": -0.0002899004552776585,
+            "trough_idx": 252,
+            "recovered": true
+          },
+          {
+            "start_idx": 263,
+            "end_idx": 263,
+            "duration": 1,
+            "trough": -7.455287072599681e-05,
+            "trough_idx": 263,
+            "recovered": true
+          },
+          {
+            "start_idx": 265,
+            "end_idx": 265,
+            "duration": 1,
+            "trough": -0.00018825366245101005,
+            "trough_idx": 265,
+            "recovered": true
+          },
+          {
+            "start_idx": 267,
+            "end_idx": 277,
+            "duration": 11,
+            "trough": -0.0006926296000052679,
+            "trough_idx": 269,
+            "recovered": true
+          },
+          {
+            "start_idx": 282,
+            "end_idx": 337,
+            "duration": 56,
+            "trough": -0.00174600398779734,
+            "trough_idx": 319,
+            "recovered": true
+          },
+          {
+            "start_idx": 341,
+            "end_idx": 343,
+            "duration": 3,
+            "trough": -0.00031832404854914564,
+            "trough_idx": 342,
+            "recovered": true
+          },
+          {
+            "start_idx": 345,
+            "end_idx": 346,
+            "duration": 2,
+            "trough": -0.0007576222067791072,
+            "trough_idx": 345,
+            "recovered": true
+          },
+          {
+            "start_idx": 348,
+            "end_idx": 369,
+            "duration": 22,
+            "trough": -0.0018998239642885606,
+            "trough_idx": 357,
+            "recovered": true
+          },
+          {
+            "start_idx": 371,
+            "end_idx": 371,
+            "duration": 1,
+            "trough": -5.199867284533255e-06,
+            "trough_idx": 371,
+            "recovered": true
+          },
+          {
+            "start_idx": 374,
+            "end_idx": 375,
+            "duration": 2,
+            "trough": -7.337192018952443e-05,
+            "trough_idx": 375,
+            "recovered": true
+          },
+          {
+            "start_idx": 379,
+            "end_idx": 379,
+            "duration": 1,
+            "trough": -0.0001187288092026062,
+            "trough_idx": 379,
+            "recovered": true
+          },
+          {
+            "start_idx": 381,
+            "end_idx": 381,
+            "duration": 1,
+            "trough": -0.00032493711995773555,
+            "trough_idx": 381,
+            "recovered": true
+          },
+          {
+            "start_idx": 384,
+            "end_idx": 384,
+            "duration": 1,
+            "trough": -0.00030763888014728735,
+            "trough_idx": 384,
+            "recovered": true
+          },
+          {
+            "start_idx": 387,
+            "end_idx": 387,
+            "duration": 1,
+            "trough": -0.00016463068152106075,
+            "trough_idx": 387,
+            "recovered": true
+          },
+          {
+            "start_idx": 392,
+            "end_idx": 392,
+            "duration": 1,
+            "trough": -0.0001182845883346273,
+            "trough_idx": 392,
+            "recovered": true
+          },
+          {
+            "start_idx": 395,
+            "end_idx": 396,
+            "duration": 2,
+            "trough": -0.00017217355159415693,
+            "trough_idx": 395,
+            "recovered": true
+          },
+          {
+            "start_idx": 398,
+            "end_idx": 398,
+            "duration": 1,
+            "trough": -0.0006753004777342309,
+            "trough_idx": 398,
+            "recovered": true
+          },
+          {
+            "start_idx": 401,
+            "end_idx": 410,
+            "duration": 10,
+            "trough": -0.0013632503642344584,
+            "trough_idx": 408,
+            "recovered": true
+          },
+          {
+            "start_idx": 414,
+            "end_idx": 415,
+            "duration": 2,
+            "trough": -0.0005706154951725662,
+            "trough_idx": 414,
+            "recovered": true
+          },
+          {
+            "start_idx": 417,
+            "end_idx": 418,
+            "duration": 2,
+            "trough": -0.0005001685695055214,
+            "trough_idx": 417,
+            "recovered": true
+          },
+          {
+            "start_idx": 421,
+            "end_idx": 423,
+            "duration": 3,
+            "trough": -0.00012027441464179667,
+            "trough_idx": 421,
+            "recovered": true
+          },
+          {
+            "start_idx": 425,
+            "end_idx": 428,
+            "duration": 4,
+            "trough": -0.0003948146460476254,
+            "trough_idx": 426,
+            "recovered": true
+          },
+          {
+            "start_idx": 430,
+            "end_idx": 430,
+            "duration": 1,
+            "trough": -0.00033243961089446383,
+            "trough_idx": 430,
+            "recovered": true
+          },
+          {
+            "start_idx": 432,
+            "end_idx": 433,
+            "duration": 2,
+            "trough": -0.0004488339028491106,
+            "trough_idx": 432,
+            "recovered": true
+          },
+          {
+            "start_idx": 435,
+            "end_idx": 436,
+            "duration": 2,
+            "trough": -0.00033058878670788605,
+            "trough_idx": 436,
+            "recovered": true
+          },
+          {
+            "start_idx": 438,
+            "end_idx": 442,
+            "duration": 5,
+            "trough": -0.00038066879867615366,
+            "trough_idx": 438,
+            "recovered": true
+          },
+          {
+            "start_idx": 444,
+            "end_idx": 446,
+            "duration": 3,
+            "trough": -0.00013095614624580865,
+            "trough_idx": 446,
+            "recovered": true
+          },
+          {
+            "start_idx": 448,
+            "end_idx": 451,
+            "duration": 4,
+            "trough": -0.00026955665828476416,
+            "trough_idx": 450,
+            "recovered": true
+          },
+          {
+            "start_idx": 453,
+            "end_idx": 459,
+            "duration": 7,
+            "trough": -0.0009532019362649136,
+            "trough_idx": 457,
+            "recovered": true
+          },
+          {
+            "start_idx": 461,
+            "end_idx": 462,
+            "duration": 2,
+            "trough": -0.00022033549085676007,
+            "trough_idx": 461,
+            "recovered": true
+          },
+          {
+            "start_idx": 464,
+            "end_idx": 464,
+            "duration": 1,
+            "trough": -0.0005114673638693112,
+            "trough_idx": 464,
+            "recovered": true
+          },
+          {
+            "start_idx": 466,
+            "end_idx": 467,
+            "duration": 2,
+            "trough": -0.00024275879078827778,
+            "trough_idx": 467,
+            "recovered": true
+          },
+          {
+            "start_idx": 469,
+            "end_idx": 480,
+            "duration": 12,
+            "trough": -0.001302280161531666,
+            "trough_idx": 475,
+            "recovered": true
+          },
+          {
+            "start_idx": 482,
+            "end_idx": 483,
+            "duration": 2,
+            "trough": -0.0005221212034501876,
+            "trough_idx": 482,
+            "recovered": true
+          },
+          {
+            "start_idx": 485,
+            "end_idx": 489,
+            "duration": 5,
+            "trough": -0.0009123776446677834,
+            "trough_idx": 487,
+            "recovered": true
+          },
+          {
+            "start_idx": 491,
+            "end_idx": 493,
+            "duration": 3,
+            "trough": -0.0005236114607816145,
+            "trough_idx": 492,
+            "recovered": true
+          },
+          {
+            "start_idx": 495,
+            "end_idx": 496,
+            "duration": 2,
+            "trough": -0.00010922117564626799,
+            "trough_idx": 495,
+            "recovered": true
+          },
+          {
+            "start_idx": 499,
+            "end_idx": 499,
+            "duration": 1,
+            "trough": -0.0003846760620287437,
+            "trough_idx": 499,
+            "recovered": true
+          },
+          {
+            "start_idx": 501,
+            "end_idx": 501,
+            "duration": 1,
+            "trough": -5.6404976634394366e-05,
+            "trough_idx": 501,
+            "recovered": true
+          },
+          {
+            "start_idx": 504,
+            "end_idx": 506,
+            "duration": 3,
+            "trough": -0.0007196909395877915,
+            "trough_idx": 505,
+            "recovered": true
+          },
+          {
+            "start_idx": 508,
+            "end_idx": 509,
+            "duration": 2,
+            "trough": -0.0007858955977605442,
+            "trough_idx": 508,
+            "recovered": true
+          },
+          {
+            "start_idx": 511,
+            "end_idx": 511,
+            "duration": 1,
+            "trough": -0.00011439253870348942,
+            "trough_idx": 511,
+            "recovered": true
+          },
+          {
+            "start_idx": 517,
+            "end_idx": 570,
+            "duration": 54,
+            "trough": -0.003229201849923924,
+            "trough_idx": 544,
+            "recovered": true
+          },
+          {
+            "start_idx": 572,
+            "end_idx": 572,
+            "duration": 1,
+            "trough": -1.1505336093953211e-05,
+            "trough_idx": 572,
+            "recovered": true
+          },
+          {
+            "start_idx": 574,
+            "end_idx": 597,
+            "duration": 24,
+            "trough": -0.0013032614303374324,
+            "trough_idx": 595,
+            "recovered": true
+          },
+          {
+            "start_idx": 599,
+            "end_idx": 600,
+            "duration": 2,
+            "trough": -0.0004441292022802079,
+            "trough_idx": 600,
+            "recovered": true
+          },
+          {
+            "start_idx": 602,
+            "end_idx": 602,
+            "duration": 1,
+            "trough": -0.00026226868554790617,
+            "trough_idx": 602,
+            "recovered": true
+          },
+          {
+            "start_idx": 604,
+            "end_idx": 605,
+            "duration": 2,
+            "trough": -0.0002493173252319236,
+            "trough_idx": 605,
+            "recovered": true
+          }
+        ],
+        "threshold": 0.0,
+        "role": 1.0,
+        "live_pnl_claim": false,
+        "research_only": true
+      },
+      "var_es": {
+        "var": 0.0005124943912710493,
+        "es": 0.0007148504931319032,
+        "alpha": 0.95,
+        "n": 607
+      },
+      "var_backtest": {
+        "hit_rate": 0.051070840197693576,
+        "kupiec_lr": 0.014555548320487333,
+        "kupiec_p": 0.903971133451567,
+        "christoffersen_ind_lr": 0.1118624400521071,
+        "christoffersen_ind_p": 0.7380336560537015,
+        "christoffersen_cc_lr": 0.12641798837259444,
+        "christoffersen_cc_p": 0.9387472604662961,
+        "acerbi_szekely_z1": 0.015367435170916988,
+        "acerbi_szekely_z2": -0.005922527179439974,
+        "fissler_ziegel_mean": -7.243423950689739,
+        "es_hit_count": 31.0,
+        "n": 607
+      },
+      "mean_turnover": 0.011881017190673249,
+      "capacity": {},
+      "stress": {},
+      "stress_report": {},
+      "min_trl": {
+        "n_obs": 607,
+        "conf": 0.95,
+        "min_track_record_length": 62.453569770588686,
+        "min_trl": 62.453569770588686,
+        "track_record_bars": 63.0,
+        "research_only": true,
+        "claim": "bailey_ldp_min_trl_diagnostic_only"
+      }
+    },
+    "book_type": "delta_neutral_carry",
+    "pnl_attribution": {
+      "by_symbol": {
+        "AX:b>h:ATOM": {
+          "funding": 139.39150553371388,
+          "realized": 4.7383712608007045,
+          "fees": 26.45091677892561,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:b>h:CELO": {
+          "funding": 575.3346580891374,
+          "realized": 214.6346191655707,
+          "fees": 170.77791491644797,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 52.99893490952445
+        },
+        "AX:b>h:COMP": {
+          "funding": -2.1020435011564715,
+          "realized": 0.9479892782312547,
+          "fees": 0.5433850391012367,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:b>h:GAS": {
+          "funding": 129.9528528750585,
+          "realized": 97.05783847412775,
+          "fees": 163.78128796467263,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 36.20519402573245
+        },
+        "AX:b>h:REZ": {
+          "funding": 666.8013546119612,
+          "realized": -2.24802277013805,
+          "fees": 536.258505125538,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 0.0
+        },
+        "AX:b>h:TURBO": {
+          "funding": -58.76103807714414,
+          "realized": 76.40709098472962,
+          "fees": 296.27450682633514,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:b>h:USUAL": {
+          "funding": -276.01465448180375,
+          "realized": -213.44866132095837,
+          "fees": 325.23054063691666,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 36.025049313528484
+        },
+        "AX:h>b:ACE": {
+          "funding": -980.9031804277827,
+          "realized": 2850.4365346153536,
+          "fees": 1703.3753990180603,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -29.779655675978574
+        },
+        "AX:h>b:ARB": {
+          "funding": 982.4326705387396,
+          "realized": 85.21982475611003,
+          "fees": 428.18188242559114,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:BANANA": {
+          "funding": 1523.8390437922517,
+          "realized": 50.51382689748425,
+          "fees": 955.7006762248831,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:BIGTIME": {
+          "funding": 2208.1237817672536,
+          "realized": 25.354485221740106,
+          "fees": 329.942713805292,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 42.836939451393846
+        },
+        "AX:h>b:BLUR": {
+          "funding": 89.42249279777808,
+          "realized": -8.096899786744416,
+          "fees": 21.52572068716882,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:COMP": {
+          "funding": 1.2222110680897722,
+          "realized": 0.1602276722126703,
+          "fees": 0.8581975281597038,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:DOGE": {
+          "funding": 1188.0874004682328,
+          "realized": 140.6127105640962,
+          "fees": 410.1100929077741,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:DYM": {
+          "funding": -1492.24148727865,
+          "realized": 51.073198437406475,
+          "fees": 419.95849947625857,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -43.6740654730238
+        },
+        "AX:h>b:EIGEN": {
+          "funding": 624.6721768912752,
+          "realized": 11.424528507850482,
+          "fees": 662.9482137151771,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:ENA": {
+          "funding": 3090.6481037306753,
+          "realized": 23.665675186912267,
+          "fees": 418.94463282269226,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:FET": {
+          "funding": 1346.592207116352,
+          "realized": 40.220433306109044,
+          "fees": 816.0663423394399,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:GAS": {
+          "funding": 1774.5406487817554,
+          "realized": 15.932527966454359,
+          "fees": 343.94670109047394,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 1.0250795276400595
+        },
+        "AX:h>b:GMT": {
+          "funding": 613.4492718351277,
+          "realized": -129.62986006088977,
+          "fees": 186.15903880858812,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:HMSTR": {
+          "funding": 1645.989898520019,
+          "realized": 147.98499776694757,
+          "fees": 490.20945436406294,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:INJ": {
+          "funding": 213.57716397176938,
+          "realized": -21.56952923303652,
+          "fees": 597.3066169961601,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:IO": {
+          "funding": 5040.286801932281,
+          "realized": -209.67177594789246,
+          "fees": 497.9526203668848,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:JTO": {
+          "funding": 0.8985023001074478,
+          "realized": -0.5239722994227947,
+          "fees": 1.716039912658728,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:ME": {
+          "funding": 4166.189396454992,
+          "realized": -438.0970194447873,
+          "fees": 573.9330303850037,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:MEME": {
+          "funding": 8.902782700451544,
+          "realized": 0.9361105689023361,
+          "fees": 2.5702742382135,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:MOVE": {
+          "funding": 12418.251947154384,
+          "realized": -315.99572716360916,
+          "fees": 1492.6664749130678,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 64.23298189322918
+        },
+        "AX:h>b:ONDO": {
+          "funding": 1372.566408488097,
+          "realized": -37.38747197137491,
+          "fees": 176.6781150825733,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:ORDI": {
+          "funding": 1318.0252175308563,
+          "realized": -110.0265117385702,
+          "fees": 1424.175528784544,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -19.17211166351626
+        },
+        "AX:h>b:PENDLE": {
+          "funding": 3357.6469688055618,
+          "realized": 61.222772040413474,
+          "fees": 498.07699443045453,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:PENGU": {
+          "funding": 1713.6333021943885,
+          "realized": 3.52236837164628,
+          "fees": 169.93552034489724,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:PEOPLE": {
+          "funding": 2.2286312886144612,
+          "realized": 0.0,
+          "fees": 351.95523849896824,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 138.7794624092203
+        },
+        "AX:h>b:POLYX": {
+          "funding": -4.103497324995671,
+          "realized": -91.00151420938346,
+          "fees": 92.09584687419543,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 13.467028520687109
+        },
+        "AX:h>b:REZ": {
+          "funding": 2404.181151905572,
+          "realized": 181.4093486955294,
+          "fees": 742.5040687390231,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -1.1184556578984939
+        },
+        "AX:h>b:SAGA": {
+          "funding": -0.8195960124285051,
+          "realized": 3.365890032749988,
+          "fees": 1.344799563532213,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:SNX": {
+          "funding": -0.01790300180084561,
+          "realized": 0.002881745040552275,
+          "fees": 0.0799868204846273,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:STRK": {
+          "funding": 806.3716493518962,
+          "realized": 45.001483874635596,
+          "fees": 335.2102152596579,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:SUPER": {
+          "funding": 0.16826669932022995,
+          "realized": 1.3524823159795076,
+          "fees": 1.359248491186981,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:TAO": {
+          "funding": 7603.642282008989,
+          "realized": 0.0,
+          "fees": 361.80011532622797,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 70.51315798913129
+        },
+        "AX:h>b:TNSR": {
+          "funding": 1278.9717772196154,
+          "realized": -19.64761142462612,
+          "fees": 440.0172157334202,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -32.716010139821265
+        },
+        "AX:h>b:UMA": {
+          "funding": -757.1206791679509,
+          "realized": -46.65982504722888,
+          "fees": 690.51757040039,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -8.655582414117816
+        },
+        "AX:h>b:USUAL": {
+          "funding": 131.49898679437553,
+          "realized": -23.817183623852543,
+          "fees": 425.6535397871801,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:WIF": {
+          "funding": 4509.873209787731,
+          "realized": -44.818872499012286,
+          "fees": 572.7240392759737,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:WLD": {
+          "funding": 1916.968522077472,
+          "realized": -33.868167864560746,
+          "fees": 270.93957835316434,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0
+        },
+        "AX:h>b:ZK": {
+          "funding": 1533.5855176480325,
+          "realized": 14.678048188052344,
+          "fees": 665.195215121658,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": -4.160460177983623
+        },
+        "AX:h>b:ZRO": {
+          "funding": 3455.6376161410863,
+          "realized": 108.26008753895803,
+          "fees": 1818.9451496103943,
+          "liq_realized": 0.0,
+          "liq_fee": 0.0,
+          "unrealized": 60.3090991823301
+        }
+      },
+      "totals": {
+        "funding": 66281.52230159927,
+        "realized": 2509.6277270279566,
+        "fees": 20912.597665811474,
+        "liq_realized": 0.0,
+        "liq_fee": 0.0,
+        "unrealized": 377.1165860200774
+      },
+      "conservation_error": -1.3096723705530167e-10,
+      "liquidation_events": []
+    },
+    "research_only": true,
+    "live_pnl_claim": false,
+    "data_source": "file"
+  }
+}

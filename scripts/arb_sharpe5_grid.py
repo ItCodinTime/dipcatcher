@@ -50,6 +50,33 @@ REFINE_GRID = [
         (2e-3,),
     )
 ]
+# --tilt: concentration/vol-sizing pass around the refined champion core —
+# never-touched axes (rate_exponent, vol_lookback, rebalance_band).
+TILT_GRID = [
+    dict(
+        enter=1e-3,
+        exit_=x,
+        lb=9,
+        nw=0.08,
+        mx=mx,
+        band=band,
+        rsr=2e-3,
+        rsc=rsc,
+        rsf=rsf,
+        rexp=rexp,
+        vlb=vlb,
+        vr=0.04,
+    )
+    for x, mx, band, rsc, rsf, rexp, vlb in itertools.product(
+        (-1.25e-4, 0.0),
+        (30, 45),
+        (1.3, 1.6),
+        (1.5, 2.5),
+        (1.0,),
+        (0.0, 1.0, 2.0),
+        (None, 30),
+    )
+]
 # --extend: widen past the observed champion's grid edges (dev-only selection).
 EXT_GRID = [
     dict(enter=e, exit_=x, lb=lb, nw=nw, mx=mx, band=1.3, rsr=rsr, rsc=1.5, rsf=1.0)
@@ -90,8 +117,13 @@ def main() -> int:
     ap.add_argument("--out-prefix", default="arb_sharpe5")
     ap.add_argument("--extend", action="store_true")
     ap.add_argument("--refine", action="store_true")
+    ap.add_argument("--tilt", action="store_true")
     args = ap.parse_args()
-    grid = REFINE_GRID if args.refine else (EXT_GRID if args.extend else GRID)
+    grid = (
+        TILT_GRID
+        if args.tilt
+        else (REFINE_GRID if args.refine else (EXT_GRID if args.extend else GRID))
+    )
     perp, spot, fund = load_carry(data_dir=pathlib.Path(args.data))
     print("arb book sids:", perp["security_id"].n_unique(), "fund:", fund.height)
 

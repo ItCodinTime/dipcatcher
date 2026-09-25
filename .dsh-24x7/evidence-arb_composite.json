@@ -1,0 +1,41 @@
+{
+  "frozen_screen": "cnt90 \u2229 mass120 on dev",
+  "frozen_config": {
+    "enter": 0.001,
+    "exit_": -0.000125,
+    "lb": 9,
+    "nw": 0.08,
+    "mx": 30,
+    "band": 1.3,
+    "rsr": 0.002,
+    "rsc": 1.5,
+    "rsf": 1.0
+  },
+  "n_names": 71,
+  "dev": {
+    "total_return": 0.3537987414204722,
+    "cagr": 0.16364928174397542,
+    "sharpe": 11.46377694568431,
+    "max_drawdown": -0.0027840541157634346,
+    "mean_turnover": 0.014604959440945954,
+    "funding_net": 385041.0991132263,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 4,
+    "n": 730
+  },
+  "holdout": {
+    "total_return": 0.030662603801079324,
+    "cagr": 0.018339524718147704,
+    "sharpe": 3.2529013309020334,
+    "max_drawdown": -0.0021604816913274316,
+    "mean_turnover": 0.008141691227180427,
+    "funding_net": 43429.26791850736,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 2,
+    "n": 607
+  }
+}

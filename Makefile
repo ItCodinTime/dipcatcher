@@ -1,4 +1,4 @@
-.PHONY: test coverage lint typecheck doctor sync fmt security audit ci
+.PHONY: test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval
 
 sync:
 	uv sync --frozen --all-groups
@@ -33,3 +33,20 @@ doctor:
 	uv run dipcatcher doctor
 
 ci: lint typecheck coverage
+
+# --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
+fx1-test: ## fx-1 test suite
+	PYTHONPATH=src uv run pytest tests/fx1 -q
+
+fx1-lint: ## fx-1 lint
+	uv run ruff check src/fx1 tests/fx1
+
+fx1-corpus: ## Build fx-1 SFT corpus from harness receipts
+	uv run fx1 corpus build --receipts-dir receipts --out data/fx1/corpus.jsonl
+
+fx1-corpus-full: ## Full corpus: receipts + notebooks + ledgers
+	uv run fx1 corpus build-full --receipts-dir receipts --artifacts-dir artifacts \
+		--notebooks docs/FX1.md --out data/fx1/corpus_full.jsonl
+
+fx1-eval: ## Run eval task bank (requires MOONSHOT_API_KEY for hosted_k3)
+	uv run fx1 eval --backend hosted_k3 --out data/fx1/eval.json

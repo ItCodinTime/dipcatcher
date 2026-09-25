@@ -1,118 +1,122 @@
-# Artificial Hedge · Dipcatcher
+# fx-1
 
-Dipcatcher is **Artificial Hedge’s proprietary research lab**. It provides point-in-time benches for:
+**fx-1** (always lowercase) is a quant research LLM fine-tuned from the
+open-weight **Kimi K3** base (`moonshotai/Kimi-K3`, 2.8T total / 104B active
+MoE, Kimi K3 License). What makes fx-1 unlike any other model: it is trained
+exclusively on **gate-passed, receipt-bound research behavior** — every
+training example carries the SHA-256 of the verified artifact it came from,
+and gate rejections are included as negative examples teaching refusal and
+honest reporting.
 
-- stock ranking and residual alpha
-- volatility (QLIKE)
-- probabilistic return distributions (pinball, CRPS, PIT)
-- market regimes (HMM likelihood)
-- tail risk (VaR/ES, Kupiec)
-- drawdown probability (Brier, log-loss, ECE)
-- liquidity / implementation shortfall (Almgren–Chriss)
-- reinforcement learning as contextual bandits (LinUCB, linear/quantile Thompson sampling, and neural policy gradient)
-- **Northset** — order-book snapshots and candlesticks (identities, OHLC vol, Kyle λ, Roll, OFI, VPIN)
+**dipcatcher is the harness.** The lab formerly known as the project itself
+now serves as fx-1's machinery:
 
-It is not a BUY/SELL LLM and not a Sharpe factory. Lab scores are proper scientific rules. SYNTHETIC oracle recovery is a correctness test, not live performance.
+| Harness role | dipcatcher capability |
+|---|---|
+| **Data engine** | Immutable receipts, benches, and ledgers become fx-1's training corpus (`fx1.data`) |
+| **Evaluation** | Proper-score benches (pinball, CRPS, PIT, QLIKE, Brier/ECE, Kupiec, HMM likelihood) plus `fx1.eval` score the model's domain competence and behavior |
+| **Verification** | `dipcatcher verify-research` and `dipcatcher doctor` gate every artifact fx-1 is trained on and every claim it makes |
 
-See [docs/RESEARCH_CENTRE.md](docs/RESEARCH_CENTRE.md) and [docs/NORTHSET.md](docs/NORTHSET.md).
-For the full ML/RL training commands, artifacts, and evidence boundaries, see
-[docs/ML_RL_CAPABILITIES.md](docs/ML_RL_CAPABILITIES.md).
-For the evidence-gated production boundary, see
-[docs/INSTITUTIONAL_READINESS.md](docs/INSTITUTIONAL_READINESS.md).
-For operator procedures and incident handling, see
-[docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md).
-For a fixed dataset/split contract with matched forecast baselines, see
-[docs/REAL_DATA_BENCHMARK.md](docs/REAL_DATA_BENCHMARK.md).
-The implementation sequence is tracked in [docs/REPO_IMPROVEMENT_PLAN.md](docs/REPO_IMPROVEMENT_PLAN.md).
-For matched strategy comparisons after modeled execution and carrying costs,
-see [docs/NET_RETURN_TOURNAMENT.md](docs/NET_RETURN_TOURNAMENT.md).
+See `docs/FX1.md` for the model architecture and `docs/FX1_TRAINING.md` for
+the compute ladder (proxy → full-K3 LoRA → distilled student).
 
-For cost-aware sizing with matched rank-allocation controls, see
-[docs/COST_AWARE_CONSTRUCTION.md](docs/COST_AWARE_CONSTRUCTION.md).
+## The honesty contract (inherited by fx-1)
 
-## What it does not do
+The harness enforces, and fx-1 is trained and tested to obey:
 
-- Headline Sharpe, PSR, DSR, or live P&L as research output
-- Same-close fills by default (see ADR-005)
-- Silently relax infeasible optimizer constraints
-- Auto-flatten the book on exceptions
-- Present synthetic-market results as live evidence
-
-## Paper / shadow (Phase 17)
-
-Simulated broker only — no live fills:
-
-```bash
-uv run dipcatcher paper --config configs/paper.yaml --max-steps 8
-```
-
-Ledgers land in `data/metadata/paper/`. SYNTHETIC runs are research/infrastructure only.
+- Research results are **proper scientific scores** — never Sharpe, Sortino,
+  Calmar, P&L, or NAV headlines.
+- SYNTHETIC results are correctness tests, always labeled, never presented as
+  market evidence.
+- No live-trading claims: there is no live broker connectivity, and live
+  readiness stays blocked until the five minimum-evidence conditions in
+  `docs/INSTITUTIONAL_READINESS.md` are met.
+- Fail-closed promotion: synthetic evidence, missing metrics, non-finite
+  metrics, and invalid receipts cannot promote.
 
 ## Install
 
-Python 3.12 and [uv](https://docs.astral.sh/uv/):
+Python 3.12 and uv:
 
-```bash
+```
 uv sync
 ```
 
 ## Quick start
 
-```bash
+fx-1 lifecycle:
+
+```
+fx1 corpus build                       # receipts -> SFT corpus (JSONL, provenance-hashed)
+fx1 harness list                       # lab commands fx-1 may invoke
+fx1 harness run verify-research        # verify harness artifacts
+fx1 train manifest --config fx1_run.json   # immutable training-run manifest
+```
+
+Professional datasources (18 sources, all installed finance plugins):
+
+```
+fx1 sources list                       # registry + live availability probes
+fx1 sources route --question "贵州茅台最新股价"   # authority-ordered candidates
+fx1 sources fetch wind --api get_stock_price_indicators \
+    --params-json '{"windcode":"600519.SH","indexes":"最新成交价"}' --as-of 2026-09-25
+fx1 corpus ingest-source cls --api cls_telegraphs --as-of 2026-09-25 \
+    --params-json '{"pageSize":50}'    # fetch -> gate -> corpus -> hash-chained ledger
+```
+
+Harness (dipcatcher) quick start:
+
+```
 uv run dipcatcher doctor
 uv run dipcatcher research --config configs/research.yaml
 uv run dipcatcher northset --config configs/research.yaml
 uv run dipcatcher verify-research
 ```
 
-The notebook is `data/metadata/research/latest.md`. The `quant` executable remains a
-backward-compatible alias for older workflows; new integrations should use `dipcatcher`.
+`dipcatcher ingest` also writes `data/metadata/data_manifest.json` with source
+labels, schemas, row counts, and SHA-256 hashes for the bronze/silver data
+lake; `dipcatcher doctor` checks that manifest and the latest research
+receipt before operators trust local state. Public/open feeds are collected
+explicitly (network access is opt-in, never part of normal ingest):
 
-`dipcatcher ingest` also writes `data/metadata/data_manifest.json`, including source labels,
-schemas, row counts, and SHA-256 hashes for the bronze/silver data lake. `dipcatcher doctor`
-checks that manifest and the latest research receipt before operators trust the local data state.
-
-Public/open feeds are collected explicitly (network access is opt-in and never part of
-normal ingest):
-
-```bash
+```
 uv run dipcatcher collect --source binance --param symbol=BTCUSDT --param interval=1d
 uv run dipcatcher collect --source fred --param series_id=GDP
 ```
 
-Each collection lands under `data/raw/sources/` with a JSON receipt (SHA-256, row counts,
-PIT ranges, provenance). Bar-capable sources can also be routed through `data.source` in
-config (e.g. `binance_public_data`). See `docs/DATA_SOURCE_LABELS.md`.
-
-The optional Kronos candlestick adapter (`train.kronos` config) is research-only, loads
-strictly local pre-downloaded artifacts (`dipcatcher[nn]` extra), and never reaches the
-network or live execution paths.
-
 ## Tests
 
-```bash
+```
 uv run pytest
 uv run ruff check src tests
-uv run mypy src/quant_fund
+uv run mypy src/fx1 src/quant_fund
 ```
 
-Default mode is `research`. Live trading requires explicit flags.
-
-## API security
+## API security (harness service)
 
 The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 
-- Config paths are allowlisted to the repo `configs/` directory (path traversal rejected).
-- If `QUANT_API_KEY` is set, non-public routes require header `X-API-Key`.
-- If unset, only loopback clients are accepted — remote unauthenticated access is refused.
-- Docker image binds `127.0.0.1` by default and syncs with `uv.lock` (`uv sync --frozen`). To listen on `0.0.0.0`, set `QUANT_API_KEY` and override the host.
-- The HTTP `POST /backtest` route is deliberately bounded to 30 causal decision dates and at most 31 bar dates (the extra date preserves next-open execution). Run larger historical studies through the CLI rather than the API worker.
+- Config paths are allowlisted to the repo `configs/` directory.
+- If `QUANT_API_KEY` is set, non-public routes require header `X-API-Key`;
+  if unset, only loopback clients are accepted.
+- Docker binds `127.0.0.1` by default; to listen on `0.0.0.0`, set
+  `QUANT_API_KEY` and override the host.
+- `POST /backtest` is deliberately bounded to 30 causal decision dates and at
+  most 31 bar dates; run larger studies through the CLI.
 
-## Research validation
+## Documentation map
 
-- `dipcatcher research` — scientific benches (proper scores; SYNTHETIC labeled)
-- `dipcatcher northset` — order-book and candlestick slice (identities, OHLC vol, Kyle/Roll/OFI/VPIN)
-- `dipcatcher validate <model_id>` — fail-closed causal / walk-forward / promotion gates
-- `dipcatcher verify-research` — verify immutable provenance, scorecards, and research artifacts
-- `configs/production.yaml` — **not** a live broker profile; research-strict promotion gates only (Phase-17 broker absent)
-- See `docs/DATA_SOURCE_LABELS.md` and `docs/VALIDATION.md`
+| Doc | Content |
+|---|---|
+| `docs/FX1.md` | fx-1 model: architecture, corpus provenance, honesty contract, license tier |
+| `docs/FX1_TRAINING.md` | Compute ladder, pipeline contract, ship gate |
+| `docs/RESEARCH_CENTRE.md` | Harness benches and research centre |
+| `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness matrix (fx-1 inherits it) |
+| `docs/REPO_IMPROVEMENT_PLAN.md` | Evidence-chain sequence |
+| `docs/VALIDATION.md` | Walk-forward / CPCV / multiple-testing / conformal gates |
+| `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
+| `docs/NORTHSET.md` | Order-book and candlestick slice |
+| `docs/FX1_DATASOURCES.md` | 18 professional datasources (Wind/iFinD/Gildata/S&P/EDGAR/Yahoo/东财/CLS/财新/Binance/IMF/WB/IGO/XHCJ/research/天眼查/finance-fetch/Finenter): routing, honesty gates, PIT discipline |
+
+*fx-1 and the dipcatcher harness produce research, backtest, or simulated
+evidence only. Nothing here is investment advice or a promise of live profit.*
