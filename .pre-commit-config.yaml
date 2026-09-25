@@ -1,4 +1,12 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Pinned to the uv.lock ruff version — pre-commit and `make lint` must not
     # drift (they used to: rev v0.8.0 vs locked 0.16.x).

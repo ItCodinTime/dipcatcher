@@ -43,6 +43,18 @@ def collect_status(root: Path | None = None) -> dict[str, object]:
         path = root / "data" / "fx1" / f"{name}.{'json' if name == 'manifest' else 'jsonl'}"
         n = _count_jsonl(path)
         status[f"data_fx1_{name}"] = n if n is not None else "missing"
+    ledger_path = root / "data" / "fx1" / "corpus_ledger.jsonl"
+    if ledger_path.is_file():
+        try:
+            from fx1.data.ledger import CorpusLedger
+
+            status["corpus_ledger_chain"] = (
+                "ok" if CorpusLedger(ledger_path).verify_chain() else "BROKEN"
+            )
+        except Exception:  # noqa: BLE001 — doctor reports, never hard-fails
+            status["corpus_ledger_chain"] = "unverifiable"
+    else:
+        status["corpus_ledger_chain"] = "missing"
     try:
         from fx1.eval import DEFAULT_BANK
 

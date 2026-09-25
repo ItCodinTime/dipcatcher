@@ -1,3 +1,4 @@
-data/file_us_wide/gold/*.parquet filter=lfs diff=lfs merge=lfs -text
+data/file_us_wide/**/*.parquet filter=lfs diff=lfs merge=lfs -text
+data/file_us_wide/**/*.npy filter=lfs diff=lfs merge=lfs -text
 RESEARCH_REFERENCES.md merge=union
 MATH_SPEC.md merge=union

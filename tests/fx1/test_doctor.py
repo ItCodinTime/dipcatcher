@@ -49,3 +49,12 @@ def test_doctor_cli_json(tmp_path: Path) -> None:
     assert result.exit_code == 0
     status = json.loads(result.stdout)
     assert status["fx1_version"]
+
+
+def test_doctor_reports_ledger_chain_state(tmp_path: Path) -> None:
+    assert collect_status(tmp_path)["corpus_ledger_chain"] == "missing"
+    (tmp_path / "data" / "fx1").mkdir(parents=True)
+    (tmp_path / "data" / "fx1" / "corpus_ledger.jsonl").write_text(
+        '{"event": "corrupt_entry"}\n', encoding="utf-8"
+    )
+    assert collect_status(tmp_path)["corpus_ledger_chain"] in {"unverifiable", "BROKEN"}
