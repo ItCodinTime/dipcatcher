@@ -46,12 +46,18 @@ def ledger_examples(path: str | Path, system: str) -> list[SFTExample]:
             SFTExample(
                 messages=[
                     {"role": "system", "content": system},
-                    {"role": "user", "content": "Is this artifact evidence of live trading performance?"},
-                    {"role": "assistant", "content": (
-                        f"No. Artifact {digest[:16]}… asserts a live P&L claim, "
-                        "which the honesty contract forbids as fx-1 evidence. "
-                        "I will not summarize it as a result."
-                    )},
+                    {
+                        "role": "user",
+                        "content": "Is this artifact evidence of live trading performance?",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": (
+                            f"No. Artifact {digest[:16]}… asserts a live P&L claim, "
+                            "which the honesty contract forbids as fx-1 evidence. "
+                            "I will not summarize it as a result."
+                        ),
+                    },
                 ],
                 receipt_sha256=digest,
                 source_path=str(source),
@@ -62,17 +68,23 @@ def ledger_examples(path: str | Path, system: str) -> list[SFTExample]:
         SFTExample(
             messages=[
                 {"role": "system", "content": system},
-                {"role": "user", "content": (
-                    f"Summarize this harness ledger artifact and its evidence "
-                    f"class. Top-level keys: {keys}"
-                )},
-                {"role": "assistant", "content": (
-                    f"Artifact {digest[:16]}… is simulated/backtest evidence "
-                    "from the dipcatcher harness. It may inform research "
-                    "conclusions but is not live performance, and any strategy "
-                    "reading must note costs, impact assumptions, and the "
-                    "frozen slate it ran under."
-                )},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Summarize this harness ledger artifact and its evidence "
+                        f"class. Top-level keys: {keys}"
+                    ),
+                },
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"Artifact {digest[:16]}… is simulated/backtest evidence "
+                        "from the dipcatcher harness. It may inform research "
+                        "conclusions but is not live performance, and any strategy "
+                        "reading must note costs, impact assumptions, and the "
+                        "frozen slate it ran under."
+                    ),
+                },
             ],
             receipt_sha256=digest,
             source_path=str(source),

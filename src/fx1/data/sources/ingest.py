@@ -147,14 +147,10 @@ def fetch_to_example(result: FetchResult, system: str) -> IngestDecision:
     )
 
 
-def record_fetch_in_ledger(
-    ledger: CorpusLedger, decision: IngestDecision
-) -> None:
+def record_fetch_in_ledger(ledger: CorpusLedger, decision: IngestDecision) -> None:
     """Chain an ingest decision into the corpus ledger (tamper-evident)."""
     if decision.example is not None:
-        example_sha = hashlib.sha256(
-            decision.example.model_dump_json().encode()
-        ).hexdigest()
+        example_sha = hashlib.sha256(decision.example.model_dump_json().encode()).hexdigest()
         ledger.record_example(
             source_sha256=decision.payload_sha256 or ("0" * 64),
             transform_sha256=transform_sha256(),

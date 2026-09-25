@@ -21,9 +21,7 @@ class TimePartition(BaseModel):
     undated: list[str] = []
 
 
-def partition_tasks(
-    tasks: list[EvalTask], created: dict[str, str], cutoff: str
-) -> TimePartition:
+def partition_tasks(tasks: list[EvalTask], created: dict[str, str], cutoff: str) -> TimePartition:
     """Split tasks by creation date against the base model's cutoff.
 
     *created* maps task name -> ISO creation date of its source artifact.
@@ -41,14 +39,10 @@ def partition_tasks(
             post.append(task.name)
         else:
             pre.append(task.name)
-    return TimePartition(
-        cutoff=cutoff, pre_cutoff=pre, post_cutoff=post, undated=undated
-    )
+    return TimePartition(cutoff=cutoff, pre_cutoff=pre, post_cutoff=post, undated=undated)
 
 
-def post_cutoff_pass_rate(
-    partition: TimePartition, results: dict[str, bool]
-) -> float | None:
+def post_cutoff_pass_rate(partition: TimePartition, results: dict[str, bool]) -> float | None:
     """Pass rate over the post-cutoff slice; None if the slice is empty."""
     if not partition.post_cutoff:
         return None

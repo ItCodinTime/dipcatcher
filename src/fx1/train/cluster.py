@@ -31,9 +31,7 @@ class ClusterSpec(BaseModel):
     @model_validator(mode="after")
     def _sanity(self) -> ClusterSpec:
         if self.sequence_length >= 131_072 and self.nodes < 8:
-            raise ValueError(
-                "long-context K3 training (>=128k) needs at least 8 nodes"
-            )
+            raise ValueError("long-context K3 training (>=128k) needs at least 8 nodes")
         if self.precision == "mxfp4" and self.zero_stage != 3:
             raise ValueError("mxfp4 QAT-aware runs require ZeRO stage 3")
         return self
@@ -62,7 +60,5 @@ class ClusterSpec(BaseModel):
         spec_path = out / "cluster_spec.json"
         ds_path = out / "deepspeed.json"
         spec_path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
-        ds_path.write_text(
-            json.dumps(self.to_deepspeed_config(), indent=2), encoding="utf-8"
-        )
+        ds_path.write_text(json.dumps(self.to_deepspeed_config(), indent=2), encoding="utf-8")
         return {"spec": str(spec_path), "deepspeed": str(ds_path)}

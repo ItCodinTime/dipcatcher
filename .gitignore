@@ -50,3 +50,5 @@ third_party/kronos_weights/
 data/models/
 data/binance_carry_8h*/
 data/arb_carry_book/**
+# Derived fx-1 corpora — rebuildable via `make fx1-corpus` / `fx1 corpus build`.
+data/fx1/

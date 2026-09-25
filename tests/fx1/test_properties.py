@@ -40,7 +40,8 @@ def test_reward_total_is_bounded(text: str):
 
 _prices = st.lists(
     st.floats(min_value=1.0, max_value=10_000.0, allow_nan=False),
-    min_size=2, max_size=100,
+    min_size=2,
+    max_size=100,
 )
 
 
@@ -49,11 +50,8 @@ _prices = st.lists(
 def test_dip_events_are_causal_and_bounded(closes: list[float]):
     # Unique, monotonically increasing dates: date strings repeat under
     # `i % 28`, which makes dates.index() ambiguous for len(closes) > 28.
-    dates = [
-        f"2026-{i // 28 + 1:02d}-{i % 28 + 1:02d}" for i in range(len(closes))
-    ]
-    events = detect_dip_events(closes, dates, "T", threshold=0.10,
-                               horizons_bars={"1m": 5})
+    dates = [f"2026-{i // 28 + 1:02d}-{i % 28 + 1:02d}" for i in range(len(closes))]
+    events = detect_dip_events(closes, dates, "T", threshold=0.10, horizons_bars={"1m": 5})
     for event in events:
         assert 0.10 <= event.depth < 1.0
         # trough must not precede its peak

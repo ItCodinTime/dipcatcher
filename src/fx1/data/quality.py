@@ -68,8 +68,7 @@ def dedup_and_filter(
                 contaminated += 1
                 continue
         if any(
-            shingles
-            and len(shingles & prior) / max(len(shingles | prior), 1) >= 0.9
+            shingles and len(shingles & prior) / max(len(shingles | prior), 1) >= 0.9
             for prior in shingle_index[-500:]
         ):
             near_dupes += 1
@@ -124,9 +123,7 @@ def frozen_split(
     random.Random(seed).shuffle(indices)
     cut = max(1, int(len(indices) * val_fraction)) if len(indices) > 1 else 0
     val_idx, train_idx = set(indices[:cut]), set(indices[cut:])
-    train_lines = [
-        json.dumps(examples[i], sort_keys=True) for i in sorted(train_idx)
-    ]
+    train_lines = [json.dumps(examples[i], sort_keys=True) for i in sorted(train_idx)]
     val_lines = [json.dumps(examples[i], sort_keys=True) for i in sorted(val_idx)]
     prefix = Path(out_prefix)
     prefix.parent.mkdir(parents=True, exist_ok=True)

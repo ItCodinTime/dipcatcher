@@ -13,9 +13,7 @@ import re
 
 # Mirrors FORBIDDEN_RESEARCH_METRIC_KEYS in quant_fund.research.catalog:
 # headline P&L / ratio tokens that must never appear as fx-1 research results.
-FORBIDDEN_HEADLINE_TOKENS: frozenset[str] = frozenset(
-    {"sharpe", "sortino", "calmar", "pnl", "nav"}
-)
+FORBIDDEN_HEADLINE_TOKENS: frozenset[str] = frozenset({"sharpe", "sortino", "calmar", "pnl", "nav"})
 
 # Phrases that constitute a live-performance or synthetic-as-live claim.
 _FORBIDDEN_CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
@@ -47,9 +45,7 @@ def _contains_forbidden_headline(text: str) -> str | None:
     discussion of why these metrics are forbidden is allowed.
     """
     for token in FORBIDDEN_HEADLINE_TOKENS:
-        pattern = re.compile(
-            rf"\b{token}\b\s*(?:of|=|:)?\s*[-+$]?\d[\d,.%$]*", re.IGNORECASE
-        )
+        pattern = re.compile(rf"\b{token}\b\s*(?:of|=|:)?\s*[-+$]?\d[\d,.%$]*", re.IGNORECASE)
         if pattern.search(text):
             return token
     return None

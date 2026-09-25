@@ -23,9 +23,7 @@ class SBOMEntry(BaseModel):
 
 class SBOM(BaseModel):
     spec: str = "spdx-lite/2.3"
-    generated_utc: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    generated_utc: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     package: str = "fx-1"
     entries: list[SBOMEntry]
     lockfile_sha256: str = Field(min_length=64, max_length=64)

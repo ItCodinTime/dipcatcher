@@ -30,16 +30,13 @@ def test_ledger_live_claim_becomes_negative(tmp_path: Path):
 
 def test_ledger_nested_live_claim_detected(tmp_path: Path):
     nested = tmp_path / "nested.json"
-    nested.write_text(
-        json.dumps({"outer": {"inner": {"live_pnl_claim": True}}}), encoding="utf-8"
-    )
+    nested.write_text(json.dumps({"outer": {"inner": {"live_pnl_claim": True}}}), encoding="utf-8")
     assert ledger_examples(nested, SYSTEM)[0].negative
 
 
 def test_clean_ledger_positive(tmp_path: Path):
     clean = tmp_path / "clean.json"
-    clean.write_text(json.dumps({"strategy": "x", "live_pnl_claim": False}),
-                     encoding="utf-8")
+    clean.write_text(json.dumps({"strategy": "x", "live_pnl_claim": False}), encoding="utf-8")
     examples = ledger_examples(clean, SYSTEM)
     assert len(examples) == 1
     assert not examples[0].negative
@@ -56,17 +53,14 @@ def test_build_full_corpus_merges_sources(tmp_path: Path):
     receipts = tmp_path / "receipts"
     receipts.mkdir()
     (receipts / "r.json").write_text(
-        json.dumps({"research_only": True, "live_pnl_claim": False,
-                    "correctness": {"m": 1}}),
+        json.dumps({"research_only": True, "live_pnl_claim": False, "correctness": {"m": 1}}),
         encoding="utf-8",
     )
     doc = tmp_path / "doc.md"
     doc.write_text("# Only\nsection", encoding="utf-8")
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
-    (artifacts / "ledger.json").write_text(
-        json.dumps({"live_pnl_claim": True}), encoding="utf-8"
-    )
+    (artifacts / "ledger.json").write_text(json.dumps({"live_pnl_claim": True}), encoding="utf-8")
     out = tmp_path / "full.jsonl"
     stats = build_full_corpus(receipts, out, notebooks=[doc], artifacts_dir=artifacts)
     assert stats["positive"] == 2  # receipt + notebook section

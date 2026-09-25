@@ -40,13 +40,9 @@ def test_live_performance_claims_fail_closed(claim: str):
 
 def test_synthetic_evidence_requires_label():
     with pytest.raises(Fx1HonestyError):
-        validate_fx1_output(
-            "On synthetic data the model achieves 0.99 recovery accuracy."
-        )
+        validate_fx1_output("On synthetic data the model achieves 0.99 recovery accuracy.")
     # Explicit SYNTHETIC label passes.
-    assert validate_fx1_output(
-        "On SYNTHETIC data the model achieves 0.99 recovery accuracy."
-    )
+    assert validate_fx1_output("On SYNTHETIC data the model achieves 0.99 recovery accuracy.")
 
 
 def test_synthetic_commentary_without_numbers_allowed():

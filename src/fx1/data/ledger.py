@@ -34,28 +34,33 @@ class LedgerEntry(BaseModel):
     utc: str
     kind: str = Field(description="example | exclusion | gate_decision")
     source_sha256: str = Field(min_length=64, max_length=64)
-    transform_sha256: str = Field(
-        description="SHA-256 of the code/config that produced this entry"
-    )
+    transform_sha256: str = Field(description="SHA-256 of the code/config that produced this entry")
     example_sha256: str | None = None
-    rule: str | None = Field(
-        default=None, description="quality-gate rule name for exclusions"
-    )
+    rule: str | None = Field(default=None, description="quality-gate rule name for exclusions")
     prev_hash: str = Field(min_length=64, max_length=64)
     entry_hash: str = Field(min_length=64, max_length=64)
 
     @staticmethod
     def compute_hash(
-        *, index: int, utc: str, kind: str, source_sha256: str,
-        transform_sha256: str, example_sha256: str | None,
-        rule: str | None, prev_hash: str,
+        *,
+        index: int,
+        utc: str,
+        kind: str,
+        source_sha256: str,
+        transform_sha256: str,
+        example_sha256: str | None,
+        rule: str | None,
+        prev_hash: str,
     ) -> str:
         payload = json.dumps(
             {
-                "index": index, "utc": utc, "kind": kind,
+                "index": index,
+                "utc": utc,
+                "kind": kind,
                 "source_sha256": source_sha256,
                 "transform_sha256": transform_sha256,
-                "example_sha256": example_sha256, "rule": rule,
+                "example_sha256": example_sha256,
+                "rule": rule,
                 "prev_hash": prev_hash,
             },
             sort_keys=True,
@@ -74,20 +79,36 @@ class CorpusLedger:
                 if line.strip():
                     self._entries.append(LedgerEntry.model_validate_json(line))
 
-    def _append(self, *, kind: str, source_sha256: str, transform_sha256: str,
-                example_sha256: str | None = None,
-                rule: str | None = None) -> LedgerEntry:
+    def _append(
+        self,
+        *,
+        kind: str,
+        source_sha256: str,
+        transform_sha256: str,
+        example_sha256: str | None = None,
+        rule: str | None = None,
+    ) -> LedgerEntry:
         prev = self._entries[-1].entry_hash if self._entries else GENESIS
         utc = datetime.now(UTC).isoformat()
         entry_hash = LedgerEntry.compute_hash(
-            index=len(self._entries), utc=utc, kind=kind,
-            source_sha256=source_sha256, transform_sha256=transform_sha256,
-            example_sha256=example_sha256, rule=rule, prev_hash=prev,
+            index=len(self._entries),
+            utc=utc,
+            kind=kind,
+            source_sha256=source_sha256,
+            transform_sha256=transform_sha256,
+            example_sha256=example_sha256,
+            rule=rule,
+            prev_hash=prev,
         )
         entry = LedgerEntry(
-            index=len(self._entries), utc=utc, kind=kind,
-            source_sha256=source_sha256, transform_sha256=transform_sha256,
-            example_sha256=example_sha256, rule=rule, prev_hash=prev,
+            index=len(self._entries),
+            utc=utc,
+            kind=kind,
+            source_sha256=source_sha256,
+            transform_sha256=transform_sha256,
+            example_sha256=example_sha256,
+            rule=rule,
+            prev_hash=prev,
             entry_hash=entry_hash,
         )
         self._entries.append(entry)
@@ -96,18 +117,24 @@ class CorpusLedger:
             fh.write(entry.model_dump_json() + "\n")
         return entry
 
-    def record_example(self, *, source_sha256: str, transform_sha256: str,
-                       example_sha256: str) -> LedgerEntry:
+    def record_example(
+        self, *, source_sha256: str, transform_sha256: str, example_sha256: str
+    ) -> LedgerEntry:
         return self._append(
-            kind="example", source_sha256=source_sha256,
-            transform_sha256=transform_sha256, example_sha256=example_sha256,
+            kind="example",
+            source_sha256=source_sha256,
+            transform_sha256=transform_sha256,
+            example_sha256=example_sha256,
         )
 
-    def record_exclusion(self, *, source_sha256: str, transform_sha256: str,
-                         rule: str) -> LedgerEntry:
+    def record_exclusion(
+        self, *, source_sha256: str, transform_sha256: str, rule: str
+    ) -> LedgerEntry:
         return self._append(
-            kind="exclusion", source_sha256=source_sha256,
-            transform_sha256=transform_sha256, rule=rule,
+            kind="exclusion",
+            source_sha256=source_sha256,
+            transform_sha256=transform_sha256,
+            rule=rule,
         )
 
     def verify_chain(self) -> bool:
@@ -119,10 +146,13 @@ class CorpusLedger:
             if entry.prev_hash != prev:
                 return False
             recomputed = LedgerEntry.compute_hash(
-                index=entry.index, utc=entry.utc, kind=entry.kind,
+                index=entry.index,
+                utc=entry.utc,
+                kind=entry.kind,
                 source_sha256=entry.source_sha256,
                 transform_sha256=entry.transform_sha256,
-                example_sha256=entry.example_sha256, rule=entry.rule,
+                example_sha256=entry.example_sha256,
+                rule=entry.rule,
                 prev_hash=entry.prev_hash,
             )
             if recomputed != entry.entry_hash:

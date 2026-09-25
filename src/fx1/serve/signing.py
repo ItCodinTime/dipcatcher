@@ -29,9 +29,7 @@ class ReleaseManifest(BaseModel):
     """Digest manifest of everything a release consists of."""
 
     checkpoint_dir: str
-    artifacts: dict[str, str] = Field(
-        description="relative path -> sha256"
-    )
+    artifacts: dict[str, str] = Field(description="relative path -> sha256")
 
 
 def _hash_file(path: Path) -> str:
@@ -44,9 +42,7 @@ def build_manifest(checkpoint_dir: str | Path) -> ReleaseManifest:
         raise FileNotFoundError(f"checkpoint dir not found: {root}")
     artifacts: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
-        if path.is_file() and path.name not in {
-            SIGNATURE_FILENAME, MANIFEST_FILENAME
-        }:
+        if path.is_file() and path.name not in {SIGNATURE_FILENAME, MANIFEST_FILENAME}:
             artifacts[str(path.relative_to(root))] = _hash_file(path)
     if not artifacts:
         raise ValueError(f"checkpoint dir {root} contains no artifacts")
@@ -56,9 +52,7 @@ def build_manifest(checkpoint_dir: str | Path) -> ReleaseManifest:
 def _key() -> bytes:
     key = os.environ.get(SIGNING_KEY_ENV, "")
     if not key:
-        raise RuntimeError(
-            f"{SIGNING_KEY_ENV} is not set; fx-1 never hardcodes signing keys"
-        )
+        raise RuntimeError(f"{SIGNING_KEY_ENV} is not set; fx-1 never hardcodes signing keys")
     return key.encode()
 
 

@@ -30,6 +30,7 @@ from fx1.serve import (
 
 # --- Move 1: masking ----------------------------------------------------------
 
+
 def test_masking_deterministic_and_consistent():
     text = "AAPL dipped on 2024-03-15; compare with MSFT in Q2 2024."
     m1, m2 = mask_text(text), mask_text(text)
@@ -52,9 +53,7 @@ def test_masked_twins_pairing():
 
 
 def test_memory_gap_metric():
-    report = memory_gap_report(
-        [True] * 8 + [False] * 2, [True] * 6 + [False] * 4, budget=0.25
-    )
+    report = memory_gap_report([True] * 8 + [False] * 2, [True] * 6 + [False] * 4, budget=0.25)
     assert report.memory_gap == pytest.approx(0.2)
     assert report.within_budget
     big = memory_gap_report([True] * 10, [False] * 10, budget=0.25)
@@ -78,11 +77,11 @@ def test_contamination_audit_reports_and_flags():
         "unrelated research text with plenty of distinct tokens here",
         "Which scores does the lab use for probabilistic distributions and calibration?",
     ]
-    prompts = [
-        "Which scores does the lab use for probabilistic distributions and calibration?"
-    ]
+    prompts = ["Which scores does the lab use for probabilistic distributions and calibration?"]
     report = run_contamination_audit(
-        corpus, prompts, canonical_pass=[True, True, True],
+        corpus,
+        prompts,
+        canonical_pass=[True, True, True],
         rephrased_pass=[True, False, False],
     )
     assert report.ngram_hits and report.ngram_hits[0].example_index == 1
@@ -94,16 +93,21 @@ def test_contamination_audit_reports_and_flags():
 
 # --- Move 2: signing + attestation ----------------------------------------------
 
+
 def _checkpoint(tmp_path: Path) -> Path:
     root = tmp_path / "ckpt"
     root.mkdir()
     (root / "modelcard.json").write_text(
         ModelCard(
-            version="fx-1.v0.1", corpus_sha256="a" * 64,
-            corpus_receipt_range="b..c", training_manifest_sha256="b" * 64,
+            version="fx-1.v0.1",
+            corpus_sha256="a" * 64,
+            corpus_receipt_range="b..c",
+            training_manifest_sha256="b" * 64,
             eval_delta=EvalDelta(
-                domain_pass_rate_base=0.5, domain_pass_rate_candidate=0.7,
-                general_pass_rate_base=0.9, general_pass_rate_candidate=0.9,
+                domain_pass_rate_base=0.5,
+                domain_pass_rate_candidate=0.7,
+                general_pass_rate_base=0.9,
+                general_pass_rate_candidate=0.9,
                 honesty_gate_candidate=True,
             ),
         ).model_dump_json(),
@@ -140,16 +144,15 @@ def test_backend_refuses_unsigned_when_keyed(tmp_path: Path, monkeypatch):
 
 def test_tee_quote_verification():
     quote = TEEQuote(
-        platform="sev-snp", checkpoint_sha256="a" * 64,
-        measurement="ab", report_data=f"nonce123:{'a' * 64}",
+        platform="sev-snp",
+        checkpoint_sha256="a" * 64,
+        measurement="ab",
+        report_data=f"nonce123:{'a' * 64}",
         signature="sig",
     )
-    assert verify_quote(quote, expected_checkpoint_sha256="a" * 64,
-                        nonce="nonce123")
-    assert not verify_quote(quote, expected_checkpoint_sha256="b" * 64,
-                            nonce="nonce123")
-    assert not verify_quote(quote, expected_checkpoint_sha256="a" * 64,
-                            nonce="other")
+    assert verify_quote(quote, expected_checkpoint_sha256="a" * 64, nonce="nonce123")
+    assert not verify_quote(quote, expected_checkpoint_sha256="b" * 64, nonce="nonce123")
+    assert not verify_quote(quote, expected_checkpoint_sha256="a" * 64, nonce="other")
 
 
 def test_zkml_manifest_requires_proofs(tmp_path: Path):
@@ -162,7 +165,8 @@ def test_zkml_manifest_requires_proofs(tmp_path: Path):
     proof = tmp_path / "proof.bin"
     proof.write_bytes(b"proof")
     manifest = OperatorProofManifest(
-        checkpoint_sha256="a" * 64, covered_operators=["calibration_head"],
+        checkpoint_sha256="a" * 64,
+        covered_operators=["calibration_head"],
         proof_artifacts={"calibration_head": str(proof)},
     )
     assert manifest.verify_artifacts_exist()
@@ -172,23 +176,24 @@ def test_ladder_status(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("FX1_SIGNING_KEY", "k")
     root = _checkpoint(tmp_path)
     status = attestation_ladder_status(root)
-    assert status == {"signed_release": False, "tee": False,
-                      "selective_zkml": False}
+    assert status == {"signed_release": False, "tee": False, "selective_zkml": False}
     sign_release(root)
     assert attestation_ladder_status(root)["signed_release"]
 
 
 # --- Move 3: corpus ledger ---------------------------------------------------------
 
+
 def test_ledger_chain_and_tamper_evidence(tmp_path: Path):
     path = tmp_path / "ledger.jsonl"
     ledger = CorpusLedger(path)
-    ledger.record_example(source_sha256="a" * 64, transform_sha256="b" * 64,
-                          example_sha256="c" * 64)
-    ledger.record_exclusion(source_sha256="d" * 64,
-                            transform_sha256="b" * 64, rule="dedup_exact")
-    ledger.record_example(source_sha256="e" * 64, transform_sha256="b" * 64,
-                          example_sha256="f" * 64)
+    ledger.record_example(
+        source_sha256="a" * 64, transform_sha256="b" * 64, example_sha256="c" * 64
+    )
+    ledger.record_exclusion(source_sha256="d" * 64, transform_sha256="b" * 64, rule="dedup_exact")
+    ledger.record_example(
+        source_sha256="e" * 64, transform_sha256="b" * 64, example_sha256="f" * 64
+    )
     assert ledger.verify_chain()
     export = ledger.audit_export()
     assert export["examples"] == 2 and export["exclusions"] == 1
@@ -206,9 +211,9 @@ def test_ledger_chain_and_tamper_evidence(tmp_path: Path):
 def test_ledger_genesis_and_reload(tmp_path: Path):
     path = tmp_path / "l.jsonl"
     ledger = CorpusLedger(path)
-    entry = ledger.record_example(source_sha256="a" * 64,
-                                  transform_sha256="b" * 64,
-                                  example_sha256="c" * 64)
+    entry = ledger.record_example(
+        source_sha256="a" * 64, transform_sha256="b" * 64, example_sha256="c" * 64
+    )
     assert entry.prev_hash == GENESIS
     reloaded = CorpusLedger(path)
     assert reloaded.verify_chain()
@@ -217,14 +222,19 @@ def test_ledger_genesis_and_reload(tmp_path: Path):
 
 # --- Move 4: MRM dossier --------------------------------------------------------------
 
+
 def test_mrm_dossier_compiles_five_activities(tmp_path: Path):
     card_path = tmp_path / "modelcard.json"
     ModelCard(
-        version="fx-1.v0.1", corpus_sha256="a" * 64,
-        corpus_receipt_range="b..c", training_manifest_sha256="b" * 64,
+        version="fx-1.v0.1",
+        corpus_sha256="a" * 64,
+        corpus_receipt_range="b..c",
+        training_manifest_sha256="b" * 64,
         eval_delta=EvalDelta(
-            domain_pass_rate_base=0.5, domain_pass_rate_candidate=0.7,
-            general_pass_rate_base=0.9, general_pass_rate_candidate=0.9,
+            domain_pass_rate_base=0.5,
+            domain_pass_rate_candidate=0.7,
+            general_pass_rate_base=0.9,
+            general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
         ),
     ).save(card_path)
@@ -245,11 +255,15 @@ def test_mrm_dossier_compiles_five_activities(tmp_path: Path):
 def test_mrm_dossier_fail_closed_on_missing(tmp_path: Path):
     card_path = tmp_path / "modelcard.json"
     ModelCard(
-        version="fx-1.v0.1", corpus_sha256="a" * 64,
-        corpus_receipt_range="b..c", training_manifest_sha256="b" * 64,
+        version="fx-1.v0.1",
+        corpus_sha256="a" * 64,
+        corpus_receipt_range="b..c",
+        training_manifest_sha256="b" * 64,
         eval_delta=EvalDelta(
-            domain_pass_rate_base=0.5, domain_pass_rate_candidate=0.7,
-            general_pass_rate_base=0.9, general_pass_rate_candidate=0.9,
+            domain_pass_rate_base=0.5,
+            domain_pass_rate_candidate=0.7,
+            general_pass_rate_base=0.9,
+            general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
         ),
     ).save(card_path)

@@ -25,12 +25,29 @@ def test_registry_covers_all_four_roles():
 def test_registry_covers_full_lab_surface():
     names = {c.name for c in Harness(runner=_fake_runner).list_commands()}
     expected = {
-        "doctor", "verify-research", "validate", "monitor",
-        "ingest", "collect", "build-features", "build-labels",
-        "research", "northset", "backtest", "forecast", "kronos-forecast",
-        "candle-book", "kyle-ofi", "session-book", "vendor-book-map",
-        "book-panel", "report", "tearsheet",
-        "train", "optimize", "paper",
+        "doctor",
+        "verify-research",
+        "validate",
+        "monitor",
+        "ingest",
+        "collect",
+        "build-features",
+        "build-labels",
+        "research",
+        "northset",
+        "backtest",
+        "forecast",
+        "kronos-forecast",
+        "candle-book",
+        "kyle-ofi",
+        "session-book",
+        "vendor-book-map",
+        "book-panel",
+        "report",
+        "tearsheet",
+        "train",
+        "optimize",
+        "paper",
     }
     assert expected <= names
     # Hidden/network-serving surfaces are deliberately unreachable by fx-1.
@@ -40,9 +57,7 @@ def test_registry_covers_full_lab_surface():
 def test_role_filter():
     harness = Harness(runner=_fake_runner)
     verification = harness.list_commands(role=HarnessRole.VERIFICATION)
-    assert verification and all(
-        c.role == HarnessRole.VERIFICATION for c in verification
-    )
+    assert verification and all(c.role == HarnessRole.VERIFICATION for c in verification)
 
 
 def test_unregistered_command_fails_closed():

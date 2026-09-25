@@ -139,8 +139,10 @@ class FinanceFetchAdapter(DataSourceAdapter):
         except json.JSONDecodeError:
             return result
         if isinstance(envelope, dict) and envelope.get("ok") is False:
-            reason = envelope.get("error") or envelope.get("message") or (
-                "scenario chain returned ok=false"
+            reason = (
+                envelope.get("error")
+                or envelope.get("message")
+                or ("scenario chain returned ok=false")
             )
             return FetchResult.failure(
                 source=self.spec.name,
@@ -199,15 +201,11 @@ _KIND_TO_ADAPTER: dict[SourceKind, type[DataSourceAdapter]] = {
 }
 
 
-def build_adapter(
-    spec: SourceSpec, runner: object | None = None
-) -> DataSourceAdapter:
+def build_adapter(spec: SourceSpec, runner: object | None = None) -> DataSourceAdapter:
     """Instantiate the adapter for *spec* (runner injectable for tests)."""
     if spec.name == "caixin":
         return CaixinAdapter(spec, runner=runner)  # type: ignore[arg-type]
     if spec.kind is SourceKind.CUSTOM_CLI and spec.name != "xhcj":
-        raise ValueError(
-            f"no adapter grammar registered for custom CLI {spec.name!r}"
-        )
+        raise ValueError(f"no adapter grammar registered for custom CLI {spec.name!r}")
     cls = _KIND_TO_ADAPTER[spec.kind]
     return cls(spec, runner=runner)  # type: ignore[arg-type]

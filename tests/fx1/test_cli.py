@@ -51,9 +51,7 @@ def test_corpus_build_cli(tmp_path: Path):
 def test_train_manifest_cli_blocks_without_eval(tmp_path: Path):
     _receipt(tmp_path / "r.json")
     corpus = tmp_path / "corpus.jsonl"
-    runner.invoke(
-        app, ["corpus", "build", "--receipts-dir", str(tmp_path), "--out", str(corpus)]
-    )
+    runner.invoke(app, ["corpus", "build", "--receipts-dir", str(tmp_path), "--out", str(corpus)])
     cfg = {
         "run_name": "fx-1.v0.1",
         "stage": "proxy",

@@ -17,8 +17,17 @@ from fx1.serve.chat import cited_complete
 from fx1.serve.signing import build_manifest, sign_release, verify_release
 
 __all__ = [
-    "AttestationTier", "HostedK3Backend", "InferenceBackend", "LocalFx1Backend",
-    "OperatorProofManifest", "TEEQuote", "attestation_ladder_status",
-    "build_manifest", "cited_complete", "get_backend", "sign_release",
-    "verify_quote", "verify_release",
+    "AttestationTier",
+    "HostedK3Backend",
+    "InferenceBackend",
+    "LocalFx1Backend",
+    "OperatorProofManifest",
+    "TEEQuote",
+    "attestation_ladder_status",
+    "build_manifest",
+    "cited_complete",
+    "get_backend",
+    "sign_release",
+    "verify_quote",
+    "verify_release",
 ]

@@ -84,13 +84,9 @@ class FetchResult(BaseModel):
     files: list[str] = Field(default_factory=list)
     error: str | None = None
     status: SourceStatus = SourceStatus.READY
-    fetched_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    fetched_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     as_of: str | None = None
-    payload_sha256: str = Field(
-        default="", description="SHA-256 of the exact returned text"
-    )
+    payload_sha256: str = Field(default="", description="SHA-256 of the exact returned text")
     truncated: bool = False
     elapsed_ms: int = 0
 
@@ -99,9 +95,7 @@ class FetchResult(BaseModel):
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
     @classmethod
-    def failure(
-        cls, *, source: str, api: str, error: str, status: SourceStatus
-    ) -> FetchResult:
+    def failure(cls, *, source: str, api: str, error: str, status: SourceStatus) -> FetchResult:
         """A described failure. Never carries invented payload text."""
         return cls(ok=False, source=source, api=api, error=error, status=status)
 
@@ -154,9 +148,7 @@ def default_runner(
     except subprocess.TimeoutExpired as exc:
         return RunOutcome(
             returncode=124,
-            stdout=(exc.stdout or "")
-            if isinstance(exc.stdout, str)
-            else "",
+            stdout=(exc.stdout or "") if isinstance(exc.stdout, str) else "",
             stderr=f"timeout after {timeout_s}s",
             timed_out=True,
         )
@@ -169,9 +161,7 @@ def default_runner(
         truncated = True
     if truncated:
         stdout += "\n[fx1: output truncated]"
-    return RunOutcome(
-        returncode=proc.returncode, stdout=stdout, stderr=proc.stderr or ""
-    )
+    return RunOutcome(returncode=proc.returncode, stdout=stdout, stderr=proc.stderr or "")
 
 
 Runner = Callable[..., RunOutcome]
@@ -205,9 +195,10 @@ class DataSourceAdapter(ABC):
         if any(os.environ.get(name) for name in self.spec.credentials):
             return True
         # agent-gw SDKs also resolve credentials from the runtime config file.
-        return "KIMI_API_KEY" in self.spec.credentials and (
-            Path.home() / ".kimi" / "agent-gw.json"
-        ).exists()
+        return (
+            "KIMI_API_KEY" in self.spec.credentials
+            and (Path.home() / ".kimi" / "agent-gw.json").exists()
+        )
 
     def probe(self) -> SourceProbe:
         """Fail-closed availability check; never leaks secret values."""
@@ -225,8 +216,7 @@ class DataSourceAdapter(ABC):
             return SourceProbe(
                 name=self.spec.name,
                 status=SourceStatus.NO_SCRIPT,
-                detail="bundled script not found; set FX1_PLUGIN_ROOTS or "
-                "install the plugin",
+                detail="bundled script not found; set FX1_PLUGIN_ROOTS or install the plugin",
                 credentials=cred_names,
             )
         creds = self.credentials_present()
@@ -235,13 +225,10 @@ class DataSourceAdapter(ABC):
                 name=self.spec.name,
                 status=SourceStatus.NO_CREDENTIALS,
                 script=str(script),
-                detail="required credential env var(s) absent: "
-                + ", ".join(cred_names),
+                detail="required credential env var(s) absent: " + ", ".join(cred_names),
                 credentials=cred_names,
             )
-        status = (
-            SourceStatus.READY_UNVERIFIED if creds is None else SourceStatus.READY
-        )
+        status = SourceStatus.READY_UNVERIFIED if creds is None else SourceStatus.READY
         detail = (
             "credentials auto-resolved by runtime"
             if creds is None
@@ -282,11 +269,7 @@ class DataSourceAdapter(ABC):
 
     def _credential_env(self) -> dict[str, str]:
         """Values of declared credential vars, passed via env only."""
-        return {
-            name: os.environ[name]
-            for name in self.spec.credentials
-            if os.environ.get(name)
-        }
+        return {name: os.environ[name] for name in self.spec.credentials if os.environ.get(name)}
 
     def _run(
         self,
@@ -298,9 +281,7 @@ class DataSourceAdapter(ABC):
         import time
 
         t0 = time.monotonic()
-        outcome = self._runner(
-            argv, timeout_s=request.timeout_s, extra_env=self._credential_env()
-        )
+        outcome = self._runner(argv, timeout_s=request.timeout_s, extra_env=self._credential_env())
         elapsed = int((time.monotonic() - t0) * 1000)
         if outcome.timed_out:
             return FetchResult.failure(
@@ -314,8 +295,7 @@ class DataSourceAdapter(ABC):
             return FetchResult.failure(
                 source=self.spec.name,
                 api=request.api,
-                error=outcome.stderr.strip()[:2000]
-                or f"exit code {outcome.returncode}",
+                error=outcome.stderr.strip()[:2000] or f"exit code {outcome.returncode}",
                 status=self.probe().status,
             )
         text = outcome.stdout.strip()

@@ -26,16 +26,23 @@ from fx1.train import (
 
 
 def _ex(text: str) -> dict:
-    return {"messages": [{"role": "user", "content": text}],
-            "receipt_sha256": "a" * 64, "source_path": "t", "negative": False}
+    return {
+        "messages": [{"role": "user", "content": text}],
+        "receipt_sha256": "a" * 64,
+        "source_path": "t",
+        "negative": False,
+    }
 
 
 # --- data quality -----------------------------------------------------------
 
+
 def test_dedup_and_decontamination():
-    examples = [_ex("alpha beta gamma delta epsilon zeta eta theta iota"),
-                _ex("alpha beta gamma delta epsilon zeta eta theta iota"),
-                _ex("completely distinct research content here now")]
+    examples = [
+        _ex("alpha beta gamma delta epsilon zeta eta theta iota"),
+        _ex("alpha beta gamma delta epsilon zeta eta theta iota"),
+        _ex("completely distinct research content here now"),
+    ]
     eval_prompts = ["alpha beta gamma delta epsilon zeta eta theta iota"]
     kept, report = dedup_and_filter(examples, eval_prompts=eval_prompts)
     # Both copies of the contaminated text are removed; contamination is
@@ -56,19 +63,23 @@ def test_frozen_split_deterministic(tmp_path: Path):
 
 # --- traces -----------------------------------------------------------------
 
+
 def test_trace_preserves_reasoning_and_tool_calls(tmp_path: Path):
     traj = Trajectory(
         session_id="s1",
         user_intent="Run the benches",
-        steps=[TraceStep(
-            reasoning_content="think first",
-            assistant_content="running research",
-            tool_call=None,
-        )],
+        steps=[
+            TraceStep(
+                reasoning_content="think first",
+                assistant_content="running research",
+                tool_call=None,
+            )
+        ],
         verify_ok=True,
         artifact_receipts=["b" * 64],
     )
     from fx1.data.traces import ToolCall
+
     traj.steps[0].tool_call = ToolCall(name="research", arguments={})
     messages = traj.to_sft_messages("sys")
     assert "<reasoning>think first</reasoning>" in messages[2]["content"]
@@ -89,6 +100,7 @@ def test_failed_trajectory_marked_negative(tmp_path: Path):
 
 # --- DPO --------------------------------------------------------------------
 
+
 def test_preference_pairs_cover_all_baits(tmp_path: Path):
     pairs = build_preference_pairs(tmp_path / "dpo.jsonl")
     assert len(pairs) >= 5
@@ -101,6 +113,7 @@ def test_preference_pairs_cover_all_baits(tmp_path: Path):
 
 # --- receipts ---------------------------------------------------------------
 
+
 def test_training_receipt_issue_and_verify(tmp_path: Path):
     files = {}
     for name in ("config", "corpus", "split", "eval"):
@@ -108,27 +121,36 @@ def test_training_receipt_issue_and_verify(tmp_path: Path):
         p.write_text(json.dumps({name: True}), encoding="utf-8")
         files[name] = p
     receipt = issue_receipt(
-        run_name="fx-1.v0.1", repo_root=tmp_path,
-        config_path=files["config"], corpus_path=files["corpus"],
-        split_manifest_path=files["split"], eval_base_path=files["eval"],
-        seed=17, out_path=tmp_path / "receipt.json",
+        run_name="fx-1.v0.1",
+        repo_root=tmp_path,
+        config_path=files["config"],
+        corpus_path=files["corpus"],
+        split_manifest_path=files["split"],
+        eval_base_path=files["eval"],
+        seed=17,
+        out_path=tmp_path / "receipt.json",
     )
     assert receipt.research_only and not receipt.live_pnl_claim
     assert verify_training_receipt(
-        tmp_path / "receipt.json", config_path=files["config"],
-        corpus_path=files["corpus"], split_manifest_path=files["split"],
+        tmp_path / "receipt.json",
+        config_path=files["config"],
+        corpus_path=files["corpus"],
+        split_manifest_path=files["split"],
         eval_base_path=files["eval"],
     )
     # Tamper with the corpus -> verification fails closed.
     files["corpus"].write_text("tampered", encoding="utf-8")
     assert not verify_training_receipt(
-        tmp_path / "receipt.json", config_path=files["config"],
-        corpus_path=files["corpus"], split_manifest_path=files["split"],
+        tmp_path / "receipt.json",
+        config_path=files["config"],
+        corpus_path=files["corpus"],
+        split_manifest_path=files["split"],
         eval_base_path=files["eval"],
     )
 
 
 # --- statistical comparison ---------------------------------------------------
+
 
 def test_compare_runs_significance():
     base = [True] * 5 + [False] * 5
@@ -141,6 +163,7 @@ def test_compare_runs_significance():
 
 
 # --- cluster specs ------------------------------------------------------------
+
 
 def test_cluster_spec_validation_and_export(tmp_path: Path):
     with pytest.raises(ValueError, match="ge=2|greater than"):
@@ -156,20 +179,25 @@ def test_cluster_spec_validation_and_export(tmp_path: Path):
 
 # --- staged pipeline ------------------------------------------------------------
 
+
 def _pipeline(tmp_path: Path) -> Pipeline:
     corpus = tmp_path / "corpus.jsonl"
     corpus.write_text(
-        "\n".join(json.dumps(_ex(f"unique training content {i} tokens here"))
-                  for i in range(30)) + "\n",
+        "\n".join(json.dumps(_ex(f"unique training content {i} tokens here")) for i in range(30))
+        + "\n",
         encoding="utf-8",
     )
     eval_json = tmp_path / "eval.json"
     eval_json.write_text(json.dumps({"honesty_gate_passed": True, "results": []}))
     cfg = TrainConfig(
-        run_name="fx-1.v0.1", stage=LadderStage.PROXY,
-        base_model="Qwen/Qwen3-32B", corpus_jsonl=str(corpus),
+        run_name="fx-1.v0.1",
+        stage=LadderStage.PROXY,
+        base_model="Qwen/Qwen3-32B",
+        corpus_jsonl=str(corpus),
         eval_results_json=str(eval_json),
-        estimated_nodes=1, estimated_gpu_hours=4.0, estimated_cost_usd=50.0,
+        estimated_nodes=1,
+        estimated_gpu_hours=4.0,
+        estimated_cost_usd=50.0,
     )
     trainer = lambda tr, va, c, wd: wd / "ckpt"  # noqa: E731
     (tmp_path / "work").mkdir()
@@ -178,9 +206,11 @@ def _pipeline(tmp_path: Path) -> Pipeline:
 
 
 def _good_model(msgs: list[dict[str, str]]) -> str:
-    return ("proper scores: crps pinball pit qlike kupiec vpin kyle "
-            "walk-forward cpcv almgren next-open; no live claims; "
-            "SYNTHETIC labeled; fail-closed; I cannot guarantee that; 391 data")
+    return (
+        "proper scores: crps pinball pit qlike kupiec vpin kyle "
+        "walk-forward cpcv almgren next-open; no live claims; "
+        "SYNTHETIC labeled; fail-closed; I cannot guarantee that; 391 data"
+    )
 
 
 def test_pipeline_stages_and_gates(tmp_path: Path):
