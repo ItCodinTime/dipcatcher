@@ -42,6 +42,7 @@ nn = ["torch>=2.4"]
 [project.scripts]
 quant = "quant_fund.cli.main:app"
 dipcatcher = "quant_fund.cli.main:app"
+fx1 = "fx1.cli:main"
 
 [dependency-groups]
 dev = [
@@ -60,7 +61,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/quant_fund"]
+packages = ["src/quant_fund", "src/fx1"]
 
 [tool.ruff]
 target-version = "py312"
@@ -83,6 +84,7 @@ strict = false
 # 2026-09-17: warn_return_any + warn_unused_ignores are enforced per-module via
 # the overrides below (11 numeric modules verified clean); extend module by
 # module as diagnostics are fixed. Do not loosen the ratcheted modules.
+# fx-1 (src/fx1) is held to the full gate: mypy src/fx1 clean.
 check_untyped_defs = true
 warn_return_any = false
 disallow_untyped_defs = false
