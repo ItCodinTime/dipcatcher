@@ -236,6 +236,12 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | 4-venue arb (HL+BIN+OKX+DYDX), ext grid | g17 enter=5e-4 lb=21 mx=30 | 9.03 / +33.7% / −0.8% | −0.81 / −242% / −232% (73 liq) | NOT PROVEN |
 | 3-venue arb, tilt grid (rexp/vlb/band/rsc) | plain champion wins dev | 11.02 / +32.1% / −0.5% | 3.19 / +6.6% / −0.9% | NOT PROVEN |
 | 3-venue arb, ML spread-entry (GBR next-day spread) | enter=1e-3 lb=9 on predicted spreads | 10.22 / +32.5% / −0.8% | 2.51 / +4.0% / −0.8% | NOT PROVEN |
+| 3-venue arb, z-momentum entry (|z|>ze on trailing z) | zl=120 ze=2.0 zx=−0.5 lb=9 | 6.23 / +10.7% / −0.3% | −0.83 / −257% / −252% (29 liq) | NOT PROVEN |
+| 3-venue arb, z-fade entry (fade the spike) | zl=20 ze=2.0 zx=0.5 lb=9 | −5.47 / −4.5% / −4.5% | −2.25 / −0.6% / −0.7% | NOT PROVEN |
+| 3-venue arb, hybrid gate (|z|≥ze AND spread) | zl=60 ze=1.5 enter=5e-4 | 7.50 / +19.0% / −0.4% | 1.20 / +1.6% / −0.7% | NOT PROVEN |
+| 2-venue arb 1h, epoch-snipe (hold ±{1,4}h of payment) | lead=1 wh=4 enter=1e-3 lb=1 | 0.96 / +0.1% / −0.1% | **3.33 / +1.4% / −0.3%** | NOT PROVEN (dev-weak) |
+| 3-venue arb, basis-divergence fade (−z of mark basis) | zl=60 ze=2.0 zx=0.0 lb=9 | −0.57 / −0.7% / −1.0% | −5.29 / −2.0% / −2.0% | NOT PROVEN |
+| 3-venue arb, leverage profile (nw×{1..5} on frozen champion) | post-hoc sizing, not a grid | — | 3.19@1x → 1.69@2x → 3.93@5x | NOT PROVEN (cash-wall polluted) |
 
 **Findings this round:**
 
@@ -301,11 +307,35 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
    champion: predicted spreads chase mean-reverting momentum. Best book
    stays the 3-venue h/b/o book at holdout 3.19/MDD−0.9%.
 
+9. **Adaptive-entry mechanisms all lose to the plain absolute spread.**
+   The z-score family shows spreads persist in dev but whipsaw in holdout:
+   z-momentum (ride |z|>ze) reaches dev 6.23 then ruins holdout
+   (−0.83/−252%, 29 liquidations); z-fade loses both ways (dev −5.47);
+   the hybrid gate (|z|≥ze AND |spread|>enter) survives but drops to 1.20 —
+   filtering to "newly unusual" names discards the steady high-spread names
+   that actually pay. Basis-divergence fade (−z of the mark basis) is dead
+   on dev (−0.57) — divergence wicks are adverse selection, not free
+   reversion alpha. Epoch-sniping on the 1h book (hold only ±{1,4}h around
+   funding payments) reproduces ~3.3 holdout Sharpe on its short window,
+   but its dev champion scored −0.97 (least-bad pick; funding is priced
+   into the basis, so buying pre-epoch buys the premium that evaporates).
+   Leverage cannot scale the book either: the hedge leg is cash-funded, so
+   past ~2x the sizing degenerates into partially-hedged directional beta —
+   the non-monotone nw×k profile (3.19→1.69→3.93) is cash-wall pollution,
+   not the same strategy levered. `scripts/arb_zscore_spread.py`,
+   `scripts/arb_basis_fade.py`, `scripts/arb_snipe_1h.py`,
+   `scripts/arb_lev_profile.py`; receipts
+   `evidence-arb_{zscore,zfade,zhybrid,basis_fade,snipe_1h,lev_profile}.json`.
+
 Remaining unexplored per the plan's own list: maker-fill variants, which
 require order-book data the venue APIs here do not provide. Every lane
 executable with the data on hand — outright carry (1d/1h, Binance+HL),
 cross-venue spread arb (2-, 3- and 4-venue, 1d/1h,
-base+extended+refined+tilt grids), per-sleeve blends, the C5 ML sleeve, and
-the ML spread-entry variant — has been run under the frozen-config protocol
-and honestly recorded (Bybit remains unfetched: geo-blocked). Best achieved
-holdout: 3.19 Sharpe / −0.9% MDD on the 3-venue arb book.
+base+extended+refined+tilt grids), per-sleeve blends, the C5 ML sleeve, the
+ML spread-entry variant, the z-score entry family (momentum/fade/hybrid),
+epoch-sniping, basis-divergence fading, and leverage scaling — has been run
+under the frozen-config protocol and honestly recorded (Bybit, Gate.io,
+Kraken-futures, HTX and BitMEX funding feeds are unreachable or dead from
+this environment). Best achieved holdout: 3.19 Sharpe / −0.9% MDD on the
+3-venue arb book; the 1h epoch-snipe variant posts 3.33 on its short window
+with a weak (−0.97) dev qualifier.
