@@ -511,6 +511,14 @@ def corpus_ingest_source(
     )
 
 
+@app.command("doctor")
+def doctor(root: Path = typer.Option(Path("."), help="Repo root to inspect.")) -> None:
+    """fx-1 readiness status (presence flags only — never secret values)."""
+    from fx1.doctor import collect_status
+
+    typer.echo(json.dumps(collect_status(root), indent=2))
+
+
 def main() -> None:
     app()
 
