@@ -87,7 +87,10 @@ strict = false
 # the overrides below (11 numeric modules verified clean); extend module by
 # module as diagnostics are fixed. Do not loosen the ratcheted modules.
 check_untyped_defs = true
-warn_return_any = false
+# Global default since 2026-09-25: untyped library results may not leak from
+# typed functions. The measured 66-module debt list below carries the
+# exemptions — shrink it as diagnostics are fixed, never grow it.
+warn_return_any = true
 disallow_untyped_defs = false
 packages = ["fx1", "quant_fund"]
 ignore_missing_imports = true
@@ -101,7 +104,8 @@ module = ["quant_fund.data.sources.adapters"]
 disable_error_code = ["override"]
 
 # Numeric-return ratchet: these modules must not leak untyped library results.
-# Other modules retain the existing policy until their diagnostics are resolved.
+# (Redundant for warn_return_any since the 2026-09-25 global default below;
+# kept because warn_unused_ignores is still enforced here only.)
 [[tool.mypy.overrides]]
 module = [
     "quant_fund.utils.numeric",
@@ -118,6 +122,84 @@ module = [
 ]
 warn_return_any = true
 warn_unused_ignores = true
+
+# 2026-09-25: warn_return_any is now the GLOBAL default (new code is strict
+# by default). The 66 modules below are the measured debt list — each is
+# exempted until its no-any-return diagnostics are fixed. Shrink the list;
+# never grow it.
+[[tool.mypy.overrides]]
+module = [
+    "quant_fund.backtest.fast_replay",
+    "quant_fund.data.adapters.stooq",
+    "quant_fund.data.sources.base",
+    "quant_fund.execution.impact",
+    "quant_fund.features.indicators",
+    "quant_fund.hedge_lab.runner",
+    "quant_fund.hedge_lab.v2_slate",
+    "quant_fund.labels.barriers",
+    "quant_fund.lightspeed.metalabel",
+    "quant_fund.metrics.distribution",
+    "quant_fund.metrics.entropic_risk",
+    "quant_fund.metrics.hac",
+    "quant_fund.metrics.regression",
+    "quant_fund.models.american_baw",
+    "quant_fund.models.archimedean_extra",
+    "quant_fund.models.asset_pricing",
+    "quant_fund.models.carr_madan",
+    "quant_fund.models.changepoint",
+    "quant_fund.models.copula",
+    "quant_fund.models.dcc",
+    "quant_fund.models.deep_rl",
+    "quant_fund.models.dfm",
+    "quant_fund.models.dynamic_panel",
+    "quant_fund.models.edgeworth",
+    "quant_fund.models.egarch",
+    "quant_fund.models.elliptical",
+    "quant_fund.models.ensemble",
+    "quant_fund.models.ets",
+    "quant_fund.models.filters",
+    "quant_fund.models.functional",
+    "quant_fund.models.gam",
+    "quant_fund.models.gaussian_copula_default",
+    "quant_fund.models.glasso",
+    "quant_fund.models.gmm_est",
+    "quant_fund.models.johnson_sb",
+    "quant_fund.models.johnson_su",
+    "quant_fund.models.kronos",
+    "quant_fund.models.leisen_reimer",
+    "quant_fund.models.mixture",
+    "quant_fund.models.nig_vg",
+    "quant_fund.models.nowcasting",
+    "quant_fund.models.ranking",
+    "quant_fund.models.realized_garch",
+    "quant_fund.models.regime_switch",
+    "quant_fund.models.rmt",
+    "quant_fund.models.robinhood_plus.transformer",
+    "quant_fund.models.robust_cov",
+    "quant_fund.models.sabr",
+    "quant_fund.models.skew_normal",
+    "quant_fund.models.skew_t",
+    "quant_fund.models.smoothers",
+    "quant_fund.models.sparse",
+    "quant_fund.models.spectral",
+    "quant_fund.models.tempered_stable",
+    "quant_fund.models.vasicek_credit",
+    "quant_fund.models.volatility",
+    "quant_fund.northset.benches",
+    "quant_fund.northset.estimators",
+    "quant_fund.pipeline.forecast",
+    "quant_fund.pipeline.kronos",
+    "quant_fund.portfolio.allocators",
+    "quant_fund.portfolio.resampled",
+    "quant_fund.quant_models.black_scholes",
+    "quant_fund.quant_models.greeks",
+    "quant_fund.quant_models.heston",
+    "quant_fund.quant_models.svi",
+    "quant_fund.registry.mlflow_store",
+    "quant_fund.research.agent",
+    "quant_fund.risk.pyriskmgmt",
+]
+warn_return_any = false
 
 [tool.pytest.ini_options]
 # Canonical discovery: the fx-1 suite runs via `make fx1-test` (tests/fx1 is
