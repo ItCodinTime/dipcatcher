@@ -233,6 +233,9 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
 | 3-venue arb, extended grid (enter→4e-3, lb→45) | g37 enter=1e-3 lb=9 mx=30 | 11.02 / +32.1% / −0.5% | **3.19 / +6.6% / −0.9%** | NOT PROVEN (best) |
 | 3-venue arb, refine pass around champion | enter=1e-3 lb=9 nw=0.08 (interior) | 11.02 / +32.1% / −0.5% | 3.19 / +6.6% / −0.9% | NOT PROVEN |
 | C5 ML carry (GBR next-funding), Binance 144c 1h | mn0.03_gs1.0 | 1.18 / +56.0% / −9.1% | −1.28 / −17.4% / −18.8% | NOT PROVEN |
+| 4-venue arb (HL+BIN+OKX+DYDX), ext grid | g17 enter=5e-4 lb=21 mx=30 | 9.03 / +33.7% / −0.8% | −0.81 / −242% / −232% (73 liq) | NOT PROVEN |
+| 3-venue arb, tilt grid (rexp/vlb/band/rsc) | plain champion wins dev | 11.02 / +32.1% / −0.5% | 3.19 / +6.6% / −0.9% | NOT PROVEN |
+| 3-venue arb, ML spread-entry (GBR next-day spread) | enter=1e-3 lb=9 on predicted spreads | 10.22 / +32.5% / −0.8% | 2.51 / +4.0% / −0.8% | NOT PROVEN |
 
 **Findings this round:**
 
@@ -282,10 +285,27 @@ cross-venue daily arb at 2.42.** Receipts: `.dsh-24x7/evidence-megaplan-1d.json`
    signal itself compresses to zero in 2026. `scripts/c5_ml_carry.py`,
    receipt `.dsh-24x7/evidence-c5-ml-1h.json`.
 
+8. **Venue breadth has a toxicity frontier, and ML entry doesn't beat the
+   trailing mean.** Adding dYdX v4 (78 markets, deep indexer history to Oct
+   2023) as a 4th venue injects toxic pair-sids: thin-venue divergence wicks
+   produce 73 liquidations and a −242%/−232%-MDD holdout cascade at daily
+   grain on the corrected shared-calendar book (an earlier unclipped run
+   masked the ruin behind a fetch-date-skewed eligibility cutoff — the
+   builder now clips venues to the common window end). Bybit's funding API
+   is geo-blocked from this environment entirely. The tilt grid
+   (rate_exponent/vol_lookback/band/rsc around the champion) adds nothing on
+   dev — the plain config wins. The ML spread-entry variant (dev-only GBR
+   predicting next-day spread; predictions fed as a synthetic funding frame
+   into the same hysteresis sizing — `scripts/arb_ml_spread.py`) reaches dev
+   10.22 but only 2.51 holdout — worse than the plain trailing-mean
+   champion: predicted spreads chase mean-reverting momentum. Best book
+   stays the 3-venue h/b/o book at holdout 3.19/MDD−0.9%.
+
 Remaining unexplored per the plan's own list: maker-fill variants, which
 require order-book data the venue APIs here do not provide. Every lane
 executable with the data on hand — outright carry (1d/1h, Binance+HL),
-cross-venue spread arb (2- and 3-venue, 1d/1h, base+extended+refined
-grids), per-sleeve blends, and the C5 ML sleeve — has been run under the
-frozen-config protocol and honestly recorded. Best achieved holdout:
-3.19 Sharpe / −0.9% MDD on the 3-venue arb book.
+cross-venue spread arb (2-, 3- and 4-venue, 1d/1h,
+base+extended+refined+tilt grids), per-sleeve blends, the C5 ML sleeve, and
+the ML spread-entry variant — has been run under the frozen-config protocol
+and honestly recorded (Bybit remains unfetched: geo-blocked). Best achieved
+holdout: 3.19 Sharpe / −0.9% MDD on the 3-venue arb book.
