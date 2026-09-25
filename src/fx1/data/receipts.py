@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -55,7 +56,9 @@ def _eligibility(payload: dict) -> tuple[bool, bool]:
     Anything else fails closed: not research-scoped, live claim assumed.
     """
     claim = payload.get("claim")
-    research_only = bool(payload.get("research_only", False)) or (claim == "research_only")
+    research_only = bool(payload.get("research_only", False)) or (
+        claim == "research_only"
+    )
     if "live_pnl_claim" in payload:
         live_pnl_claim = bool(payload["live_pnl_claim"])
     else:
@@ -63,32 +66,42 @@ def _eligibility(payload: dict) -> tuple[bool, bool]:
     return research_only, live_pnl_claim
 
 
-def load_receipts(receipts_dir: str | Path) -> list[ReceiptRecord]:
-    """Load every ``*.json`` receipt under *receipts_dir*.
+def load_receipts(
+    receipts_dir: str | Path | Iterable[str | Path],
+) -> list[ReceiptRecord]:
+    """Load every ``*.json`` receipt under one or more receipt directories.
 
     Unparseable files are skipped (they cannot be verified, so they cannot
     be training evidence). Eligibility filtering happens at corpus build.
     """
-    root = Path(receipts_dir)
+    if isinstance(receipts_dir, str | Path):
+        roots = [Path(receipts_dir)]
+    else:
+        roots = [Path(d) for d in receipts_dir]
     records: list[ReceiptRecord] = []
-    for path in sorted(root.rglob("*.json")):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(payload, dict):
-            continue
-        research_only, live_pnl_claim = _eligibility(payload)
-        records.append(
-            ReceiptRecord(
-                path=str(path),
-                sha256=_sha256(path),
-                schema_name=str(payload.get("schema", payload.get("schema_version", "unknown"))),
-                research_only=research_only,
-                live_pnl_claim=live_pnl_claim,
-                disclaimer=str(payload.get("disclaimer", "")),
-                evidence_class=("synthetic" if payload.get("synthetic") else "research"),
-                payload=payload,
+    for root in roots:
+        for path in sorted(root.rglob("*.json")):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            research_only, live_pnl_claim = _eligibility(payload)
+            records.append(
+                ReceiptRecord(
+                    path=str(path),
+                    sha256=_sha256(path),
+                    schema_name=str(
+                        payload.get("schema", payload.get("schema_version", "unknown"))
+                    ),
+                    research_only=research_only,
+                    live_pnl_claim=live_pnl_claim,
+                    disclaimer=str(payload.get("disclaimer", "")),
+                    evidence_class=(
+                        "synthetic" if payload.get("synthetic") else "research"
+                    ),
+                    payload=payload,
+                )
             )
-        )
     return records

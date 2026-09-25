@@ -41,11 +41,13 @@ fx1-test: ## fx-1 test suite
 fx1-lint: ## fx-1 lint
 	uv run ruff check src/fx1 tests/fx1
 
-fx1-corpus: ## Build fx-1 SFT corpus from harness receipts
-	uv run fx1 corpus build --receipts-dir receipts --out data/fx1/corpus.jsonl
+fx1-corpus: ## Build fx-1 SFT corpus from harness receipts + lab research runs
+	uv run fx1 corpus build --receipts-dir receipts \
+		--receipts-dir data/metadata/research/runs --out data/fx1/corpus.jsonl
 
-fx1-corpus-full: ## Full corpus: receipts + notebooks + ledgers
-	uv run fx1 corpus build-full --receipts-dir receipts --artifacts-dir artifacts \
+fx1-corpus-full: ## Full corpus: receipts + research runs + notebooks + ledgers
+	uv run fx1 corpus build-full --receipts-dir receipts \
+		--receipts-dir data/metadata/research/runs --artifacts-dir artifacts \
 		--notebooks docs/FX1.md --out data/fx1/corpus_full.jsonl
 
 fx1-eval: ## Run eval task bank (requires MOONSHOT_API_KEY for hosted_k3)

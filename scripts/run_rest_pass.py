@@ -1,4 +1,7 @@
-import glob, os, subprocess, time
+import glob
+import os
+import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 EV = r'D:\evalenv\Scripts\python.exe'
@@ -11,12 +14,12 @@ SHARDS = sorted(
     glob.glob(r'D:\dipcatcher\.dsh-24x7\eval-full\seed23_*.losses.npz')
 )
 TASKS = [(s, m) for s in SHARDS for m in ('dip_qar', 'dip_conf_t', 'dip_regime')]
-print('%d tasks over %d shards' % (len(TASKS), len(SHARDS)), flush=True)
+print(f'{len(TASKS)} tasks over {len(SHARDS)} shards', flush=True)
 
 def col(task):
     shard, model = task
     tag = model.replace('dip_', '')
-    out = shard.replace('.losses.npz', '.%scol.npz' % tag)
+    out = shard.replace('.losses.npz', f'.{tag}col.npz')
     if os.path.exists(out):
         return task, 'col-skip'
     r = subprocess.run([EV, 'scripts\\_challenger_col.py', '--shard', shard,
@@ -30,7 +33,7 @@ with ThreadPoolExecutor(max_workers=3) as ex:
     for (shard, model), st in ex.map(col, TASKS):
         if 'FAIL' in st:
             fails += 1
-            print('[%6.0fs] %s %s: %s' % (time.time()-t0, os.path.basename(shard), model, st), flush=True)
+            print(f'[{time.time()-t0:6.0f}s] {os.path.basename(shard)} {model}: {st}', flush=True)
         else:
-            print('[%6.0fs] %s %s: %s' % (time.time()-t0, os.path.basename(shard), model, st), flush=True)
-print('DONE fails=%d' % fails, flush=True)
+            print(f'[{time.time()-t0:6.0f}s] {os.path.basename(shard)} {model}: {st}', flush=True)
+print(f'DONE fails={fails}', flush=True)

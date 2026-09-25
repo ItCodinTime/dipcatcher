@@ -9,6 +9,7 @@ verifiable research behavior. Gate-rejected / live-claiming receipts become
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -78,7 +79,8 @@ def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
         reasons.append("it is not marked research_only")
     reason = " and ".join(reasons) or "it fails eligibility"
     user = (
-        f"Can we use this receipt (schema {record.schema_name}) as evidence of trading performance?"
+        f"Can we use this receipt (schema {record.schema_name}) as evidence of trading "
+        "performance?"
     )
     assistant = (
         f"No. This receipt is ineligible as fx-1 evidence because {reason}. "
@@ -99,13 +101,15 @@ def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
 
 
 def build_corpus(
-    receipts_dir: str | Path,
+    receipts_dir: str | Path | Iterable[str | Path],
     out_jsonl: str | Path,
 ) -> dict[str, int]:
     """Build the SFT corpus and write it as JSONL.
 
-    Returns counts for auditing. Every emitted line is an :class:`SFTExample`
-    with a ``receipt_sha256`` provenance field.
+    Accepts one receipts directory or several (the lab's flywheel spans
+    ``receipts/`` and ``data/metadata/research/runs/``). Returns counts for
+    auditing. Every emitted line is an :class:`SFTExample` with a
+    ``receipt_sha256`` provenance field.
     """
     system = _system_prompt()
     records = load_receipts(receipts_dir)
@@ -128,7 +132,7 @@ def build_corpus(
 
 
 def build_full_corpus(
-    receipts_dir: str | Path,
+    receipts_dir: str | Path | Iterable[str | Path],
     out_jsonl: str | Path,
     *,
     notebooks: list[str | Path] | None = None,

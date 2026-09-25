@@ -1,4 +1,7 @@
-import glob, os, subprocess, sys, time
+import glob
+import os
+import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 EV = r'D:\evalenv\Scripts\python.exe'

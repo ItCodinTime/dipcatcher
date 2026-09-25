@@ -19,7 +19,8 @@ from fx1.train import TrainConfig, build_training_manifest
 
 app = typer.Typer(
     name="fx1",
-    help="fx-1 — the quant LLM. dipcatcher is the harness that builds, evaluates, and verifies it.",
+    help="fx-1 — the quant LLM. dipcatcher is the harness that builds, "
+    "evaluates, and verifies it.",
     add_completion=False,
 )
 corpus_app = typer.Typer(help="Training-corpus construction.")
@@ -34,17 +35,20 @@ app.add_typer(sources_app, name="sources")
 
 @corpus_app.command("build")
 def corpus_build(
-    receipts_dir: Path = typer.Option(Path("receipts"), help="Receipt directory."),
+    receipts_dir: list[Path] = typer.Option(
+        [Path("receipts")],
+        help="Receipt directory (repeatable — the flywheel spans several).",
+    ),
     out: Path = typer.Option(Path("data/fx1/corpus.jsonl"), help="Output JSONL."),
 ) -> None:
     """Build the fx-1 SFT corpus from gate-passed dipcatcher receipts."""
-    stats = build_corpus(receipts_dir, out)
+    stats = build_corpus(list(receipts_dir), out)
     typer.echo(json.dumps(stats, indent=2))
 
 
 @corpus_app.command("build-full")
 def corpus_build_full(
-    receipts_dir: Path = typer.Option(Path("receipts")),
+    receipts_dir: list[Path] = typer.Option([Path("receipts")]),
     out: Path = typer.Option(Path("data/fx1/corpus.jsonl")),
     notebooks: list[Path] = typer.Option([], help="Research notebooks/docs to include."),
     artifacts_dir: Path | None = typer.Option(None, help="Ledger artifacts dir."),
@@ -53,7 +57,7 @@ def corpus_build_full(
     from fx1.data import build_full_corpus
 
     stats = build_full_corpus(
-        receipts_dir, out, notebooks=list(notebooks), artifacts_dir=artifacts_dir
+        list(receipts_dir), out, notebooks=list(notebooks), artifacts_dir=artifacts_dir
     )
     typer.echo(json.dumps(stats, indent=2))
 
@@ -72,9 +76,7 @@ def train_manifest(
 
 @harness_app.command("list")
 def harness_list(
-    role: str | None = typer.Option(
-        None, help="Filter: data_engine | evaluation | verification | model_training"
-    ),
+    role: str | None = typer.Option(None, help="Filter: data_engine | evaluation | verification | model_training"),
 ) -> None:
     """List the lab commands fx-1 may invoke through the harness."""
     from fx1.harness import HarnessRole
@@ -113,12 +115,9 @@ def eval_bank(
     summary = run_suite(model.complete, list(DEFAULT_BANK))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    typer.echo(
-        json.dumps(
-            {"by_kind": summary["by_kind"], "honesty_gate_passed": summary["honesty_gate_passed"]},
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({"by_kind": summary["by_kind"],
+                           "honesty_gate_passed": summary["honesty_gate_passed"]},
+                          indent=2))
 
 
 @app.command("modelcard")
@@ -127,11 +126,9 @@ def modelcard_validate(path: Path = typer.Argument(...)) -> None:
     from fx1.modelcard import ModelCard
 
     card = ModelCard.load(path)
-    typer.echo(
-        json.dumps(
-            {"version": card.version, "ship_eligible": card.eval_delta.ship_eligible}, indent=2
-        )
-    )
+    typer.echo(json.dumps({"version": card.version,
+                           "ship_eligible": card.eval_delta.ship_eligible},
+                          indent=2))
 
 
 @app.command("redteam")
@@ -150,11 +147,8 @@ def redteam(
         model = get_backend("hosted_k3")
     summary = run_suite(model.complete, list(REDTEAM_TASKS))
     failed = [r["task"] for r in summary.results if not r["passed"]]
-    typer.echo(
-        json.dumps(
-            {"honesty_gate_passed": summary["honesty_gate_passed"], "results": failed}, indent=2
-        )
-    )
+    typer.echo(json.dumps({"honesty_gate_passed": summary["honesty_gate_passed"],
+                           "results": failed}, indent=2))
     raise typer.Exit(code=0 if summary["honesty_gate_passed"] else 1)
 
 
@@ -190,16 +184,11 @@ def masked_eval(
     from fx1.eval import DEFAULT_BANK, masked_twins
 
     twins = masked_twins(list(DEFAULT_BANK))
-    typer.echo(
-        json.dumps(
-            {
-                "twin_tasks": len(twins),
-                "memory_gap_budget": budget,
-                "note": "inject a backend via fx1.eval.run_suite for live scoring",
-            },
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({
+        "twin_tasks": len(twins),
+        "memory_gap_budget": budget,
+        "note": "inject a backend via fx1.eval.run_suite for live scoring",
+    }, indent=2))
 
 
 @app.command("contamination-audit")
@@ -215,21 +204,18 @@ def contamination_audit(
         for line in corpus.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 record = json.loads(line)
-                texts.append(" ".join(m.get("content", "") for m in record.get("messages", [])))
-    prompts = [m["content"] for t in DEFAULT_BANK for m in t.messages if m["role"] == "user"]
+                texts.append(" ".join(
+                    m.get("content", "") for m in record.get("messages", [])
+                ))
+    prompts = [m["content"] for t in DEFAULT_BANK for m in t.messages
+               if m["role"] == "user"]
     report = run_contamination_audit(texts, prompts)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report.model_dump_json(indent=2), encoding="utf-8")
-    typer.echo(
-        json.dumps(
-            {
-                "overall_flagged": report.overall_flagged,
-                "ngram_hits": len(report.ngram_hits),
-                "probes": [p.method for p in report.probes],
-            },
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({"overall_flagged": report.overall_flagged,
+                           "ngram_hits": len(report.ngram_hits),
+                           "probes": [p.method for p in report.probes]},
+                          indent=2))
     raise typer.Exit(code=1 if report.overall_flagged else 0)
 
 
@@ -265,12 +251,9 @@ def sbom_generate(
     sbom = generate_sbom(lockfile)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(sbom.model_dump_json(indent=2), encoding="utf-8")
-    typer.echo(
-        json.dumps(
-            {"entries": len(sbom.entries), "lockfile_sha256": sbom.lockfile_sha256[:16] + "…"},
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({"entries": len(sbom.entries),
+                           "lockfile_sha256": sbom.lockfile_sha256[:16] + "…"},
+                          indent=2))
 
 
 @app.command("mrm")
@@ -287,17 +270,11 @@ def mrm_dossier(
         artifacts={"validation": validation_artifact},
         out_path=out,
     )
-    typer.echo(
-        json.dumps(
-            {
-                "version": dossier.model_version,
-                "complete": dossier.complete,
-                "ship_eligible": dossier.ship_eligible,
-                "contamination_flagged": dossier.contamination_flagged,
-            },
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({"version": dossier.model_version,
+                           "complete": dossier.complete,
+                           "ship_eligible": dossier.ship_eligible,
+                           "contamination_flagged": dossier.contamination_flagged},
+                          indent=2))
 
 
 @app.command("dipbench")
@@ -313,16 +290,16 @@ def dipbench_demo() -> None:
 
     closes = [100.0, 102.0, 88.0, 90.0, 103.0, 104.0, 92.0, 95.0, 106.0]
     dates = [f"2026-01-{i + 1:02d}" for i in range(len(closes))]
-    events = detect_dip_events(closes, dates, "SYNTHETIC", threshold=0.10, horizons_bars={"1m": 3})
+    events = detect_dip_events(closes, dates, "SYNTHETIC", threshold=0.10,
+                               horizons_bars={"1m": 3})
     baseline = unconditional_baseline(events)
-    forecasts = [DipForecast(e.asset, e.trough_date, {"1m": 0.8}) for e in events]
+    forecasts = [
+        DipForecast(e.asset, e.trough_date, {"1m": 0.8}) for e in events
+    ]
     metrics = evaluate_forecasts(events, forecasts)
-    typer.echo(
-        json.dumps(
-            {"label": "SYNTHETIC", "events": len(events), "baseline": baseline, "metrics": metrics},
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({"label": "SYNTHETIC", "events": len(events),
+                           "baseline": baseline, "metrics": metrics},
+                          indent=2))
 
 
 @sources_app.command("list")
@@ -351,7 +328,9 @@ def sources_probe(
     specs = [get_spec(name)] if name else list_sources()
     report = {
         "roots": roots_status(),
-        "probes": [build_adapter(spec).probe().model_dump() for spec in specs],
+        "probes": [
+            build_adapter(spec).probe().model_dump() for spec in specs
+        ],
     }
     typer.echo(json.dumps(report, indent=2))
 
@@ -394,11 +373,8 @@ def sources_fetch(
         typer.echo(result.text)
         typer.echo(
             json.dumps(
-                {
-                    "payload_sha256": result.payload_sha256,
-                    "fetched_at": result.fetched_at,
-                    "elapsed_ms": result.elapsed_ms,
-                },
+                {"payload_sha256": result.payload_sha256,
+                 "fetched_at": result.fetched_at, "elapsed_ms": result.elapsed_ms},
                 indent=2,
             ),
             err=True,
@@ -468,18 +444,13 @@ def corpus_ingest_source(
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("a", encoding="utf-8") as fh:
         fh.write(decision.example.model_dump_json() + "\n")
-    typer.echo(
-        json.dumps(
-            {
-                "accepted": True,
-                "negative": decision.negative,
-                "reason": decision.reason,
-                "payload_sha256": decision.payload_sha256,
-                "ledger": ledger.audit_export(),
-            },
-            indent=2,
-        )
-    )
+    typer.echo(json.dumps({
+        "accepted": True,
+        "negative": decision.negative,
+        "reason": decision.reason,
+        "payload_sha256": decision.payload_sha256,
+        "ledger": ledger.audit_export(),
+    }, indent=2))
 
 
 def main() -> None:

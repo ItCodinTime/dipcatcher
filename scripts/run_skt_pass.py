@@ -1,10 +1,13 @@
-import glob, os, subprocess, time
+import glob
+import os
+import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 EV = r'D:\evalenv\Scripts\python.exe'
 CWD = r'D:\dipcatcher'
 SHARDS = sorted(glob.glob(r'D:\dipcatcher\.dsh-24x7\eval-full\*.withgmm.npz'))
-print('%d withgmm shards' % len(SHARDS), flush=True)
+print(f'{len(SHARDS)} withgmm shards', flush=True)
 
 def col(shard):
     out = shard.replace('.withgmm.npz', '.withgmm.sktcol.npz')
@@ -25,8 +28,8 @@ def splice(shard):
 t0 = time.time()
 with ThreadPoolExecutor(max_workers=4) as ex:
     for shard, st in ex.map(col, SHARDS):
-        print('[%6.0fs] %s: %s' % (time.time()-t0, os.path.basename(shard), st), flush=True)
+        print(f'[{time.time()-t0:6.0f}s] {os.path.basename(shard)}: {st}', flush=True)
 with ThreadPoolExecutor(max_workers=8) as ex:
     for shard, st in ex.map(splice, SHARDS):
-        print('[%6.0fs] %s: %s' % (time.time()-t0, os.path.basename(shard), st), flush=True)
+        print(f'[{time.time()-t0:6.0f}s] {os.path.basename(shard)}: {st}', flush=True)
 print('DONE', flush=True)
