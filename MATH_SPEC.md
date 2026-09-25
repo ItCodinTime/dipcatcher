@@ -310,6 +310,17 @@
   Stephens small-sample correction on sqrt(ne) D, ne=n_x n_y/(n_x+n_y); energy
   distance E=2 mean|x_i-y_j| - mean|x_i-x_j| - mean|y_i-y_j|; permutation
   p-values (count of shuffled statistics >= observed, +1 smoothing).
+## Wave 16 mathematical conventions
+
+- `american_baw.py`: b=r-q; q2/q1 = (-(N-1) +/- sqrt((N-1)^2+4M/Kc))/2,
+  M=2r/sigma^2, N=2b/sigma^2, Kc=1-e^{-rT}; critical price by root finding;
+  C_A = C_E + A2 (S/S*)^{q2} for S<S*, else S-K (puts analogous with q1).
+- `johnson_sb.py`: SB z=gamma+delta log(u/(1-u)), u=(x-xi)/lambda on (xi,xi+lam);
+  SL z=gamma+delta log(x-xi); fit fixes support then regresses Phi^{-1}(rank)
+  on the transform (slope=delta, intercept=gamma).
+- `carr_madan.py`: psi(v)=e^{-rT} phi(v-(alpha+1)i)/(alpha^2+alpha-v^2+
+  i(2alpha+1)v); C(k)=e^{-alpha k}/pi Re int e^{-ivk} psi dv via FFT with
+  log-strike spacing lambda=2pi/(N eta) and Simpson weights.
 ## Wave 19 mathematical conventions
 
 - `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
