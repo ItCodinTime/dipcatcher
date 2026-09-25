@@ -47,7 +47,11 @@ _prices = st.lists(
 @given(closes=_prices)
 @settings(max_examples=50)
 def test_dip_events_are_causal_and_bounded(closes: list[float]):
-    dates = [f"2026-01-{i % 28 + 1:02d}" for i in range(len(closes))]
+    # Unique, monotonically increasing dates: date strings repeat under
+    # `i % 28`, which makes dates.index() ambiguous for len(closes) > 28.
+    dates = [
+        f"2026-{i // 28 + 1:02d}-{i % 28 + 1:02d}" for i in range(len(closes))
+    ]
     events = detect_dip_events(closes, dates, "T", threshold=0.10,
                                horizons_bars={"1m": 5})
     for event in events:

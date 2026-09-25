@@ -50,6 +50,29 @@ EXPECTED_SOURCES = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _stub_plugin_scripts(tmp_path, monkeypatch):
+    """Host-independent scripts + credential names for grammar tests.
+
+    The real plugin CLIs live under DEFAULT_PLUGIN_ROOT on the author's
+    host; these tests exercise argv grammar and routing with injected
+    runners, so materialize each spec's first script candidate and dummy
+    credential *names* so the fail-closed preflight passes. Tests that set
+    their own FX1_PLUGIN_ROOTS or delete credentials still override this.
+    """
+    root = tmp_path / "plugins"
+    for spec in list_sources():
+        if spec.kind is SourceKind.MCP or not spec.script_candidates:
+            continue
+        script = root / spec.script_candidates[0]
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text("# test stub\n", encoding="utf-8")
+    monkeypatch.setenv("FX1_PLUGIN_ROOTS", str(root))
+    for name in ("KIMI_API_KEY", "AGENT_GW_TOKEN", "DATASOURCE_BASE_URL",
+                 "DATASOURCE_API_KEY"):
+        monkeypatch.setenv(name, "test-dummy")
+
+
 def _ok_runner(text: str = "payload"):
     def runner(argv, *, timeout_s, extra_env=None):
         return RunOutcome(returncode=0, stdout=text, stderr="")
