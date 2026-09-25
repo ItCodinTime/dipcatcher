@@ -304,9 +304,35 @@ def mrm_dossier(
 
 
 @app.command("dipbench")
-def dipbench_demo() -> None:
-    """Smoke the Dip Quality Score bench on a built-in synthetic series
-    (SYNTHETIC — correctness only, not market evidence)."""
+def dipbench_demo(
+    data_dir: Path | None = typer.Option(
+        None, help="Directory of *_1d.parquet series for a real-data run."
+    ),
+    out: Path | None = typer.Option(None, help="Receipt JSON path (real-data run)."),
+    threshold: float = typer.Option(0.10, help="Drawdown depth that defines a dip."),
+) -> None:
+    """Dip Quality Score bench. Without --data-dir: smoke the bench on a
+    built-in synthetic series (SYNTHETIC — correctness only, not market
+    evidence). With --data-dir: full receipt over real historical bars."""
+    if data_dir is not None:
+        from fx1.bench.run import run_dip_bench
+
+        receipt = run_dip_bench(data_dir, threshold=threshold)
+        if out is not None:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(receipt, indent=2, sort_keys=True), encoding="utf-8")
+        typer.echo(
+            json.dumps(
+                {
+                    "label": "research/backtest evidence, not live performance",
+                    "events": receipt["n_events"],
+                    "baseline_recovery": receipt["baseline_recovery"],
+                    "receipt": str(out) if out else None,
+                },
+                indent=2,
+            )
+        )
+        return
     from fx1.bench.dip import (
         DipForecast,
         detect_dip_events,
