@@ -77,9 +77,10 @@ jobs:
         run: uv sync --frozen --all-groups --no-install-project
       - name: Build wheel and source distribution
         run: uv build
-      - name: Install wheel and smoke-test the installed console script
+      - name: Install wheel and smoke-test the installed console scripts
         run: |
           uv pip install --python .venv/bin/python --no-deps dist/*.whl
+          .venv/bin/fx1 --help
           .venv/bin/dipcatcher --help
 
   container:
