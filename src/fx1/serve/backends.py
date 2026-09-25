@@ -54,7 +54,7 @@ class HostedK3Backend:
             },
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310 — pinned Moonshot API URL  # nosec B310
             payload = json.loads(response.read().decode())
         return str(payload["choices"][0]["message"]["content"])
 
