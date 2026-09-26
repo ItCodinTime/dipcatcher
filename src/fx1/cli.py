@@ -22,6 +22,25 @@ app = typer.Typer(
     help="fx-1 — the quant LLM. dipcatcher is the harness that builds, evaluates, and verifies it.",
     add_completion=False,
 )
+
+
+@app.callback(invoke_without_command=True)
+def _main(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", help="Show the fx-1 package version and exit.", is_eager=True
+    ),
+) -> None:
+    if version:
+        from fx1 import __version__
+
+        typer.echo(f"fx1 {__version__}")
+        raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
+
 corpus_app = typer.Typer(help="Training-corpus construction.")
 train_app = typer.Typer(help="Training-run manifests (LoRA/QLoRA on K3).")
 harness_app = typer.Typer(help="Inspect/run the dipcatcher harness.")

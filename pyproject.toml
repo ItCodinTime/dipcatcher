@@ -39,6 +39,10 @@ dependencies = [
 [project.optional-dependencies]
 nn = ["torch>=2.4"]
 
+[project.urls]
+Repository = "https://github.com/artificial-hedge/dipcatcher"
+Issues = "https://github.com/artificial-hedge/dipcatcher/issues"
+
 [project.scripts]
 fx1 = "fx1.cli:app"
 # Harness aliases: dipcatcher remains the lab/harness CLI used to build,

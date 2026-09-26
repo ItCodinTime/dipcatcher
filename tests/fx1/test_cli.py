@@ -10,6 +10,14 @@ from fx1.cli import app
 runner = CliRunner()
 
 
+def test_version_flag_reports_package_version():
+    import fx1
+
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert result.stdout.strip() == f"fx1 {fx1.__version__}"
+
+
 def _receipt(path: Path) -> None:
     path.write_text(
         json.dumps(
