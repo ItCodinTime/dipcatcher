@@ -29,6 +29,21 @@ identity unless a separate corporate-action file is supplied. Universe
 membership is a liquidity filter on this tape, not an index reconstitution.
 This tape can be scored scientifically. It cannot mint a live P&L claim.
 
+### Hugging Face minute bars (`hf_ohlcv_1m`)
+
+`quant_fund.data.adapters.hf_ohlcv_1m` reads
+[mito0o852/OHLCV-1m](https://huggingface.co/datasets/mito0o852/OHLCV-1m)
+monthly Parquet into the same bronze columns. Vendor `timestamp` is the UTC
+minute **open**; `event_time` / `available_time` are that instant plus one
+minute (close convention, not a SIP vintage). The dataset publishes no
+corporate-action table and does not declare whether prints are split-adjusted,
+so `revision_id=HF_OHLCV_1M_UNDECLARED_ADJ` and corporate actions stay empty.
+Identity silver factors do not mean splits were removed. Bad prints (duplicate
+keys, `high < low`, non-positive prices, unaligned timestamps) raise
+`OhlcvQualityError` and are not rewritten. Missing regular-session minutes are
+reported by `minute_gap_report` and are not forward-filled. See
+[`HF_OHLCV_1M.md`](HF_OHLCV_1M.md).
+
 ## Bars (bronze)
 
 Columns: `security_id`, `symbol`, `event_time`, `available_time`, `ingested_time`, `source`, `revision_id`, `open`, `high`, `low`, `close`, `volume`, `currency`, `session`.

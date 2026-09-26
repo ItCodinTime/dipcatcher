@@ -56,6 +56,8 @@ def test_public_source_names_are_configurable_without_optional_imports():
     assert get_source("binance_perp").name == "binance_usdtm_perp"
     assert get_source("binance_funding").name == "binance_funding_rate"
     assert get_source("perp_universe").name == "binance_perp_universe"
+    assert get_source("ohlcv-1m").name == "hf_ohlcv_1m"
+    assert DataConfig.model_validate({"source": "hf_ohlcv_1m"}).source == "hf_ohlcv_1m"
     for name in ("binance_usdtm_perp", "binance_funding_rate", "binance_perp_universe"):
         assert DataConfig.model_validate({"source": name}).source == name
 

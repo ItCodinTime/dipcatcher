@@ -91,6 +91,8 @@ explicitly (network access is opt-in, never part of normal ingest):
 ```
 uv run dipcatcher collect --source binance --param symbol=BTCUSDT --param interval=1d
 uv run dipcatcher collect --source fred --param series_id=GDP
+uv run dipcatcher collect --source hf_ohlcv_1m --param symbols=AAPL \
+    --param start=2024-01-02 --param end=2024-01-05 --param interval=5m
 ```
 
 ## Tests
@@ -126,6 +128,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
 | `docs/NORTHSET.md` | Order-book and candlestick slice |
 | `docs/FX1_DATASOURCES.md` | 18 professional datasources (Wind/iFinD/Gildata/S&P/EDGAR/Yahoo/东财/CLS/财新/Binance/IMF/WB/IGO/XHCJ/research/天眼查/finance-fetch/Finenter): routing, honesty gates, PIT discipline |
+| `docs/HF_OHLCV_1M.md` | Hugging Face US 1-minute OHLCV: license, schema map, quality caveats |
 
 *fx-1 and the dipcatcher harness produce research, backtest, or simulated
 evidence only. Nothing here is investment advice or a promise of live profit.*

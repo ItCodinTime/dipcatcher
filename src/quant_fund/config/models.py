@@ -460,6 +460,7 @@ class DataConfig(StrictConfigModel):
             "world_bank",
             "bea",
             "openbb",
+            "hf_ohlcv_1m",
         }
         if normalized not in supported:
             raise ValueError(
