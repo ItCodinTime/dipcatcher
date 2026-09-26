@@ -7,7 +7,7 @@ Install the locked environment, confirm the lab is research-only, and verify a r
 - Python 3.12 or newer (`requires-python` is `>=3.12`)
 - [uv](https://docs.astral.sh/uv/)
 
-`MOONSHOT_API_KEY` is used only by hosted fx-1 eval (`make fx1-eval`). The harness commands below run without it.
+`MOONSHOT_API_KEY` is used only by `make fx1-eval`, which grades Moonshot's hosted Kimi K3 base. The harness commands below run without it.
 
 ## Install
 
