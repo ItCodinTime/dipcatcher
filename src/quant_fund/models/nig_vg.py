@@ -37,7 +37,10 @@ def nig_pdf(x: Array, alpha: float, beta: float, delta: float, mu: float = 0.0) 
     g = np.sqrt(alpha**2 - beta**2)
     c = np.asarray(x, dtype=float) - mu
     rad = np.sqrt(delta**2 + c**2)
-    return alpha * delta / np.pi * np.exp(delta * g + beta * c) * kv(1, alpha * rad) / rad
+    return np.asarray(
+        alpha * delta / np.pi * np.exp(delta * g + beta * c) * kv(1, alpha * rad) / rad,
+        dtype=float,
+    )
 
 
 def nig_fit_moments(x: Array) -> dict[str, float]:
@@ -97,7 +100,10 @@ def vg_pdf(x: Array, sigma: float, nu: float, theta: float = 0.0, mu: float = 0.
         * np.exp(theta * c / sigma**2)
         / (nu ** (1.0 / nu) * np.sqrt(2.0 * np.pi) * sigma * gamma_fn(1.0 / nu))
     )
-    return coef * (np.abs(c) / m_par) ** order * kv(order, np.abs(c) * m_par / sigma**2)
+    return np.asarray(
+        coef * (np.abs(c) / m_par) ** order * kv(order, np.abs(c) * m_par / sigma**2),
+        dtype=float,
+    )
 
 
 def vg_fit_moments(x: Array) -> dict[str, float]:

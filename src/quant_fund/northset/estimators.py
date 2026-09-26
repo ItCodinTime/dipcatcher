@@ -70,7 +70,7 @@ def _qlike_elements(realized: Array, forecast: Array, floor: float = _FLOOR) -> 
     if y.size != yhat.size:
         raise ValueError("realized and forecast must align")
     ratio = y / yhat
-    return ratio - np.log(ratio) - 1.0
+    return np.asarray(ratio - np.log(ratio) - 1.0, dtype=float)
 
 
 def ohlc_variance_frame(bars: pl.DataFrame) -> pl.DataFrame:

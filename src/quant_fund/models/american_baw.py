@@ -24,7 +24,7 @@ from scipy.stats import norm
 
 
 def _d1(s: float, k: float, t: float, b: float, sigma: float) -> float:
-    return (np.log(s / k) + (b + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
+    return float((np.log(s / k) + (b + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t)))
 
 
 def _bs(s: float, k: float, t: float, r: float, b: float, sigma: float, call: bool) -> float:
@@ -64,7 +64,7 @@ def baw_american(
 
         def g(sc: float) -> float:
             prem = (1.0 - disc * norm.cdf(_d1(sc, k, t, b, sigma))) * sc / q2
-            return sc - k - _bs(sc, k, t, r, b, sigma, True) - prem
+            return float(sc - k - _bs(sc, k, t, r, b, sigma, True) - prem)
 
         s_star = float(brentq(g, k * 1.0001, k * 50.0, xtol=1e-8))
         a2 = (s_star / q2) * (1.0 - disc * norm.cdf(_d1(s_star, k, t, b, sigma)))
@@ -75,7 +75,7 @@ def baw_american(
 
     def h(sc: float) -> float:
         prem = (1.0 - disc * norm.cdf(-_d1(sc, k, t, b, sigma))) * sc / q1
-        return k - sc - _bs(sc, k, t, r, b, sigma, False) + prem
+        return float(k - sc - _bs(sc, k, t, r, b, sigma, False) + prem)
 
     s_star = float(brentq(h, k * 1e-4, k * 0.9999, xtol=1e-8))
     a1 = -(s_star / q1) * (1.0 - disc * norm.cdf(-_d1(s_star, k, t, b, sigma)))

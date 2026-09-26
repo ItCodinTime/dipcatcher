@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -142,7 +142,7 @@ class ResearchNotebook:
     artifacts: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return _jsonable(asdict(self))
+        return cast(dict[str, Any], _jsonable(asdict(self)))
 
 
 def format_p_value(value: float) -> str:

@@ -61,7 +61,7 @@ def entropic_value_at_risk(losses: Array, alpha: float = 0.95) -> dict[str, floa
 
     def obj(log_z: float) -> float:
         z = float(np.exp(log_z))
-        return (_log_mgf(arr, z) - np.log(tail)) / z
+        return (_log_mgf(arr, z) - float(np.log(tail))) / z
 
     res = minimize_scalar(obj, bounds=(-12.0, 12.0), method="bounded")
     z_star = float(np.exp(res.x))

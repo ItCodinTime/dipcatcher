@@ -19,14 +19,16 @@ def d1(
 ) -> Array:
     S, K, T, r, q, sigma = (np.asarray(z, dtype=float) for z in (S, K, T, r, q, sigma))
     vol_sqrt = sigma * np.sqrt(T)
-    return (np.log(S / K) + (r - q + 0.5 * sigma**2) * T) / vol_sqrt
+    return np.asarray((np.log(S / K) + (r - q + 0.5 * sigma**2) * T) / vol_sqrt, dtype=float)
 
 
 def d2(
     S: ArrayLike, K: ArrayLike, T: ArrayLike, r: ArrayLike, q: ArrayLike, sigma: ArrayLike
 ) -> Array:
-    return d1(S, K, T, r, q, sigma) - np.asarray(sigma, dtype=float) * np.sqrt(
-        np.asarray(T, dtype=float)
+    return np.asarray(
+        d1(S, K, T, r, q, sigma)
+        - np.asarray(sigma, dtype=float) * np.sqrt(np.asarray(T, dtype=float)),
+        dtype=float,
     )
 
 
@@ -118,4 +120,4 @@ def put_call_parity_gap(
 ) -> Array:
     """``C - P - (S e^{-qT} - K e^{-rT})``. Zero (up to fp) under BSM."""
     call, put, S, K, T, r, q = (np.asarray(z, dtype=float) for z in (call, put, S, K, T, r, q))
-    return call - put - (S * np.exp(-q * T) - K * np.exp(-r * T))
+    return np.asarray(call - put - (S * np.exp(-q * T) - K * np.exp(-r * T)), dtype=float)

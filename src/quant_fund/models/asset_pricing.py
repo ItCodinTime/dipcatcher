@@ -348,7 +348,7 @@ class RandomFourierRanker(JoblibMixin):
         xs = self.scaler_x.transform(x)
         signals = random_fourier_features(xs, self.omega, self.bandwidth)
         s_std = self.scaler_s.transform(signals)
-        return self.y_mean + s_std @ self.beta
+        return np.asarray(self.y_mean + s_std @ self.beta, dtype=float)
 
     def metadata(self) -> ModelMeta:
         extra: dict[str, Any] = {

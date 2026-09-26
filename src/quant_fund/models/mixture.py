@@ -40,7 +40,7 @@ def _log_norm_pdf(x: Array, mu: Array, cov: Array) -> Array:
         raise ValueError("covariance not positive definite")
     diff = x - mu
     quad = np.einsum("ij,jk,ik->i", diff, np.linalg.pinv(cov), diff)
-    return -0.5 * (d * math.log(2 * math.pi) + logdet + quad)
+    return np.asarray(-0.5 * (d * math.log(2 * math.pi) + logdet + quad), dtype=float)
 
 
 def _log_t_pdf(x: Array, mu: Array, cov: Array, nu: float) -> Array:
@@ -50,11 +50,12 @@ def _log_t_pdf(x: Array, mu: Array, cov: Array, nu: float) -> Array:
         raise ValueError("covariance not positive definite")
     diff = x - mu
     quad = np.einsum("ij,jk,ik->i", diff, np.linalg.pinv(cov), diff)
-    return (
+    return np.asarray(
         gammaln((nu + d) / 2.0)
         - gammaln(nu / 2.0)
         - 0.5 * (d * math.log(nu * math.pi) + logdet)
-        - 0.5 * (nu + d) * np.log1p(quad / nu)
+        - 0.5 * (nu + d) * np.log1p(quad / nu),
+        dtype=float,
     )
 
 
@@ -174,10 +175,12 @@ def fit_t_mixture(
             nk, lu, ub = float(n_k[j]), log_u_bar, u_bar
 
             def nu_obj(nu: float, nk: float = nk, lu: float = lu, ub: float = ub) -> float:
-                return -(
-                    -nk * gammaln(nu / 2.0)
-                    + nk * (nu / 2.0) * math.log(nu / 2.0)
-                    + (nu / 2.0) * nk * (lu - ub)
+                return float(
+                    -(
+                        -nk * gammaln(nu / 2.0)
+                        + nk * (nu / 2.0) * math.log(nu / 2.0)
+                        + (nu / 2.0) * nk * (lu - ub)
+                    )
                 )
 
             res = opt.minimize_scalar(nu_obj, bounds=(3.0, 300.0), method="bounded")
@@ -209,7 +212,7 @@ def mixture_bic(fit: dict[str, Array], n: int, diag: bool = False) -> float:
     if "nus" in fit:
         p += k
     ll = float(fit["loglik"][-1])
-    return -2.0 * ll + p * math.log(n)
+    return float(-2.0 * ll + p * math.log(n))
 
 
 def select_mixture_k(

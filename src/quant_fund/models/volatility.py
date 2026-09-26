@@ -390,13 +390,13 @@ class GARCHVol(JoblibMixin):
             from scipy.stats import norm
 
             out[valid] = norm.cdf((values[valid] - self._mean_decimal()) / scales[valid])
-            return np.clip(out, 0.0, 1.0)
+            return np.asarray(np.clip(out, 0.0, 1.0), dtype=float)
         distribution = self.result.model.distribution
         names = distribution.parameter_names()
         params = [float(self.result.params[name]) for name in names]
         standardized = (values[valid] - self._mean_decimal()) / scales[valid]
         out[valid] = distribution.cdf(standardized, params)
-        return np.clip(out, 0.0, 1.0)
+        return np.asarray(np.clip(out, 0.0, 1.0), dtype=float)
 
     def log_density(
         self, returns: NDArray[np.float64], sigma: NDArray[np.float64] | None = None

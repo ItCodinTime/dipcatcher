@@ -30,7 +30,7 @@ def bs_char_fn(s0: float, r: float, t: float, sigma: float) -> CharFn:
 
     def phi(u: np.ndarray) -> np.ndarray:
         mu = np.log(s0) + (r - 0.5 * sigma**2) * t
-        return np.exp(1j * u * mu - 0.5 * sigma**2 * t * u**2)
+        return np.asarray(np.exp(1j * u * mu - 0.5 * sigma**2 * t * u**2), dtype=complex)
 
     return phi
 
@@ -63,4 +63,4 @@ def carr_madan_call(
     log_strikes = -b + lam * np.arange(n)
     call_grid = np.exp(-alpha * log_strikes) / np.pi * fft_vals
     grid_k = np.exp(log_strikes)
-    return np.interp(ks, grid_k, call_grid)
+    return np.asarray(np.interp(ks, grid_k, call_grid), dtype=float)

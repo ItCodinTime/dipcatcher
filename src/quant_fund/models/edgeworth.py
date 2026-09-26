@@ -40,7 +40,7 @@ def gram_charlier_pdf(
     he3 = z**3 - 3.0 * z
     he4 = z**4 - 6.0 * z**2 + 3.0
     correction = 1.0 + (skew / 6.0) * he3 + (exkurt / 24.0) * he4
-    return norm.pdf(z) / sigma * correction
+    return np.asarray(norm.pdf(z) / sigma * correction, dtype=float)
 
 
 def gram_charlier_cdf(
@@ -50,7 +50,9 @@ def gram_charlier_cdf(
     z = _z(x, mu, sigma)
     he2 = z**2 - 1.0
     he3 = z**3 - 3.0 * z
-    return norm.cdf(z) - norm.pdf(z) * ((skew / 6.0) * he2 + (exkurt / 24.0) * he3)
+    return np.asarray(
+        norm.cdf(z) - norm.pdf(z) * ((skew / 6.0) * he2 + (exkurt / 24.0) * he3), dtype=float
+    )
 
 
 def gram_charlier_valid(skew: float, exkurt: float, *, span: float = 6.0, n: int = 400) -> bool:

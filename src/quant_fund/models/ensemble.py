@@ -143,7 +143,7 @@ def combine(forecasts: Array, weights: Array) -> Array:
     w = np.asarray(weights, dtype=float).reshape(-1)
     if w.size != f.shape[1] or not np.all(np.isfinite(w)):
         raise ValueError("weights must be a finite vector matching forecasts")
-    return f @ w
+    return np.asarray(f @ w, dtype=float)
 
 
 def rolling_inverse_mse(forecasts: Array, y: Array, window: int = 60) -> Array:

@@ -187,4 +187,4 @@ def hac_mean_covariance(x: Array, kernel: str = "bartlett", lag: int | None = No
         gamma_h = e[h:].T @ e[:-h] / t
         w = _kernel_weight(kernel, h / (lag + 1.0))
         cov += w * (gamma_h + gamma_h.T)
-    return cov
+    return np.asarray(cov, dtype=float)

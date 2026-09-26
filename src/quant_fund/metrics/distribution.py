@@ -195,7 +195,7 @@ def qn_scale(x: Array) -> float:
     q = float(np.quantile(tri, 0.25))
     # Finite-sample consistency factor (approximate c_n).
     c_n = 1.0 / (math.sqrt(2.0) * sstats.norm.ppf(5.0 / 8.0))
-    return q * c_n
+    return float(q * c_n)
 
 
 def robust_shape(x: Array) -> dict[str, float]:

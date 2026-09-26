@@ -38,7 +38,7 @@ def _nw_cov(m: Array, max_lag: int | None = None) -> Array:
         w = 1.0 - lag / (max_lag + 1.0)
         g_l = mc[lag:].T @ mc[:-lag] / t
         s = s + w * (g_l + g_l.T)
-    return s
+    return np.asarray(s, dtype=np.float64)
 
 
 def _mean_moment(moments: MomentsFn, theta: Array) -> Array:

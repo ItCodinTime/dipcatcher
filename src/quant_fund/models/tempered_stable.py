@@ -37,7 +37,7 @@ def _check(c: float, g: float, m: float, y: float) -> None:
 def cgmy_char_exponent(u: np.ndarray, c: float, g: float, m: float, y: float) -> np.ndarray:
     """Characteristic exponent psi(u) with phi(u) = exp(psi(u))."""
     _check(c, g, m, y)
-    return c * gamma_fn(-y) * ((m - 1j * u) ** y - m**y + (g + 1j * u) ** y - g**y)
+    return np.asarray(c * gamma_fn(-y) * ((m - 1j * u) ** y - m**y + (g + 1j * u) ** y - g**y))
 
 
 def cgmy_cumulants(c: float, g: float, m: float, y: float) -> dict[str, float]:
