@@ -1,7 +1,7 @@
 # MEGAPLAN — Bulletproof SOTA for return-distribution forecasting
 
 **Status:** active. **Owner lane:** forecasting-SOTA megaplan (distinct from the
-[MEGAPLAN_SHARPE5.md](MEGAPLAN_SHARPE5.md) strategy-performance lane and the `.dsh-24x7`
+`MEGAPLAN_SHARPE5.md` strategy-performance lane and the `.dsh-24x7`
 Industry-grade incumbent lane).
 
 ## What is already proven (baseline, do not regress)

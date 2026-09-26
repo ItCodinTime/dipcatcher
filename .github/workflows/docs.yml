@@ -22,8 +22,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      # Required to upload the Pages artifact when the workflow token is read-only.
-      actions: write
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5

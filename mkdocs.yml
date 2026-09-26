@@ -8,6 +8,17 @@ docs_dir: docs
 site_dir: site
 copyright: dipcatcher research documentation. Live trading is not implemented.
 
+# Kept in the repo. Omitted from the published site because they headline
+# Sharpe, holdout returns, or P&L. Listed from docs/archive.md.
+exclude_docs: |
+  MEGAPLAN_SHARPE5.md
+  CARRY_VS_MEGAPLAN.md
+  carry_expansion_2026_09.md
+  carry_research_2026_09.md
+  SIM_LIVE_PNL.md
+  ULTRAPLAN_FRONTIER.md
+  SOTA_GAP_ANALYSIS.md
+
 validation:
   nav:
     omitted_files: warn
@@ -144,7 +155,6 @@ nav:
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
-      - Simulated live lane: SIM_LIVE_PNL.md
   - fx-1:
       - Overview: FX1.md
       - Architecture: FX1_ARCHITECTURE.md
@@ -203,10 +213,4 @@ nav:
       - Implementation plan: IMPLEMENTATION_PLAN.md
       - Repository improvement plan: REPO_IMPROVEMENT_PLAN.md
       - Top-10 execution plan: TOP10_EXECUTION_PLAN.md
-      - SOTA gap analysis: SOTA_GAP_ANALYSIS.md
       - MEGAPLAN forecasting lane: MEGAPLAN_SOTA.md
-      - MEGAPLAN performance lane: MEGAPLAN_SHARPE5.md
-      - ULTRAPLAN frontier: ULTRAPLAN_FRONTIER.md
-      - Carry lanes vs megaplan: CARRY_VS_MEGAPLAN.md
-      - Carry research note: carry_research_2026_09.md
-      - Carry universe expansion: carry_expansion_2026_09.md

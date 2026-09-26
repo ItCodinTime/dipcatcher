@@ -1,6 +1,6 @@
 # dipcatcher
 
-**dipcatcher** (`quant_fund`) is the research harness for **fx-1**, a quant research LLM fine-tuned from Kimi K3 open weights. The harness is the data engine, the evaluation bench, and the receipt verifier. fx-1 is the model. This site is the reference for both.
+**dipcatcher** (`quant_fund`) is the research harness: the data engine, the evaluation bench, and the receipt verifier. **fx-1** (`src/fx1`) is a sub-project in this repository. It contains the corpus builder, the eval bank, and training plumbing, plus a training plan. No trained checkpoint is in the tree. The declared base constant is `moonshotai/Kimi-K3`. This site documents the harness and that plan.
 
 The lab builds a point-in-time market-state object, scores forecasts with proper scoring rules, and keeps every claim tied to a sealed receipt. Simulated paper and shadow runs exercise those same gates. Live broker connectivity is not implemented.
 
@@ -41,5 +41,5 @@ SYNTHETIC evidence cannot take a champion or live alias. The full rules are in [
 - [Validation](VALIDATION.md) — walk-forward, purge, embargo, CPCV
 - [Mathematical specification](MATH_SPEC.md) — formulas the code implements
 - [Research centre](RESEARCH_CENTRE.md) — benchmark families and what a lab headline is
-- [fx-1](FX1.md) — the model, its corpus, and the honesty gate
+- [fx-1](FX1.md) — corpus, eval, training plumbing, and the training plan
 - [API reference](api/index.md) — docstrings for the public harness modules
