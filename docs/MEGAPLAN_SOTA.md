@@ -1,7 +1,7 @@
 # MEGAPLAN — Bulletproof SOTA for return-distribution forecasting
 
 **Status:** active. **Owner lane:** forecasting-SOTA megaplan (distinct from the
-`MEGAPLAN_SHARPE5.md` strategy-performance lane and the `.dsh-24x7`
+[MEGAPLAN_SHARPE5.md](MEGAPLAN_SHARPE5.md) strategy-performance lane and the `.dsh-24x7`
 Industry-grade incumbent lane).
 
 ## What is already proven (baseline, do not regress)
@@ -38,7 +38,7 @@ declared permanently out-of-scope in PROOF.md.
 - **A1** ✅ done 2026-09-22: hardened `_fit_student_t` yields 0 NaN; full-
   coverage `h4f_*` fleet (5×300 deep bars, canonical tokenizer) complete and
   merged (`evidence-sota-eval-h4f-v2.json`: 1500/1500 complete, balanced
-  n=295, all targets MCS-excluded — see §4.1 of EVAL_REPORT_SOTA.md).
+  n=295, all targets MCS-excluded — see §4.1 of [EVAL_REPORT_SOTA.md](EVAL_REPORT_SOTA.md)).
 - **A2** ✅ resolved by the same shard: `dip_lgbm_q` 0/300 NaN on 4h-deep bars
   (the earlier partial coverage was short-history warmup, eliminated by deep
   bars' longer runway — disclosed warmup threshold stands).
@@ -137,7 +137,7 @@ literature's benchmark". It is the highest-value item in the plan.
 
 ## Phase F — Adjudicated report
 
-- **F1** `docs/EVAL_REPORT_SOTA.md`: pre-registered-style protocol doc —
+- **F1** [EVAL_REPORT_SOTA.md](EVAL_REPORT_SOTA.md): pre-registered-style protocol doc —
   hypotheses, universe, origin scheme, scores, multiplicity battery, complete
   tables, all receipts linked, limitations enumerated. This is the artifact an
   outsider reads; PROOF.md cites it.

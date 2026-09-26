@@ -1,0 +1,212 @@
+site_name: dipcatcher
+site_description: Research harness for fx-1. Data, evaluation, and receipt verification.
+site_url: https://artificial-hedge.github.io/dipcatcher/
+repo_url: https://github.com/artificial-hedge/dipcatcher
+repo_name: artificial-hedge/dipcatcher
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: site
+copyright: dipcatcher research documentation. Live trading is not implemented.
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    anchors: warn
+    unrecognized_links: warn
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/book-open-variant
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            docstring_section_style: list
+            docstring_options:
+              warnings: false
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: true
+            show_root_toc_entry: true
+            show_signature_annotations: true
+            signature_crossrefs: false
+            separate_signature: true
+            show_source: false
+            show_if_no_docstring: true
+            show_submodules: false
+            members_order: source
+            filters:
+              - "!^_"
+            heading_level: 2
+            summary:
+              attributes: true
+              functions: true
+              classes: true
+              modules: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.arithmatex:
+      generic: true
+      inline_syntax:
+        - round
+      block_syntax:
+        - square
+  - toc:
+      permalink: true
+  - tables
+  - footnotes
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts:
+      - Architecture: ARCHITECTURE.md
+      - Data contracts: DATA_CONTRACTS.md
+      - Receipt verification: RECEIPT_VERIFICATION.md
+      - Validation: VALIDATION.md
+      - Mathematical specification: MATH_SPEC.md
+      - Research references: RESEARCH_REFERENCES.md
+      - Institutional readiness: INSTITUTIONAL_READINESS.md
+  - Data sources:
+      - Labels: DATA_SOURCE_LABELS.md
+      - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
+  - Research:
+      - Research centre: RESEARCH_CENTRE.md
+      - Northset: NORTHSET.md
+      - Candle and order book: CANDLE_ORDER_BOOK.md
+      - Real-data benchmark: REAL_DATA_BENCHMARK.md
+      - Net-return tournament: NET_RETURN_TOURNAMENT.md
+      - Cost-aware construction: COST_AWARE_CONSTRUCTION.md
+      - GARCH benchmark: GARCH_BENCHMARK.md
+      - Evaluation report: EVAL_REPORT_SOTA.md
+      - Performance: PERF.md
+      - Causal capacity: CAUSAL_CAPACITY.md
+      - Forward shadow power: FORWARD_SHADOW_POWER.md
+      - Model cards: MODEL_CARDS.md
+      - ML and RL capabilities: ML_RL_CAPABILITIES.md
+      - Frontier audit: AUDIT_FRONTIER.md
+  - Operations:
+      - Runbook: OPERATIONS_RUNBOOK.md
+      - Paper and shadow: PAPER_SHADOW.md
+      - Simulated live lane: SIM_LIVE_PNL.md
+  - fx-1:
+      - Overview: FX1.md
+      - Architecture: FX1_ARCHITECTURE.md
+      - Training: FX1_TRAINING.md
+      - Data: FX1_DATA.md
+      - Datasources: FX1_DATASOURCES.md
+      - API stability: FX1_API_STABILITY.md
+  - Decisions:
+      - decisions/index.md
+      - "ADR-001: uv and Python 3.12": decisions/001-uv-python312.md
+      - "ADR-002: Polars first": decisions/002-polars-first.md
+      - "ADR-003: Parquet, DuckDB, MLflow": decisions/003-parquet-duckdb-mlflow.md
+      - "ADR-004: In-house DCC": decisions/004-inhouse-dcc.md
+      - "ADR-005: Next-bar fills": decisions/005-next-bar-fills.md
+      - "ADR-006: Wrap hmmlearn": decisions/006-hmmlearn-wrap.md
+      - "ADR-007: No neural nets until baselines": decisions/007-no-nn-until-baselines.md
+      - "ADR-008: Conformal wraps baselines": decisions/008-conformal-wraps-baselines.md
+      - "ADR-009: Mondrian normalized CQR": decisions/009-mondrian-normalized-cqr.md
+      - "ADR-010: Anytime-valid e-process": decisions/010-evalues-anytime-valid.md
+      - "ADR-011: Jackknife+": decisions/011-jackknife-plus.md
+      - "ADR-012: Conformal risk control": decisions/012-conformal-risk-control.md
+      - "ADR-013: Weighted conformal": decisions/013-weighted-conformal.md
+      - "ADR-014: Interval position caps": decisions/014-interval-position-caps.md
+      - "ADR-015: Quantile Thompson": decisions/015-quantile-thompson.md
+      - "ADR-016: CV+": decisions/016-cv-plus.md
+      - "ADR-017: Localized conformal": decisions/017-localized-conformal.md
+      - "ADR-018: Conformal top-k": decisions/018-conformal-topk.md
+      - "ADR-019: Online CRC": decisions/019-online-crc.md
+      - "ADR-020: Portfolio conformal": decisions/020-portfolio-conformal.md
+      - "ADR-021: Northset": decisions/021-northset-microstructure.md
+      - "ADR-022: Data-snooping suite": decisions/022-data-snooping-suite.md
+      - "ADR-023: robinhood+": decisions/023-robinhood-plus-kronos.md
+      - "ADR-024: Hedge lab": decisions/024-hedge-lab.md
+      - "ADR-025: pyRisk overlay": decisions/025-pyrisk-overlay.md
+      - "ADR-026: Complexity, SDF, IPCA": decisions/026-complexity-sdf-ipca.md
+      - "ADR-027: RP-PCA, FNW, three-pass": decisions/027-rp-pca-fnw-threepass.md
+      - "ADR-028: FM, PCR, PLS, 3PRF, GBRT, PP": decisions/028-fm-pcr-pls-tprf-gbrt-pp.md
+      - "ADR-029: Joint IPCA, combo, adaptive LASSO": decisions/029-joint-ipca-combo-alasso.md
+      - "ADR-030: Small-N cross-section rankers": decisions/030-small-n-cs-rankers.md
+      - "ADR-031: Rolling daily cross-section": decisions/031-rolling-daily-cs.md
+      - "ADR-032: Sign-flip mirror": decisions/032-sign-flip-mirror.md
+      - "ADR-033: quant-models engines": decisions/033-quant-models.md
+      - "ADR-034: Lightspeed engines": decisions/034-lightspeed.md
+      - "ADR-035: Discrete HMM": decisions/035-discrete-hmm-slp3.md
+      - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
+      - "ADR-036: Risk gates": decisions/036-risk-gates.md
+  - API reference:
+      - api/index.md
+      - Data: api/data.md
+      - Microstructure: api/microstructure.md
+      - Validation: api/validation.md
+      - Metrics: api/metrics.md
+      - research.verify: api/research_verify.md
+  - Archive:
+      - archive.md
+      - Implementation plan: IMPLEMENTATION_PLAN.md
+      - Repository improvement plan: REPO_IMPROVEMENT_PLAN.md
+      - Top-10 execution plan: TOP10_EXECUTION_PLAN.md
+      - SOTA gap analysis: SOTA_GAP_ANALYSIS.md
+      - MEGAPLAN forecasting lane: MEGAPLAN_SOTA.md
+      - MEGAPLAN performance lane: MEGAPLAN_SHARPE5.md
+      - ULTRAPLAN frontier: ULTRAPLAN_FRONTIER.md
+      - Carry lanes vs megaplan: CARRY_VS_MEGAPLAN.md
+      - Carry research note: carry_research_2026_09.md
+      - Carry universe expansion: carry_expansion_2026_09.md
