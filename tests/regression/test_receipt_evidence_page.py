@@ -5,7 +5,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from scripts.build_evidence_report import build_report, load_receipt, receipt_paths
+from scripts.build_evidence_report import (
+    build_report,
+    load_receipt,
+    receipt_paths,
+    redact_account_levels,
+    render_tree,
+)
 
 from quant_fund.research.catalog import FORBIDDEN_RESEARCH_METRIC_KEYS
 from quant_fund.utils.hashing import hash_file
@@ -86,6 +92,78 @@ def test_evidence_page_matches_receipts_byte_for_byte(tmp_path: Path) -> None:
     assert rendered.read_bytes() == _PAGE.read_bytes()
     for path in receipt_paths(_ROOT):
         assert hash_file(path) in text
+
+
+_ENDING_ACCOUNT_LITERALS = (
+    "1523565.55",
+    "1485050.3295675514",
+    "1397582.39",
+    "1443150.7517163786",
+    "1500764.656389184",
+    "1500764.6563891876",
+    "1498592.6595926331",
+)
+_ENDING_ACCOUNT_ASSIGNMENT = re.compile(
+    r"(?i)\b(?:final|nav|pnl|equity|account|balance)\s*=\s*-?\d"
+)
+
+
+def test_free_text_account_levels_are_redacted() -> None:
+    redacted = redact_account_levels(
+        "accepted, final=1523565.55; equity NaN rows=0, final=1485050.3295675514"
+    )
+    assert "1523565.55" not in redacted
+    assert "1485050.3295675514" not in redacted
+    assert "final=<redacted>" in redacted
+    assert "rows=0" in redacted
+    omitted: list[str] = []
+    rendered = "\n".join(
+        render_tree(
+            {
+                "vectorbt_counterpart": {
+                    "conflicting_target": "accepted, final=1523565.55",
+                    "stale_marks": "accepted; equity NaN rows=0, final=1485050.3295675514",
+                }
+            },
+            omitted=omitted,
+        )
+    )
+    assert "1523565.55" not in rendered
+    assert "1485050.3295675514" not in rendered
+    assert "final=<redacted>" in rendered
+
+
+def test_evidence_page_has_no_ending_account_values() -> None:
+    text = _PAGE.read_text(encoding="utf-8")
+    assert _ENDING_ACCOUNT_ASSIGNMENT.search(text) is None
+    leaked = [literal for literal in _ENDING_ACCOUNT_LITERALS if literal in text]
+    assert leaked == []
+
+
+def test_vectorbt_comparisons_are_one_table() -> None:
+    text = _PAGE.read_text(encoding="utf-8")
+    section = text.split("## vectorbt comparisons", 1)[1].split("\n## ", 1)[0]
+    assert "\n### " not in section
+    assert section.count("\n| source |") == 1
+    rows = [
+        line
+        for line in section.splitlines()
+        if line.startswith("| .dsh-24x7/evidence-incumbent-vectorbt")
+    ]
+    assert len(rows) == 12
+    assert all(line.count("|") >= 5 for line in rows)
+    header = next(line for line in section.splitlines() if line.startswith("| source |"))
+    assert "file sha256" in header
+    assert "embedded seal" in header
+    assert " seal " in header
+
+
+def test_simulated_trial_table_says_simulated() -> None:
+    text = _PAGE.read_text(encoding="utf-8")
+    assert "SIMULATED trial outcomes, not live P&L." in text
+    assert "SIMULATED total_return" in text
+    assert "SIMULATED max_drawdown" in text
+    assert "| phase | scenario | candidate | status | total_return |" not in text
 
 
 def test_evidence_page_has_no_forbidden_headline_metrics() -> None:

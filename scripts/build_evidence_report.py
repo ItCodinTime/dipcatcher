@@ -195,6 +195,9 @@ def _header() -> list[str]:
         "when its name tokenizes to a forbidden research-headline metric, with two",
         "exceptions: the boolean flag `live_pnl_claim` is always shown, and",
         "parity-residual fields are shown with that token replaced by `<redacted>`.",
+        "Free-text assignments of an ending account level replace that value with",
+        "`<redacted>`. Covered labels are `final`, `equity`, `account`, `balance`,",
+        "and the same account-level names omitted from field keys.",
         "Failed and blocked results stay visible. Disclaimer, limitation, and",
         "known-difference strings are copied verbatim.",
         "",
@@ -341,8 +344,10 @@ def _net_section(
         "",
         "Frozen equal-weight, momentum-20, and reversal-1 slate. Statistics below",
         "are the sealed phase reports, including Reality Check, SPA, and StepM.",
-        "`total_return` and `mean_excess_net_return` are copied from those fields.",
-        "The receipt claim is `simulated_net_price_return_tournament`.",
+        "The trial table heading marks `total_return` and `max_drawdown` as",
+        "SIMULATED receipt fields, not live P&L. `mean_excess_net_return` is copied",
+        "from the comparison object. The receipt claim is",
+        "`simulated_net_price_return_tournament`.",
         "",
     ]
     lines.extend(
@@ -406,15 +411,8 @@ def _incumbent_section(
             ]
         )
     else:
-        lines.extend(
-            [
-                "Matched-workload comparisons against vectorbt. One block per committed",
-                "evidence file. Terminal account levels whose field names tokenize to a",
-                "forbidden research-headline metric are omitted. Parity residuals from",
-                "the correctness object are copied under redacted keys.",
-                "",
-            ]
-        )
+        lines.extend(_vectorbt_table(root, loaded, paths))
+        return lines
     for path in paths:
         payload = _obj(loaded[path])
         lines.append(f"### `{_rel(root, path)}`")
@@ -703,6 +701,8 @@ def _tournament_body(root: Path, loaded: dict[Path, Any], run_dir: Path) -> list
                     ]
                 )
     if trial_rows:
+        lines.append("SIMULATED trial outcomes, not live P&L.")
+        lines.append("")
         lines.extend(
             markdown_table(
                 [
@@ -710,9 +710,9 @@ def _tournament_body(root: Path, loaded: dict[Path, Any], run_dir: Path) -> list
                     "scenario",
                     "candidate",
                     "status",
-                    "total_return",
+                    "SIMULATED total_return",
                     "rejected_orders",
-                    "max_drawdown",
+                    "SIMULATED max_drawdown",
                     "liquidation_complete",
                     "error",
                 ],
@@ -801,6 +801,89 @@ def _ablation_table(report: dict[str, Any]) -> list[str]:
         ),
         "",
     ]
+
+
+def _vectorbt_table(root: Path, loaded: dict[Path, Any], paths: list[Path]) -> list[str]:
+    """One provenance row per vectorbt evidence file."""
+    lines = [
+        "Matched-workload comparisons against vectorbt. One row per committed",
+        "evidence file, with source path, file SHA-256, and seal on that row.",
+        "Ending account levels stay in the receipt files.",
+        "",
+    ]
+    lines.extend(
+        _provenance_block(
+            root,
+            loaded,
+            {},
+            paths,
+            data_class=None,
+            git_revision=None,
+        )
+    )
+    shared_disclaimer = _shared_text(loaded, paths, "disclaimer")
+    if shared_disclaimer is not None:
+        text, source = shared_disclaimer
+        lines.append(
+            "Disclaimer copied verbatim from each vectorbt evidence file "
+            f"(identical text; representative source `{_rel(root, source)}`):"
+        )
+        lines.append("")
+        lines.append(verbatim(text))
+        lines.append("")
+    else:
+        emitted = False
+        seen: set[str] = set()
+        for path in paths:
+            text = _obj(loaded[path]).get("disclaimer")
+            if not isinstance(text, str) or not text or text in seen:
+                continue
+            seen.add(text)
+            emitted = True
+            _emit_named_verbatim(lines, "Disclaimer", text, path, root)
+        if not emitted:
+            lines.append("Disclaimer: absent")
+            lines.append("")
+    grouped: dict[str, tuple[list[str], Path]] = {}
+    absent: list[str] = []
+    for path in paths:
+        value = _obj(loaded[path]).get("known_semantic_differences")
+        if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+            absent.append(_rel(root, path))
+            continue
+        key = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        grouped.setdefault(key, (value, path))
+    for value, source in grouped.values():
+        lines.append(
+            "Known semantic differences copied verbatim "
+            f"(representative source `{_rel(root, source)}`):"
+        )
+        lines.append("")
+        for item in value:
+            lines.append(verbatim(item))
+            lines.append("")
+    if absent:
+        lines.append(
+            "Known semantic differences: absent for "
+            + ", ".join(f"`{path}`" for path in absent)
+            + "."
+        )
+        lines.append("")
+    return lines
+
+
+def _shared_text(loaded: dict[Path, Any], paths: list[Path], key: str) -> tuple[str, Path] | None:
+    found: list[tuple[str, Path]] = []
+    for path in paths:
+        value = _obj(loaded[path]).get(key)
+        if isinstance(value, str) and value:
+            found.append((value, path))
+    if not found:
+        return None
+    texts = {text for text, _path in found}
+    if len(texts) != 1 or len(found) != len(paths):
+        return None
+    return found[0]
 
 
 def _correctness_table(correctness: object, omitted: list[str]) -> list[str]:
@@ -928,13 +1011,17 @@ def render_tree(value: Any, *, omitted: list[str], depth: int = 0) -> list[str]:
     if isinstance(value, list):
         if value and all(not isinstance(item, (dict, list)) for item in value):
             for item in value:
-                if isinstance(item, str) and contains_forbidden_token(item):
-                    if len(item) > 24:
-                        lines.append(verbatim(item))
-                    else:
-                        omitted.append(item)
-                else:
-                    lines.append(f"{indent}- {_fmt(item) if not isinstance(item, str) else item}")
+                if isinstance(item, str):
+                    shown = redact_account_levels(item)
+                    if contains_forbidden_token(shown):
+                        if len(shown) > 24:
+                            lines.append(verbatim(shown))
+                        else:
+                            omitted.append(shown)
+                        continue
+                    lines.append(f"{indent}- {shown}")
+                    continue
+                lines.append(f"{indent}- {_fmt(item)}")
             return lines
         for index, item in enumerate(value):
             lines.append(f"{indent}- [{index}]")
@@ -968,6 +1055,17 @@ def contains_forbidden_token(text: str) -> bool:
     )
 
 
+_ACCOUNT_LEVEL_VALUE = re.compile(
+    r"(?i)\b(?P<label>final|nav|pnl|equity|account|balance)\s*=\s*"
+    r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+)
+
+
+def redact_account_levels(text: str) -> str:
+    """Replace ending-account assignments in free text. Disclaimer copies stay verbatim."""
+    return _ACCOUNT_LEVEL_VALUE.sub(lambda match: f"{match.group('label')}=<redacted>", text)
+
+
 def redact_key(key: str) -> str:
     parts = []
     for part in str(key).split("_"):
@@ -979,10 +1077,12 @@ def redact_key(key: str) -> str:
 
 
 def _render_scalar(key: str, value: Any, indent: str) -> list[str]:
-    if isinstance(value, str) and contains_forbidden_token(value):
-        return [f"{indent}- `{key}`:", verbatim(value)]
-    shown = value if isinstance(value, str) else _fmt(value)
-    return [f"{indent}- `{key}`: {shown}"]
+    if isinstance(value, str):
+        shown = redact_account_levels(value)
+        if contains_forbidden_token(shown):
+            return [f"{indent}- `{key}`:", verbatim(shown)]
+        return [f"{indent}- `{key}`: {shown}"]
+    return [f"{indent}- `{key}`: {_fmt(value)}"]
 
 
 def _mse_relation(zero: object, ridge: object) -> str:
