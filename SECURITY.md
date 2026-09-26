@@ -1,17 +1,37 @@
-# Security
+# Security Policy — fx-1 / dipcatcher
 
-## Reporting a vulnerability
+## Scope
 
-Do not open a public issue for security problems. Email the maintainer
-directly (see the commit author address) or use GitHub private vulnerability
-reporting on this repository.
+This repository contains the fx-1 model project and the dipcatcher research
+harness. Security-relevant surfaces:
 
-## Operational policy
+- **fx-1 serving path** (`fx1.serve`): hosted-backend credentials, local
+  checkpoint loading, release-signature verification.
+- **Harness API** (`quant_fund.api`): API-key auth, loopback fail-closed,
+  config allowlisting, request-size caps.
+- **Corpus/receipt integrity** (`fx1.data`, `fx1.train.receipts`): hash-chained
+  ledgers and tamper-evident receipts.
 
-- Never commit secrets. The env-var surface is enumerated in `.env.example`;
-  a staged-diff `secret-scan` pre-commit hook is enforced.
-- `MOONSHOT_API_KEY` / `FX1_SIGNING_KEY` / `QUANT_API_KEY` /
-  `QUANT_VENDOR_API_KEY` stay in the environment or the secret store —
-  tooling (`fx1 doctor`, `dipcatcher doctor`) reports presence flags only.
-- Dependencies are locked via `uv.lock` (`uv sync --frozen`) and patched
-  through Dependabot; CI runs `bandit` and `pip-audit` on every change.
+## Hard rules (enforced in code, tested)
+
+- No credentials in source or tests; secrets come from environment variables
+  only (`MOONSHOT_API_KEY`, `FX1_SIGNING_KEY`, `QUANT_API_KEY`). The full
+  env-var surface is enumerated in `.env.example`, a staged-diff
+  `secret-scan` pre-commit hook is enforced, and diagnostics
+  (`fx1 doctor`, `dipcatcher doctor`) report presence flags, never values.
+- Fail-closed defaults: missing signatures, missing model cards, failing
+  honesty gates, and invalid receipts all *block* rather than warn.
+- Network access is opt-in (explicit `collect`, explicit API serve), never
+  part of default ingest or training paths.
+
+## Reporting
+
+Report vulnerabilities privately to the maintainers (GitHub private security
+advisory). Do not open public issues for exploitable findings. We aim to
+acknowledge within 72 hours.
+
+## Supply chain
+
+- Dependencies are locked (`uv.lock`); CI runs `pip-audit` and Bandit gates.
+- Releases are signed (attestation ladder tier 1); verify with
+  `fx1 attestation <checkpoint_dir>` before serving.
