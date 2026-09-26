@@ -9,12 +9,12 @@ evaluation, and verification that builds and gates fx-1 (`src/fx1`).
 ## Setup
 
 ```bash
-make sync          # uv sync --frozen --all-groups (uv.lock is authoritative;
-                   # --frozen must pass — regenerate with `uv lock` after
-                   # touching [project])
+make sync          # uv sync --frozen --all-groups --all-extras (uv.lock is
+                   # authoritative; --frozen must pass — regenerate with
+                   # `uv lock` after touching [project]). Includes the torch
+                   # `nn` extra, matching the CI test job.
 ```
 
-Optional extras: `uv sync --all-groups --all-extras` adds torch (`nn` extra).
 `MOONSHOT_API_KEY` is needed only for hosted eval (`make fx1-eval`); see
 `.env.example` for all env vars.
 
