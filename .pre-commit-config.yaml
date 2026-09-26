@@ -42,3 +42,11 @@ repos:
         entry: uv run python scripts/secret_scan.py
         language: system
         pass_filenames: false
+      # Lockfile must stay in sync with pyproject — a stale uv.lock broke
+      # `uv sync --frozen` once already; fail the commit instead.
+      - id: uv-lock-check
+        name: uv lock --check
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
