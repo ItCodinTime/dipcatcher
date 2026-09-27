@@ -133,6 +133,9 @@ P&L.
 - Not permission to claim live Sharpe from SYNTHETIC paper smoke
 - Not unsafe parallel causal dates (`w_prev` remains sequential)
 
+Deterministic replay and seeded fault injection of this loop live in
+`docs/DETERMINISTIC_SIMULATION.md`. That harness is simulation-only.
+
 ## Phase 1 paired forward paper protocol
 
 `dipcatcher paper --forward-stage ...` is an **opt-in simulated-only** adapter for
