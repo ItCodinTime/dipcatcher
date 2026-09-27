@@ -18,7 +18,14 @@ from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION, BENCHMARK_FAM
 from quant_fund.research.verify import verify_research_artifact
 
 _REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver", "universe"})
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_SHA256: re.Pattern[str] | None = None
+
+
+def _sha256_pattern() -> re.Pattern[str]:
+    global _SHA256
+    if _SHA256 is None:
+        _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+    return _SHA256
 
 
 def doctor(config_path: str | None = None) -> dict[str, object]:
@@ -82,7 +89,9 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
                         inside_root = path.resolve().is_relative_to(root_resolved)
                     except OSError:
                         inside_root = False
-                    valid = valid and inside_root and _SHA256.fullmatch(digest) is not None
+                    valid = (
+                        valid and inside_root and _sha256_pattern().fullmatch(digest) is not None
+                    )
                     valid = (
                         valid and isinstance(rows, int) and not isinstance(rows, bool) and rows >= 0
                     )

@@ -136,6 +136,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
+      - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
       - Backtest overfitting: BACKTEST_OVERFITTING.md
       - Mathematical specification: MATH_SPEC.md
@@ -152,6 +153,7 @@ nav:
       - Real-data benchmark: REAL_DATA_BENCHMARK.md
       - Net-return tournament: NET_RETURN_TOURNAMENT.md
       - Cost-aware construction: COST_AWARE_CONSTRUCTION.md
+      - Differentiable backtest: DIFFBACKTEST.md
       - GARCH benchmark: GARCH_BENCHMARK.md
       - Evaluation report: EVAL_REPORT_SOTA.md
       - Prospective journal: PROSPECTIVE_SOTA.md
@@ -220,6 +222,7 @@ nav:
       - "ADR-035: Discrete HMM": decisions/035-discrete-hmm-slp3.md
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
+      - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
   - API reference:
       - api/index.md
       - Data: api/data.md

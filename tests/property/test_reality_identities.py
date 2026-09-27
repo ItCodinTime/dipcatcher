@@ -37,8 +37,9 @@ def _nonconstant(r: np.ndarray) -> np.ndarray:
     return r if np.std(r, ddof=1) > 1e-12 else np.linspace(-0.01, 0.01, r.size)
 
 
-def _make_row(i: int, *, sr: float, cluster: str | None = None, n_obs: int = 500,
-              family: str = "discovery") -> TrialLedgerRow:
+def _make_row(
+    i: int, *, sr: float, cluster: str | None = None, n_obs: int = 500, family: str = "discovery"
+) -> TrialLedgerRow:
     return TrialLedgerRow(
         trial_id=f"{i:064x}",
         bundle_hash=_HEX,

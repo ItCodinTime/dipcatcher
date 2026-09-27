@@ -8,6 +8,7 @@ without a vendor feed. Not evidence of live edge; ``source=synthetic``.
 from __future__ import annotations
 
 from datetime import datetime
+from functools import lru_cache
 
 import numpy as np
 import polars as pl
@@ -95,6 +96,291 @@ def ensure_book_panel_shape_columns(panel: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+_NUMERIC = (
+    pl.Float32,
+    pl.Float64,
+    pl.Int8,
+    pl.Int16,
+    pl.Int32,
+    pl.Int64,
+    pl.UInt8,
+    pl.UInt16,
+    pl.UInt32,
+    pl.UInt64,
+)
+
+
+@lru_cache(maxsize=8)
+def _decay_powers(depth: int) -> tuple[float, ...]:
+    return tuple(0.65**level for level in range(depth))
+
+
+@lru_cache(maxsize=8)
+def _ols_index(n: int) -> tuple[tuple[float, ...], float]:
+    """Centered level index and the closed-form OLS denominator."""
+    centered = tuple(float(i) - 0.5 * (n - 1) for i in range(n))
+    return centered, (n * (n * n - 1)) / 12.0
+
+
+def _log_slope(values: np.ndarray) -> np.ndarray:
+    """Row-wise OLS slope of log(values) on 0..depth-1. NaN when depth < 2."""
+    rows, depth = values.shape
+    out = np.full(rows, np.nan, dtype=np.float64)
+    if depth < 2:
+        return out
+    centered, denom = _ols_index(depth)
+    if denom <= 1e-18:
+        return out
+    x = np.asarray(centered, dtype=np.float64)
+    good = np.isfinite(values).all(axis=1) & (values > 0.0).all(axis=1)
+    if not good.any():
+        return out
+    logged = np.full(values.shape, np.nan, dtype=np.float64)
+    logged[good] = np.log(values[good])
+    slope = logged @ x / denom
+    out[good] = slope[good]
+    return out
+
+
+def _mean_log_spacing(prices: np.ndarray) -> np.ndarray:
+    rows, depth = prices.shape
+    out = np.full(rows, np.nan, dtype=np.float64)
+    if depth < 2:
+        return out
+    gaps = np.abs(np.diff(prices, axis=1))
+    good = (
+        np.isfinite(prices).all(axis=1) & np.isfinite(gaps).all(axis=1) & (gaps > 0.0).all(axis=1)
+    )
+    if not good.any():
+        return out
+    logged = np.log(np.where(gaps > 0.0, gaps, np.nan))
+    out[good] = np.mean(logged, axis=1)[good]
+    return out
+
+
+def _vectorized_l2_from_bars(
+    bars: pl.DataFrame,
+    *,
+    depth: int,
+    seed: int,
+    base_spread_bps: float,
+) -> pl.DataFrame | None:
+    """Panel metrics without building an ``OrderBookSnapshot`` per row.
+
+    Returns ``None`` when the frame is empty, non-numeric, or would fail
+    snapshot validation, so the object path keeps the same exceptions.
+    The RNG order matches ``synthesize_snapshots_from_bars``: one normal per
+    valid row, then bid then ask uniform at each level. Invalid rows consume
+    no draws.
+    """
+    required = ("security_id", "event_time", "open", "high", "low", "close", "volume")
+    if any(col not in bars.columns for col in required):
+        return None
+    if bars.height == 0 or isinstance(depth, bool) or not isinstance(depth, int) or depth < 1:
+        return None
+    frame = bars.sort(["security_id", "event_time"])
+    event_dtype = frame.schema["event_time"]
+    if not isinstance(event_dtype, pl.Datetime) or event_dtype.time_zone is None:
+        return None
+    for col in ("open", "high", "low", "close", "volume"):
+        if frame.schema[col] not in _NUMERIC or frame[col].null_count() > 0:
+            return None
+    has_avail = "available_time" in frame.columns
+    if has_avail:
+        avail_dtype = frame.schema["available_time"]
+        if (
+            not isinstance(avail_dtype, pl.Datetime)
+            or avail_dtype.time_zone is None
+            or frame["available_time"].null_count() > 0
+        ):
+            return None
+
+    opn = frame["open"].to_numpy().astype(np.float64, copy=False)
+    high = frame["high"].to_numpy().astype(np.float64, copy=False)
+    low = frame["low"].to_numpy().astype(np.float64, copy=False)
+    close = frame["close"].to_numpy().astype(np.float64, copy=False)
+    vol_adj = np.maximum(frame["volume"].to_numpy().astype(np.float64, copy=False), 1.0)
+    valid = (
+        np.isfinite(opn)
+        & np.isfinite(high)
+        & np.isfinite(low)
+        & np.isfinite(close)
+        & np.isfinite(vol_adj)
+        & (close > 0.0)
+    )
+    if has_avail:
+        # Only rows that become snapshots are validated for availability order.
+        avail_ok = (
+            frame.select(pl.col("available_time") >= pl.col("event_time")).to_series().to_numpy()
+        )
+        if np.any(valid & ~avail_ok):
+            return None
+    idx = np.flatnonzero(valid)
+    if idx.size == 0:
+        return None
+
+    rng = np.random.default_rng(int(seed))
+    noise = np.empty(idx.size, dtype=np.float64)
+    bid_u = np.empty((idx.size, depth), dtype=np.float64)
+    ask_u = np.empty((idx.size, depth), dtype=np.float64)
+    for i in range(idx.size):
+        noise[i] = float(rng.normal(0.0, 0.15))
+        for level in range(depth):
+            bid_u[i, level] = float(rng.random())
+            ask_u[i, level] = float(rng.random())
+
+    c = close[idx]
+    h = high[idx]
+    lo = low[idx]
+    o = opn[idx]
+    vol = vol_adj[idx]
+    range_frac = np.maximum(h - lo, 0.0) / c
+    body_frac = np.abs(c - o) / c
+    spread_bps = np.clip(
+        float(base_spread_bps) * (1.0 + 8.0 * range_frac + 4.0 * body_frac), 1.0, 80.0
+    )
+    half = c * (spread_bps / 1e4) / 2.0
+    tick = np.where(c >= 100.0, 0.05, np.where(c >= 10.0, 0.01, 0.001))
+    half = np.maximum(half, tick)
+    best_bid = c - half
+    best_ask = c + half
+    direction = np.sign(c - o)
+    imb = np.clip(0.55 * direction + noise, -0.85, 0.85)
+    top_total = np.maximum(vol * 0.02, 1.0)
+    bid0 = top_total * (0.5 + 0.5 * imb)
+    ask0 = top_total * (0.5 - 0.5 * imb)
+    levels = np.arange(depth, dtype=np.float64)
+    decay = np.asarray(_decay_powers(depth), dtype=np.float64)
+    bid_px = np.round(best_bid[:, None] - levels * tick[:, None], 6)
+    ask_px = np.round(best_ask[:, None] + levels * tick[:, None], 6)
+    bid_sz = np.round(np.maximum(bid0[:, None] * decay * (1.0 + 0.05 * bid_u), 1e-6), 6)
+    ask_sz = np.round(np.maximum(ask0[:, None] * decay * (1.0 + 0.05 * ask_u), 1e-6), 6)
+    if depth > 1 and (
+        np.any(bid_px[:, 1:] >= bid_px[:, :-1]) or np.any(ask_px[:, 1:] <= ask_px[:, :-1])
+    ):
+        return None
+    if np.any(bid_px[:, 0] >= ask_px[:, 0]) or np.any(bid_px <= 0.0) or np.any(ask_px <= 0.0):
+        return None
+    if np.any(bid_sz <= 0.0) or np.any(ask_sz <= 0.0):
+        return None
+
+    best_b = bid_px[:, 0]
+    best_a = ask_px[:, 0]
+    top_b = bid_sz[:, 0]
+    top_a = ask_sz[:, 0]
+    # Left fold, same association as ``sum(level.size for level in levels)`` after the
+    # leading 0 (adding 0.0 does not change a finite size).
+    bid_depth = np.add.reduce(bid_sz, axis=1)
+    ask_depth = np.add.reduce(ask_sz, axis=1)
+    mid = 0.5 * (best_b + best_a)
+    spread = best_a - best_b
+    half_spread = 0.5 * spread
+    mid_ok = (mid > 0.0) & np.isfinite(mid)
+    spread_bps_m = np.where(mid > 0.0, 1e4 * spread / mid, 0.0)
+    half_spread_bps = np.where(mid_ok, 1e4 * half_spread / mid, np.nan)
+    spread_over_mid = np.where(mid_ok, spread / mid, np.nan)
+    top_den = top_b + top_a
+    top_ok = np.isfinite(top_den) & (top_den > 0.0)
+    micro = np.where(top_ok, (best_a * top_b + best_b * top_a) / top_den, mid)
+    micro_delta = micro - mid
+    micro_bps = np.where(mid <= 0.0, 0.0, 1e4 * micro_delta / mid)
+    imb_top = (top_b - top_a) / top_den
+    depth_den = bid_depth + ask_depth
+    imb_depth = np.where(depth_den > 0.0, (bid_depth - ask_depth) / depth_den, 0.0)
+    depth_abs = np.where(np.isfinite(imb_depth), np.abs(imb_depth), np.nan)
+
+    def _ratio(top: np.ndarray, side: np.ndarray) -> np.ndarray:
+        ok = np.isfinite(top) & np.isfinite(side) & (side > 0.0)
+        return np.where(ok, top / side, np.nan)
+
+    def _queue(top: np.ndarray, side: np.ndarray) -> np.ndarray:
+        ok = np.isfinite(top) & np.isfinite(side) & (side > 0.0)
+        return np.where(ok, top / (top + side), np.nan)
+
+    def _notional(price: np.ndarray, side: np.ndarray) -> np.ndarray:
+        ok = np.isfinite(price) & np.isfinite(side) & (price > 0.0) & (side > 0.0)
+        return np.where(ok, price * side, np.nan)
+
+    bid_notional = _notional(best_b, bid_depth)
+    ask_notional = _notional(best_a, ask_depth)
+    tob_ok = np.isfinite(best_b) & np.isfinite(best_a) & (best_b > 0.0) & (best_a > 0.0)
+    tob = np.where(tob_ok, best_b * top_b + best_a * top_a, np.nan)
+    notional_den = bid_notional + ask_notional
+    notional_ok = np.isfinite(bid_notional) & np.isfinite(ask_notional) & (notional_den > 0.0)
+    notional_imb = np.where(notional_ok, (bid_notional - ask_notional) / notional_den, np.nan)
+    tob_share = np.where(
+        notional_ok & np.isfinite(tob),
+        tob / notional_den,
+        np.nan,
+    )
+    size_vals_ok = (
+        np.isfinite(top_b)
+        & np.isfinite(top_a)
+        & np.isfinite(bid_depth)
+        & np.isfinite(ask_depth)
+        & (top_b > 0.0)
+        & (top_a > 0.0)
+        & (bid_depth > 0.0)
+        & (ask_depth > 0.0)
+    )
+    tob_size = np.where(size_vals_ok, (top_b + top_a) / depth_den, np.nan)
+    weight = np.where(top_ok, top_b / top_den, np.nan)
+    n_levels = np.full(idx.size, float(depth), dtype=np.float64)
+    kept = frame.filter(pl.Series("_ok", valid))
+    avail = kept["available_time"] if has_avail else kept["event_time"]
+    panel = pl.DataFrame(
+        {
+            "security_id": kept["security_id"],
+            "event_time": kept["event_time"],
+            "available_time": avail,
+            "source": ["synthetic"] * idx.size,
+            "revision_id": ["SYNTHETIC_LOB_v1"] * idx.size,
+            "best_bid": best_b,
+            "best_ask": best_a,
+            "mid": mid,
+            "spread": spread,
+            "quoted_spread": spread,
+            "half_spread": half_spread,
+            "effective_spread": spread,
+            "spread_bps": spread_bps_m,
+            "quoted_spread_bps": spread_bps_m,
+            "half_spread_bps": half_spread_bps,
+            "spread_over_mid": spread_over_mid,
+            "microprice": micro,
+            "microprice_minus_mid": micro_delta,
+            "microprice_minus_mid_bps": micro_bps,
+            "imbalance_top": imb_top,
+            "touch_size_imbalance": imb_top,
+            "imbalance_depth": imb_depth,
+            "depth_imbalance_abs": depth_abs,
+            "bid_depth": bid_depth,
+            "ask_depth": ask_depth,
+            "top_bid_size": top_b,
+            "top_ask_size": top_a,
+            "bid_size_concentration_top": _ratio(top_b, bid_depth),
+            "ask_size_concentration_top": _ratio(top_a, ask_depth),
+            "queue_priority_proxy": _queue(top_b, bid_depth),
+            "ask_queue_priority_proxy": _queue(top_a, ask_depth),
+            "microprice_weight_balance": weight,
+            "top_of_book_notional_proxy": tob,
+            "side_notional_proxy_bid": bid_notional,
+            "side_notional_proxy_ask": ask_notional,
+            "notional_imbalance": notional_imb,
+            "tob_notional_share": tob_share,
+            "tob_size_share": tob_size,
+            "n_bid_levels": n_levels,
+            "n_ask_levels": n_levels,
+            "bid_log_size_slope": _log_slope(bid_sz),
+            "ask_log_size_slope": _log_slope(ask_sz),
+            "bid_log_price_slope": _log_slope(bid_px),
+            "ask_log_price_slope": _log_slope(ask_px),
+            "bid_mean_log_tick_spacing": _mean_log_spacing(bid_px),
+            "ask_mean_log_tick_spacing": _mean_log_spacing(ask_px),
+        }
+    ).sort(["security_id", "event_time"])
+    return ensure_book_panel_shape_columns(panel)
+
+
 def synthesize_l2_from_bars(
     bars: pl.DataFrame,
     *,
@@ -108,6 +394,11 @@ def synthesize_l2_from_bars(
     of ``OrderBookSnapshot`` via ``snapshots`` when needed by callers that use
     ``synthesize_snapshots_from_bars``.
     """
+    vectorized = _vectorized_l2_from_bars(
+        bars, depth=depth, seed=seed, base_spread_bps=base_spread_bps
+    )
+    if vectorized is not None:
+        return vectorized
     snaps = synthesize_snapshots_from_bars(
         bars, depth=depth, seed=seed, base_spread_bps=base_spread_bps
     )

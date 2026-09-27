@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import time
 from datetime import UTC, datetime
 from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
 
 import polars as pl
+
+from quant_fund.data.concurrent_io import IoError, call_with_retry, pooled_request
 
 
 class SourceError(RuntimeError):
@@ -40,24 +39,36 @@ class HttpClient:
             raise SourceError(f"unsupported URL scheme: {url}")
         request_headers = {"User-Agent": self.user_agent, "Accept": "*/*"}
         request_headers.update(headers or {})
-        request = Request(url, headers=request_headers, method="GET")
-        last_error: Exception | None = None
-        for attempt in range(self.retries + 1):
+
+        def once() -> bytes:
             try:
-                with urlopen(request, timeout=self.timeout) as response:  # noqa: S310  # nosec B310
-                    body = bytes(response.read(self.max_bytes + 1))
-                if len(body) > self.max_bytes:
-                    raise SourceError(f"response exceeded {self.max_bytes} bytes: {url}")
+                status, body = pooled_request(
+                    "GET",
+                    url,
+                    headers=request_headers,
+                    timeout=self.timeout,
+                    max_bytes=self.max_bytes,
+                )
+            except IoError as exc:
+                raise SourceError(str(exc)) from exc
+            if status < 400:
                 return body
-            except HTTPError as exc:
-                last_error = exc
-                if exc.code < 500 and exc.code != 429:
-                    break
-            except (OSError, URLError, TimeoutError) as exc:
-                last_error = exc
-            if attempt < self.retries:
-                time.sleep(min(2.0**attempt, 4.0))
-        raise SourceError(f"GET failed after retries: {url}") from last_error
+            # 429 and 5xx are transient. Other 4xx will not succeed on retry.
+            if status == 429 or status >= 500:
+                raise OSError(status, f"HTTP {status}")
+            raise SourceError(f"GET failed after retries: {url}")
+
+        try:
+            return call_with_retry(
+                once,
+                retries=self.retries,
+                backoff_s=1.0,
+                max_backoff_s=4.0,
+                jitter=True,
+                retry_on=(OSError,),
+            )
+        except OSError as exc:
+            raise SourceError(f"GET failed after retries: {url}") from exc
 
     def get_json(self, url: str, *, headers: dict[str, str] | None = None) -> Any:
         try:
