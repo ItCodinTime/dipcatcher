@@ -607,6 +607,17 @@ raise ``ValueError``; aggressive purge/embargo may honestly yield fewer folds th
 refuses empty / mismatched / too-small / non-finite IS–OOS matrices with NaN
 (never a silent PBO of 0.0 on invalid input). Research-diagnostic only.
 
+Backtest paths (AFML ch. 12): ``N`` groups and ``k`` test groups yield
+``C(N, k)`` splits and ``φ = C(N-1, k-1)`` paths. Each path tests every
+group once; each ``(split, group)`` incidence is used once. See
+``docs/BACKTEST_OVERFITTING.md``.
+
+The research notebook (schema 2) stamps CSCV ``pbo``, ``dsr``, ``psr``,
+``min_trl``, ``n_trials``, and ``n_trials_effective`` on
+``backtest_overfitting``. The effective count clusters trials at Mantegna
+distance ``sqrt((1-ρ)/2)`` with a fixed correlation cut ``ρ = 0.5``.
+Schema 1 receipts omit the block and remain valid.
+
 ## Mean-variance objective
 
 \[

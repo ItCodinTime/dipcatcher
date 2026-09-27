@@ -13,6 +13,7 @@ from quant_fund.research.agent import (
 )
 from quant_fund.research.catalog import (
     FORBIDDEN_RESEARCH_METRIC_KEYS,
+    RESEARCH_RECEIPT_SCHEMA_VERSION,
     family_blob_forbidden_metrics_absent,
 )
 from quant_fund.utils.hashing import canonical_frame_fingerprint
@@ -94,7 +95,17 @@ def test_research_recovers_synthetic_oracle(tmp_path: Path) -> None:
     assert (receipt_root / nb.artifacts["immutable_json"]).is_file()
     assert (receipt_root / nb.artifacts["immutable_markdown"]).is_file()
     assert nb.firm == "Artificial Hedge"
-    assert nb.schema_version == 1
+    assert nb.schema_version == RESEARCH_RECEIPT_SCHEMA_VERSION
+    overfit = nb.backtest_overfitting
+    assert overfit["claim"] == "research_diagnostic_only"
+    assert overfit["research_only"] is True
+    assert overfit["n_trials"] >= 2
+    assert overfit["n_trials_effective"] <= overfit["n_trials"]
+    assert 0.0 <= float(overfit["pbo"]) <= 1.0
+    assert float(overfit["dsr"]) <= float(overfit["psr"]) + 1e-8
+    assert float(overfit["dsr_counted_trials"]) <= float(overfit["psr"]) + 1e-8
+    assert family_blob_forbidden_metrics_absent(overfit)
+    assert "PBO=" in (tmp_path / "metadata" / "research" / "latest.md").read_text()
     assert "Sharpe" not in nb.disclaimer
     by = {r["name"]: r for r in nb.rankers}
     assert "oracle_raw" in by
