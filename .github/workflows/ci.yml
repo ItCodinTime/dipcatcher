@@ -5,6 +5,19 @@ on:
     branches: [main]
   pull_request:
     branches: [main, p1/historical-receipts-20260925]
+  schedule:
+    # Full offline suite, including tests marked slow. PR runs stay on the fast subset.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "fast excludes slow tests; full runs them"
+        required: false
+        default: full
+        type: choice
+        options:
+          - full
+          - fast
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,6 +25,8 @@ concurrency:
 
 permissions:
   contents: read
+  # setup-uv and actions/cache save dependency and synthetic-data caches.
+  actions: write
 
 jobs:
   lint:
@@ -120,6 +135,7 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.12", "3.13"]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -130,12 +146,120 @@ jobs:
           python-version: ${{ matrix.python }}
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - name: Cache pip downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ matrix.python }}-
+      - name: Cache synthetic lakes and Northset benches
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/dipcatcher
+          key: dipcatcher-session-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('src/quant_fund/**/*.py') }}
+          restore-keys: |
+            dipcatcher-session-${{ runner.os }}-py${{ matrix.python }}-
       - name: Sync
         run: uv sync --frozen --all-groups --all-extras
       - name: Pytest
-        run: uv run pytest -q -m "not network" --cov --cov-report=term-missing --cov-report=xml
+        run: |
+          set -euo pipefail
+          suite="fast"
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            suite="full"
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            suite="${{ inputs.suite }}"
+          fi
+          if [ "$suite" = "full" ]; then
+            marker='not network'
+          else
+            marker='not network and not slow'
+          fi
+          args=(
+            -q
+            -n auto
+            --dist loadfile
+            -m "$marker"
+            --splits 4
+            --group "${{ matrix.shard }}"
+            --durations-path .test_durations
+          )
+          if [ "${{ matrix.python }}" = "3.12" ]; then
+            # Partial shards stay under the project threshold; the coverage job combines them.
+            args+=(--cov --cov-report=xml:coverage.xml --cov-fail-under=0)
+          fi
+          uv run pytest "${args[@]}"
+      - name: Stage coverage data
+        if: matrix.python == '3.12' && !cancelled()
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p coverage-upload
+          files=(.coverage .coverage.*)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "pytest-cov did not write a coverage data file" >&2
+            exit 1
+          fi
+          cp "${files[@]}" coverage.xml coverage-upload/
+      - name: Upload coverage shard
+        if: matrix.python == '3.12' && !cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dipcatcher-coverage-3.12-${{ matrix.shard }}
+          path: coverage-upload
+          if-no-files-found: error
+
+  coverage:
+    needs: [test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Download coverage shards
+        uses: actions/download-artifact@v7
+        with:
+          pattern: dipcatcher-coverage-3.12-*
+          path: coverage-parts
+      - name: Combine coverage and enforce threshold
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p combined
+          i=0
+          # Each shard's controller already combined worker data into .coverage.
+          # Combining those files again with the worker fragments would
+          # double-count. Fall back to fragments only when .coverage is absent.
+          for part in coverage-parts/*/; do
+            if [ -f "${part}.coverage" ]; then
+              i=$((i + 1))
+              cp "${part}.coverage" "combined/.coverage.shard${i}"
+              continue
+            fi
+            for data in "${part}".coverage.*; do
+              if [ -f "$data" ]; then
+                i=$((i + 1))
+                cp "$data" "combined/.coverage.shard${i}"
+              fi
+            done
+          done
+          if [ "$i" -eq 0 ]; then
+            echo "no coverage data files were downloaded" >&2
+            exit 1
+          fi
+          cd combined
+          uv run coverage combine
+          uv run coverage xml -o "$GITHUB_WORKSPACE/coverage.xml"
+          uv run coverage report
       - name: Upload coverage
-        if: matrix.python == '3.12'
         uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-coverage
@@ -174,6 +298,7 @@ jobs:
 
   smoke:
     needs: [test, lint]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -186,14 +311,7 @@ jobs:
       - name: Sync
         run: uv sync --frozen --all-groups
       - name: Collect paper and analytics tests
-        run: |
-          uv run pytest --collect-only -q \
-            tests/unit/pipeline/test_ledger_schema.py \
-            tests/unit/models/test_wave6_analytics.py \
-            tests/property/test_nav_resume_identity.py \
-            tests/unit/backtest/test_paper_loop.py \
-            tests/unit/backtest/test_paper_resume_promotion.py \
-            tests/unit/models/test_analytics.py
+        run: uv run pytest --collect-only -q -m smoke
       - name: Synthetic research smoke
         run: uv run dipcatcher research --config configs/research.yaml
       - name: Data lineage health
@@ -289,6 +407,44 @@ jobs:
             data/metadata/research/latest.md
             data/metadata/research/runs/
 
+  mc-engine-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Monte Carlo engine unit tests
+        run: uv run pytest tests/unit/mc_engine -q -m "not slow"
+      - name: CLI smoke
+        run: |
+          uv run python -m quant_fund.mc_engine --help
+          uv run python -m quant_fund.mc_engine run \
+            --paths 1500 --steps 8 --workers 2 --backend process \
+            --chunk-size 500 --seed 1 --shock-mode antithetic --no-progress \
+            > mc-engine-smoke.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          doc = json.loads(Path("mc-engine-smoke.json").read_text())
+          if doc.get("research_only") is not True:
+              raise SystemExit("mc-engine smoke is not research-only")
+          if doc.get("live_pnl_claim") is not False:
+              raise SystemExit("mc-engine smoke made a live P&L claim")
+          if doc.get("market_evidence") is not False:
+              raise SystemExit("mc-engine smoke claimed market evidence")
+          if doc.get("status") != "complete":
+              raise SystemExit(f"mc-engine smoke status {doc.get('status')}")
+          if doc.get("n_paths") != 1500:
+              raise SystemExit("mc-engine smoke path count mismatch")
+          print("validated mc-engine smoke", doc["fingerprint"])
+          PY
+
   rust-accel:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -319,7 +475,7 @@ jobs:
       - name: Build extension
         run: uv run maturin develop --release --manifest-path rust/quant_core/Cargo.toml
       - name: Parity tests
-        run: uv run pytest -q tests/property/test_native_kernels.py tests/unit/test_native_dispatch.py tests/native/test_native_bench.py
+        run: uv run pytest -q -m native tests/property tests/unit tests/native
 
   examples:
     runs-on: ubuntu-latest
@@ -370,3 +526,81 @@ jobs:
         run: uv run pytest -q tests/unit/robustness tests/property/test_robustness_bounds.py
       - name: Certifier smoke
         run: uv run python -m quant_fund.robustness
+
+  formal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: TLC order-lifecycle model check
+        run: bash scripts/run_tlc.sh
+      - name: SMT proofs, conformance, and stateful tests
+        run: uv run pytest tests/formal -q --tb=short
+
+  pretrade-risk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Pre-trade unit and property tests
+        run: uv run pytest -q tests/unit/pretrade tests/property/test_pretrade_risk.py
+      - name: Hot-path latency gate
+        run: uv run python -m quant_fund.pretrade.bench --gate --json-out pretrade-latency.json
+      - name: Upload latency report
+        uses: actions/upload-artifact@v7
+        with:
+          name: pretrade-risk-latency
+          path: pretrade-latency.json
+          if-no-files-found: error
+
+  stress-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Fast stress tests
+        run: uv run pytest -q -m "not network and not slow" tests/unit/stress
+      - name: Catalog report smoke
+        run: |
+          uv run dipcatcher stress crises | tee crises.txt
+          grep -q $'crash_1987\thistorical' crises.txt
+          grep -q $'rates_2022\thistorical' crises.txt
+          grep -q $'dfast_2025_severely_adverse\thypothetical' crises.txt
+          uv run dipcatcher stress report \
+            --strategy configs/stress_research.yaml \
+            --out stress-report.md \
+            --format markdown
+          grep -q 'research_only: True' stress-report.md
+          grep -q 'live_trading: False' stress-report.md
+          grep -q crash_1987 stress-report.md
+          grep -q rates_2022 stress-report.md
+          grep -q dfast_2025_severely_adverse stress-report.md
+          if grep -E 'sharpe:|sortino:|calmar:' stress-report.md; then
+            echo "stress report contains a forbidden headline key"
+            exit 1
+          fi

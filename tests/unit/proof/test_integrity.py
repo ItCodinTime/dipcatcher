@@ -38,17 +38,6 @@ HEX = "ab" * 32
 BAD = "g" * 64
 UPPER = "AB" * 32
 
-_UNIMPLEMENTED = (
-    "ASOF_SENTINEL",
-    "VerificationResult",
-    "build_bundle",
-    "chain_head",
-    "recompute_headline_metrics",
-    "replay_bundle",
-    "run_backtest_proven",
-    "verify_bundle",
-)
-
 
 def _leaf(digest: str) -> str:
     return hashlib.sha256(b"PC:leaf:" + bytes.fromhex(digest)).hexdigest()
@@ -404,30 +393,24 @@ def test_null_signer_is_unsigned() -> None:
     assert signer.sign(b"anything") == ""
 
 
-def test_proof_star_import_only_loads_implemented_surface() -> None:
+def test_proof_star_import_loads_bundle_and_verifier_surface() -> None:
     proof = importlib.import_module("quant_fund.proof")
     namespace: dict[str, object] = {}
     exec("from quant_fund.proof import *", namespace, namespace)
-    exported = set(proof.__all__)
-    assert exported.isdisjoint(_UNIMPLEMENTED)
     for name in proof.__all__:
         assert getattr(proof, name) is namespace[name]
-    for name in _UNIMPLEMENTED:
-        assert name not in dir(proof)
-        with pytest.raises(AttributeError):
-            getattr(proof, name)
+    assert {"build_bundle", "verify_bundle", "run_backtest_proven"} <= set(proof.__all__)
+    assert "ASOF_SENTINEL" not in proof.__all__
 
 
-def test_proof_cli_does_not_expose_unimplemented_commands() -> None:
+def test_proof_cli_exposes_verifier_and_closed_runner() -> None:
     names = {command.name for command in proof_app.registered_commands}
-    assert names.isdisjoint({"run", "verify", "chain-head"})
+    assert {"run", "verify", "chain-head"} <= names
     runner = CliRunner()
     help_result = runner.invoke(proof_app, ["--help"])
     assert help_result.exit_code == 0
     assert help_result.exception is None
-    for name in ("run", "verify", "chain-head"):
-        result = runner.invoke(proof_app, [name])
-        assert result.exit_code != 0
-        assert not isinstance(result.exception, ModuleNotFoundError)
-        combined = f"{result.output}{result.exc_info}"
-        assert "ModuleNotFoundError" not in combined
+    for name in names:
+        result = runner.invoke(proof_app, [name, "--help"])
+        assert result.exit_code == 0
+        assert "ModuleNotFoundError" not in f"{result.output}{result.exc_info}"

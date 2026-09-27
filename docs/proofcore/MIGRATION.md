@@ -18,10 +18,13 @@ which stays untouched. The 32 direct `pl.read_parquet` sites keep working;
 LH009 reports them as warnings. The vault reuses `require_pit_columns`-style
 checks on append.
 
-## Phase 2 — proof-carrying runs (W2)
+## Phase 2 — proof bundle primitives (W2)
 
-W2 currently supplies fingerprinting, read recording, and signing foundations.
-The proven-run orchestrator and replay verifier remain pending. `run_backtest`
+W2 supplies fingerprinting, read recording, bundle construction, signing, and
+independent bundle hash/sidecar/metric checks. The `quant proof run` and replay
+entry points fail closed: a far-future whole-panel vault read cannot prove
+what was known at each historical decision. An explicit decision schedule and
+corresponding as-of reads are required before enabling them. `run_backtest`
 and the receipt format are unchanged. Committed `receipts/*.json` remain valid
 under their existing contracts. The heterogeneous committed receipt classes
 do not yet have one universal verifier; `make receipts-reverify` fails closed
@@ -47,7 +50,8 @@ blocking once the ledger accumulates enough trials.
 
 ## Phase 5 — integration & CI gates on (W5)
 
-- `.github/workflows/proofcore.yml` gate matrix active: proof-integrity,
+- `.github/workflows/proofcore.yml` gate matrix active: proof-integrity (signer,
+  recorder, and bundle verifier tests),
   leakage-scan (warn), reality-filter (advisory→blocking),
   layering, coverage-floors, fx1-coverage.
   `docs/proofcore/proofcore.yml` retains a reference copy;
@@ -61,7 +65,7 @@ blocking once the ledger accumulates enough trials.
 - Hypothesis runs under the derandomized `ci` profile
   (`HYPOTHESIS_PROFILE=ci`, DESIGN.md §9.5).
 - External proof-chain head publication remains pending until persistent
-  proven runs and replay verification exist.
+  causally proven runs and replay verification exist.
 
 ## What is deliberately NOT in this wave
 

@@ -34,6 +34,8 @@ from quant_fund.native.reference import (
 )
 from quant_fund.schemas.order_book import BookLevel, OrderBookSnapshot
 
+pytestmark = pytest.mark.native
+
 _FINITE = st.floats(-1e3, 1e3, allow_nan=False, allow_infinity=False, width=64)
 _WEIRD = st.one_of(
     _FINITE,

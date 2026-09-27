@@ -28,9 +28,9 @@ Those checks are not functions of receipt bytes, so their pass or fail text
 is not copied into this page.
 
 Index source: `data/metadata/research/phase1_evidence_index.json`
-Index file sha256: `6dc159d7a2412f7f5c800388ec1ae013c2a58636d7b0bcd27614b409fc43dfd5`
-Index embedded seal: `174eab718a2aa97692d28270eaf4c3a5bd4f604960296f8b772ee3541937c6b5`
-Index git revision: `6360b2d18a1b1e260fac637caa7891eed5d5c911`
+Index file sha256: `3e8d28e2ad08137d5e0ea7b8703600d710cdda37ebe83e384afc50fbc94d1f7a`
+Index embedded seal: `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`
+Index git revision: `c564646b14849d72c5891a90034d8e26361fe0f5`
 Index git worktree sha256: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
 Benchmark catalog version: `2`
 
@@ -46,9 +46,9 @@ index `git_revision` that binds the run.
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/real_benchmark/us_wide_20260925/manifest.json | b4b4ec2f1f41eec36862747f64697a175f30858d05f7753fcc6f766e98b979f8 | a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/real_benchmark/us_wide_20260925/test.json | 2a9a4d5bf16a78ae396eaaa5f8cf89b03db45c8286795f4a1adc902b5d0e75f5 | d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
-| data/metadata/real_benchmark/us_wide_20260925/validation.json | 73f2c74d1f7f62caa76f0ca2760badfa80bb5844d4d0069afb71ddbd8185f86e | 84af6ddc95a59a11452ea5eddad00d5ab4224dc67eb3de3e75b10707d021f93b | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/manifest.json | b4b4ec2f1f41eec36862747f64697a175f30858d05f7753fcc6f766e98b979f8 | a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/test.json | 2a9a4d5bf16a78ae396eaaa5f8cf89b03db45c8286795f4a1adc902b5d0e75f5 | d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/validation.json | 73f2c74d1f7f62caa76f0ca2760badfa80bb5844d4d0069afb71ddbd8185f86e | 84af6ddc95a59a11452ea5eddad00d5ab4224dc67eb3de3e75b10707d021f93b | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 Holdout status: `previously_inspected`
 Names: `424`
@@ -112,11 +112,11 @@ from the comparison object. The receipt claim is
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/net_tournament/us_wide_20260925/manifest.json | f77cb76264d8619b0e1de311a663cee6de1d68a90cd655d2723e10e541fba87a | c6b14d526fb53e0a04f74c3f55475bcc8ae6d5382e0b70d8b429eff53e7f0786 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/net_tournament/us_wide_20260925/test.attempt.json | 9925b88456afd3226b5bbaf098c48cefd1746f871316e3695ff01775d60fffa7 | 074fc87b607cd7392902ed7441183f53ce6b7fe5cb6fcd07e353291b4f48a2d7 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/net_tournament/us_wide_20260925/test.json.gz | dbf479bdb1aacfcc44956dad0add0eb71ae50c32753d6a0fd857585496c5e9d5 | 3eb22e2da8ef0ca4518c603e1dc6513829a80f493bd7ff0a9daa6a70bc1cc96b | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
-| data/metadata/net_tournament/us_wide_20260925/validation.attempt.json | 6bf1f9192c51d9e4a3e6fe8349a975c5015533eca78b98e56e53edda4dad87bc | 3fa148c22a09b2df20e19d18961fe3032bd89849a67b300a03ab0d19b98242fc | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/net_tournament/us_wide_20260925/validation.json.gz | 6ac2fc159ddb39ec22b0e457cc7c52b288eec181a04cad291c91fff9df0c1a11 | 0aa00b72696ce0ac07c0964a10261609393a3e92d5f7adb1441da31398cce962 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/net_tournament/us_wide_20260925/manifest.json | a4a8f384c14b4a7805fbab5f52158a11a38aa78d87368a65c933acd061054eaf | 4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/net_tournament/us_wide_20260925/test.attempt.json | 1f87f6ca24f8787a812ab6f757ec1d6f5e2f96c805433b9c9def538bdbda9c9c | 8ce81e7db9ca714d4aa2808eee6ab7dcf39fe63e045dab4b3fc7ad7276abe603 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/net_tournament/us_wide_20260925/test.json.gz | 61f2a1cd147f5d418e190c685e2b7845e09e8a44746e64a3726797bea48b3efe | a7ea519e504eee2b2239fec69d163e7d8bbcd9b57bcbb2ddc49b74ea2211dbbc | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/net_tournament/us_wide_20260925/validation.attempt.json | d4ffa0198f2bab8da516a96bb4829726d1e3ef900b015cd5a010117b28f98ff2 | 0ee332877df548868fe45f71f2cb20a9ef01600d7e65476acb79a49b43a7495b | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/net_tournament/us_wide_20260925/validation.json.gz | abf8037e85987750fcc6cff42b53137464612e0409e97642e64a43ec961ece36 | c2be98ce3e855af08819d7273b7df6b5c087a7b5107b57535ad8437a07d692c7 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 | phase | selected | complete | economic_evidence_gate | selected_holdout_adjusted_rejection | selected_survives_double_impact | all_terminal_liquidations_complete | promote | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -217,9 +217,9 @@ No test receipt is rendered because that seal is null.
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/cost_aware_tournament/us_wide_20260925/manifest.json | b9ab870606f56c185c0deeeca4e5a0ff09dfec5a21aa05249d4ffb0d78db92fd | 42ece6f46c6272af2293799c2968025a9a9e678c244e9d5abae516a0ef16a9a4 | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/cost_aware_tournament/us_wide_20260925/validation.attempt.json | bf7d470fbc16697b0360235d2480a5066ec452938fd98c0e323bd8f07bf2857d | e84e6c750b0aba0744905556beba0cef914f596e2ef7a58326eab4215899dcfe | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/cost_aware_tournament/us_wide_20260925/validation.json.gz | cd6da69e1c3bc5dd3b67afe88c89347c3c73e573703fffbeaba7ebc3b62e891f | b5dcea77594ef6513e54334a62e4ffb1d1ff76c96094c1fb92aa0ed5c3a546cc | pass | 6360b2d18a1b1e260fac637caa7891eed5d5c911 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/cost_aware_tournament/us_wide_20260925/manifest.json | ea26eaf805da7963eea40d81ffb69078199d3695bed6669b281a38947160a763 | 7dab6ee1eb6b39c47e85f048c8f9584d5c6b08f214ef3c6a4cb908228be7ca90 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/cost_aware_tournament/us_wide_20260925/validation.attempt.json | 1fe173b736824f8372d5e94c7c09cb7f8d30c71b4020796db3802babfca3efa5 | b9a680e45d664b103cd5c37b191cb8bcdbf5ca0210277aad1de50d69b120c4a6 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/cost_aware_tournament/us_wide_20260925/validation.json.gz | 67c1a4738e479fb3c54a95d422e1e32e9a276c7dc63d1c876f554e0fc50f4273 | 972af75021460e68c463f6d02fbdd879a0f053a4beb15ff800569e1fda35cc71 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 | phase | selected | complete | economic_evidence_gate | selected_holdout_adjusted_rejection | selected_survives_double_impact | all_terminal_liquidations_complete | promote | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

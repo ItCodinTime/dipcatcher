@@ -1,4 +1,5 @@
 .venv/
+.venv-*/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -62,6 +63,8 @@ coverage.xml
 site/
 .coverage
 .coverage.*
+# TLC download (scripts/run_tlc.sh). The jar is not source.
+.tla/
 # Optional PyO3 extension build tree (regenerate with `make native`).
 rust/quant_core/target/
 

@@ -36,7 +36,7 @@ BOOKS = ("momentum_20", "equal_weight")
 SCENARIOS = ("configured", "double_impact")
 _EMPTY = "0" * 64
 _ROOT = Path(__file__).resolve().parents[3]
-_PUBLISHED_INDEX_SHA256 = "174eab718a2aa97692d28270eaf4c3a5bd4f604960296f8b772ee3541937c6b5"
+_PUBLISHED_INDEX_SHA256 = "0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204"
 _CALENDAR_FIRST = date(2026, 9, 18)
 _CALENDAR_LAST = date(2034, 12, 31)
 

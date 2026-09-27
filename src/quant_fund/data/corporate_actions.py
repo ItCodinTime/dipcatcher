@@ -297,12 +297,18 @@ def adjust_prices(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
             / (1.0 + pl.col("_div_ret"))
         ).alias("close_total_return")
     )
-    # For bars with no dividend, TR close equals split-adjusted close after scaling
-    # Use a cleaner definition: TR return = simple return of split-adj close plus div/prev_close
+    # Total return = split-adjusted price return plus the cash dividend, both
+    # per unit of prior wealth. `dividend` is cash per share on the ex-date's
+    # raw basis. A split whose ex-date is after the previous bar leaves that
+    # bar on a larger cumulative future-split factor than today, so dividing
+    # by the raw previous close (the pre-split price) understates the yield
+    # by sf_prev / sf_today. When the factors match, the ratio is 1 and this
+    # is dividend / previous raw close.
     prev = pl.col("close_split_adjusted").shift(1).over("security_id")
     prev_raw = pl.col("close").shift(1).over("security_id")
+    prev_sf = pl.col("split_factor").shift(1).over("security_id")
     simple = pl.col("close_split_adjusted") / prev - 1.0
-    div_simple = pl.col("dividend") / prev_raw
+    div_simple = pl.col("dividend") * prev_sf / (prev_raw * pl.col("split_factor"))
     tr = simple + div_simple.fill_null(0.0)
     out = out.with_columns(tr.fill_null(0.0).alias("_tr_ret"))
     out = out.with_columns(
