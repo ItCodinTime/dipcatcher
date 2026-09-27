@@ -271,3 +271,24 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  formal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: TLC order-lifecycle model check
+        run: bash scripts/run_tlc.sh
+      - name: SMT proofs, conformance, and stateful tests
+        run: uv run pytest tests/formal -q --tb=short

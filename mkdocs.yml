@@ -137,6 +137,7 @@ nav:
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Validation: VALIDATION.md
+      - Formal verification: FORMAL_VERIFICATION.md
       - Mathematical specification: MATH_SPEC.md
       - Research references: RESEARCH_REFERENCES.md
       - Institutional readiness: INSTITUTIONAL_READINESS.md

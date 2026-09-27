@@ -55,6 +55,7 @@ dev = [
     "pytest>=8.3",
     "pytest-cov>=6.0",
     "hypothesis>=6.115",
+    "z3-solver>=4.13",
     "ruff>=0.8",
     "mypy>=1.13",
     "pre-commit>=4.0",
@@ -153,7 +154,7 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 # Canonical discovery: the fx-1 suite runs via `make fx1-test` (tests/fx1 is
 # intentionally outside testpaths; the dead tests/tests mirror was removed).
-testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end"]
+testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end", "tests/formal"]
 addopts = "-q --strict-markers"
 markers = [
     "network: tests that require internet (disabled by default)",

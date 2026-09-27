@@ -60,6 +60,8 @@ coverage.xml
 site/
 .coverage
 .coverage.*
+# TLC download (scripts/run_tlc.sh). The jar is not source.
+.tla/
 
 # Derived wide-panel data — regenerate via data engine, never commit (AGENTS.md).
 data/file_us_wide/**

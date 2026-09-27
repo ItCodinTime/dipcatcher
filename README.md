@@ -199,6 +199,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/VALIDATION.md` | Walk-forward, CPCV, multiple-testing, conformal gates |
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
+| `docs/FORMAL_VERIFICATION.md` | Order-lifecycle model check, trace conformance, accounting proofs |
 | `docs/NORTHSET.md` | Order-book and candlestick slice |
 | `docs/HF_OHLCV_1M.md` | Hugging Face US 1-minute OHLCV: license, schema, caveats |
 | `docs/FX1.md` | fx-1 package: corpus, honesty contract, intended base model |
