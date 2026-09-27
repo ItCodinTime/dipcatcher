@@ -120,13 +120,14 @@ def _parse_name_status(raw: bytes) -> list[tuple[bytes, bytes]]:
 def _tracked_changes(git: str, entries: list[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:
     """Drop smudged LFS files whose bytes match the pointer recorded at HEAD.
 
-    The fingerprint is ``git diff HEAD``. A genuine LFS checkout stores the
-    pointer in that blob and the object bytes in the worktree, so a filter-off
-    diff always lists the path. Matching the worktree sha256 and size to the
-    HEAD pointer's oid and size is the same comparison a clean filter would
-    make, without running ``git-lfs``. The index pointer is the wrong object:
-    a staged edit whose new pointer matches the worktree would look clean
-    while ``git diff HEAD`` still shows the content change.
+    The fingerprint is ``git diff HEAD`` with LFS filters blanked. Git omits a
+    path while the index stat cache matches, so a quiescent smudge never
+    reaches this filter. A racy timestamp or a touch lists the path, because
+    the worktree bytes are not the pointer blob. Matching the worktree sha256
+    and size to the HEAD pointer's oid and size is the same comparison a clean
+    filter would make, without running ``git-lfs``. The index pointer is the
+    wrong object: a staged edit whose new pointer matches the worktree would
+    look clean while ``git diff HEAD`` still shows the content change.
     """
     if not entries:
         return []
