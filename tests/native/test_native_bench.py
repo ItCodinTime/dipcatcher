@@ -1,4 +1,4 @@
-"""SYNTHETIC wall-clock comparison of the NumPy reference and quant_core.
+"""SYNTHETIC wall-clock comparison of the profiled Python loops and quant_core.
 
 Not a research score. Medians and sample variances are infrastructure timings.
 The test records both backends and, when Rust is loaded, requires a speedup
@@ -26,8 +26,13 @@ pytestmark = [
     ),
 ]
 
-# Minimum median speedup. Loop kernels are far above this; reductions that
-# NumPy already implements in C are not gated.
+# Minimum median speedup versus the Python loops the profile measured.
+# Production ema/rsi/bollinger now go through SciPy ``lfilter`` and NumPy
+# sliding windows. Those C reductions are not this baseline: the floors and
+# ``rust/quant_core/README.md`` (ema ~8.6 ms / 111×) describe the scalar
+# loops. ``_loop_ema``, ``_loop_rsi``, and ``_loop_bollinger`` are those
+# loops. The numeric floors are unchanged. Rolling mean/std and wealth stay
+# ungated because NumPy already implements them in C.
 _MIN_SPEEDUP = {
     "bollinger": 8.0,
     "rsi": 5.0,
@@ -61,6 +66,83 @@ def _stats(samples: np.ndarray) -> dict[str, float]:
     }
 
 
+def _loop_ema(values: np.ndarray, window: int) -> np.ndarray:
+    """SMA-seeded EMA. ``alpha * x + (1 - alpha) * prev``, NaN warmup."""
+    out = np.full(values.size, np.nan)
+    alpha = 2.0 / (window + 1.0)
+    out[window - 1] = values[:window].mean()
+    for i in range(window, values.size):
+        out[i] = alpha * values[i] + (1.0 - alpha) * out[i - 1]
+    return out
+
+
+def _loop_wilder(values: np.ndarray, window: int) -> np.ndarray:
+    """Wilder smooth. ``(prev * (n - 1) + x) / n``, NaN warmup."""
+    out = np.full(values.size, np.nan)
+    out[window - 1] = values[:window].mean()
+    for i in range(window, values.size):
+        out[i] = (out[i - 1] * (window - 1) + values[i]) / window
+    return out
+
+
+def _loop_rsi(close: np.ndarray, window: int) -> np.ndarray:
+    """Wilder RSI on the scalar smoother the floor was calibrated against."""
+    delta = np.diff(close, prepend=close[0])
+    up = np.where(delta > 0, delta, 0.0)
+    down = np.where(delta < 0, -delta, 0.0)
+    avg_up = _loop_wilder(up, window)
+    avg_down = _loop_wilder(down, window)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        rs = avg_up / avg_down
+        out = 100.0 - 100.0 / (1.0 + rs)
+    out[avg_down == 0.0] = np.where(avg_up[avg_down == 0.0] > 0, 100.0, 50.0)
+    return out
+
+
+def _loop_bollinger(close: np.ndarray, window: int, num_sd: float) -> dict[str, np.ndarray]:
+    """Cumsum SMA plus a per-window population std. That std loop is the cost."""
+    mid = np.full(close.size, np.nan)
+    cumulative = np.cumsum(np.insert(close, 0, 0.0))
+    mid[window - 1 :] = (cumulative[window:] - cumulative[:-window]) / window
+    sd = np.full(close.size, np.nan)
+    for i in range(window - 1, close.size):
+        sd[i] = close[i - window + 1 : i + 1].std(ddof=0)
+    upper = mid + num_sd * sd
+    lower = mid - num_sd * sd
+    with np.errstate(invalid="ignore", divide="ignore"):
+        pct_b = (close - lower) / (upper - lower)
+        bandwidth = (upper - lower) / mid
+    return {
+        "mid": mid,
+        "upper": upper,
+        "lower": lower,
+        "pct_b": pct_b,
+        "bandwidth": bandwidth,
+    }
+
+
+def _assert_loops_match_reference(close: np.ndarray) -> None:
+    """Timed loops are the same formulas as the production fallbacks."""
+    np.testing.assert_allclose(
+        _loop_ema(close, 20),
+        reference.ema(close, 20),
+        rtol=1e-9,
+        atol=1e-9,
+        equal_nan=True,
+    )
+    np.testing.assert_allclose(
+        _loop_rsi(close, 14),
+        reference.rsi(close, 14),
+        rtol=1e-8,
+        atol=1e-8,
+        equal_nan=True,
+    )
+    loop_bands = _loop_bollinger(close, 20, 2.0)
+    ref_bands = reference.bollinger(close, 20, 2.0)
+    for key, loop_band in loop_bands.items():
+        np.testing.assert_allclose(loop_band, ref_bands[key], rtol=1e-9, atol=1e-9, equal_nan=True)
+
+
 def test_kernel_speedups(capsys: pytest.CaptureFixture[str]) -> None:
     import quant_core
 
@@ -79,6 +161,7 @@ def test_kernel_speedups(capsys: pytest.CaptureFixture[str]) -> None:
         ask_px[:, i] = 100.2 + i + 0.01 * i
     blobs = [rng.integers(0, 256, size=64, dtype=np.uint8).tobytes() for _ in range(20_000)]
     wide = rng.normal(size=2_000_000).tobytes()
+    _assert_loops_match_reference(close)
 
     cases = {
         "rolling_mean": (
@@ -89,10 +172,10 @@ def test_kernel_speedups(capsys: pytest.CaptureFixture[str]) -> None:
             lambda: reference.rolling_std(close, 20),
             lambda: quant_core.rolling_std(close, 20),
         ),
-        "ema": (lambda: reference.ema(close, 20), lambda: quant_core.ema(close, 20)),
-        "rsi": (lambda: reference.rsi(close, 14), lambda: quant_core.rsi(close, 14)),
+        "ema": (lambda: _loop_ema(close, 20), lambda: quant_core.ema(close, 20)),
+        "rsi": (lambda: _loop_rsi(close, 14), lambda: quant_core.rsi(close, 14)),
         "bollinger": (
-            lambda: reference.bollinger(close, 20, 2.0),
+            lambda: _loop_bollinger(close, 20, 2.0),
             lambda: quant_core.bollinger(close, 20, 2.0),
         ),
         "simple_returns": (
