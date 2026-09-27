@@ -309,3 +309,16 @@ output = "coverage.xml"
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+# PROOFCORE per-package coverage floors (A3 #2, DESIGN.md §9.3/§12) — ADDITIVE
+# to the global 80% floor above, which is unchanged. Enforced by
+# `make proofcore-coverage` / the coverage-floors job in
+# .github/workflows/proofcore.yml via `python -m quant_fund.proofcore.ci
+# coverage-gate`, which reads this table (single source of truth).
+# Ratchet-only thereafter: raise, never lower.
+[tool.proofcore.coverage-floors]
+pit = 90
+proof = 90
+leakage = 85
+reality = 90
+proofcore = 90

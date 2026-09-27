@@ -72,3 +72,7 @@ data/file_us_wide/**
 .dsh-24x7/paper_data/**
 # mutmut work tree (scores are written by scripts/mutation_score.py)
 mutants/
+# PROOFCORE artifacts (DESIGN.md §13): proof bundles + provenance duckdb are
+# host-local evidence — proof-run orchestration is pending.
+proofs/
+leakage-report.json

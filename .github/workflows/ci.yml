@@ -116,6 +116,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    env:
+      HYPOTHESIS_PROFILE: ci
     strategy:
       fail-fast: false
       matrix:
