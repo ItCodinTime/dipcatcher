@@ -88,8 +88,37 @@ def random_fourier_features(
     return np.concatenate([np.sin(proj), np.cos(proj)], axis=1)
 
 
+def _groups_from_codes(codes: NDArray[np.int64]) -> list[NDArray[np.intp]]:
+    """Split row indices by integer codes. Code 0 is the first-seen group."""
+    if codes.size == 0:
+        return []
+    _uniq, first, inverse = np.unique(codes, return_index=True, return_inverse=True)
+    appear = np.argsort(first, kind="mergesort")
+    remap = np.empty(appear.shape[0], dtype=np.intp)
+    remap[appear] = np.arange(appear.shape[0], dtype=np.intp)
+    group_id = remap[inverse]
+    order = np.argsort(group_id, kind="mergesort")
+    sorted_id = group_id[order]
+    if sorted_id.size == 1:
+        return [order.astype(np.intp, copy=False)]
+    cuts = np.flatnonzero(sorted_id[1:] != sorted_id[:-1]) + 1
+    return [part.astype(np.intp, copy=False) for part in np.split(order, cuts)]
+
+
 def date_groups(dates: NDArray[Any]) -> list[NDArray[np.intp]]:
-    """Row indices per distinct date, first-seen order. Dates need not be sorted."""
+    """Row indices per distinct date, first-seen order. Dates need not be sorted.
+
+    Datetime64 and integer stamps use a sort-based grouping. Object stamps
+    keep the original dictionary scan so ``NaN`` keys and ``.item()``
+    normalization stay unchanged.
+    """
+    arr = np.asarray(dates)
+    if arr.ndim == 1 and arr.size and arr.dtype.kind in {"M", "i", "u"} and arr.dtype != np.uint64:
+        if arr.dtype.kind == "M":
+            codes = np.ascontiguousarray(arr.astype("datetime64[ns]").view(np.int64))
+        else:
+            codes = np.ascontiguousarray(arr.astype(np.int64, copy=False))
+        return _groups_from_codes(codes)
     buckets: dict[Any, list[int]] = {}
     order: list[Any] = []
     for i, stamp in enumerate(dates):

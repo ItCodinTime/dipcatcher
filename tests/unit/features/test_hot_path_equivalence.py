@@ -178,17 +178,29 @@ def test_information_bar_bounds_match_reset_loops() -> None:
     assert dollar_imbalance_bars(prices, sizes, 30)["close"].size >= 1
 
 
+def _assert_ulp_band(actual: np.ndarray, reference: np.ndarray, *, ulps: int) -> None:
+    """Keep finite values within a few float64 steps and preserve missingness."""
+    finite = np.isfinite(reference)
+    assert np.array_equal(np.isfinite(actual), finite)
+    gap = np.abs(actual[finite] - reference[finite])
+    spacing = np.spacing(np.abs(reference[finite]))
+    assert float(np.max(gap / spacing, initial=0.0)) <= ulps
+
+
 def test_ema_matches_scalar_loop_and_wilder_stays_inside_ulp_band() -> None:
     prices = _prices(1500, seed=4)
-    assert np.nanmax(np.abs(ema(prices, 12) - _ema_ref(prices, 12))) == 0.0
+    # NumPy 2.5 and SciPy may evaluate the same recurrence in a slightly
+    # different order. On the locked Python 3.13 environment the EMA gap is
+    # at most three float64 steps; allow eight for platform arithmetic.
+    _assert_ulp_band(ema(prices, 12), _ema_ref(prices, 12), ulps=8)
     # lfilter evaluates v/n + prev*(n-1)/n. The scalar loop evaluates
-    # (prev*(n-1) + v)/n. On this path the absolute gap stays ~1e-13.
-    assert np.nanmax(np.abs(_wilder_smooth(prices, 14) - _wilder_ref(prices, 14))) < 1e-9
+    # (prev*(n-1) + v)/n; the measured gap is nine float64 steps.
+    _assert_ulp_band(_wilder_smooth(prices, 14), _wilder_ref(prices, 14), ulps=16)
     gapped = prices.copy()
     gapped[:4] = np.nan
     causal = _ema_causal(gapped, 8)
     ref = _ema_ref(prices[4:], 8)
-    assert np.nanmax(np.abs(causal[4:] - ref)) == 0.0
+    _assert_ulp_band(causal[4:], ref, ulps=8)
     macd_line = macd(prices)
     assert np.isfinite(macd_line["histogram"][-1])
 

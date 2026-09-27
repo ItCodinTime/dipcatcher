@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke
 
 .DEFAULT_GOAL := help
 
@@ -14,6 +14,10 @@ test: ## PR-gate lab tests (not network, not slow; xdist)
 
 test-full: ## Full offline lab suite, including slow tests
 	uv run pytest -n auto --dist loadfile -m "not network"
+
+parity-smoke: ## SYNTHETIC backtest/shadow parity smoke (simulated broker only)
+	uv run pytest -q tests/unit/parity
+	uv run python -m quant_fund.parity smoke --out data/metadata/parity-smoke
 
 coverage: ## PR-gate tests + coverage (threshold in pyproject)
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
@@ -161,3 +165,6 @@ reality-gate: ## Reality-filter gate: export trial ledger from provenance DB + l
 
 receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending
 	uv run python -m quant_fund.proofcore.ci receipts-reverify receipts
+
+market-sim-test: ## Matching engine and agent-market tests
+	uv run pytest tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
