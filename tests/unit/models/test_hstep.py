@@ -115,10 +115,14 @@ def test_hstep_bad_constructor_args_fail_closed() -> None:
         HStepScaledDistribution(TAUS, horizons=(1, 0, 5))
     with pytest.raises(ValueError, match="horizons"):
         HStepScaledDistribution(TAUS, horizons=())
+    with pytest.raises(ValueError, match="horizons"):
+        HStepScaledDistribution(TAUS, horizons=(1, float("inf")))
 
 
-def test_train_distribution_accepts_hstep(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`hstep` passes _require_model; empty folds then fail closed."""
+def test_generic_distribution_runner_rejects_hstep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The one-step evaluator cannot score multi-horizon output or labels."""
     cfg = load_config("configs/research.yaml")
     frame = pl.DataFrame(
         {
@@ -130,5 +134,5 @@ def test_train_distribution_accepts_hstep(monkeypatch: pytest.MonkeyPatch) -> No
     )
     monkeypatch.setattr(train_module, "panel", lambda *a, **k: frame)
     monkeypatch.setattr(train_module, "_walk_forward_splits", lambda *a, **k: [])
-    with pytest.raises(ValueError, match="no trainable/evaluable fold"):
+    with pytest.raises(ValueError, match="unknown distribution model"):
         train_distribution(cfg, "hstep")

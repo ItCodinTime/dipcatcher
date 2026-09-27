@@ -49,11 +49,13 @@ def _overlap_sums(y: NDArray[np.float64], h: int) -> NDArray[np.float64]:
 class HStepScaledDistribution(JoblibMixin):
     """Vol-scaled h-step distribution challenger (dip_hstep).
 
-    Unconditional head: ``x`` is ignored and ``predict`` tiles one quantile
-    row. Rows of ``y`` arrive in panel (date-major) order; the overlapping
-    h-step sums treat them as a single time-ordered series, so on a
-    multi-asset window the sums can straddle asset boundaries — an honest
-    documented limitation, not hidden cleaning.
+    Standalone single-series head: ``x`` is ignored and ``predict`` tiles
+    one quantile row. ``y`` must be consecutive observations from one
+    security in time order; pooled panel rows would make overlapping sums
+    cross asset boundaries. The generic ``train_distribution`` evaluator
+    intentionally does not register this head because it has one-step
+    labels and expects exactly ``len(taus)`` columns, while this head
+    returns both constructions at several horizons.
 
     Per horizon ``h`` in ``horizons`` two constructions are emitted:
 
@@ -86,7 +88,10 @@ class HStepScaledDistribution(JoblibMixin):
         ):
             raise ValueError("taus must be non-empty and strictly increasing in (0, 1)")
         hs_raw = list(horizons)
-        if not hs_raw or any(int(h) != h or int(h) < 1 for h in hs_raw):
+        if not hs_raw or any(
+            isinstance(h, (bool, np.bool_)) or not isinstance(h, (int, np.integer)) or h < 1
+            for h in hs_raw
+        ):
             raise ValueError("horizons must be non-empty positive integers")
         self.taus = [float(t) for t in tt]
         self.horizons = tuple(sorted({int(h) for h in hs_raw}))
@@ -132,6 +137,8 @@ class HStepScaledDistribution(JoblibMixin):
         self.q_student_ = np.asarray(rearrange_quantiles(q_st), dtype=float)
         self.q_emp_ = np.asarray(rearrange_quantiles(q_emp), dtype=float)
         self.q_ = np.stack([self.q_student_, self.q_emp_], axis=1).reshape(-1)
+        if not np.isfinite(self.q_).all():
+            raise ValueError("h-step quantiles must be finite")
         return self
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
