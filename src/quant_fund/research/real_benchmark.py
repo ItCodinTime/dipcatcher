@@ -20,13 +20,17 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from quant_fund.utils.hashing import receipt_tree
+
 FEATURES = ("return_1", "return_5", "return_20", "volatility_20")
 MODELS = ("zero", "historical_mean", "rolling_mean_20", "ridge")
 
 
 def _digest(value: dict[str, Any]) -> str:
     return hashlib.sha256(
-        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        json.dumps(
+            receipt_tree(value), sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode()
     ).hexdigest()
 
 
