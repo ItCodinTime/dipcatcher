@@ -6,9 +6,8 @@ import json
 from pathlib import Path
 
 import pytest
-from quant_fund.config.models import AppConfig
-from quant_fund.research.catalog.constants import FORBIDDEN_RESEARCH_METRIC_KEYS
 
+from quant_fund.config.models import AppConfig
 from quant_fund.parity.__main__ import main, smoke
 from quant_fund.parity.reference import run_backtest_session
 from quant_fund.parity.replay import ReplayOptions
@@ -16,6 +15,7 @@ from quant_fund.parity.report import assert_clean_report, build_report, write_re
 from quant_fund.parity.session import MarketSession
 from quant_fund.parity.shadow import run_shadow_session
 from quant_fund.parity.strategy import FixedWeightStrategy
+from quant_fund.research.catalog.constants import FORBIDDEN_RESEARCH_METRIC_KEYS
 
 
 def _walk_keys(value: object, found: set[str]) -> None:

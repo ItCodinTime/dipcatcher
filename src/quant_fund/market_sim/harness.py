@@ -16,14 +16,14 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-from quant_fund.market_sim.config import EVIDENCE, EcologyConfig
-from quant_fund.market_sim.scenarios import SCENARIOS, run_scenario
-from quant_fund.market_sim.simulator import SimResult, WeightFunction, run_ecology
 
 from quant_fund.backtest.engine import run_backtest
 from quant_fund.config.loader import load_config
 from quant_fund.config.models import AppConfig
 from quant_fund.lightspeed.momentum import momentum_scores
+from quant_fund.market_sim.config import EVIDENCE, EcologyConfig
+from quant_fund.market_sim.scenarios import SCENARIOS, run_scenario
+from quant_fund.market_sim.simulator import SimResult, WeightFunction, run_ecology
 from quant_fund.metrics.returns import max_drawdown
 
 _REPO = Path(__file__).resolve().parents[3]

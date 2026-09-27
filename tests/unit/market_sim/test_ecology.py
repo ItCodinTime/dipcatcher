@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+
 from quant_fund.market_sim.agents import (
     Action,
     ExecutionAgent,

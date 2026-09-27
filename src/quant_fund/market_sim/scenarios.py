@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+
 from quant_fund.market_sim.agents import FundamentalAgent
 from quant_fund.market_sim.config import EVIDENCE, EcologyConfig, drought_config
 from quant_fund.market_sim.simulator import (

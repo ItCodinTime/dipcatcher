@@ -17,9 +17,9 @@ STRICT_MODULE_FLOOR = 393
 # validate_ledger_schema. verify_research_artifact was 196 before the split.
 MCCABE_CEILING = 74
 # `except Exception` handlers under src/quant_fund. This is origin/main's
-# count at 6103d95 (66). This branch narrows three of them, so the tree is
-# at 63. New handlers that push the total above main fail this test.
-EXCEPT_EXCEPTION_CEILING = 66
+# count at 4b0d47d (72). This branch narrows three of them, so the tree is
+# at 69. New handlers that push the total above main fail this test.
+EXCEPT_EXCEPTION_CEILING = 72
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:

@@ -57,7 +57,7 @@ def _block_key(value: object) -> object:
     if isinstance(value, np.generic):
         value = value.item()
     if hasattr(value, "isoformat"):
-        return value.isoformat()  # type: ignore[no-untyped-call]
+        return value.isoformat()
     return str(value)
 
 
