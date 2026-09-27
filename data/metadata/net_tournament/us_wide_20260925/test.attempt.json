@@ -1,0 +1,10 @@
+{
+  "manifest_sha256": "4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13",
+  "phase": "test",
+  "created_at": "2026-09-25T06:50:09.914478+00:00",
+  "candidates": [
+    "momentum_20",
+    "reversal_1"
+  ],
+  "receipt_sha256": "8ce81e7db9ca714d4aa2808eee6ab7dcf39fe63e045dab4b3fc7ad7276abe603"
+}

@@ -1,0 +1,696 @@
+{
+  "stage": {
+    "g0": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -19.13501778161951,
+      "h2_sharpe": -18.36075141432967,
+      "score": -19.13501778161951
+    },
+    "g1": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -3.273689971721484,
+      "score": NaN
+    },
+    "g2": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -16.038547464362658,
+      "h2_sharpe": -13.166959409260288,
+      "score": -16.038547464362658
+    },
+    "g3": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -1.156279177147963,
+      "score": NaN
+    },
+    "g4": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -15.631239473184124,
+      "h2_sharpe": -7.553699282351575,
+      "score": -15.631239473184124
+    },
+    "g5": {
+      "cfg": {
+        "lead": 0,
+        "wh": 1,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": 0.25926669339309527,
+      "score": NaN
+    },
+    "g6": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -17.767449804439522,
+      "h2_sharpe": -16.625779408549555,
+      "score": -17.767449804439522
+    },
+    "g7": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -1.267807734272689,
+      "score": NaN
+    },
+    "g8": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -16.187246779220963,
+      "h2_sharpe": -13.625093490859218,
+      "score": -16.187246779220963
+    },
+    "g9": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.740960420109466,
+      "score": NaN
+    },
+    "g10": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -13.633285813108737,
+      "h2_sharpe": -6.888700648211303,
+      "score": -13.633285813108737
+    },
+    "g11": {
+      "cfg": {
+        "lead": 0,
+        "wh": 2,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": 0.4790671436687649,
+      "score": NaN
+    },
+    "g12": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -17.33424811145607,
+      "h2_sharpe": -13.890431762552138,
+      "score": -17.33424811145607
+    },
+    "g13": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.20976643873614,
+      "score": NaN
+    },
+    "g14": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -12.84637940304594,
+      "h2_sharpe": -8.598699475083816,
+      "score": -12.84637940304594
+    },
+    "g15": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": 0.15117598764676138,
+      "score": NaN
+    },
+    "g16": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -10.373619379345914,
+      "h2_sharpe": -4.458194439513928,
+      "score": -10.373619379345914
+    },
+    "g17": {
+      "cfg": {
+        "lead": 0,
+        "wh": 4,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": 0.41052338018761153,
+      "score": NaN
+    },
+    "g18": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -11.480066904882651,
+      "h2_sharpe": -17.621916132539738,
+      "score": -17.621916132539738
+    },
+    "g19": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -2.857688184496881,
+      "score": NaN
+    },
+    "g20": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -3.1514483270619436,
+      "h2_sharpe": -9.03781616525309,
+      "score": -9.03781616525309
+    },
+    "g21": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.20770091347321587,
+      "score": NaN
+    },
+    "g22": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 3.192693738394454,
+      "h2_sharpe": -3.4018414363255904,
+      "score": -3.4018414363255904
+    },
+    "g23": {
+      "cfg": {
+        "lead": 1,
+        "wh": 1,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.8010710418197052,
+      "score": NaN
+    },
+    "g24": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -11.775241292835002,
+      "h2_sharpe": -15.81849348980098,
+      "score": -15.81849348980098
+    },
+    "g25": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -1.15039806149147,
+      "score": NaN
+    },
+    "g26": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -3.9231280630454473,
+      "h2_sharpe": -9.20245622832643,
+      "score": -9.20245622832643
+    },
+    "g27": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.05198543409826461,
+      "score": NaN
+    },
+    "g28": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 2.138080603030871,
+      "h2_sharpe": -3.4131478549717365,
+      "score": -3.4131478549717365
+    },
+    "g29": {
+      "cfg": {
+        "lead": 1,
+        "wh": 2,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.7925506551838916,
+      "score": NaN
+    },
+    "g30": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -9.841562599463288,
+      "h2_sharpe": -12.183916043641364,
+      "score": -12.183916043641364
+    },
+    "g31": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.00017,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.09512486736510599,
+      "score": NaN
+    },
+    "g32": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": -2.1867343761459663,
+      "h2_sharpe": -5.41692212384649,
+      "score": -5.41692212384649
+    },
+    "g33": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": 0.8986454136875636,
+      "score": NaN
+    },
+    "g34": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 1,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 3.2500300863505416,
+      "h2_sharpe": -0.9712134349933839,
+      "score": -0.9712134349933839
+    },
+    "g35": {
+      "cfg": {
+        "lead": 1,
+        "wh": 4,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 3,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": NaN,
+      "h2_sharpe": -0.6694239623424861,
+      "score": NaN
+    }
+  },
+  "frozen": {
+    "id": "g34",
+    "lead": 1,
+    "wh": 4,
+    "enter_rate": 0.001,
+    "exit_rate": 0.0,
+    "lookback_events": 1,
+    "name_weight": 0.08,
+    "max_names": 30,
+    "rebalance_band": 1.3,
+    "rate_scale_ref": 0.002,
+    "rate_scale_cap": 1.5,
+    "rate_scale_floor": 1.0,
+    "qualified_on_dev": "True"
+  },
+  "dev": {
+    "total_return": 0.0014466647365978247,
+    "cagr": 0.0056911441284417386,
+    "sharpe": 0.957970941123451,
+    "max_drawdown": -0.0012533900921964936,
+    "mean_turnover": 0.0018103129117400516,
+    "funding_net": 8642.706719328724,
+    "funding_events_dropped": 167562,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 9,
+    "n": 2233
+  },
+  "holdout": {
+    "total_return": 0.014259735192457157,
+    "cagr": 0.058920498757257356,
+    "sharpe": 3.326356600259699,
+    "max_drawdown": -0.0031017682638377897,
+    "mean_turnover": 0.002575913205568754,
+    "funding_net": 22851.47027005186,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 15,
+    "n": 2168
+  },
+  "gate": {
+    "PROVEN": false
+  }
+}

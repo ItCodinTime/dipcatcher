@@ -1,0 +1,1020 @@
+{
+  "stage": {
+    "g0": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.776765977615098,
+      "h2_sharpe": 10.183498908699733,
+      "score": 6.776765977615098
+    },
+    "g1": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.775948113348412,
+      "h2_sharpe": 8.01349650107955,
+      "score": 6.775948113348412
+    },
+    "g2": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.8237807325965445,
+      "h2_sharpe": 9.893781950351165,
+      "score": 5.8237807325965445
+    },
+    "g3": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.840207075166801,
+      "h2_sharpe": 6.7383548838826695,
+      "score": 4.840207075166801
+    },
+    "g4": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.327399002813474,
+      "h2_sharpe": 6.938037939057064,
+      "score": 4.327399002813474
+    },
+    "g5": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 2.708267048870727,
+      "h2_sharpe": 3.9070230181775,
+      "score": 2.708267048870727
+    },
+    "g6": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 9.08170874324808,
+      "h2_sharpe": 9.154009713150002,
+      "score": 9.08170874324808
+    },
+    "g7": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.291816250937551,
+      "h2_sharpe": 7.702388850758836,
+      "score": 5.291816250937551
+    },
+    "g8": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.533833239750772,
+      "h2_sharpe": 8.55594184566187,
+      "score": 4.533833239750772
+    },
+    "g9": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.207170087009208,
+      "h2_sharpe": 6.554709447071051,
+      "score": 4.207170087009208
+    },
+    "g10": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 2.892007609611068,
+      "h2_sharpe": 7.142652795825961,
+      "score": 2.892007609611068
+    },
+    "g11": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 1.590174347821581,
+      "h2_sharpe": 4.522556563649991,
+      "score": 1.590174347821581
+    },
+    "g12": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.146121563162311,
+      "h2_sharpe": 8.252069709320589,
+      "score": 5.146121563162311
+    },
+    "g13": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 3.529664424257792,
+      "h2_sharpe": 7.294721175837945,
+      "score": 3.529664424257792
+    },
+    "g14": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.550957796759563,
+      "h2_sharpe": 6.825736646961911,
+      "score": 4.550957796759563
+    },
+    "g15": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.208975412895047,
+      "h2_sharpe": 6.432980508920025,
+      "score": 4.208975412895047
+    },
+    "g16": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 0.8349273584446141,
+      "h2_sharpe": 6.244280326793223,
+      "score": 0.8349273584446141
+    },
+    "g17": {
+      "cfg": {
+        "z_lookback": 20,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 0.6473248735982684,
+      "h2_sharpe": 4.905028675730887,
+      "score": 0.6473248735982684
+    },
+    "g18": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 12.358779365989243,
+      "h2_sharpe": 9.035618694016094,
+      "score": 9.035618694016094
+    },
+    "g19": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 11.54658957383803,
+      "h2_sharpe": 7.3065308289607,
+      "score": 7.3065308289607
+    },
+    "g20": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 13.037078617429543,
+      "h2_sharpe": 9.426713048896737,
+      "score": 9.426713048896737
+    },
+    "g21": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 11.512827797804468,
+      "h2_sharpe": 7.48349979172488,
+      "score": 7.48349979172488
+    },
+    "g22": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 9.767091728814151,
+      "h2_sharpe": 6.249479153297562,
+      "score": 6.249479153297562
+    },
+    "g23": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.82402872130451,
+      "h2_sharpe": 4.85507050239741,
+      "score": 4.85507050239741
+    },
+    "g24": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 9.735126147355103,
+      "h2_sharpe": 9.567938358003671,
+      "score": 9.567938358003671
+    },
+    "g25": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.906062510575619,
+      "h2_sharpe": 8.406828554970145,
+      "score": 5.906062510575619
+    },
+    "g26": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 10.33180738991165,
+      "h2_sharpe": 9.096883867607648,
+      "score": 9.096883867607648
+    },
+    "g27": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.298672525177279,
+      "h2_sharpe": 8.52034991052503,
+      "score": 7.298672525177279
+    },
+    "g28": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.5769920546249665,
+      "h2_sharpe": 7.199362324797309,
+      "score": 7.199362324797309
+    },
+    "g29": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.528571848626003,
+      "h2_sharpe": 6.320768191197792,
+      "score": 6.320768191197792
+    },
+    "g30": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 10.559301700530039,
+      "h2_sharpe": 8.121594020611234,
+      "score": 8.121594020611234
+    },
+    "g31": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 10.155029068827437,
+      "h2_sharpe": 8.009461558575975,
+      "score": 8.009461558575975
+    },
+    "g32": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 10.621900916138062,
+      "h2_sharpe": 7.91982569952273,
+      "score": 7.91982569952273
+    },
+    "g33": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 9.68354597293943,
+      "h2_sharpe": 7.904552871761784,
+      "score": 7.904552871761784
+    },
+    "g34": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.562784868639069,
+      "h2_sharpe": 6.921293003076773,
+      "score": 5.562784868639069
+    },
+    "g35": {
+      "cfg": {
+        "z_lookback": 60,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 4.563717676645842,
+      "h2_sharpe": 6.743626704324067,
+      "score": 4.563717676645842
+    },
+    "g36": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 8.730859975409523,
+      "h2_sharpe": 9.920416742801134,
+      "score": 8.730859975409523
+    },
+    "g37": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 8.028652674633724,
+      "h2_sharpe": 7.811175790316423,
+      "score": 7.811175790316423
+    },
+    "g38": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 9.09778599388424,
+      "h2_sharpe": 10.194875570640107,
+      "score": 9.09778599388424
+    },
+    "g39": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 8.352659365808593,
+      "h2_sharpe": 8.244474186876996,
+      "score": 8.244474186876996
+    },
+    "g40": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.236708408330955,
+      "h2_sharpe": 6.814846180006691,
+      "score": 6.814846180006691
+    },
+    "g41": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.429274339110719,
+      "h2_sharpe": 4.789231838188629,
+      "score": 4.789231838188629
+    },
+    "g42": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 8.399735022563076,
+      "h2_sharpe": 9.175587425188981,
+      "score": 8.399735022563076
+    },
+    "g43": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.054170230195119,
+      "h2_sharpe": 8.469582510058789,
+      "score": 7.054170230195119
+    },
+    "g44": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.974098892114842,
+      "h2_sharpe": 9.01227536743599,
+      "score": 7.974098892114842
+    },
+    "g45": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.850616082563141,
+      "h2_sharpe": 8.992002878424223,
+      "score": 6.850616082563141
+    },
+    "g46": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.431641786881141,
+      "h2_sharpe": 7.1845739100138,
+      "score": 6.431641786881141
+    },
+    "g47": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 1.5,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 5.758208019564719,
+      "h2_sharpe": 7.11358425589926,
+      "score": 5.758208019564719
+    },
+    "g48": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.4204845772194785,
+      "h2_sharpe": 8.5795493932892,
+      "score": 7.4204845772194785
+    },
+    "g49": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.0005,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.242866570922128,
+      "h2_sharpe": 8.189061534187308,
+      "score": 7.242866570922128
+    },
+    "g50": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.810597360451502,
+      "h2_sharpe": 7.943607341759813,
+      "score": 7.810597360451502
+    },
+    "g51": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.001,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.072021818284187,
+      "h2_sharpe": 7.531681414271991,
+      "score": 7.072021818284187
+    },
+    "g52": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": -0.000125,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 7.1059719934232275,
+      "h2_sharpe": 7.0221946434514955,
+      "score": 7.0221946434514955
+    },
+    "g53": {
+      "cfg": {
+        "z_lookback": 120,
+        "z_gate": 2.0,
+        "enter_rate": 0.002,
+        "exit_rate": 0.0,
+        "lookback_events": 9,
+        "name_weight": 0.08,
+        "max_names": 30,
+        "rebalance_band": 1.3,
+        "rate_scale_ref": 0.002,
+        "rate_scale_cap": 1.5,
+        "rate_scale_floor": 1.0
+      },
+      "h1_sharpe": 6.153815570804712,
+      "h2_sharpe": 6.990127526456981,
+      "score": 6.153815570804712
+    }
+  },
+  "frozen": {
+    "id": "g24",
+    "z_lookback": 60,
+    "z_gate": 1.5,
+    "enter_rate": 0.0005,
+    "exit_rate": -0.000125,
+    "lookback_events": 9,
+    "name_weight": 0.08,
+    "max_names": 30,
+    "rebalance_band": 1.3,
+    "rate_scale_ref": 0.002,
+    "rate_scale_cap": 1.5,
+    "rate_scale_floor": 1.0,
+    "qualified_on_dev": "True"
+  },
+  "dev": {
+    "total_return": 0.1903773453455051,
+    "cagr": 0.09110927094479204,
+    "sharpe": 7.5045310542563,
+    "max_drawdown": -0.0043416734776526855,
+    "mean_turnover": 0.015324621764823349,
+    "funding_net": 214943.87408361887,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 4,
+    "n": 730
+  },
+  "holdout": {
+    "total_return": 0.016433701157222202,
+    "cagr": 0.009856532611293378,
+    "sharpe": 1.2024765896949412,
+    "max_drawdown": -0.007455413297386637,
+    "mean_turnover": 0.01551443773044374,
+    "funding_net": 44599.53483663593,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 11,
+    "n": 607
+  },
+  "gate": {
+    "PROVEN": false
+  }
+}

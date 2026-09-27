@@ -62,14 +62,27 @@ ALIASES = {
     "treasury": "us_treasury",
     "cftc": "cftc_cot",
     "finra": "finra_short_sale_volume",
+    "ohlcv-1m": "hf_ohlcv_1m",
+    "hf-ohlcv-1m": "hf_ohlcv_1m",
 }
 
 
+def _install_hf_ohlcv() -> None:
+    """Register the HF minute adapter without an import cycle through this module."""
+    if "hf_ohlcv_1m" in SOURCE_REGISTRY:
+        return
+    from quant_fund.data.adapters.hf_ohlcv_1m import HfOhlcv1mSource
+
+    SOURCE_REGISTRY[HfOhlcv1mSource.name] = HfOhlcv1mSource
+
+
 def source_names() -> tuple[str, ...]:
+    _install_hf_ohlcv()
     return tuple(sorted(SOURCE_REGISTRY))
 
 
 def get_source(name: str) -> SourceAdapter:
+    _install_hf_ohlcv()
     key = ALIASES.get(name.strip().lower(), name.strip().lower())
     try:
         cls = SOURCE_REGISTRY[key]

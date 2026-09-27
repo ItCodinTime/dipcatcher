@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -246,8 +246,6 @@ def run_backtest(
                 close_mark[sid] = fallback_mark
                 next_mark_ages[sid] = 0
                 marked_today.add(sid)
-            advs[sid] = _valid_price(row["adv"]) or 1.0
-            vols[sid] = _valid_price(row["vol_20"]) or 0.02
         for sid in close_mark:
             if sid not in marked_today:
                 next_mark_ages[sid] = next_mark_ages.get(sid, 0) + 1
@@ -281,6 +279,14 @@ def run_backtest(
             mark = _valid_price(row["close"])
             if mark is not None:
                 decision_marks[str(row["security_id"])] = mark
+            # Liquidity and volatility for a next-open order must be known
+            # at the signal close. The execution day's final volume/ADV and
+            # realized volatility are future data at the moment of the fill.
+            sid = str(row["security_id"])
+            known_adv = _valid_price(row["adv"])
+            if known_adv is not None:
+                advs[sid] = known_adv
+            vols[sid] = _valid_price(row["vol_20"]) or 0.02
         # Value held names without an execution bar at the last close rather
         # than at 0.0: a missing open must not understate NAV / exposures and
         # silently let the risk gate admit orders.
@@ -325,12 +331,20 @@ def run_backtest(
             delta = desired - current
             if abs(delta) * price < 1.0:
                 continue
-            costs = total_cost(delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), costs_cfg)
-            # participation cap
-            max_qty = costs_cfg.participation_limit * (advs.get(sid, 1.0) / price)
-            if abs(delta) > max_qty > 0:
+            adv = advs.get(sid)
+            if (
+                adv is None
+                or not np.isfinite(costs_cfg.participation_limit)
+                or not 0 < costs_cfg.participation_limit <= 1
+            ):
+                reject_count += 1
+                continue
+            costs = total_cost(delta, price, adv, vols.get(sid, 0.02), costs_cfg)
+            # Cap executable size using liquidity available at the decision.
+            max_qty = costs_cfg.participation_limit * (adv / price)
+            if abs(delta) > max_qty:
                 delta = np.sign(delta) * max_qty
-                costs = total_cost(delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), costs_cfg)
+                costs = total_cost(delta, price, adv, vols.get(sid, 0.02), costs_cfg)
             try:
                 kill.assert_new_orders_allowed()
             except KillSwitchActive:
@@ -343,7 +357,7 @@ def run_backtest(
             current_w, gross_after, net_after = _projected_exposures(
                 book, nav_prices, sid, delta, nav
             )
-            participation = abs(delta) * price / max(advs.get(sid, 1.0), 1e-12)
+            participation = abs(delta) * price / adv
             order_seq += 1
             order = _make_order(
                 sid=sid,
@@ -703,3 +717,76 @@ def export_backtest_metrics_json(
     blob["analytics_export_sha256"] = analytics_export_digest(blob)
     _atomic_write_text(dest, json.dumps(blob, indent=2, default=str))
     return dest
+
+
+def capacity_sensitivity(
+    bars: pl.DataFrame,
+    weights: pl.DataFrame,
+    config: AppConfig,
+    *,
+    nav_levels: tuple[float, ...] = (100_000.0, 1_000_000.0, 10_000_000.0),
+    adv_haircuts: tuple[float, ...] = (1.0, 0.5),
+) -> dict[str, object]:
+    """Replay the same decisions at increasing NAV and reduced known liquidity.
+
+    Every cell reruns risk checks, impact, and partial participation-limited
+    fills; return percentages alone cannot measure strategy capacity. Daily
+    ADV is the signal-close estimate and is lagged at next-open execution.
+    Haircut scenarios only *reduce* that estimate. These are research-only
+    stress tests, not forecasts of deployable fund size or live fill quality.
+    """
+    if not nav_levels or any(not np.isfinite(n) or n <= 0 for n in nav_levels):
+        raise ValueError("nav_levels must contain finite positive capital amounts")
+    if not adv_haircuts or any(not np.isfinite(h) or not 0 < h <= 1 for h in adv_haircuts):
+        raise ValueError("adv_haircuts must be finite fractions in (0, 1]")
+    if config.costs.frictionless:
+        raise ValueError("capacity sensitivity requires an enabled transaction-cost model")
+    if bars.height < 2:
+        raise ValueError("capacity sensitivity requires at least two bar rows")
+    if "adv" not in bars.columns and not {"close", "volume"} <= set(bars.columns):
+        raise ValueError("bars need ADV or close and volume for a causal liquidity proxy")
+    adv_expression = pl.col("adv") if "adv" in bars.columns else pl.col("close") * pl.col("volume")
+    cases: list[dict[str, object]] = []
+    for capital in nav_levels:
+        for haircut in adv_haircuts:
+            stressed = bars.with_columns((adv_expression * haircut).alias("adv"))
+            result = run_backtest(stressed, weights, config, initial_nav=capital)
+            executed_notional = (
+                sum(
+                    abs(float(quantity) * float(price))
+                    for quantity, price in zip(
+                        result.fills.get_column("quantity").to_list(),
+                        result.fills.get_column("price").to_list(),
+                        strict=True,
+                    )
+                )
+                if result.fills.height
+                else 0.0
+            )
+            cases.append(
+                {
+                    "initial_nav": float(capital),
+                    "adv_haircut": float(haircut),
+                    "data_source": result.source_note,
+                    "end_nav": float(result.equity.get_column("nav")[-1])
+                    if result.equity.height
+                    else float(capital),
+                    "total_return": (
+                        float(result.equity.get_column("nav")[-1]) / float(capital) - 1
+                        if result.equity.height
+                        else 0.0
+                    ),
+                    "filled_orders": result.fills.height,
+                    "executed_notional_fraction": executed_notional / float(capital),
+                    "risk_or_liquidity_rejects": cast(int, result.metrics["risk_gate_rejects"]),
+                    "cash_rejects": cast(int, result.metrics["cash_rejects"]),
+                    "total_impact_dollars": cast(float, result.metrics.get("impact", 0.0)),
+                }
+            )
+    return {
+        "claim": "execution_capacity_diagnostic_only",
+        "research_only": True,
+        "live_pnl_claim": False,
+        "n_cases": len(cases),
+        "cases": cases,
+    }

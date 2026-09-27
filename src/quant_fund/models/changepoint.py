@@ -288,7 +288,7 @@ def optimal_partition_mean(
         s1 = cumsum[b] - cumsum[a]
         s2 = cumsum2[b] - cumsum2[a]
         m = b - a
-        return s2 - s1 * s1 / m
+        return float(s2 - s1 * s1 / m)
 
     f = np.full(n + 1, np.inf)
     f[0] = -pen

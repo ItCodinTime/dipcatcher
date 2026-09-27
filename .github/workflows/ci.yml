@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -39,8 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -57,7 +57,7 @@ jobs:
             | uvx --from pip-audit==2.10.1 pip-audit --strict --format json -r /dev/stdin \
             | tee dependency-audit.json
       - name: Upload dependency audit
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-dependency-audit
           path: dependency-audit.json
@@ -67,8 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -77,16 +77,17 @@ jobs:
         run: uv sync --frozen --all-groups --no-install-project
       - name: Build wheel and source distribution
         run: uv build
-      - name: Install wheel and smoke-test the installed console script
+      - name: Install wheel and smoke-test the installed console scripts
         run: |
           uv pip install --python .venv/bin/python --no-deps dist/*.whl
+          .venv/bin/fx1 --help
           .venv/bin/dipcatcher --help
 
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build runtime image
         run: docker build --pull --tag dipcatcher-ci .
       - name: Start container
@@ -118,8 +119,8 @@ jobs:
       matrix:
         python: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
           enable-cache: true
@@ -130,7 +131,7 @@ jobs:
         run: uv run pytest -q -m "not network" --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage
         if: matrix.python == '3.12'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-coverage
           path: coverage.xml
@@ -141,8 +142,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -152,12 +153,12 @@ jobs:
       - name: Collect paper and analytics tests
         run: |
           uv run pytest --collect-only -q \
-            tests/unit/test_ledger_schema.py \
-            tests/unit/test_wave6_analytics.py \
+            tests/unit/pipeline/test_ledger_schema.py \
+            tests/unit/models/test_wave6_analytics.py \
             tests/property/test_nav_resume_identity.py \
-            tests/unit/test_paper_loop.py \
-            tests/unit/test_paper_resume_promotion.py \
-            tests/unit/test_analytics.py
+            tests/unit/backtest/test_paper_loop.py \
+            tests/unit/backtest/test_paper_resume_promotion.py \
+            tests/unit/models/test_analytics.py
       - name: Synthetic research smoke
         run: uv run dipcatcher research --config configs/research.yaml
       - name: Data lineage health
@@ -193,7 +194,7 @@ jobs:
           print("validated paper shadow smoke")
           PY
       - name: Upload paper shadow evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-paper-shadow-smoke
           path: data/metadata/paper/
@@ -245,10 +246,28 @@ jobs:
           print(f"validated research run {provenance['run_id']}")
           PY
       - name: Upload research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-research-notebook
           path: |
             data/metadata/research/latest.json
             data/metadata/research/latest.md
             data/metadata/research/runs/
+
+  examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Phase-1 verification compares sealed code hashes to the indexed commit.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Examples gallery
+        run: make examples

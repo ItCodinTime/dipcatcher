@@ -245,7 +245,10 @@ def ppo(close: Array, fast: int = 12, slow: int = 26) -> Array:
 def true_range(high: Array, low: Array, close: Array) -> Array:
     h, lo, c = _ohlcv(high, low, close)
     pc = np.concatenate([[c[0]], c[:-1]])
-    return np.maximum(h - lo, np.maximum(np.abs(h - pc), np.abs(lo - pc)))
+    return np.asarray(
+        np.maximum(h - lo, np.maximum(np.abs(h - pc), np.abs(lo - pc))),
+        dtype=float,
+    )
 
 
 def atr(high: Array, low: Array, close: Array, window: int = 14) -> Array:

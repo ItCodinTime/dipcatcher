@@ -1,0 +1,41 @@
+{
+  "frozen_screen": "topk by count(spread>enter) k=90 on dev",
+  "frozen_config": {
+    "enter": 0.001,
+    "exit_": -0.000125,
+    "lb": 9,
+    "nw": 0.08,
+    "mx": 30,
+    "band": 1.3,
+    "rsr": 0.002,
+    "rsc": 1.5,
+    "rsf": 1.0
+  },
+  "holdout": {
+    "total_return": 0.03953495835068055,
+    "cagr": 0.023605445957838533,
+    "sharpe": 4.17944572838182,
+    "max_drawdown": -0.002249230267539981,
+    "mean_turnover": 0.009093756817744521,
+    "funding_net": 53165.89469152662,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 1,
+    "n": 607
+  },
+  "dev": {
+    "total_return": 0.3482630561674904,
+    "cagr": 0.16126613333393358,
+    "sharpe": 11.814870037188115,
+    "max_drawdown": -0.004295306643183228,
+    "mean_turnover": 0.016286738881566447,
+    "funding_net": 381624.7565072881,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 4,
+    "n": 730
+  },
+  "n_names": 90
+}

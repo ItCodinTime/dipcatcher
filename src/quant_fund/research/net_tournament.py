@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,10 +15,9 @@ import numpy as np
 
 from quant_fund.metrics import inference, snooping
 from quant_fund.research import cost_allocation, net_replay, real_benchmark
-from quant_fund.research.cost_allocation import AllocationConfig
+from quant_fund.research.cost_allocation import AllocationConfig, AllocationFailure
 from quant_fund.research.net_replay import ReplayConfig, Strategy, market_panel, replay
 from quant_fund.research.real_benchmark import (
-    BenchmarkProtocol,
     _load_bars,
     _read_receipt,
     _runtime,
@@ -158,8 +158,7 @@ def prepare_tournament(benchmark_run: Path, spec_path: Path, output: Path) -> di
     benchmark = _read_receipt(benchmark_run / "manifest.json")
     if benchmark["code_sha256"] != real_benchmark._code_sha() or benchmark["runtime"] != _runtime():
         raise ValueError("benchmark code/runtime differs from the frozen receipt")
-    protocol = BenchmarkProtocol(**benchmark["protocol"])
-    protocol.validate()
+    protocol = real_benchmark.protocol_for_run(benchmark, benchmark_run)
     if protocol.horizon_sessions != 1 or protocol.decision_delay_seconds != 0:
         raise ValueError(
             "this daily tournament requires a one-session horizon and close-time decisions"
@@ -173,6 +172,7 @@ def prepare_tournament(benchmark_run: Path, spec_path: Path, output: Path) -> di
             "schema_version": 1,
             "created_at": datetime.now(UTC).isoformat(),
             "benchmark_manifest": benchmark,
+            "benchmark_run": os.path.relpath(benchmark_run.resolve(), output.resolve()),
             "spec": raw,
             "code_sha256": _code_hashes(),
             "runtime": _tournament_runtime(),
@@ -275,8 +275,10 @@ def run_tournament(run_dir: Path, phase: str) -> dict[str, Any]:
             raise ValueError("validation was incomplete; no candidate was selected")
     raw = manifest["spec"]
     execution, trials, baseline = _spec(raw)
-    protocol = BenchmarkProtocol(**manifest["benchmark_manifest"]["protocol"])
-    protocol.validate()
+    benchmark_run = (run_dir.resolve() / manifest["benchmark_run"]).resolve()
+    if _read_receipt(benchmark_run / "manifest.json") != manifest["benchmark_manifest"]:
+        raise ValueError("benchmark manifest no longer matches the frozen tournament")
+    protocol = real_benchmark.protocol_for_run(manifest["benchmark_manifest"], benchmark_run)
     panel = market_panel(
         _load_bars(protocol), open_column=raw["open_column"], volume_column=raw["volume_column"]
     )
@@ -320,6 +322,8 @@ def run_tournament(run_dir: Path, phase: str) -> dict[str, Any]:
                     "error": str(exc),
                     "trial": asdict(trial),
                 }
+                if isinstance(exc, AllocationFailure):
+                    outcomes[trial.name]["solver_diagnostic"] = exc.diagnostic
         comparison = compare_returns(
             outcomes,
             names,

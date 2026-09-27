@@ -21,7 +21,7 @@ Array = NDArray[np.float64]
 
 def _kern(u: Array, kernel: str) -> Array:
     if kernel == "gauss":
-        return np.exp(-0.5 * u * u) / np.sqrt(2.0 * np.pi)
+        return np.asarray(np.exp(-0.5 * u * u) / np.sqrt(2.0 * np.pi), dtype=float)
     if kernel == "epa":
         return np.where(np.abs(u) <= 1.0, 0.75 * (1.0 - u * u), 0.0)
     raise ValueError("kernel must be gauss|epa")

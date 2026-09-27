@@ -1,0 +1,54 @@
+name: fx1
+
+on:
+  push:
+    branches: [main, 'fx-1/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Lint
+        run: uv run ruff check src/fx1 tests/fx1
+      - name: Types
+        run: uv run mypy src/fx1
+      - name: Tests
+        run: uv run pytest tests/fx1 -q
+      # Documented contract (docs/FX1_TRAINING.md): honesty inheritance is
+      # blocking — fails if fx-1's forbidden set drifts from the lab catalog.
+      - name: Honesty inheritance gate
+        run: uv run pytest tests/fx1 -q -k honesty
+      - name: Corpus contract smoke
+        run: |
+          uv run fx1 corpus build --receipts-dir receipts --out "$RUNNER_TEMP/fx1_corpus.jsonl"
+          uv run python - <<'PY'
+          import json
+          import os
+          import re
+
+          path = os.path.join(os.environ["RUNNER_TEMP"], "fx1_corpus.jsonl")
+          with open(path, encoding="utf-8") as fh:
+              rows = [json.loads(line) for line in fh if line.strip()]
+          assert rows, "corpus smoke produced no lines"
+          for row in rows:
+              assert {"messages", "negative", "receipt_sha256", "source_path"} <= row.keys(), row.keys()
+              assert re.fullmatch(r"[0-9a-f]{64}", row["receipt_sha256"]), row["receipt_sha256"]
+          print(f"corpus contract OK: {len(rows)} provenance-hashed lines")
+          PY

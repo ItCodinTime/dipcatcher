@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -63,6 +63,11 @@ from quant_fund.research.benches import (
     bench_tail,
     bench_volatility,
     bench_weighted_conformal,
+)
+from quant_fund.research.benches_extra import (
+    bench_complexity,
+    bench_roughness,
+    bench_serial_randomness,
 )
 from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
@@ -137,7 +142,7 @@ class ResearchNotebook:
     artifacts: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return _jsonable(asdict(self))
+        return cast(dict[str, Any], _jsonable(asdict(self)))
 
 
 def format_p_value(value: float) -> str:
@@ -1559,6 +1564,9 @@ def run_research(config: AppConfig) -> ResearchNotebook:
         "online_crc": bench_online_crc_from_panel(df, config),
         "portfolio_conformal": bench_portfolio_from_panel(df, config),
         "northset": bench_northset(northset_frame, config),
+        "complexity": bench_complexity(df),
+        "roughness": bench_roughness(df),
+        "serial_randomness": bench_serial_randomness(df),
     }
 
     hyps = _build_hypotheses(families, rankers)

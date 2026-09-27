@@ -47,7 +47,7 @@ from quant_fund.backtest.sleeves import (  # noqa: E402
 )
 from quant_fund.config.loader import load_config  # noqa: E402
 
-SPLIT = datetime(2025, 1, 1, tzinfo=UTC)
+DEFAULT_SPLIT = datetime(2025, 1, 1, tzinfo=UTC)
 PPY = 365.25
 METRIC_KEYS = (
     "total_return",
@@ -219,6 +219,11 @@ class Evaluator:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--data-dir", type=Path, default=Path("data/binance_carry"))
+    p.add_argument(
+        "--split",
+        default=None,
+        help="ISO dev/holdout boundary (default 2025-01-01)",
+    )
     p.add_argument("--initial-nav", type=float, default=1_000_000.0)
     p.add_argument("--config", default="configs/research.yaml")
     p.add_argument("--target-vols", type=float, nargs="*", default=None)
@@ -237,7 +242,10 @@ def main() -> int:
         funding = funding.filter(pl.col("security_id").is_in(keep))
 
     t0, t1 = bars["event_time"].min(), bars["event_time"].max()
-    dev_times = sorted(bars.filter(pl.col("event_time") < SPLIT)["event_time"].unique().to_list())
+    split = datetime.fromisoformat(args.split).replace(tzinfo=UTC) if args.split else DEFAULT_SPLIT
+    dev_times = sorted(bars.filter(pl.col("event_time") < split)["event_time"].unique().to_list())
+    if not dev_times:
+        raise SystemExit(f"no bars before split {split}")
     mid = dev_times[len(dev_times) // 2]
 
     cfg = load_config(args.config)
@@ -254,7 +262,7 @@ def main() -> int:
     def score_weights(wkey: str, w: pl.DataFrame, *, mdd_gate=False) -> tuple[float, dict]:
         best = (float("-inf"), {})
         h1 = ev.run(w, t0, mid, None)
-        h2 = ev.run(w, mid, SPLIT, None)
+        h2 = ev.run(w, mid, split, None)
         s = _score(h1, h2, mdd_gate=mdd_gate)
         if s > best[0]:
             best = (s, {"tv": None, "h1": h1, "h2": h2})
@@ -264,7 +272,7 @@ def main() -> int:
         "schema": "megaplan_eval.v1",
         "created_at": datetime.now(tz=UTC).isoformat(),
         "data_dir": str(args.data_dir),
-        "split": str(SPLIT),
+        "split": str(split),
         "dev_mid": str(mid),
         "bar_span": [str(t0), str(t1)],
         "n_symbols": int(bars["security_id"].n_unique()),
@@ -399,7 +407,7 @@ def main() -> int:
     stageC = {}
     for tv in args.target_vols:
         h1 = ev.run(champ_w, t0, mid, tv)
-        h2 = ev.run(champ_w, mid, SPLIT, tv)
+        h2 = ev.run(champ_w, mid, split, tv)
         stageC[tv] = {"score": _score(h1, h2, mdd_gate=True), "h1": h1, "h2": h2}
         print(
             f"  tv={tv}: score={stageC[tv]['score']:.3f} h1={h1.get('sharpe')} h2={h2.get('sharpe')}",
@@ -407,7 +415,7 @@ def main() -> int:
         )
     # include no-overlay as a candidate
     h1 = ev.run(champ_w, t0, mid, None)
-    h2 = ev.run(champ_w, mid, SPLIT, None)
+    h2 = ev.run(champ_w, mid, split, None)
     stageC["none"] = {"score": _score(h1, h2, mdd_gate=True), "h1": h1, "h2": h2}
     receipt["stageC"] = {str(k): v for k, v in stageC.items()}
     bestC = max(stageC.items(), key=lambda kv: kv[1]["score"])
@@ -426,7 +434,7 @@ def main() -> int:
     # inside the (lo, hi) window rather than truncated off.
     final = {}
     hold_end = t1 + timedelta(seconds=ev.step_s)
-    for label, lo, hi in (("dev", t0, SPLIT), ("holdout", SPLIT, hold_end)):
+    for label, lo, hi in (("dev", t0, split), ("holdout", split, hold_end)):
         final[label] = ev.run(champ_w, lo, hi, champ_tv)
         print(f"{label}: {final[label]}", flush=True)
     receipt["final"] = final

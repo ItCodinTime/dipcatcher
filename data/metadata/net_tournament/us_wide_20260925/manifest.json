@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-25T06:49:37.545609+00:00",
+  "benchmark_manifest": {
+    "schema_version": 1,
+    "created_at": "2026-09-25T06:47:10.618534+00:00",
+    "protocol": {
+      "dataset_path": "../../../file_us_wide/bronze/bars.parquet",
+      "dataset_sha256": "e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117",
+      "source_url": "https://github.com/artificial-hedge/dipcatcher/blob/d5200713c280438cf51649593517de5cd8b95646/data/file_us_wide/bronze/bars.parquet",
+      "usage_basis": "Existing owner-supplied research snapshot. Upstream vendor entitlements and redistribution rights have not been independently verified.",
+      "price_column": "close",
+      "price_adjustment": "Vendor snapshot close; adjustment and corporate-action completeness are unverified. Not a total-return or executable-price claim.",
+      "universe_description": "Existing 424-name file_us_wide vendor pool. Contains surviving securities; this benchmark does not reconstruct the historical listed universe.",
+      "survivorship_bias": true,
+      "availability_basis": "reconstructed",
+      "holdout_previously_inspected": true,
+      "train_start": "2016-01-01",
+      "train_end": "2021-12-31",
+      "validation_start": "2022-01-10",
+      "validation_end": "2023-12-31",
+      "test_start": "2024-01-10",
+      "test_end": "2025-09-30",
+      "horizon_sessions": 1,
+      "embargo_sessions": 1,
+      "decision_delay_seconds": 0,
+      "min_train_rows": 1000,
+      "min_score_dates": 60,
+      "ridge_alpha": 1.0
+    },
+    "code_sha256": "b20a14567d835744e13918ef7f04ae7f20d597207cb99bb9b9ca651204ea71d2",
+    "audit": {
+      "split_counts": {
+        "train": {
+          "rows": 626297,
+          "dates": 1490
+        },
+        "validation": {
+          "rows": 208395,
+          "dates": 495
+        },
+        "test": {
+          "rows": 181451,
+          "dates": 431
+        }
+      },
+      "excluded_windows": 0,
+      "late_rows": 0,
+      "n_names": 424,
+      "rows": 1132803,
+      "source_labels": [
+        "yahoo"
+      ],
+      "first_session": "2016-01-04T21:00:00+00:00",
+      "last_session": "2026-09-18T20:00:00+00:00"
+    },
+    "runtime": {
+      "python": "3.12.14",
+      "numpy": "2.5.3",
+      "polars": "1.44.2"
+    },
+    "research_only": true,
+    "live_pnl_claim": false,
+    "holdout_status": "previously_inspected",
+    "limitations": [
+      "Source, usage rights and historical availability are user declarations, not independently verified.",
+      "File hashes detect changes; they do not prove a holdout was never inspected.",
+      "Close-to-close forecast scores do not establish executable net returns.",
+      "Input universe has survivorship bias.",
+      "Historical availability timestamps were reconstructed."
+    ],
+    "receipt_sha256": "a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384"
+  },
+  "benchmark_run": "../../real_benchmark/us_wide_20260925",
+  "spec": {
+    "benchmark": {
+      "name": "equal_weight",
+      "family": "equal_weight",
+      "lookback": 20
+    },
+    "trials": [
+      {
+        "name": "momentum_20",
+        "family": "momentum",
+        "lookback": 20,
+        "fraction": 0.25
+      },
+      {
+        "name": "reversal_1",
+        "family": "reversal",
+        "lookback": 1,
+        "fraction": 0.25
+      }
+    ],
+    "execution": {
+      "initial_nav": 100000.0,
+      "gross_limit": 0.95,
+      "max_name_weight": 0.2,
+      "participation_limit": 0.01,
+      "commission_bps": 1.0,
+      "half_spread_bps": 5.0,
+      "impact_y": 0.1,
+      "borrow_apr": 0.03,
+      "funding_apr": 0.06,
+      "cash_apr": 0.0,
+      "max_names": 50,
+      "target_buffer": 0.01
+    },
+    "open_column": "open",
+    "volume_column": "volume",
+    "price_basis": "raw_price_return",
+    "n_boot": 2000,
+    "block_sessions": 10,
+    "seed": 17
+  },
+  "code_sha256": {
+    "net_tournament.py": "02d3a3d045d7a8f97d73fed0b0c1d3c04a4a7810d0b874d57e8833e8b8e1d83b",
+    "net_replay.py": "93a15a129fdfdba236997d67700d03118a565692a2bd2e327a83dcfba5dc7882",
+    "cost_allocation.py": "e8aa8c29a90f197ae342f376a66d5f9d97dfab77309190cd7939ef1bff49fd14",
+    "real_benchmark.py": "b20a14567d835744e13918ef7f04ae7f20d597207cb99bb9b9ca651204ea71d2",
+    "inference.py": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
+    "snooping.py": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa"
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.5.3",
+    "polars": "1.44.2",
+    "cvxpy": "1.9.2",
+    "clarabel": "0.11.1",
+    "scipy": "1.18.1"
+  },
+  "candidate_count": 2,
+  "candidates": [
+    {
+      "name": "momentum_20",
+      "family": "momentum",
+      "lookback": 20,
+      "fraction": 0.25,
+      "long_short": false,
+      "allocation": null
+    },
+    {
+      "name": "reversal_1",
+      "family": "reversal",
+      "lookback": 1,
+      "fraction": 0.25,
+      "long_short": false,
+      "allocation": null
+    }
+  ],
+  "benchmark": {
+    "name": "equal_weight",
+    "family": "equal_weight",
+    "lookback": 20,
+    "fraction": 0.25,
+    "long_short": false,
+    "allocation": null
+  },
+  "selection_rule": "highest validation mean net return, name ascending for ties",
+  "scenarios": {
+    "configured": 1.0,
+    "double_impact": 2.0
+  },
+  "research_only": true,
+  "live_pnl_claim": false,
+  "limitations": [
+    "Source, usage rights and historical availability are user declarations, not independently verified.",
+    "File hashes detect changes; they do not prove a holdout was never inspected.",
+    "Close-to-close forecast scores do not establish executable net returns.",
+    "Input universe has survivorship bias.",
+    "Historical availability timestamps were reconstructed.",
+    "Daily simulated price returns; consistent open/close share units must be verified upstream.",
+    "Dividends, corporate actions and real borrow locates are not modeled. APRs are declared scenario inputs.",
+    "Trades execute at next session open with modeled costs; opening-auction depth is not observed.",
+    "Gross limits are shared; long-only and long-short books can have different factor/net exposures.",
+    "Trial control covers this frozen slate, not undisclosed experiments in other run directories.",
+    "Allocation return/uncertainty inputs are unvalidated proxies; pair ablations are descriptive.",
+    "Impact stress changes realized costs; allocation planning coefficients stay frozen."
+  ],
+  "receipt_sha256": "4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13"
+}

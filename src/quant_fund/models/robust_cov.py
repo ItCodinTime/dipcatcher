@@ -39,7 +39,10 @@ def _mad(v: Array) -> float:
 def _mahalanobis(x: Array, center: Array, cov: Array) -> Array:
     cov_inv = np.linalg.pinv(cov)
     d = x - center
-    return np.sqrt(np.maximum(np.einsum("ij,jk,ik->i", d, cov_inv, d), 0.0))
+    return np.asarray(
+        np.sqrt(np.maximum(np.einsum("ij,jk,ik->i", d, cov_inv, d), 0.0)),
+        dtype=float,
+    )
 
 
 def ogk_cov(x: Array) -> dict[str, Array | float]:

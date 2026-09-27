@@ -116,7 +116,7 @@ class PolicyGradientRanker:
         self.model.eval()
         with torch.no_grad():
             scores = self.model(torch.as_tensor(np.nan_to_num(xx))).reshape(-1)
-        return scores.cpu().numpy().astype(float)
+        return np.asarray(scores.cpu().numpy(), dtype=float)
 
     def metadata(self) -> dict[str, Any]:
         return {

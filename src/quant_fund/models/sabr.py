@@ -127,7 +127,7 @@ def sabr_alpha_from_atm(
     target = f**one_m_b * atm_vol
 
     def g(a: float) -> float:
-        return (
+        return float(
             tenor * (one_m_b**2 / 24.0) / f ** (2.0 * one_m_b) * a**3
             + tenor * (rho * beta * nu) / (4.0 * f**one_m_b) * a**2
             + (1.0 + tenor * ((2.0 - 3.0 * rho**2) / 24.0) * nu**2) * a
@@ -184,7 +184,7 @@ def sabr_fit(
                 float(theta[3]),
             )
         model = sabr_implied_vol(forward, k, tenor, alpha, b, rho, nu)
-        return (model - v) * w
+        return np.asarray((model - v) * w, dtype=float)
 
     if fit_beta:
         x0 = np.array([max(sigma_atm * forward ** (1.0 - beta), 1e-4), 0.0, 0.5, beta])
@@ -237,7 +237,9 @@ def sabr_rho_nu_from_smile(
             alpha = sabr_alpha_from_atm(forward, tenor, sigma_atm, beta, rho, nu)
         except ValueError:
             return np.full_like(v, 1e3)
-        return sabr_implied_vol(forward, k, tenor, alpha, beta, rho, nu) - v
+        return np.asarray(
+            sabr_implied_vol(forward, k, tenor, alpha, beta, rho, nu) - v, dtype=float
+        )
 
     res = optimize.least_squares(
         resid, np.array([0.0, 0.5]), bounds=([-0.999, 1e-8], [0.999, np.inf])

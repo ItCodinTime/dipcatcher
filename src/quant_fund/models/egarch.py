@@ -136,9 +136,11 @@ def news_impact_curve(fit: dict[str, Array | float], model: str, shocks: Array) 
         w = float(fit["omega"])
         a, g = float(fit["alpha"]), float(fit["gamma"])
         s2bar = float(np.asarray(fit["sig2"]).mean())
-        return w + (a + g * (eps < 0)) * eps**2 + float(fit["beta"]) * s2bar
+        return np.asarray(
+            w + (a + g * (eps < 0)) * eps**2 + float(fit["beta"]) * s2bar, dtype=float
+        )
     if model == "egarch":
         w, a, g, b = (float(fit[k]) for k in ("omega", "alpha", "gamma", "beta"))
         lnbar = float(np.mean(np.log(np.asarray(fit["sig2"]))))
-        return np.exp(w + b * lnbar + a * eps + g * (np.abs(eps) - _EZ))
+        return np.asarray(np.exp(w + b * lnbar + a * eps + g * (np.abs(eps) - _EZ)), dtype=float)
     raise ValueError("model must be gjr|egarch")

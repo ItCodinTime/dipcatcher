@@ -98,7 +98,7 @@ def hc_covariance(resid: Array, design: Array, kind: str = "HC3") -> Array:
     else:
         raise ValueError(f"unknown HC kind: {kind!r}")
     meat = (m * scale[:, None]).T @ m
-    return xtx_inv @ meat @ xtx_inv
+    return np.asarray(xtx_inv @ meat @ xtx_inv, dtype=float)
 
 
 def hac_covariance(resid: Array, design: Array, lag: int | None = None) -> Array:
@@ -338,7 +338,7 @@ def cooks_distance(y: Array, x: Array) -> Array:
     s2 = float(e @ e) / (n - k)
     if s2 <= 0.0:
         raise ValueError("zero residual variance")
-    return (e**2 / (k * s2)) * (h / np.maximum(1.0 - h, 1e-12) ** 2)
+    return np.asarray((e**2 / (k * s2)) * (h / np.maximum(1.0 - h, 1e-12) ** 2), dtype=float)
 
 
 def theil_sen(x: Array, y: Array) -> dict[str, float]:

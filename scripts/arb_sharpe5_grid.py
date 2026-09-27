@@ -14,6 +14,7 @@ build_arb_book.py. Writes artifacts/arb_sharpe5_{grid,champion}.json.
 
 from __future__ import annotations
 
+import argparse
 import itertools
 import json
 import pathlib
@@ -35,6 +36,57 @@ GRID = [
         (0.08, 0.12),  # name weight
         (15, 30, 60),  # max names
         (2e-3,),  # rate scale reference
+    )
+]
+# --refine: fine-grain around the extended-grid champion region (dev-only).
+REFINE_GRID = [
+    dict(enter=e, exit_=x, lb=lb, nw=nw, mx=mx, band=1.3, rsr=rsr, rsc=1.5, rsf=1.0)
+    for e, x, lb, nw, mx, rsr in itertools.product(
+        (7e-4, 1e-3, 1.4e-3),
+        (-1.25e-4, 0.0),
+        (3, 5, 9),
+        (0.08, 0.12),
+        (30,),
+        (2e-3,),
+    )
+]
+# --tilt: concentration/vol-sizing pass around the refined champion core —
+# never-touched axes (rate_exponent, vol_lookback, rebalance_band).
+TILT_GRID = [
+    dict(
+        enter=1e-3,
+        exit_=x,
+        lb=9,
+        nw=0.08,
+        mx=mx,
+        band=band,
+        rsr=2e-3,
+        rsc=rsc,
+        rsf=rsf,
+        rexp=rexp,
+        vlb=vlb,
+        vr=0.04,
+    )
+    for x, mx, band, rsc, rsf, rexp, vlb in itertools.product(
+        (-1.25e-4, 0.0),
+        (30, 45),
+        (1.3, 1.6),
+        (1.5, 2.5),
+        (1.0,),
+        (0.0, 1.0, 2.0),
+        (None, 30),
+    )
+]
+# --extend: widen past the observed champion's grid edges (dev-only selection).
+EXT_GRID = [
+    dict(enter=e, exit_=x, lb=lb, nw=nw, mx=mx, band=1.3, rsr=rsr, rsc=1.5, rsf=1.0)
+    for e, x, lb, nw, mx, rsr in itertools.product(
+        (5e-4, 1e-3, 2e-3, 4e-3),
+        (-1.25e-4, 0.0, 1e-4),
+        (9, 21, 45),
+        (0.08, 0.2),
+        (15, 30),
+        (2e-3,),
     )
 ]
 
@@ -60,7 +112,19 @@ def _score(m: dict) -> float:
 
 
 def main() -> int:
-    perp, spot, fund = load_carry(data_dir=DATA)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", default=str(DATA))
+    ap.add_argument("--out-prefix", default="arb_sharpe5")
+    ap.add_argument("--extend", action="store_true")
+    ap.add_argument("--refine", action="store_true")
+    ap.add_argument("--tilt", action="store_true")
+    args = ap.parse_args()
+    grid = (
+        TILT_GRID
+        if args.tilt
+        else (REFINE_GRID if args.refine else (EXT_GRID if args.extend else GRID))
+    )
+    perp, spot, fund = load_carry(data_dir=pathlib.Path(args.data))
     print("arb book sids:", perp["security_id"].n_unique(), "fund:", fund.height)
 
     dev_p, dev_s, dev_f = _slice(perp, spot, fund, datetime(1970, 1, 1, tzinfo=UTC), DEV_END)
@@ -74,7 +138,7 @@ def main() -> int:
     h2 = _slice(dev_p, dev_s, dev_f, DEV_MID, DEV_END)
 
     results = {}
-    for i, g in enumerate(GRID):
+    for i, g in enumerate(grid):
         rec = {"cfg": g}
         try:
             m1, _, _ = run_one(*h1, **g)
@@ -97,7 +161,7 @@ def main() -> int:
         )
 
     pathlib.Path("artifacts").mkdir(exist_ok=True)
-    pathlib.Path("artifacts/arb_sharpe5_grid.json").write_text(
+    pathlib.Path(f"artifacts/{args.out_prefix}_grid.json").write_text(
         json.dumps(results, indent=2, default=str)
     )
 
@@ -131,7 +195,7 @@ def main() -> int:
 
     out["frozen_config"] = champ
     out["selection"] = "argmax(min(sharpe_h1,sharpe_h2)+0.01*dev_sharpe) — dev only"
-    pathlib.Path("artifacts/arb_sharpe5_champion.json").write_text(
+    pathlib.Path(f"artifacts/{args.out_prefix}_champion.json").write_text(
         json.dumps(out, indent=2, default=str)
     )
     gate = (out["holdout"].get("sharpe") or 0) > 5 and (

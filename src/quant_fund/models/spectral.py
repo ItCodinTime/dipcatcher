@@ -67,7 +67,7 @@ def periodogram_welch(
 
 def _dpss_tapers(n: int, nw: float, k: int) -> Array:
     """Slepian (DPSS) tapers via scipy."""
-    return windows.dpss(n, nw, Kmax=k, sym=False)
+    return np.asarray(windows.dpss(n, nw, Kmax=k, sym=False), dtype=float)
 
 
 def periodogram_multitaper(
