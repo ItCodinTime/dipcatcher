@@ -1264,18 +1264,72 @@ class ClassicRanker(JoblibMixin):
         )
 
 
-def _mean_date_ic(x_col: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]) -> float:
-    ics: list[float] = []
+def _mean_date_ics(
+    x: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]
+) -> NDArray[np.float64]:
+    """Mean within-date Pearson IC of every column. One date grouping for all columns.
+
+    Fully finite blocks use one BLAS gemv per date. The std gate and the
+    five-name minimum match the previous per-column loop. The correlation
+    itself is the centered dot product, which agrees with ``np.corrcoef``
+    to about one ulp.
+    """
+    design = np.ascontiguousarray(np.asarray(x, dtype=np.float64))
+    target = np.ascontiguousarray(np.asarray(y, dtype=np.float64).reshape(-1))
+    if design.ndim != 2 or design.shape[0] != target.shape[0]:
+        raise ValueError("x and y must align")
+    n_col = int(design.shape[1])
+    acc = np.zeros(n_col, dtype=np.float64)
+    counts = np.zeros(n_col, dtype=np.float64)
     for idx in date_groups(dates):
-        a = x_col[idx]
-        b = y[idx]
-        finite = np.isfinite(a) & np.isfinite(b)
-        if int(finite.sum()) < 5:
+        block = design[idx]
+        realized = target[idx]
+        finite_y = np.isfinite(realized)
+        if int(finite_y.sum()) < 5:
             continue
-        if float(np.std(a[finite])) < 1e-12 or float(np.std(b[finite])) < 1e-12:
+        # Common case after ``_finite``: the whole date is finite.
+        if bool(finite_y.all()) and bool(np.isfinite(block).all()):
+            if realized.shape[0] < 5:
+                continue
+            centered_y = realized - float(realized.mean())
+            y_ss = float(np.dot(centered_y, centered_y))
+            if y_ss <= 0.0 or np.sqrt(y_ss / realized.shape[0]) < 1e-12:
+                continue
+            centered_x = block - block.mean(axis=0)
+            x_ss = np.sum(centered_x * centered_x, axis=0)
+            std_x = np.sqrt(x_ss / block.shape[0])
+            ok = std_x >= 1e-12
+            if not np.any(ok):
+                continue
+            numer = centered_x.T @ centered_y
+            corr = np.zeros(n_col, dtype=np.float64)
+            corr[ok] = numer[ok] / np.sqrt(x_ss[ok] * y_ss)
+            acc[ok] += corr[ok]
+            counts[ok] += 1.0
             continue
-        ics.append(float(np.corrcoef(a[finite], b[finite])[0, 1]))
-    return float(np.mean(ics)) if ics else 0.0
+        for j in range(n_col):
+            finite = np.isfinite(block[:, j]) & finite_y
+            if int(finite.sum()) < 5:
+                continue
+            column = block[finite, j]
+            response = realized[finite]
+            if float(np.std(column)) < 1e-12 or float(np.std(response)) < 1e-12:
+                continue
+            left = column - column.mean()
+            right = response - response.mean()
+            acc[j] += float(
+                np.dot(left, right) / np.sqrt(np.dot(left, left) * np.dot(right, right))
+            )
+            counts[j] += 1.0
+    out = np.zeros(n_col, dtype=np.float64)
+    hit = counts > 0.0
+    out[hit] = acc[hit] / counts[hit]
+    return out
+
+
+def _mean_date_ic(x_col: NDArray[np.float64], y: NDArray[np.float64], dates: NDArray[Any]) -> float:
+    column = np.asarray(x_col, dtype=np.float64).reshape(-1, 1)
+    return float(_mean_date_ics(column, y, dates)[0])
 
 
 class ICWeightedCombinationRanker(JoblibMixin):
@@ -1298,11 +1352,10 @@ class ICWeightedCombinationRanker(JoblibMixin):
         d = np.asarray(dates)[mask]
         intercepts = np.zeros(xx.shape[1], dtype=float)
         slopes = np.zeros(xx.shape[1], dtype=float)
-        ics = np.zeros(xx.shape[1], dtype=float)
         for j in range(xx.shape[1]):
             intercepts[j], beta = _ols_intercept(xx[:, [j]], yy)
             slopes[j] = float(beta[0]) if beta.size else 0.0
-            ics[j] = _mean_date_ic(xx[:, j], yy, d)
+        ics = _mean_date_ics(xx, yy, d)
         w = np.maximum(ics, 0.0)
         if float(np.sum(w)) <= 0.0:
             w = np.ones_like(w)

@@ -1,0 +1,87 @@
+name: Web Explorer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "tests/unit/web_explorer/**"
+      - "docs/WEB_EXPLORER.md"
+      - ".github/workflows/web_explorer.yml"
+      - "receipts/**"
+      - "artifacts/*.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "tests/unit/web_explorer/**"
+      - "docs/WEB_EXPLORER.md"
+      - ".github/workflows/web_explorer.yml"
+      - "receipts/**"
+      - "artifacts/*.json"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Unit tests (vitest)
+        run: npm run test
+      - name: Build static bundle
+        run: npm run build
+      - name: Check fixtures are committed
+        run: test -f public/fixtures/index.json
+      - name: Upload dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: web-explorer-dist
+          path: web/dist/
+          if-no-files-found: error
+
+  e2e:
+    needs: [build-and-unit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build static bundle
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Playwright tests
+        run: npx playwright test
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: web-explorer-playwright-report
+          path: web/playwright-report/
+          if-no-files-found: warn

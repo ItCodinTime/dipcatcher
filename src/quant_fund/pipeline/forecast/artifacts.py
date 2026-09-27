@@ -5,8 +5,9 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,6 +20,13 @@ from quant_fund.utils.hashing import hash_file
 from .state import _RANKER_CACHE, _RL_POLICY_CACHE
 
 
+def _stamp_utc_date(value: datetime) -> date:
+    """UTC calendar date of a stamp; naive values already mean UTC."""
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.date()
+    return value.astimezone(UTC).date()
+
+
 def _ranker_artifact_path(config: AppConfig) -> Path:
     return Path(config.data.root) / "metadata" / "ranker_ridge.joblib"
 
@@ -28,7 +36,7 @@ def _joblib_artifact_digest(path: Path) -> str:
     return hash_file(path)
 
 
-def _load_ranker_cached(config: AppConfig):
+def _load_ranker_cached(config: AppConfig) -> Any:
     """Load the strongest available supervised ranker artifact.
 
     Candidate artifacts are searched in priority order; cache identity is
@@ -63,7 +71,7 @@ def _load_ranker_cached(config: AppConfig):
     key = (str(rank_path.resolve()), digest)
     cached = _RANKER_CACHE.get(key)
     if cached is not None:
-        return cached
+        return cast(Any, cached)
     # The artifact name is a routing hint only: the serialized object may be
     # any ranking implementation. JoblibMixin.load retains checksum
     # verification while avoiding a Ridge-only type assertion.
@@ -75,7 +83,7 @@ def _load_ranker_cached(config: AppConfig):
     return model
 
 
-def _load_rl_cached(config: AppConfig):
+def _load_rl_cached(config: AppConfig) -> tuple[Any, list[str], str] | None:
     """Load the strongest available persisted RL policy and feature contract."""
     root = Path(config.data.root) / "metadata"
     path = next(
@@ -97,7 +105,7 @@ def _load_rl_cached(config: AppConfig):
     key = (str(path.resolve()), path.stat().st_mtime)
     cached = _RL_POLICY_CACHE.get(key)
     if cached is not None:
-        return cached
+        return cast(tuple[Any, list[str], str], cached)
     artifact = load_joblib_artifact(path)
     if not isinstance(artifact, dict) or "policy" not in artifact or "features" not in artifact:
         raise ValueError("RL artifact is malformed: expected policy and features")
@@ -149,8 +157,8 @@ def _load_probability_calibrator(
             fit_end = datetime.fromisoformat(str(calibrator.fit_end).replace("Z", "+00:00"))
         except ValueError as exc:
             raise ValueError("probability calibrator fit_end is not parseable") from exc
-        left = fit_end.date()
-        right = asof.date()
+        left = _stamp_utc_date(fit_end)
+        right = _stamp_utc_date(asof)
         if (right - left).days < 0 or (right - left).days > max_age:
             raise ValueError("probability calibrator is stale for forecast asof")
     return calibrator

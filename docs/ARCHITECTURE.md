@@ -67,6 +67,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `api` | FastAPI service layer |
 | `cli` | `dipcatcher` Typer commands (`quant` compatibility alias); `cli/_app.py` owns the app + sub-CLI mounts, `cli/*_cmds.py` hold per-domain commands |
 | `microstructure` | Candle/order-book feature benches, synthetic LOB, vendor book maps |
+| `market_sim` | Agent-based price-time matching simulator and stylized-fact checks (`docs/MARKET_SIM.md`) |
 | `northset` | Northset estimators (Kyle λ, OFI, spread/session identities) + sweep research |
 | `hedge_lab` | Strategy lab: gated races, lightspeed book, promotion, sleeve policy |
 | `quant_models` | Options/quant pricing (`qm` CLI): greeks, GEX, monte-carlo, risk-parity |
@@ -76,6 +77,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `risk` | Risk gates, overlays, pyrisk/pyriskmgmt adapters |
 | `mc_engine` | Reproducible scenario Monte Carlo (Philox streams, variance reduction, tail risk). Research simulation only; see `docs/MC_ENGINE.md` |
 | `paper` | Paper-trading loop: clock, ledger, reconciliation, sim-live |
+| `parity` | Backtest/shadow replay, divergence ledger, shortfall attribution, code-path guard |
 | `formal` | Order-lifecycle specification, trace conformance, accounting identities |
 | `reporting` | Evidence reports and tearsheets |
 

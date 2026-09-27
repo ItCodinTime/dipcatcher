@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke
 
 .DEFAULT_GOAL := help
 
@@ -15,6 +15,10 @@ test: ## PR-gate lab tests (not network, not slow; xdist)
 test-full: ## Full offline lab suite, including slow tests
 	uv run pytest -n auto --dist loadfile -m "not network"
 
+parity-smoke: ## SYNTHETIC backtest/shadow parity smoke (simulated broker only)
+	uv run pytest -q tests/unit/parity
+	uv run python -m quant_fund.parity smoke --out data/metadata/parity-smoke
+
 coverage: ## PR-gate tests + coverage (threshold in pyproject)
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
 	# --cov-fail-under so CI and local cannot drift. Sharded CI combines
@@ -29,14 +33,19 @@ fmt: ## Auto-fix lint + format
 	uv run ruff check --fix src tests
 	uv run ruff format src tests
 
-typecheck: ## mypy on the harness
+typecheck: ## mypy on the harness (public modules are strict; see pyproject)
 	uv run mypy src/quant_fund
+	uv run mypy --strict --follow-imports=silent src/quant_fund/__init__.py src/quant_fund/public.py
 
 diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
 	JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
 
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+
+audit-obs: ## Audit ledger and observability tests
+	uv run pytest tests/unit/audit tests/unit/observe -q
+	uv run mypy src/quant_fund/audit src/quant_fund/observe
 
 audit: ## Locked-deps vulnerability audit (pip-audit)
 	uv export --format requirements.txt --no-hashes --no-emit-project --all-extras --all-groups \
@@ -153,10 +162,19 @@ leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory o
 		echo "tests/leakage_fixtures not present yet (W3 lands separately); skipped"; \
 	fi
 
-reality-gate: ## Reality-filter gate: export trial ledger from provenance DB + ledger-gate
-	uv run quant proofcore export --db $(PROOFCORE_DB) --out $(PROOFCORE_LEDGER)
-	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER)
+reality-gate: ## Reality-filter gate: score trials; absent DB or empty export skips
+	uv run quant reality preflight --db $(PROOFCORE_DB); code=$$?; \
+	if [ $$code -eq 3 ]; then exit 0; fi; \
+	if [ $$code -ne 0 ]; then exit $$code; fi; \
+	uv run quant proofcore export --db $(PROOFCORE_DB) --out $(PROOFCORE_LEDGER); \
+	uv run quant reality preflight --ledger $(PROOFCORE_LEDGER); code=$$?; \
+	if [ $$code -eq 3 ]; then exit 0; fi; \
+	if [ $$code -ne 0 ]; then exit $$code; fi; \
+	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER) && \
 	uv run quant reality ledger-gate --ledger $(PROOFCORE_LEDGER)
 
 receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending
 	uv run python -m quant_fund.proofcore.ci receipts-reverify receipts
+
+market-sim-test: ## Matching engine and agent-market tests
+	uv run pytest tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"

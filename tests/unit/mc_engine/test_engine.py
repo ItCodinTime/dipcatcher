@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import replace
 from pathlib import Path
 
@@ -78,13 +79,15 @@ def test_report_keys_avoid_forbidden_performance_headlines() -> None:
     assert report["time_to_recovery"]["censored_excluded_from_mean"] is True
 
 
-def test_antithetic_identity_mean_is_exactly_zero() -> None:
+def test_antithetic_identity_mean_stays_within_float64_roundoff() -> None:
     generator = IdentityShockGenerator(n_steps=1, n_factors=1)
     report = run_simulation(
         generator,
         _identity_config(n_paths=128, chunk_size=32, shock_mode="antithetic", seed=4),
     )
-    assert report["moments"]["mean_loss"] == 0.0
+    # Loss = 1 - (1 + shock) is odd in exact arithmetic. The numeraire
+    # addition and sample reduction can leave sub-ulp residuals in float64.
+    assert abs(report["moments"]["mean_loss"]) <= math.ulp(1.0)
     antithetic = report["variance_reduction"]["antithetic"]
     # Pair averages are ~0. A few ulps of numeraire arithmetic can leave a
     # tiny residual variance, which is a finite astronomical factor, not a

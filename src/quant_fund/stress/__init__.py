@@ -1,25 +1,39 @@
-"""Research stress-testing and scenario engine.
+"""Research-only stress engine with lazy public exports.
 
-Simulation and diagnostics only. This package does not submit orders, talk to
-a broker, or rewrite sealed research receipts.
+Importing the CLI must not load numerical and plotting dependencies before a
+stress command is invoked.
 """
 
-from quant_fund.stress.catalog import CRISIS_CATALOG, Crisis, crisis_by_id
-from quant_fund.stress.replay import replay_crisis, replay_portfolio
-from quant_fund.stress.report import build_stress_report, render_html, render_markdown
-from quant_fund.stress.reverse import reverse_stress, worst_linear_scenario
-from quant_fund.stress.strategy import ResearchStrategy
+from __future__ import annotations
 
-__all__ = [
-    "CRISIS_CATALOG",
-    "Crisis",
-    "ResearchStrategy",
-    "build_stress_report",
-    "crisis_by_id",
-    "render_html",
-    "render_markdown",
-    "replay_crisis",
-    "replay_portfolio",
-    "reverse_stress",
-    "worst_linear_scenario",
-]
+from importlib import import_module
+from typing import Any
+
+_EXPORTS = {
+    "CRISIS_CATALOG": "catalog",
+    "Crisis": "catalog",
+    "crisis_by_id": "catalog",
+    "replay_crisis": "replay",
+    "replay_portfolio": "replay",
+    "build_stress_report": "report",
+    "render_html": "report",
+    "render_markdown": "report",
+    "reverse_stress": "reverse",
+    "worst_linear_scenario": "reverse",
+    "ResearchStrategy": "strategy",
+}
+
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name: str) -> Any:
+    module = _EXPORTS.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(f".{module}", __name__), name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

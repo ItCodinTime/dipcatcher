@@ -63,7 +63,7 @@ def wrappee_cal_fingerprint(
     label: str = "",
     include_cal: bool = False,
     train_content_digest: str = "",
-) -> tuple:
+) -> tuple[object, ...]:
     """Fingerprint for ``_WRAPPEE_CACHE``.
 
     **When reuse is valid (train-primary, default ``include_cal=False``)**
@@ -110,7 +110,7 @@ def wrappee_fit_cache_key(
     n_cal: int = 0,
     include_cal: bool = False,
     train_content_digest: str = "",
-) -> tuple:
+) -> tuple[object, ...]:
     """Train-primary fit key including selected family (Wave 7).
 
     Cal keys are ignored unless ``include_cal=True`` (diagnostics). Alpha/label

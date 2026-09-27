@@ -22,6 +22,11 @@ from quant_fund.cli.support import (
     format_data_label,
     format_fdr_families,
 )
+from quant_fund.cli.audit_cmds import (
+    audit_record,
+    audit_trace,
+    verify_ledger_cmd,
+)
 from quant_fund.cli.data_cmds import (
     doctor,
     ingest,
@@ -125,6 +130,9 @@ def run_doctor(*args: Any, **kwargs: Any) -> Any:
 __all__ = [
     "format_data_label",
     "format_fdr_families",
+    "audit_record",
+    "audit_trace",
+    "verify_ledger_cmd",
     "app",
     "train_app",
     "doctor",
@@ -183,6 +191,20 @@ __all__ = [
     "get_logger",
 ]
 
+
+def _maybe_install_observation_hooks() -> None:
+    """Wrap pipeline entry points only when the operator opted in."""
+    import os
+
+    flag = os.environ.get("DIPCATCHER_OBSERVE", "").strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return
+    from quant_fund.observe.install import install_passive_hooks
+
+    install_passive_hooks()
+
+
+_maybe_install_observation_hooks()
 
 if __name__ == "__main__":
     app()
