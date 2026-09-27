@@ -317,6 +317,9 @@ class PitVault:
         params = {"policy": policy.value}
         if columns is not None:
             params["columns"] = ",".join(str(c) for c in columns)
+        # W1<->W3 seam (adjudicated): the strict LeakageWatchdog fail-closes
+        # without a max_known_at watermark on every observed read.
+        params["max_known_at"] = pit_frame.max_known_at.isoformat()
         read = DataAccessRecord(
             dataset=pit_frame.dataset,
             asof_utc=t.isoformat(),

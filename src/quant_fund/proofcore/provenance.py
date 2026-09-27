@@ -4,8 +4,9 @@ Append-oriented provenance ledger for proof bundles (W2) and reality-filter
 trial rows (W4). Legitimizes the existing duckdb hard dependency (A2 F14).
 
 Layering (DESIGN.md §1.3, layer 3): imports contracts + duckdb + stdlib ONLY.
-W2 has not implemented a verifier yet, so verification ingestion remains
-fail-closed. Bundles may be logged as unverified evidence.
+The standalone W2 verifier exists, but no bound result schema or validation
+path connects its verdict to this database. Verification ingestion remains
+fail-closed; bundles may be logged as unverified evidence.
 """
 
 from __future__ import annotations
@@ -119,10 +120,12 @@ class ProvenanceDB:
         """Append one bundle, preserving exact content and chain order.
 
         An identical reinsert is a no-op. Verification results cannot be
-        accepted until the proof verifier supplies a bound result schema.
+        accepted until a bound verifier result schema and ingestion path exist.
         """
         if verification is not None:
-            raise ProvenanceError("verification ingestion unavailable until proof verifier exists")
+            raise ProvenanceError(
+                "verification ingestion unavailable until a bound result path exists"
+            )
         bundle_json = canonical_json_bytes(bundle.model_dump(mode="json")).decode("utf-8")
         try:
             self._con.execute("BEGIN TRANSACTION")
