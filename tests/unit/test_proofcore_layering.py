@@ -1,0 +1,127 @@
+"""PROOFCORE layering gate (DESIGN.md §1.3 — A2 F1 local fix).
+
+AST-walks ``src/quant_fund/{pit,proof,leakage,reality,proofcore}/**`` and
+fails on any import outside the per-package whitelist. Workstreams land in
+parallel, so a package directory that does not exist yet is reported as
+pending (skip), not failed — but every directory that DOES exist is fully
+gated.
+
+Also gates the reverse direction: no existing SCC package may import a
+PROOFCORE package at module top level, except the layer-4 CLI glue
+(``src/quant_fund/cli/**``), the sanctioned mount point (§9.2).
+"""
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+
+import pytest
+
+SRC = Path(__file__).resolve().parents[2] / "src" / "quant_fund"
+PROOFCORE_PACKAGES = ("pit", "proof", "leakage", "reality", "proofcore")
+
+# §1.3 whitelist: quant_fund subpackages each PROOFCORE package may import at
+# module top level (intra-package imports are always allowed).
+TOP_LEVEL_WHITELIST: dict[str, frozenset[str]] = {
+    "proofcore": frozenset({"proofcore"}),
+    "pit": frozenset({"pit", "proofcore", "schemas", "utils", "data"}),
+    "proof": frozenset({"proof", "proofcore", "schemas", "utils"}),
+    "leakage": frozenset({"leakage", "proofcore", "schemas", "research"}),
+    "reality": frozenset({"reality", "proofcore", "metrics", "validation"}),
+}
+
+# Additional quant_fund roots allowed ONLY inside function bodies (lazy
+# imports — §1.3: integration goes through function-level imports).
+LAZY_WHITELIST: dict[str, frozenset[str]] = {
+    "proofcore": frozenset(),
+    "pit": frozenset(),
+    "proof": frozenset({"backtest", "metrics", "pit", "cli"}),
+    "leakage": frozenset({"pit", "cli"}),
+    "reality": frozenset({"cli"}),
+}
+
+# Third-party roots each package may use (stdlib is always allowed).
+THIRD_PARTY_WHITELIST: dict[str, frozenset[str]] = {
+    "proofcore": frozenset({"duckdb", "pydantic", "typer"}),
+    "pit": frozenset({"polars", "pydantic", "numpy"}),
+    "proof": frozenset({"polars", "pydantic", "numpy"}),
+    "leakage": frozenset({"pydantic"}),
+    "reality": frozenset({"numpy", "scipy", "pydantic", "polars"}),
+}
+
+
+def _imports(path: Path) -> list[tuple[str, int, bool]]:
+    """(full dotted module, line, is_top_level) for every import in a file."""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    lazy_nodes: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            lazy_nodes.update(id(inner) for inner in ast.walk(node))
+    out: list[tuple[str, int, bool]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                out.append((alias.name, node.lineno, id(node) not in lazy_nodes))
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0 and node.module:
+                out.append((node.module, node.lineno, id(node) not in lazy_nodes))
+    return out
+
+
+def _violations(pkg: str) -> list[str]:
+    problems: list[str] = []
+    for path in sorted((SRC / pkg).rglob("*.py")):
+        for module, line, top_level in _imports(path):
+            root = module.split(".")[0]
+            rel = path.relative_to(SRC)
+            if root == "__future__":
+                continue
+            if root == "quant_fund":
+                parts = module.split(".")
+                sub = parts[1] if len(parts) > 1 else ""
+                if sub in TOP_LEVEL_WHITELIST[pkg]:
+                    continue
+                if not top_level and sub in LAZY_WHITELIST[pkg]:
+                    continue
+                problems.append(f"{rel}:{line}: {module} not whitelisted for {pkg}/")
+                continue
+            if root == "fx1":
+                problems.append(f"{rel}:{line}: PROOFCORE packages never import fx1")
+                continue
+            if root not in sys.stdlib_module_names and root not in THIRD_PARTY_WHITELIST[pkg]:
+                problems.append(f"{rel}:{line}: third-party import {root!r} not whitelisted")
+    return problems
+
+
+@pytest.mark.parametrize("pkg", PROOFCORE_PACKAGES)
+def test_package_import_whitelist(pkg: str) -> None:
+    if not (SRC / pkg).is_dir():
+        pytest.skip(f"quant_fund/{pkg} not merged yet (parallel workstream)")
+    problems = _violations(pkg)
+    assert problems == [], "layering violations:\n" + "\n".join(problems)
+
+
+def test_contracts_imports_only_stdlib_and_pydantic() -> None:
+    """§1.3 hard rule: proofcore/contracts.py is layer 1 — no quant_fund, ever."""
+    path = SRC / "proofcore" / "contracts.py"
+    for module, line, _top in _imports(path):
+        root = module.split(".")[0]
+        assert root in {"__future__", "pydantic"} or root in sys.stdlib_module_names, (
+            f"contracts.py:{line} imports {module!r} — only stdlib + pydantic allowed"
+        )
+
+
+def test_scc_does_not_import_proofcore_at_top_level() -> None:
+    """Reverse direction: only cli/** (layer 4) may top-level-import new packages."""
+    offenders: list[str] = []
+    for path in sorted(SRC.rglob("*.py")):
+        rel = path.relative_to(SRC)
+        if rel.parts[0] in PROOFCORE_PACKAGES or rel.parts[0] == "cli":
+            continue
+        for module, line, top_level in _imports(path):
+            parts = module.split(".")
+            if top_level and len(parts) > 1 and parts[0] == "quant_fund" and parts[1] in PROOFCORE_PACKAGES:
+                offenders.append(f"{rel}:{line} imports {module}")
+    assert offenders == [], "SCC top-level imports of PROOFCORE packages:\n" + "\n".join(offenders)
