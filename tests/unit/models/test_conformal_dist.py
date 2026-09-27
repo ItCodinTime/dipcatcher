@@ -1,8 +1,8 @@
 """ConformalTDistribution (conf_t) — split-conformal shift on a skew-t base.
 
 SYNTHETIC correctness tests only: shapes, monotone/finite output, recovery
-of a planted trailing-window level shift, holdout coverage on the conformal
-grid, and fail-closed edges.
+of a planted trailing-window level shift, calibration grid behavior,
+independent future scoring in a planted-shift scenario, and fail-closed edges.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def test_conf_t_recovers_planted_trailing_shift() -> None:
     assert np.allclose(m.q_, np.quantile(y_cal, TAUS), atol=0.01)
 
 
-def test_conf_t_holdout_coverage_on_conformal_grid() -> None:
+def test_conf_t_calibration_coverage_on_conformal_grid() -> None:
     y = _y(seed=7)
     m = ConformalTDistribution(TAUS).fit(_x(y.size), y)
     assert m.q_ is not None
@@ -72,7 +72,7 @@ def test_conf_t_holdout_coverage_on_conformal_grid() -> None:
         assert cov == pytest.approx(k / n, abs=2.0 / n)  # grid + rearrange slack
 
 
-def test_conf_t_beats_base_on_shifted_holdout() -> None:
+def test_conf_t_beats_base_on_independent_shifted_future() -> None:
     from quant_fund.metrics.scoring import mean_pinball
     from quant_fund.models.skew_t import skew_t_fit, skew_t_ppf
 
@@ -80,15 +80,15 @@ def test_conf_t_beats_base_on_shifted_holdout() -> None:
     n = 900
     y = rng.normal(0.0, 0.01, n)
     y[(2 * n) // 3 :] += 0.04
+    y_future = rng.normal(0.04, 0.01, 300)
     cut = (2 * n) // 3
     m = ConformalTDistribution(TAUS).fit(_x(n), y)
     assert m.q_ is not None
     p = skew_t_fit(y[:cut])
     q_base = np.array([skew_t_ppf(t, p["nu"], p["lam"], p["mu"], p["sigma"]) for t in TAUS])
-    y_cal = y[cut:]
     for j, tau in enumerate(TAUS):
-        pin_c = mean_pinball(y_cal, np.full(n - cut, m.q_[j]), tau)
-        pin_b = mean_pinball(y_cal, np.full(n - cut, q_base[j]), tau)
+        pin_c = mean_pinball(y_future, np.full(y_future.size, m.q_[j]), tau)
+        pin_b = mean_pinball(y_future, np.full(y_future.size, q_base[j]), tau)
         assert pin_c <= pin_b
 
 

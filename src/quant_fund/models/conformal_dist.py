@@ -11,12 +11,12 @@ and to its own conformity score.
 For each tau the conformity scores on the calibration slice are
 ``e_i = y_i - q_tau_base`` and the shift ``s_tau`` is the
 ``ceil((n_cal + 1) * tau)``-th order statistic of ``{e_i}`` (clipped to the
-sample when the level is unattainable), the same finite-sample convention at
-lower and upper taus.  The corrected row ``q'_tau = q_tau_base + s_tau`` then
-covers at ``ceil((n_cal + 1) * tau) / n_cal >= tau`` on the holdout slice —
-the smallest grid point at or above the nominal level, exact where the grid
-allows.  Quantiles are rearranged monotone and tiled at predict time
-(unconditional head — ``x`` is ignored).  Fail-closed on degenerate input.
+sample when the level is unattainable). Because this head is unconditional,
+the skew-t base quantile cancels in that addition: predictions are the
+trailing calibration slice's empirical quantiles. The order statistic gives
+the stated coverage on that same calibration slice; it does not guarantee
+coverage on a particular future sample. Quantiles are rearranged monotone
+and tiled at predict time (``x`` is ignored). Fail-closed on degenerate input.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ MIN_OBS = 60
 
 
 class ConformalTDistribution(JoblibMixin):
-    """Skew-t base + per-tau conformal shift on a trailing calibration slice."""
+    """Unconditional calibration quantiles under the legacy ``conf_t`` name."""
 
     def __init__(self, taus: list[float]) -> None:
         self.taus = taus
