@@ -12,6 +12,8 @@ from typing import Any
 from cvxpy import error as error
 from cvxpy.atoms.affine.wraps import psd_wrap as psd_wrap
 from cvxpy.atoms.elementwise.abs import abs as abs
+from cvxpy.atoms.elementwise.log import log as log
+from cvxpy.atoms.log_sum_exp import log_sum_exp as log_sum_exp
 from cvxpy.atoms.norm1 import norm1 as norm1
 from cvxpy.expressions.constants.constant import Constant as Constant
 from cvxpy.expressions.variable import Variable as Variable

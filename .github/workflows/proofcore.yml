@@ -55,8 +55,8 @@ jobs:
       - name: Layering gate
         run: uv run pytest tests/unit/test_proofcore_layering.py -q
 
-  # W2 supplies signer/recorder integrity tests. Full bundle replay verification
-  # is pending; this job makes no verifier or promotion claim.
+  # Bundle verification checks hashes, sidecars, signatures, and recomputed
+  # metrics. Historical replay remains closed until decision-time PIT reads.
   proof-integrity:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -73,6 +73,8 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Proof signer and recorder integrity
         run: make proof-integrity
+      - name: Proof bundle verification
+        run: make proof-verify
 
   # §9.3 leakage-scan — WARN MODE this wave (adjudicated): the scan runs, the
   # report is archived, findings do NOT fail the build. LH009 flips to error

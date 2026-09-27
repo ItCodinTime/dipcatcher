@@ -55,13 +55,17 @@ fx1 = "fx1.cli:app"
 # evaluate, and verify fx-1.
 quant = "quant_fund.cli.main:app"
 dipcatcher = "quant_fund.cli.main:app"
+mc-engine = "quant_fund.mc_engine.cli:app"
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-benchmark>=5.1",
     "pytest-cov>=6.0",
+    "pytest-xdist>=3.6",
+    "pytest-split>=0.10",
     "hypothesis>=6.115",
+    "z3-solver>=4.13",
     "ruff>=0.8",
     "mypy>=1.13",
     "pre-commit>=4.0",
@@ -81,10 +85,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fx1", "src/quant_fund"]
 
-# py.typed is the PEP 561 marker (contents: "partial"). Force it into the
-# wheel so a hatch default change cannot drop the public typing signal.
+# py.typed is the PEP 561 marker (contents: "partial"). The H.15/H.10 extract
+# is data, not a Python module. Force both into the wheel.
 [tool.hatch.build.targets.wheel.force-include]
 "src/quant_fund/py.typed" = "quant_fund/py.typed"
+"src/quant_fund/stress/public_domain/fred_h10_h15.json" = "quant_fund/stress/public_domain/fred_h10_h15.json"
 
 # Default sdist = every VCS-tracked file (data/, notebooks, host symlinks —
 # 37k files). The distributable source is the buildable package + tests.
@@ -197,22 +202,46 @@ module = [
     "quant_fund.pipeline",
     "quant_fund.pipeline.dataset",
     "quant_fund.pipeline.forecast",
+    "quant_fund.pipeline.forecast.artifacts",
+    "quant_fund.pipeline.forecast.conformal",
+    "quant_fund.pipeline.forecast.covariance",
+    "quant_fund.pipeline.forecast.decide",
+    "quant_fund.pipeline.forecast.garch",
+    "quant_fund.pipeline.forecast.history",
+    "quant_fund.pipeline.forecast.realized",
+    "quant_fund.pipeline.forecast.state",
+    "quant_fund.pipeline.forecast.wrappee",
     "quant_fund.portfolio.optimizer",
     "quant_fund.portfolio.risk_gate",
     "quant_fund.reporting.report",
     "quant_fund.research.agent",
     "quant_fund.research.benches",
+    "quant_fund.research.benches.common",
+    "quant_fund.research.benches.families",
+    "quant_fund.research.benches.intervals",
+    "quant_fund.research.benches.ranking",
     "quant_fund.research.benches_extra",
     "quant_fund.research.catalog",
+    "quant_fund.research.catalog.batteries",
     "quant_fund.research.catalog._helpers",
     "quant_fund.research.catalog.candle",
     "quant_fund.research.catalog.consistency",
     "quant_fund.research.catalog.constants",
+    "quant_fund.research.catalog.dispatch",
     "quant_fund.research.catalog.families",
+    "quant_fund.research.catalog.hypotheses",
+    "quant_fund.research.catalog.ic_packs",
     "quant_fund.research.catalog.kyle",
+    "quant_fund.research.catalog.never_equate",
+    "quant_fund.research.catalog.never_equate_gap",
     "quant_fund.research.catalog.northset",
     "quant_fund.research.catalog.predicates",
+    "quant_fund.research.catalog.primitives",
+    "quant_fund.research.catalog.rates",
+    "quant_fund.research.catalog.receipt",
+    "quant_fund.research.catalog.registry",
     "quant_fund.research.catalog.session",
+    "quant_fund.research.catalog.sweep",
     "quant_fund.research.cost_allocation",
     "quant_fund.research.verify",
     "quant_fund.risk.overlay",
@@ -271,11 +300,13 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 # Canonical discovery: the fx-1 suite runs via `make fx1-test` (tests/fx1 is
 # intentionally outside testpaths; the dead tests/tests mirror was removed).
-testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end"]
+testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end", "tests/formal"]
 addopts = "-q --strict-markers"
 markers = [
     "network: tests that require internet (disabled by default)",
-    "slow: longer integration tests",
+    "slow: long tests; full suite on schedule/workflow_dispatch, excluded from the PR gate",
+    "smoke: paper, ledger, and analytics modules collected by the CI smoke job",
+    "native: quant_core parity tests selected by the rust-accel CI job",
     "synthetic: uses synthetic market data",
     "perf_full: larger synthetic performance benchmarks (not the CI fast subset)",
 ]

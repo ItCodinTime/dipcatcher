@@ -29,15 +29,15 @@ def log_bundle(
     bundle: Path = typer.Option(..., "--bundle", help="Path to a ProofBundleV1 JSON file."),
     db: Path = _DB_OPTION,
     verification: Path | None = typer.Option(
-        None, "--verification", help="Reserved until `quant proof verify` supplies bound results."
+        None, "--verification", help="Reserved until verifier results can be bound to bundles."
     ),
 ) -> None:
-    """Insert one proof bundle (and optional verification result) into the DB."""
+    """Insert one unverified proof bundle into the DB."""
     from quant_fund.proofcore.contracts import ProofBundleV1
     from quant_fund.proofcore.provenance import ProvenanceDB
 
     if verification is not None:
-        typer.echo("verification ingestion unavailable until proof verifier exists", err=True)
+        typer.echo("verification ingestion unavailable until a bound result path exists", err=True)
         raise typer.Exit(2)
     bundle_obj = ProofBundleV1.model_validate(json.loads(bundle.read_text()))
     with ProvenanceDB(db) as prov:

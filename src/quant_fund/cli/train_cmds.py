@@ -1,4 +1,7 @@
-"""``train`` sub-app commands (one per forecast family)."""
+"""Train command group.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +10,8 @@ from typing import Any
 
 import typer
 
-from ._app import (
-    _cfg,
-    train_app,
-)
+from .app import train_app
+from .support import _cfg
 
 
 @train_app.callback(invoke_without_command=True)
@@ -126,3 +127,18 @@ def train_reinforcement(
 @train_app.command("liquidity")
 def train_liquidity(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     _train("liquidity", config, None)
+
+
+__all__ = [
+    "train_alpha",
+    "train_calibration",
+    "train_callback",
+    "train_covariance",
+    "train_distribution",
+    "train_liquidity",
+    "train_ranking",
+    "train_regime",
+    "train_reinforcement",
+    "train_tail",
+    "train_volatility",
+]

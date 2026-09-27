@@ -17,11 +17,16 @@ import numpy as np
 import polars as pl
 import pytest
 
-from quant_fund.backtest.engine import StaleValuationError, _run_backtest_event_loop
+from quant_fund.backtest.engine import (
+    StaleValuationError,
+    _run_backtest_event_loop,
+    run_backtest,
+)
 from quant_fund.backtest.fast_replay import run_backtest_fast
 from quant_fund.config.models import (
     AppConfig,
     CostConfig,
+    DataConfig,
     ExecutionConfig,
     FillConvention,
     KillSwitchConfig,
@@ -327,3 +332,72 @@ def test_empty_weights():
     _assert_identical(
         _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
     )
+
+
+def test_public_run_backtest_matches_event_loop_and_fast():
+    """Supported datetime panels take the matrix path and stay bit-identical."""
+    rng = np.random.default_rng(7)
+    bars = _bars(["AAA", "BBB", "CCC"], 40, rng, missing=0.05)
+    weights = _weights(["AAA", "BBB", "CCC"], 40, rng)
+    cfg = _cfg(commission_bps=5.0)
+    public = run_backtest(bars, weights, cfg)
+    ref = _run_backtest_event_loop(bars, weights, cfg)
+    fast = run_backtest_fast(bars, weights, cfg)
+    _assert_identical(public, ref)
+    _assert_identical(public, fast)
+    assert public.metrics["garch_risk_overlay_dates"] == 0
+    assert public.metrics["realized_garch_risk_overlay_dates"] == 0
+    assert ref.metrics["garch_risk_overlay_dates"] == 0
+    assert ref.metrics["realized_garch_risk_overlay_dates"] == 0
+
+
+def test_close_auction_stays_on_event_loop():
+    rng = np.random.default_rng(3)
+    bars = _bars(["AAA"], 30, rng)
+    weights = _weights(["AAA"], 30, rng, lo=0.5, hi=0.5)
+    cfg = _cfg(fill=FillConvention.NEXT_OPEN, allow_close_auction=True)
+    _assert_identical(
+        run_backtest(bars, weights, cfg),
+        _run_backtest_event_loop(bars, weights, cfg),
+    )
+
+
+def test_public_dispatch_calls_fast_without_artifact(monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.3, hi=0.3)
+    cfg = _cfg()
+    called = {"n": 0}
+    real = run_backtest_fast
+
+    def _wrap(*args, **kwargs):
+        called["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _wrap)
+    public = run_backtest(bars, weights, cfg)
+    assert called["n"] == 1
+    _assert_identical(public, _run_backtest_event_loop(bars, weights, cfg))
+
+
+def test_garch_artifact_does_not_dispatch(tmp_path, monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA", "BBB"], 24, rng)
+    weights = _weights(["AAA", "BBB"], 24, rng, lo=0.2, hi=0.4)
+    root = tmp_path / "data"
+    (root / "metadata").mkdir(parents=True)
+    (root / "metadata" / "vol_garch.joblib").write_bytes(b"not-a-real-artifact")
+    cfg = _cfg().model_copy(update={"data": DataConfig(root=root)})
+    # The file is enough to refuse the matrix path. Do not load it.
+    monkeypatch.setattr(
+        "quant_fund.backtest.engine.market_risk_overlay_asof",
+        lambda *_args, **_kwargs: (None, None),
+    )
+
+    def _refuse(*_args, **_kwargs):
+        raise AssertionError("fast replay must not run when a GARCH artifact is present")
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _refuse)
+    public = run_backtest(bars, weights, cfg)
+    assert public.metrics["garch_risk_overlay_dates"] == 0
+    assert public.equity.height > 0

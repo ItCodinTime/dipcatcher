@@ -18,10 +18,13 @@ import pytest
 
 from quant_fund.native import reference
 
-pytestmark = pytest.mark.skipif(
-    importlib.util.find_spec("quant_core") is None,
-    reason="quant_core extension is not built",
-)
+pytestmark = [
+    pytest.mark.native,
+    pytest.mark.skipif(
+        importlib.util.find_spec("quant_core") is None,
+        reason="quant_core extension is not built",
+    ),
+]
 
 # Minimum median speedup. Loop kernels are far above this; reductions that
 # NumPy already implements in C are not gated.
