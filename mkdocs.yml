@@ -144,6 +144,7 @@ nav:
   - Data sources:
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
+      - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
       - Northset: NORTHSET.md
@@ -174,6 +175,7 @@ nav:
       - Paper and shadow: PAPER_SHADOW.md
   - fx-1:
       - Overview: FX1.md
+      - Forecast harness: fx1_harness.md
       - Architecture: FX1_ARCHITECTURE.md
       - Training: FX1_TRAINING.md
       - Data: FX1_DATA.md
