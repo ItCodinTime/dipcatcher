@@ -44,7 +44,7 @@ def scan_paths(paths: list[Path], *, rules: set[str] | None = None) -> LeakageRe
                     path=path.as_posix(),
                     line=f.line,
                     col=f.col,
-                    message=f"{spec.title}: {f.message}",
+                    message=f"{spec.title}: {f.message}. {spec.detail}",
                     snippet=snippet[:200],
                 )
             )

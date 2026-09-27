@@ -122,6 +122,35 @@ def sharpe_ratio(
     return result
 
 
+def sharpe_ratio_batch(returns_2d: Array, periods_per_year: float = 252.0) -> Array:
+    """Row-wise canonical Sharpe over an ``(n_paths, n_periods)`` matrix.
+
+    Vectorized sibling of ``sharpe_ratio`` with the IDENTICAL formula
+    (``mean/std(ddof=1) * sqrt(periods_per_year)``) and the same fail-closed
+    NaN policy per row: fewer than 2 periods, any non-finite entry, or zero
+    excess vol -> NaN. ``metrics/returns.py`` remains the ONLY module
+    implementing Sharpe math (audit A2 F4); bootstrap/simulation callers must
+    delegate here rather than re-inlining the formula.
+
+    Research diagnostic only — never a live P&L / promotion claim.
+    """
+    _validate_periods(periods_per_year)
+    r = np.asarray(returns_2d, dtype=float)
+    if r.ndim != 2:
+        raise ValueError("returns_2d must be a 2-D (n_paths, n_periods) matrix")
+    out = np.full(r.shape[0], np.nan, dtype=float)
+    if r.shape[1] < 2 or r.shape[0] == 0:
+        return out
+    finite = np.isfinite(r).all(axis=1)
+    mean = np.mean(r, axis=1)
+    vol = np.std(r, axis=1, ddof=1)
+    ok = finite & (vol > 0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sr = mean / vol * np.sqrt(periods_per_year)
+    out[ok] = sr[ok]
+    return out
+
+
 def sortino_ratio(returns: Array, mar: float = 0.0, periods_per_year: float = 252.0) -> float:
     """Annualized Sortino (research diagnostic only — not a live edge).
 

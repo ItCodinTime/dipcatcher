@@ -6,11 +6,14 @@ from pathlib import Path
 
 import typer
 
-from quant_fund.config import dump_resolved, load_config
 from quant_fund.hmm.cli import hmm_app
+from quant_fund.leakage.cli import leakage_app
 from quant_fund.lightspeed.cli import ls_app
+from quant_fund.pit.cli import pit_app
+from quant_fund.proof.cli import proof_app
+from quant_fund.proofcore.cli import proofcore_app
 from quant_fund.quant_models.cli import qm_app
-from quant_fund.utils.logging import configure_logging
+from quant_fund.reality.cli import reality_app
 
 
 def format_data_label(*, synthetic: bool, data_source: str) -> str:
@@ -50,10 +53,18 @@ train_app = typer.Typer(help="Train a forecast family.")
 app.add_typer(train_app, name="train")
 app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
+app.add_typer(pit_app, name="pit")
 app.add_typer(qm_app, name="qm")
+app.add_typer(proof_app, name="proof")
+app.add_typer(leakage_app, name="leakage")
+app.add_typer(reality_app, name="reality")
+app.add_typer(proofcore_app, name="proofcore")
 
 
 def _cfg(config: Path):
+    from quant_fund.config import dump_resolved, load_config
+    from quant_fund.utils.logging import configure_logging
+
     cfg = load_config(config)
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")

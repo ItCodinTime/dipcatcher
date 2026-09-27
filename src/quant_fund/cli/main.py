@@ -53,6 +53,18 @@ from quant_fund.cli.data_cmds import (
 from quant_fund.cli.data_cmds import (
     ingest as ingest,
 )
+from quant_fund.cli.lake_cmds import (
+    lake_import as lake_import,
+)
+from quant_fund.cli.lake_cmds import (
+    lake_quality as lake_quality,
+)
+from quant_fund.cli.lake_cmds import (
+    lineage_show as lineage_show,
+)
+from quant_fund.cli.lake_cmds import (
+    lineage_verify as lineage_verify,
+)
 from quant_fund.cli.ops_cmds import (
     api as api,
 )
@@ -75,6 +87,9 @@ from quant_fund.cli.research_cmds import (
     backtest as backtest,
 )
 from quant_fund.cli.research_cmds import (
+    execution_sensitivity_cmd as execution_sensitivity_cmd,
+)
+from quant_fund.cli.research_cmds import (
     fleet as fleet,
 )
 from quant_fund.cli.research_cmds import (
@@ -94,6 +109,9 @@ from quant_fund.cli.research_cmds import (
 )
 from quant_fund.cli.research_cmds import (
     validate as validate,
+)
+from quant_fund.cli.research_cmds import (
+    verify_identities as verify_identities,
 )
 from quant_fund.cli.research_cmds import (
     verify_research as verify_research,

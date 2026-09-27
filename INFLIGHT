@@ -125,3 +125,12 @@ canon wave 9 (time-series conformal + distributional tree/boosting baselines, 20
   kept learners. QRF training PIT uses trees and responses that exclude
   the queried row. The shared CI baseline handles the sealed US snapshot.
   No live broker / vendor MD / live_pnl_claim.
+
+canon wave 9 WATCH extension (2026-09-27):
+  - metrics/watch.py: parallel label and nearest-neighbor covariate martingales,
+    covariate adaptation, sticky shift diagnostics, Gaussian density-ratio plugin.
+  - Online p-values randomize ties. Conservative tied p-values with a two-sided
+    jumper caused certain false alarms on a constant exchangeable stream.
+  - The practical frozen calibration bag and estimated density ratios make
+    post-adaptation alarms diagnostic; no claimed anytime-valid guarantee.
+  16 focused WATCH tests green. SYNTHETIC-only assertions; research-only.
