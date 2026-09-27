@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.linear_model import Ridge
 
-from quant_fund.models.enbpi import EnbPI, circular_block_bootstrap_indices
+from quant_fund.models.enbpi import EnbPI, circular_block_bootstrap_indices, enbpi_residual_bounds
 
 
 def _ar1_regression(n: int, seed: int, sigma: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
@@ -18,9 +18,22 @@ def _ar1_regression(n: int, seed: int, sigma: float = 1.0) -> tuple[np.ndarray, 
     return X, y
 
 
-def _fit(n_train: int = 300, seed: int = 0, **kw: object) -> tuple[EnbPI, np.ndarray, np.ndarray]:
+def _fit(
+    n_train: int = 300,
+    seed: int = 0,
+    *,
+    aggregate: str = "mean",
+    block_size: int = 1,
+) -> tuple[EnbPI, np.ndarray, np.ndarray]:
     X, y = _ar1_regression(n_train + 300, seed)
-    model = EnbPI(lambda: Ridge(alpha=1e-3), n_estimators=25, alpha=0.1, seed=seed, **kw)  # type: ignore[arg-type]
+    model = EnbPI(
+        lambda: Ridge(alpha=1e-3),
+        n_estimators=25,
+        alpha=0.1,
+        seed=seed,
+        aggregate=aggregate,
+        block_size=block_size,
+    )
     model.fit(X[:n_train], y[:n_train])
     return model, X[n_train:], y[n_train:]
 
@@ -36,6 +49,8 @@ def test_block_bootstrap_indices_shape_and_range() -> None:
         circular_block_bootstrap_indices(0, 1, rng)
     with pytest.raises(ValueError):
         circular_block_bootstrap_indices(5, 0, rng)
+    with pytest.raises(ValueError):
+        circular_block_bootstrap_indices(5, 6, rng)
 
 
 def test_block_bootstrap_preserves_contiguity() -> None:
@@ -54,18 +69,41 @@ def test_online_coverage_near_nominal_on_stationary_ar1() -> None:
         covs.append(res.coverage)
     assert 0.85 <= float(np.mean(covs)) <= 0.95
     assert res.mean_width > 0.0
+    assert np.all(res.lower <= res.upper)
     assert np.all(res.lower <= res.point) and np.all(res.point <= res.upper)
+
+
+def test_residual_bounds_are_the_narrowest_covering_window() -> None:
+    s = np.array([-5.0, -0.2, -0.1, 0.0, 0.1, 0.2, 4.0])
+    lo, hi = enbpi_residual_bounds(s, 0.3)
+    # ceil(0.7 * 7) = 5; the middle five order stats are the narrowest window.
+    assert lo == pytest.approx(-0.2)
+    assert hi == pytest.approx(0.2)
+    with pytest.raises(ValueError):
+        enbpi_residual_bounds(np.array([]), 0.1)
+    with pytest.raises(ValueError):
+        enbpi_residual_bounds(np.array([0.0, np.nan]), 0.1)
+
+
+def test_interval_matches_signed_residual_bounds() -> None:
+    model, Xt, _ = _fit(seed=1)
+    lo, hi, pt = model.predict_interval(Xt[:4])
+    off_lo, off_hi = enbpi_residual_bounds(model.residuals, model.alpha)
+    np.testing.assert_allclose(lo, pt + off_lo)
+    np.testing.assert_allclose(hi, pt + off_hi)
+    assert off_lo <= off_hi
 
 
 def test_residual_window_slides_and_tracks_variance_shift() -> None:
     model, Xt, yt = _fit(seed=3)
-    _, _, _ = model.predict_interval(Xt[:1])
-    w_before = float(np.quantile(model.residuals, 0.9))
-    # Reveal labels with 4x noise; window should widen
+    lo, hi, _ = model.predict_interval(Xt[:1])
+    w_before = float(hi[0] - lo[0])
+    # Reveal labels with 4x noise; the residual band should widen.
     rng = np.random.default_rng(9)
     y_big = yt + rng.normal(0.0, 4.0, yt.size)
     model.update(Xt, y_big)
-    w_after = float(np.quantile(model.residuals, 0.9))
+    lo2, hi2, _ = model.predict_interval(Xt[:1])
+    w_after = float(hi2[0] - lo2[0])
     assert w_after > w_before
     assert model.residuals.size == 300  # window length == n_train
 
@@ -93,6 +131,11 @@ def test_fail_closed_edges() -> None:
         m.fit(X, np.r_[np.nan, np.zeros(39)])
     with pytest.raises(ValueError):
         m.fit(X, np.zeros(39))
+    model, Xt, _ = _fit(seed=2, n_train=80)
+    with pytest.raises(ValueError):
+        model.predict_point(np.zeros((2, Xt.shape[1] + 1)))
+    with pytest.raises(ValueError):
+        model.predict_point(np.full((2, Xt.shape[1]), np.nan))
 
 
 def test_every_point_must_be_out_of_bag_somewhere() -> None:

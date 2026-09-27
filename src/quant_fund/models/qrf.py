@@ -117,13 +117,17 @@ class QuantileRegressionForest:
             n_jobs=1,
         )
         forest.fit(X, y)
+        samples = getattr(forest, "estimators_samples_", None)
+        if not isinstance(samples, list) or len(samples) != self.n_estimators:
+            raise RuntimeError("bootstrap sample indices are unavailable; QRF needs bootstrap=True")
+        train_leaves = np.asarray(forest.apply(X), dtype=np.int64)  # (n, B)
+        in_bag = np.zeros((n, self.n_estimators), dtype=bool)
+        for b, idx in enumerate(samples):
+            in_bag[np.asarray(idx, dtype=np.int64), b] = True
         self._forest = forest
         self._y = y.copy()
-        self._n_features = X.shape[1]
-        self._train_leaves = np.asarray(forest.apply(X), dtype=np.int64)  # (n, B)
-        in_bag = np.zeros((n, self.n_estimators), dtype=bool)
-        for b, idx in enumerate(forest.estimators_samples_):
-            in_bag[np.asarray(idx, dtype=np.int64), b] = True
+        self._n_features = int(X.shape[1])
+        self._train_leaves = train_leaves
         self._in_bag = in_bag
         return self
 
@@ -145,14 +149,17 @@ class QuantileRegressionForest:
         n = self._y.shape[0]
         m = X.shape[0]
         w = np.zeros((m, n), dtype=float)
+        # Each tree adds 1/|leaf| on eligible training rows that share x's leaf.
+        # OOB mode drops in-bag rows before that count (honest weights).
         eligible = ~self._in_bag if self.leaf_mode == "oob" else np.ones_like(self._in_bag)
         for b in range(self.n_estimators):
-            same = test_leaves[:, b][:, None] == self._train_leaves[:, b][None, :]
-            same &= eligible[:, b][None, :]
-            counts = same.sum(axis=1, keepdims=True).astype(float)
-            valid = counts[:, 0] > 0
-            contrib = np.where(same, 1.0 / np.maximum(counts, 1.0), 0.0)
-            w[valid] += contrib[valid]
+            same = test_leaves[:, [b]] == self._train_leaves[:, b]
+            same &= eligible[:, b]
+            counts = same.sum(axis=1)
+            valid = counts > 0
+            if not np.any(valid):
+                continue
+            w[valid] += same[valid] / counts[valid, None].astype(float)
         tree_mass = w.sum(axis=1, keepdims=True)
         if np.any(tree_mass[:, 0] <= 0.0):
             raise ValueError("a test point has no eligible training neighbours in any tree")
@@ -170,8 +177,8 @@ class QuantileRegressionForest:
         """F_hat(y | x) evaluated on ``y_grid``; shape (m, len(y_grid))."""
         w = self.weights(X)
         y_grid = np.asarray(y_grid, dtype=float).ravel()
-        if y_grid.size == 0:
-            raise ValueError("y_grid must be non-empty")
+        if y_grid.size == 0 or not np.all(np.isfinite(y_grid)):
+            raise ValueError("y_grid must be non-empty and finite")
         ind = (self._y[None, :] <= y_grid[:, None]).astype(float)  # (g, n)
         return np.asarray(w @ ind.T, dtype=float)
 
@@ -181,6 +188,8 @@ class QuantileRegressionForest:
         y = np.asarray(y, dtype=float).ravel()
         if y.shape[0] != w.shape[0]:
             raise ValueError("X and y length mismatch")
+        if not np.all(np.isfinite(y)):
+            raise ValueError("y must be finite")
         below = (self._y[None, :] < y[:, None]).astype(float)
         at = (self._y[None, :] == y[:, None]).astype(float)
         f_minus = (w * below).sum(axis=1)

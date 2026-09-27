@@ -152,4 +152,8 @@ def test_watch_monitor_weights_and_edges() -> None:
     with pytest.raises(ValueError):
         simple_jumper(np.array([0.5]), epsilons=(3.0,))
     with pytest.raises(ValueError):
+        simple_jumper(np.array([0.5]), epsilons=(float("nan"),))
+    with pytest.raises(ValueError):
+        weighted_conformal_p_value(np.array([np.nan, 1.0]), 0.0, np.ones(3), 0.2)
+    with pytest.raises(ValueError):
         mixture_martingale(np.array([1.5]))

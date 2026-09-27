@@ -127,3 +127,7 @@ def test_fail_closed_edges() -> None:
         qrf.predict_quantiles(X[:2], np.array([1.5]))
     with pytest.raises(ValueError):
         qrf.predict_cdf(X[:2], np.array([]))
+    with pytest.raises(ValueError):
+        qrf.predict_cdf(X[:2], np.array([np.nan]))
+    with pytest.raises(ValueError):
+        qrf.pit(X[:2], np.array([np.nan, 0.0]))

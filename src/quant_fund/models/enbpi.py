@@ -7,16 +7,16 @@ prediction intervals for dependent sequences without exchangeability:
 1. Train ``n_estimators`` bootstrap models on block-bootstrap resamples of the
    training window (circular blocks; Politis & Romano 1992 — plain i.i.d.
    resampling is the paper's default and is recovered with ``block_size=1``).
-2. For every training point, the LEAVE-ONE-OUT (LOO) ensemble prediction is
+2. For every training point, the leave-one-out (LOO) ensemble prediction is
    the aggregate (mean or median) of the models whose bootstrap sample did
-   NOT include that point; the LOO residual is
-   ``eps_i = |y_i - f^{-i}(x_i)|``.
-3. For a test point, predict with the aggregate of all models and widen by
-   the (1 - alpha) empirical quantile of the most recent ``n_train``
-   residuals. The residual window slides: once ``y_{t}`` is observed, its
-   out-of-sample residual replaces the oldest, so intervals track
-   non-stationary error scales (Algorithm 1, lines 10-16). No model refits
-   are required online.
+   not include that point. The LOO residual is signed,
+   ``eps_i = y_i - f^{-i}(x_i)``.
+3. For a test point, predict with the aggregate of all models and add the
+   narrowest empirical band ``[q_beta, q_{1-alpha+beta}]`` of the most recent
+   ``n_train`` signed residuals (Algorithm 1: beta in ``[0, alpha]`` minimises
+   width). Once ``y_t`` is observed, its out-of-sample residual replaces the
+   oldest, so the band tracks non-stationary errors. No model refits are
+   required online.
 
 The paper's Theorem 1 gives approximate marginal coverage
 ``P(y in C) >= 1 - alpha - O(sqrt(log(T)/T)) - O(delta)`` under strong
@@ -39,11 +39,15 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from quant_fund.metrics.conformal import conformal_quantile
-
 Array = NDArray[np.float64]
 
-__all__ = ["EnbPI", "EnbPIResult", "Regressor", "circular_block_bootstrap_indices"]
+__all__ = [
+    "EnbPI",
+    "EnbPIResult",
+    "Regressor",
+    "circular_block_bootstrap_indices",
+    "enbpi_residual_bounds",
+]
 
 
 class Regressor(Protocol):
@@ -58,8 +62,8 @@ def circular_block_bootstrap_indices(
     """Circular block-bootstrap indices of length ``n`` (Politis & Romano 1992)."""
     if n < 1:
         raise ValueError("n must be >= 1")
-    if block_size < 1:
-        raise ValueError("block_size must be >= 1")
+    if block_size < 1 or block_size > n:
+        raise ValueError("block_size must be in [1, n]")
     if block_size == 1:
         return rng.integers(0, n, size=n).astype(np.int64)
     n_blocks = int(np.ceil(n / block_size))
@@ -67,6 +71,27 @@ def circular_block_bootstrap_indices(
     offsets = np.arange(block_size)
     idx = (starts[:, None] + offsets[None, :]).reshape(-1) % n
     return idx[:n].astype(np.int64)
+
+
+def enbpi_residual_bounds(residuals: Array, alpha: float) -> tuple[float, float]:
+    """Narrowest ``[q_beta, q_{1-alpha+beta}]`` band of signed residuals.
+
+    On the empirical measure this is the shortest window of
+    ``ceil(n * (1 - alpha))`` order statistics (Xu & Xie, Algorithm 1, the
+    beta minimisation). The returned offsets are added to the point forecast.
+    """
+    ordered = np.sort(np.asarray(residuals, dtype=float).ravel())
+    if ordered.size == 0 or not np.all(np.isfinite(ordered)):
+        raise ValueError("residuals must be non-empty and finite")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be in (0, 1)")
+    n = int(ordered.size)
+    cover = int(np.ceil(n * (1.0 - alpha)))
+    cover = min(max(cover, 1), n)
+    starts = ordered[: n - cover + 1]
+    ends = ordered[cover - 1 :]
+    i = int(np.argmin(ends - starts))
+    return float(starts[i]), float(ends[i])
 
 
 @dataclass(frozen=True)
@@ -123,11 +148,19 @@ class EnbPI:
         self._models: list[Regressor] = []
         self._residuals: Array = np.empty(0)
         self._n_train = 0
+        self._n_features = 0
 
     def _agg(self, preds: Array, axis: int = 0) -> Array:
         if self.aggregate == "median":
             return np.asarray(np.median(preds, axis=axis), dtype=float)
         return np.asarray(np.mean(preds, axis=axis), dtype=float)
+
+    def _agg_masked(self, preds: Array, mask: NDArray[np.bool_]) -> Array:
+        """Aggregate along models, ignoring entries where ``mask`` is false."""
+        masked = np.where(mask, preds, np.nan)
+        if self.aggregate == "median":
+            return np.asarray(np.nanmedian(masked, axis=0), dtype=float)
+        return np.asarray(np.nanmean(masked, axis=0), dtype=float)
 
     def fit(self, X: Array, y: Array) -> EnbPI:
         X = np.asarray(X, dtype=float)
@@ -152,7 +185,10 @@ class EnbPI:
             in_bag[b, idx] = True
             m = self.model_factory()
             m.fit(X[idx], y[idx])
-            preds[b] = np.asarray(m.predict(X), dtype=float).ravel()
+            pred = np.asarray(m.predict(X), dtype=float).ravel()
+            if pred.shape != (n,) or not np.all(np.isfinite(pred)):
+                raise ValueError("base learner predict must return n finite values")
+            preds[b] = pred
             models.append(m)
 
         oob = ~in_bag
@@ -161,14 +197,14 @@ class EnbPI:
                 "some training points appear in every bootstrap sample; "
                 "increase n_estimators or reduce block_size"
             )
-        masked = np.where(oob, preds, np.nan)
-        if self.aggregate == "median":
-            loo = np.nanmedian(masked, axis=0)
-        else:
-            loo = np.nanmean(masked, axis=0)
-        self._residuals = np.abs(y - loo)
+        loo = self._agg_masked(preds, oob)
+        residuals = y - loo
+        if not np.all(np.isfinite(residuals)):
+            raise ValueError("LOO residuals are not finite")
+        self._residuals = residuals
         self._models = models
         self._n_train = n
+        self._n_features = X.shape[1]
         return self
 
     @property
@@ -182,16 +218,20 @@ class EnbPI:
     def predict_point(self, X: Array) -> Array:
         self._check_fitted()
         X = np.asarray(X, dtype=float)
-        if X.ndim != 2:
-            raise ValueError("X must be 2-D (n, p)")
+        if X.ndim != 2 or X.shape[1] != self._n_features:
+            raise ValueError("X must be 2-D with the training feature count")
+        if not np.all(np.isfinite(X)):
+            raise ValueError("X must be finite")
         preds = np.stack([np.asarray(m.predict(X), dtype=float).ravel() for m in self._models])
+        if preds.shape[1] != X.shape[0] or not np.all(np.isfinite(preds)):
+            raise ValueError("base learner predict must return n finite values")
         return self._agg(preds, axis=0)
 
     def predict_interval(self, X: Array) -> tuple[Array, Array, Array]:
-        """Return (lower, upper, point) using the current residual window."""
+        """Return (lower, upper, point) from the current signed-residual window."""
         point = self.predict_point(X)
-        w = conformal_quantile(self._residuals, self.alpha)
-        return point - w, point + w, point
+        lo, hi = enbpi_residual_bounds(self._residuals, self.alpha)
+        return point + lo, point + hi, point
 
     def update(self, X_new: Array, y_new: Array) -> Array:
         """Slide the residual window with newly observed (X, y); returns new residuals."""
@@ -200,7 +240,7 @@ class EnbPI:
         point = self.predict_point(X_new)
         if point.shape[0] != y_new.shape[0]:
             raise ValueError("X_new and y_new length mismatch")
-        new_res = np.abs(y_new - point)
+        new_res = y_new - point
         if not np.all(np.isfinite(new_res)):
             raise ValueError("y_new must be finite")
         self._residuals = np.concatenate([self._residuals, new_res])[-self._n_train :]

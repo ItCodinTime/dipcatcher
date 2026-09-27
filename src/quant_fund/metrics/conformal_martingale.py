@@ -76,6 +76,14 @@ def _check_p(p: Array) -> Array:
     return p
 
 
+def _jumper_update(capital: Array, eps: Array, jump: float, p: float) -> Array:
+    """One Simple-Jumper step: mix ``jump`` of wealth, then multiply by ``f_eps(p)``."""
+    total = float(np.sum(capital))
+    k = int(capital.shape[0])
+    mixed = (1.0 - jump) * capital + (jump * total / k)
+    return np.asarray(mixed * (1.0 + eps * (p - 0.5)), dtype=float)
+
+
 def conformal_p_values(scores: Array, seed: int = 0) -> Array:
     """Sequential smoothed conformal p-values; i.i.d. U(0,1) under exchangeability."""
     s = _check_scores(scores)
@@ -101,6 +109,8 @@ def weighted_conformal_p_value(
     """
     past = np.asarray(past_scores, dtype=float).ravel()
     w = np.asarray(weights, dtype=float).ravel()
+    if past.size and not np.all(np.isfinite(past)):
+        raise ValueError("past_scores must be finite")
     if w.size != past.size + 1:
         raise ValueError("weights must have len(past_scores) + 1 entries")
     if np.any(w < 0.0) or not np.all(np.isfinite(w)) or w.sum() <= 0.0:
@@ -116,12 +126,16 @@ def weighted_conformal_p_value(
     return float(greater + u * ties)
 
 
+# Flooring p away from 0 understates p^(eps-1) (eps-1 < 0), so alarms stay conservative.
+_P_FLOOR = 1e-300
+
+
 def power_martingale(p: Array, eps: float = 0.5) -> Array:
-    """M_t = prod eps * p_i^(eps-1); returned as the full path (length t)."""
+    """M_t = prod_i eps * p_i^(eps-1); returned as the full path."""
     p = _check_p(p)
     if not 0.0 < eps < 1.0:
         raise ValueError("eps must be in (0, 1)")
-    pc = np.clip(p, 1e-300, 1.0)
+    pc = np.clip(p, _P_FLOOR, 1.0)
     log_m = np.cumsum(np.log(eps) + (eps - 1.0) * np.log(pc))
     return np.asarray(np.exp(log_m), dtype=float)
 
@@ -131,7 +145,7 @@ def mixture_martingale(p: Array, n_grid: int = 200) -> Array:
     p = _check_p(p)
     if n_grid < 8:
         raise ValueError("n_grid must be >= 8")
-    pc = np.clip(p, 1e-300, 1.0)
+    pc = np.clip(p, _P_FLOOR, 1.0)
     cum_log_p = np.cumsum(np.log(pc))  # (t,)
     t = np.arange(1, p.size + 1, dtype=float)
     # midpoint rule on eps in (0, 1)
@@ -155,16 +169,14 @@ def simple_jumper(
     if not 0.0 <= jump <= 1.0:
         raise ValueError("jump must be in [0, 1]")
     eps = np.asarray(epsilons, dtype=float)
-    if eps.size == 0 or np.any(np.abs(eps) > 2.0):
-        raise ValueError("epsilons must be non-empty and in [-2, 2] to keep f >= 0")
-    k = eps.size
+    if eps.size == 0 or not np.all(np.isfinite(eps)) or np.any(np.abs(eps) > 2.0):
+        raise ValueError("epsilons must be non-empty, finite, and in [-2, 2] to keep f >= 0")
+    k = int(eps.size)
     capital = np.full(k, 1.0 / k)
     path = np.empty(p.size)
     for i, pi in enumerate(p):
-        total = capital.sum()
-        capital = (1.0 - jump) * capital + jump * total / k
-        capital = capital * (1.0 + eps * (pi - 0.5))
-        path[i] = capital.sum()
+        capital = _jumper_update(capital, eps, jump, float(pi))
+        path[i] = float(np.sum(capital))
     return path
 
 
@@ -240,7 +252,8 @@ class WatchMonitor:
     def _reset(self) -> None:
         self._window: list[float] = []
         self._weights: list[float] = []
-        self._capital = np.full(3, 1.0 / 3)
+        k = int(self._eps.shape[0])
+        self._capital = np.full(k, 1.0 / k)
         self.wealth = 1.0
 
     def step(self, score: float, weight: float = 1.0) -> tuple[float, float, bool]:
@@ -262,10 +275,8 @@ class WatchMonitor:
             self._weights.pop(0)
         alarmed = False
         if len(self._window) > self.warmup:
-            total = self._capital.sum()
-            self._capital = (1.0 - self.jump) * self._capital + self.jump * total / 3.0
-            self._capital = self._capital * (1.0 + self._eps * (p - 0.5))
-            self.wealth = float(self._capital.sum())
+            self._capital = _jumper_update(self._capital, self._eps, self.jump, p)
+            self.wealth = float(np.sum(self._capital))
             if self.wealth >= 1.0 / self.alpha:
                 alarmed = True
         out = (p, self.wealth, alarmed)

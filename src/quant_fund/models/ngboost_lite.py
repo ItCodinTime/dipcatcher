@@ -48,9 +48,16 @@ _LOG_SIGMA_CLIP: tuple[float, float] = (-12.0, 12.0)
 
 @dataclass(frozen=True)
 class NGBoostFitInfo:
-    """Per-round mean training/validation LOSS (NLL or CRPS; lower is better)."""
+    """Boosting trace. Scores are the minimised loss (NLL or CRPS; lower is better).
+
+    ``train_score`` and ``val_score`` have one entry per round that was fit
+    (``searched_rounds``). Early stopping keeps learners through ``best_round``
+    and drops the patience tail, so ``n_rounds`` can be smaller than
+    ``searched_rounds``. ``best_round`` is 1-based.
+    """
 
     n_rounds: int
+    searched_rounds: int
     train_score: list[float]
     val_score: list[float]
     best_round: int
@@ -82,11 +89,38 @@ def _score(y: Array, mu: Array, log_sigma: Array, score: str) -> float:
 
 
 def _line_search(y: Array, mu: Array, ls: Array, d_mu: Array, d_ls: Array, score: str) -> float:
+    """Bounded step in ``(0, 2]``. Returns 0 when no positive step lowers the loss.
+
+    A failed or boundary-zero search used to fall back to a unit step, which
+    can climb the loss. A zero step leaves the parameters unchanged.
+    """
+    base = _score(y, mu, ls, score)
+
     def obj(r: float) -> float:
         return _score(y, mu - r * d_mu, np.clip(ls - r * d_ls, *_LOG_SIGMA_CLIP), score)
 
     res = minimize_scalar(obj, bounds=(0.0, 2.0), method="bounded")
-    return float(res.x) if np.isfinite(res.x) and res.x > 0.0 else 1.0
+    if not bool(res.success) or not np.isfinite(res.x):
+        return 0.0
+    rho = float(res.x)
+    if rho <= 0.0 or obj(rho) > base + 1e-12:
+        return 0.0
+    return rho
+
+
+def _replay(
+    init: tuple[float, float],
+    learners: list[tuple[DecisionTreeRegressor, DecisionTreeRegressor, float]],
+    X: Array,
+    learning_rate: float,
+) -> tuple[Array, Array]:
+    mu = np.full(X.shape[0], init[0])
+    ls = np.full(X.shape[0], init[1])
+    for t_mu, t_ls, rho in learners:
+        step = learning_rate * rho
+        mu = mu - step * np.asarray(t_mu.predict(X), dtype=float)
+        ls = ls - step * np.asarray(t_ls.predict(X), dtype=float)
+    return mu, np.clip(ls, *_LOG_SIGMA_CLIP)
 
 
 class NGBoostGaussian:
@@ -107,6 +141,8 @@ class NGBoostGaussian:
             raise ValueError("learning_rate must be in (0, 1]")
         if max_depth < 1:
             raise ValueError("max_depth must be >= 1")
+        if min_samples_leaf < 1:
+            raise ValueError("min_samples_leaf must be >= 1")
         if score not in ("logscore", "crps"):
             raise ValueError("score must be 'logscore' or 'crps'")
         if early_stopping_rounds is not None and early_stopping_rounds < 1:
@@ -150,16 +186,8 @@ class NGBoostGaussian:
     def _raw_params(self, X: Array, n_rounds: int | None = None) -> tuple[Array, Array]:
         if self._init is None:
             raise RuntimeError("NGBoostGaussian is not fitted")
-        mu0, ls0 = self._init
-        n = X.shape[0]
-        mu = np.full(n, mu0)
-        ls = np.full(n, ls0)
         learners = self._learners if n_rounds is None else self._learners[:n_rounds]
-        for t_mu, t_ls, rho in learners:
-            step = self.learning_rate * rho
-            mu = mu - step * t_mu.predict(X)
-            ls = ls - step * t_ls.predict(X)
-        return mu, np.clip(ls, *_LOG_SIGMA_CLIP)
+        return _replay(self._init, learners, X, self.learning_rate)
 
     def fit(
         self,
@@ -185,14 +213,13 @@ class NGBoostGaussian:
                 raise ValueError("X_val feature count mismatch")
             val = (Xv, yv)
 
-        self._n_features = X.shape[1]
         sd0 = float(np.std(y))
         if sd0 <= 0.0:
             raise ValueError("y has zero variance; nothing to fit")
-        self._init = (float(np.mean(y)), float(np.log(sd0)))
-        self._learners = []
-        mu = np.full(y.shape[0], self._init[0])
-        ls = np.full(y.shape[0], self._init[1])
+        init = (float(np.mean(y)), float(np.log(sd0)))
+        learners: list[tuple[DecisionTreeRegressor, DecisionTreeRegressor, float]] = []
+        mu = np.full(y.shape[0], init[0])
+        ls = np.full(y.shape[0], init[1])
         train_hist: list[float] = []
         val_hist: list[float] = []
         best_val = np.inf
@@ -201,19 +228,23 @@ class NGBoostGaussian:
 
         for m in range(self.n_estimators):
             g_mu, g_ls = _gradients(y, mu, ls, self.score)
+            if not (np.all(np.isfinite(g_mu)) and np.all(np.isfinite(g_ls))):
+                raise ValueError("natural gradient is not finite")
             t_mu = self._tree().fit(X, g_mu)
             t_ls = self._tree().fit(X, g_ls)
-            d_mu = t_mu.predict(X)
-            d_ls = t_ls.predict(X)
+            d_mu = np.asarray(t_mu.predict(X), dtype=float)
+            d_ls = np.asarray(t_ls.predict(X), dtype=float)
             rho = _line_search(y, mu, ls, d_mu, d_ls, self.score) if self.line_search else 1.0
             step = self.learning_rate * rho
             mu = mu - step * d_mu
             ls = np.clip(ls - step * d_ls, *_LOG_SIGMA_CLIP)
-            self._learners.append((t_mu, t_ls, rho))
+            learners.append((t_mu, t_ls, rho))
             train_hist.append(_score(y, mu, ls, self.score))
             if val is not None:
-                vmu, vls = self._raw_params(val[0])
+                vmu, vls = _replay(init, learners, val[0], self.learning_rate)
                 vs = _score(val[1], vmu, vls, self.score)
+                if not np.isfinite(vs):
+                    raise ValueError("validation loss is not finite")
                 val_hist.append(vs)
                 if vs < best_val - 1e-12:
                     best_val = vs
@@ -230,9 +261,15 @@ class NGBoostGaussian:
                 best_round = m + 1
 
         if val is not None and self.early_stopping_rounds is not None:
-            self._learners = self._learners[:best_round]
+            if best_round < 1:
+                raise ValueError("validation loss never improved; nothing to keep")
+            learners = learners[:best_round]
+        self._n_features = int(X.shape[1])
+        self._init = init
+        self._learners = learners
         self.fit_info = NGBoostFitInfo(
-            n_rounds=len(self._learners),
+            n_rounds=len(learners),
+            searched_rounds=len(train_hist),
             train_score=train_hist,
             val_score=val_hist,
             best_round=best_round,

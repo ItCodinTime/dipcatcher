@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from scipy.stats import kstest, norm
 
-from quant_fund.metrics.scoring import crps_gaussian
-from quant_fund.models.ngboost_lite import NGBoostGaussian, _gradients
+from quant_fund.metrics.scoring import crps_gaussian, log_score_gaussian
+from quant_fund.models.ngboost_lite import NGBoostGaussian, _gradients, _line_search
 
 
 def _hetero(n: int, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -42,12 +42,25 @@ def test_crps_gradient_matches_finite_difference() -> None:
     np.testing.assert_allclose(g_ls * metric_ls, fd_ls, rtol=1e-5, atol=1e-7)
 
 
+def test_line_search_refuses_a_step_that_increases_loss() -> None:
+    y = np.array([0.0, 1.0, -1.0])
+    mu = np.array([0.2, -0.4, 0.1])
+    ls = np.zeros(3)
+    d_mu = y - mu  # opposite the natural gradient, so a positive step climbs NLL
+    d_ls = np.zeros(3)
+    before = float(np.mean(log_score_gaussian(y, mu, np.exp(ls))))
+    after_unit = float(np.mean(log_score_gaussian(y, mu - d_mu, np.exp(ls))))
+    assert after_unit < before
+    assert _line_search(y, mu, ls, d_mu, d_ls, "logscore") == 0.0
+
+
 @pytest.mark.parametrize("score", ["logscore", "crps"])
 def test_training_score_monotone_and_sigma_tracks_heteroskedasticity(score: str) -> None:
     X, y, mu_true, sigma_true = _hetero(1500, 0)
     model = NGBoostGaussian(n_estimators=120, learning_rate=0.1, score=score, seed=0).fit(X, y)
     info = model.fit_info
     assert info is not None and info.n_rounds == 120
+    assert info.searched_rounds == 120
     hist = np.asarray(info.train_score)
     assert hist[-1] < hist[0]
     assert np.all(np.diff(hist) <= 1e-9)
@@ -99,6 +112,8 @@ def test_early_stopping_truncates_learners() -> None:
     assert info is not None
     assert info.n_rounds < 400
     assert info.n_rounds == info.best_round
+    assert info.searched_rounds == len(info.train_score) == len(info.val_score)
+    assert info.searched_rounds >= info.n_rounds
     assert len(info.val_score) >= info.best_round
     assert min(info.val_score) == pytest.approx(info.val_score[info.best_round - 1])
 
@@ -116,6 +131,8 @@ def test_fail_closed_edges() -> None:
     for kw in (
         {"n_estimators": 0},
         {"learning_rate": 0.0},
+        {"max_depth": 0},
+        {"min_samples_leaf": 0},
         {"score": "mse"},
         {"early_stopping_rounds": 0},
     ):
