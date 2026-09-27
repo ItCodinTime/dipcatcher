@@ -5,6 +5,11 @@ Commands operate on a trial-ledger JSONL file (one
 the provenance DB per DESIGN.md §14.4). Prints verdicts and diagnostics only
 — per the AGENTS.md honesty contract no Sharpe/P&L/NAV is headlined.
 
+``preflight`` only classifies an export. An empty file is an explicit skip
+(exit 3), not a scored verdict: the provenance DB is gitignored and no
+production path records trials, so a fresh checkout exports zero rows.
+``trial-report`` and ``ledger-gate`` stay fail-closed on that same file.
+
 Mounting into the top-level ``quant`` app is owned by W5 (cli glue);
 this module only defines the sub-typer.
 """
@@ -21,6 +26,34 @@ from quant_fund.proofcore.contracts import RealityFilterError, TrialLedgerRow
 reality_app = typer.Typer(
     help="Reality filter: deflated-Sharpe / CSCV-PBO / FDR honesty diagnostics over the trial ledger."
 )
+
+
+# Distinct from ledger-gate's exit 1 (verdict is not 'pass') and from the
+# fail-closed exit 2. ``make reality-gate`` maps this to process exit 0 and
+# the reality-filter workflow annotates the skip message as a notice.
+EMPTY_LEDGER_EXIT = 3
+
+
+def count_ledger_rows(path: Path) -> int:
+    """Count non-blank lines in an exported trial ledger.
+
+    Does not validate row schemas. A missing file is an error, not an empty
+    ledger. Blank lines are ignored, matching :func:`_load_ledger`.
+    """
+    if not path.is_file():
+        raise RealityFilterError(f"ledger not found: {path}")
+    with path.open("r", encoding="utf-8") as fh:
+        return sum(1 for line in fh if line.strip())
+
+
+def empty_ledger_skip_message(path: Path) -> str:
+    """Stdout contract for an export that has nothing to score."""
+    return (
+        "REALITY_FILTER_SKIP: "
+        f"ledger {path} contains no trial rows; "
+        "the provenance DB has no recorded research trials, "
+        "so the reality filter was not scored"
+    )
 
 
 def _load_ledger(path: Path) -> list[TrialLedgerRow]:
@@ -43,6 +76,27 @@ def _load_ledger(path: Path) -> list[TrialLedgerRow]:
 
 def _emit(report_json: str) -> None:
     typer.echo(report_json)
+
+
+@reality_app.command("preflight")
+def preflight(
+    ledger: Path = typer.Option(..., "--ledger", help="Path to trial-ledger JSONL."),
+) -> None:
+    """Exit 3 when the export has no rows, 0 when it has rows, 2 if missing.
+
+    Does not score the ledger and does not change filter thresholds. Callers
+    that need a verdict still run ``trial-report`` / ``ledger-gate``, which
+    fail closed on an empty file.
+    """
+    try:
+        n_rows = count_ledger_rows(ledger)
+    except RealityFilterError as exc:
+        typer.echo(f"REALITY_FILTER_ERROR: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    if n_rows == 0:
+        typer.echo(empty_ledger_skip_message(ledger))
+        raise typer.Exit(code=EMPTY_LEDGER_EXIT)
+    typer.echo(f"REALITY_FILTER_READY: n_rows={n_rows}")
 
 
 @reality_app.command("trial-report")

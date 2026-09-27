@@ -10,6 +10,12 @@ The version source is `fx1.__version__`.
 
 ### Fixed
 
+- **reality-filter CI**: a fresh provenance DB exports zero trial rows
+  (`data/metadata/**` is gitignored; only tests call
+  `ProvenanceDB.insert_trial`). `quant reality preflight` exits 3 with
+  `REALITY_FILTER_SKIP`, `make reality-gate` exits 0, and the workflow
+  annotates that line as a notice. Recorded rows are scored with the same
+  thresholds, and a verdict other than `pass` fails the job.
 - **A1 F1 (PROOFCORE W4)**: `hedge_lab/scoreboard.py` `book_economic_scoreboard`
   no longer feeds the **annualized** Sharpe into `probabilistic_sharpe` /
   `min_track_record_length` with a per-day observation count — that inflated

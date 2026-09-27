@@ -46,7 +46,7 @@ make proofcore-coverage   # per-package floors: pit/proof/reality/proofcore 90, 
 make proof-integrity      # current signer/recorder tests
 make proof-verify         # bundle verifier tests; no historical replay claim
 make leakage-scan         # warn mode this wave (adjudicated)
-make reality-gate         # trial-report + ledger-gate (advisory in CI at first)
+make reality-gate         # score exported trials; empty ledger prints REALITY_FILTER_SKIP and exits 0
 make receipts-reverify    # fail-closed audit; heterogeneous receipt verifiers pending
 ```
 
