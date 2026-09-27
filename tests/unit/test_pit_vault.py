@@ -359,7 +359,13 @@ def test_asof_records_into_recorder_and_watchdog(vault: PitVault) -> None:
     assert read.rows == out.rows == 1
     assert read.content_sha256 == out.content_sha256
     assert len(read.content_sha256) == 64
-    assert read.params == {"policy": "latest_known", "columns": "close"}
+    # W1<->W3 seam (adjudicated): _observe now pins the frame's max known_at
+    # watermark on every observed read (params["max_known_at"]).
+    assert read.params == {
+        "policy": "latest_known",
+        "columns": "close",
+        "max_known_at": T0.isoformat(),
+    }
     assert observed == [(read, T0)]
 
 
