@@ -428,15 +428,22 @@ def stationary_bootstrap_indices(
 def optimal_block_length(x: Array) -> float:
     """Politis–White (2004) automatic block length for the sample mean.
 
-    Flat-top kernel with the ``m̂`` rule: the smallest ``m`` whose trailing
-    ``K_N = max(10, ceil(sqrt(n)))`` autocorrelations all fall below
-    ``2·sqrt(log10(n)/n)``; then ``M = 2m̂`` and
+    Stationary-bootstrap member of ``b.star`` (Politis–White 2004, corrected in
+    Patton–Politis–White 2009). Flat-top kernel with the ``m̂`` rule: the
+    smallest ``m`` whose trailing ``K_N = max(5, ceil(log10 n))``
+    autocorrelations all fall below ``2·sqrt(log10(n)/n)`` among the first
+    ``m_max = ceil(sqrt(n)) + K_N`` lags (``m̂ = m_max`` when no run of ``K_N``
+    insignificant lags exists); then ``M = 2m̂`` (capped at ``m_max``) and
 
-        b̂_opt = (2 Ĝ² / D̂²)^(1/3) · n^(1/3),
+        b̂_opt = (2 Ĝ² / D̂)^(1/3) · n^(1/3),
 
-    with Ĝ = 2 Σ λ(k/M) k ρ̂(k) and D̂ = 1 + 2 Σ λ(k/M) ρ̂(k) over k = 1..M.
-    Ĝ ≤ 0 / D̂ ≤ 0 (no detectable dependence) → 1.0; the result is clamped to
-    ``[1, n-1]``. Constant series → 1.0; ``n < 10`` → NaN (fail-closed).
+    with Ĝ = 2 Σ λ(k/M) k γ̂(k) and D̂ = 2 · (γ̂(0) + 2 Σ λ(k/M) γ̂(k))² over
+    k = 1..M — the ``c_i = 2`` constant is the stationary-bootstrap member
+    (the circular bootstrap would use ``4/3``). The result is capped at
+    ``ceil(min(3·sqrt(n), n/3))`` and clamped to ``[1, n-1]``. Constant series
+    → 1.0; ``n < 10`` → NaN (fail-closed). Matches the reference
+    ``arch.bootstrap.optimal_block_length`` stationary column to machine
+    precision whenever the value is >= 1.
 
     Research diagnostic only — never a live Sharpe / P&L claim.
     """
@@ -449,31 +456,33 @@ def optimal_block_length(x: Array) -> float:
     gamma0 = float(np.dot(xc, xc)) / n
     if gamma0 <= 0.0:
         return 1.0
-    nfft = 1 << int(np.ceil(np.log2(max(2 * n, 2))))
-    spec = np.fft.rfft(xc, nfft)
-    acov = np.fft.irfft(spec * np.conj(spec), nfft)[:n] / n
-    rho = acov / gamma0
-    k_n = max(10, int(np.ceil(np.sqrt(n))))
-    threshold = 2.0 * float(np.sqrt(np.log10(n) / n))
-    max_m = max(1, n - 1 - k_n)
-    m_hat = 1
-    while m_hat <= max_m:
-        tail = rho[m_hat + 1 : m_hat + 1 + k_n]
-        if tail.size < k_n or bool(np.all(np.abs(tail) < threshold)):
-            break
-        m_hat += 1
-    m_big = min(2 * m_hat, n - 1)
+    k_n = max(5, int(np.ceil(np.log10(n))))
+    m_max = int(np.ceil(np.sqrt(n))) + k_n
+    cv = 2.0 * float(np.sqrt(np.log10(n) / n))
+    # m̂ insignificance windows use the restricted-sample autocorrelation
+    # (Patton's estimator); kernel sums use the usual 1/n autocovariances.
+    acorr = np.full(m_max + 1, np.inf)
+    acv = np.empty(m_max + 1)
+    m_hat: int | None = None
+    for i in range(m_max + 1):
+        v1 = float(np.dot(xc[i + 1 :], xc[i + 1 :]))
+        v2 = float(np.dot(xc[: n - i - 1], xc[: n - i - 1]))
+        cross = float(np.dot(xc[i:], xc[: n - i]))
+        acv[i] = cross / n
+        if v1 * v2 > 0.0:
+            acorr[i] = abs(cross) / float(np.sqrt(v1 * v2))
+        if i >= k_n and m_hat is None and bool(np.all(acorr[i - k_n : i] < cv)):
+            m_hat = i - k_n
+    m_big = min(2 * max(m_hat if m_hat is not None else m_max, 1), m_max)
     lags = np.arange(1, m_big + 1, dtype=float)
     lam = np.where(lags <= m_big / 2.0, 1.0, 2.0 * (1.0 - lags / m_big))
-    r = rho[1 : m_big + 1]
-    g_hat = 2.0 * float(np.sum(lam * lags * r))
-    d_hat = 1.0 + 2.0 * float(np.sum(lam * r))
-    if g_hat <= 0.0 or d_hat <= 0.0:
-        return 1.0
-    b_opt = (2.0 * g_hat**2 / d_hat**2) ** (1.0 / 3.0) * n ** (1.0 / 3.0)
+    g_hat = 2.0 * float(np.sum(lam * lags * acv[1 : m_big + 1]))
+    lr_acv = float(acv[0]) + 2.0 * float(np.sum(lam * acv[1 : m_big + 1]))
+    b_opt = (2.0 * g_hat**2 / (2.0 * lr_acv**2)) ** (1.0 / 3.0) * n ** (1.0 / 3.0)
     if not np.isfinite(b_opt):
         return 1.0
-    return float(min(max(b_opt, 1.0), max(1.0, n - 1.0)))
+    b_max = float(np.ceil(min(3.0 * np.sqrt(n), n / 3.0)))
+    return float(min(max(b_opt, 1.0), max(b_max, 1.0), float(n - 1)))
 
 
 def bootstrap_mean_ci(
