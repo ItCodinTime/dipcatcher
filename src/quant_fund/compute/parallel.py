@@ -61,9 +61,9 @@ def process_map[T, R](
     )
     if workers < 2:
         return _serial()
-    ctx = multiprocessing.get_context("fork")
     payloads = [(fn, seed, item) for seed, item in zip(seeds, sequenced, strict=True)]
     try:
+        ctx = multiprocessing.get_context("fork")
         pool = ProcessPoolExecutor(max_workers=workers, mp_context=ctx)
     except Exception:
         return _serial()

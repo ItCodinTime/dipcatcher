@@ -326,6 +326,20 @@ def test_process_map_matches_serial_seeds_and_order() -> None:
     assert parallel == serial
 
 
+def test_process_map_falls_back_when_fork_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unsupported_fork(_method: str) -> None:
+        raise ValueError("cannot find context for fork")
+
+    monkeypatch.setattr(
+        "quant_fund.compute.parallel.multiprocessing.get_context", unsupported_fork
+    )
+    items = [(i, np.ones(4)) for i in range(4)]
+    expected = [_seeded_dot(item, derive_seed(3, i)) for i, item in enumerate(items)]
+    assert process_map(_seeded_dot, items, base_seed=3, max_workers=2) == expected
+
+
 def test_process_map_short_input_stays_inline() -> None:
     out = process_map(_seeded_dot, [(1, np.ones(4))], base_seed=3, min_items=4)
     assert out == [_seeded_dot((1, np.ones(4)), derive_seed(3, 0))]
