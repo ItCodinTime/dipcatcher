@@ -60,7 +60,7 @@ from quant_fund.pipeline.forecast import (
     MARKET_RISK_OVERLAY_REALIZED_GARCH,
     market_risk_overlay_asof,
 )
-from quant_fund.portfolio.risk_gate import check_order
+from quant_fund.portfolio.risk_gate import check_order, funded
 from quant_fund.risk.overlay import BookRiskOverlay
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.order_book import BookLevel, OrderBookSnapshot
@@ -190,7 +190,12 @@ class _State:
     snaps: dict[int, _Snap] = field(default_factory=dict)
     last_target: dict[str, float] = field(default_factory=dict)
     cost_sum: dict[str, float] = field(
-        default_factory=lambda: {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+        default_factory=lambda: {
+            "commission": 0.0,
+            "spread": 0.0,
+            "impact": 0.0,
+            "turnover": 0.0,
+        }
     )
     fill_rows: list[dict[str, object]] = field(default_factory=list)
     navs: list[dict[str, object]] = field(default_factory=list)
@@ -434,6 +439,36 @@ def _ingest(state: _State, rows: list[dict[str, Any]], *, use_open: bool, stale_
         )
 
 
+def _record_costs(state: _State, costs: dict[str, float | str]) -> None:
+    for key in ("commission", "spread", "impact"):
+        state.cost_sum[key] += float(costs[key])
+    state.cost_sum["turnover"] += float(costs.get("turnover_bps", 0.0))
+
+
+def _fill_row(
+    *,
+    fill_time: datetime,
+    signal_time: datetime,
+    sid: str,
+    quantity: float,
+    price: float,
+    costs: dict[str, float | str],
+    decision_price: float | None,
+) -> dict[str, object]:
+    return {
+        "fill_time": fill_time,
+        "signal_time": signal_time,
+        "security_id": sid,
+        "quantity": quantity,
+        "price": price,
+        "fee": costs["commission"],
+        "spread_cost": costs["spread"],
+        "impact_cost": costs["impact"],
+        "turnover_cost": float(costs.get("turnover_bps", 0.0)),
+        "decision_price": decision_price,
+    }
+
+
 def _costs_for(
     spec: EventSimSpec,
     schedule: FeeSchedule,
@@ -479,7 +514,7 @@ def _cash_ok(
     notional = delta * price
     post = state.book.cash - notional - total_trade_cost
     if spec.settlement_bars == 0:
-        if delta > 0 and state.book.cash < notional + total_trade_cost:
+        if delta > 0 and not funded(state.book.cash, notional + total_trade_cost):
             return False
         return not (not spec.allow_margin and delta <= 0.0 and post < -1e-12)
     assert state.constraints is not None
@@ -647,20 +682,17 @@ def _try_commit(
     _move_cash(state, spec, sid, float(delta), price, total_trade_cost, bar_index, before)
     _note_constraints(state, spec, sid, before, state.book.shares.get(sid, 0.0), session, nav)
     state.traded_turn += abs(float(delta) * price) / max(nav, 1e-12)
-    for key in ("commission", "spread", "impact"):
-        state.cost_sum[key] += float(costs[key])
+    _record_costs(state, costs)
     state.fill_rows.append(
-        {
-            "fill_time": exec_time,
-            "signal_time": signal_time,
-            "security_id": sid,
-            "quantity": float(delta),
-            "price": float(price),
-            "fee": costs["commission"],
-            "spread_cost": costs["spread"],
-            "impact_cost": costs["impact"],
-            "decision_price": decision_price,
-        }
+        _fill_row(
+            fill_time=exec_time,
+            signal_time=signal_time,
+            sid=sid,
+            quantity=float(delta),
+            price=float(price),
+            costs=costs,
+            decision_price=decision_price,
+        )
     )
     return True
 
@@ -832,7 +864,7 @@ def _rebalance_next_open(
         notional = delta * price
         total_trade_cost = float(costs["total"])
         if legacy:
-            if delta > 0 and state.book.cash < notional + total_trade_cost:
+            if delta > 0 and not funded(state.book.cash, notional + total_trade_cost):
                 state.cash_reject_count += 1
                 continue
             state.book.cash -= notional + total_trade_cost
@@ -866,39 +898,33 @@ def _rebalance_next_open(
                 nav,
             )
             state.traded_turn += abs(notional) / max(nav, 1e-12)
-            for key in ("commission", "spread", "impact"):
-                state.cost_sum[key] += float(costs[key])
+            _record_costs(state, costs)
             state.fill_rows.append(
-                {
-                    "fill_time": exec_time,
-                    "signal_time": signal_time,
-                    "security_id": sid,
-                    "quantity": delta,
-                    "price": price,
-                    "fee": costs["commission"],
-                    "spread_cost": costs["spread"],
-                    "impact_cost": costs["impact"],
-                    "decision_price": snap.decision.get(sid),
-                }
+                _fill_row(
+                    fill_time=exec_time,
+                    signal_time=signal_time,
+                    sid=sid,
+                    quantity=delta,
+                    price=price,
+                    costs=costs,
+                    decision_price=snap.decision.get(sid),
+                )
             )
             continue
         state.book.shares[sid] = current + delta
         state.min_cash = min(state.min_cash, state.book.cash)
         state.traded_turn += abs(notional) / max(nav, 1e-12)
-        for key in ("commission", "spread", "impact"):
-            state.cost_sum[key] += float(costs[key])
+        _record_costs(state, costs)
         state.fill_rows.append(
-            {
-                "fill_time": exec_time,
-                "signal_time": signal_time,
-                "security_id": sid,
-                "quantity": delta,
-                "price": price,
-                "fee": costs["commission"],
-                "spread_cost": costs["spread"],
-                "impact_cost": costs["impact"],
-                "decision_price": snap.decision.get(sid),
-            }
+            _fill_row(
+                fill_time=exec_time,
+                signal_time=signal_time,
+                sid=sid,
+                quantity=delta,
+                price=price,
+                costs=costs,
+                decision_price=snap.decision.get(sid),
+            )
         )
         if spec.pdt_mode != "off":
             _note_constraints(

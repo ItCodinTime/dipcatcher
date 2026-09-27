@@ -8,7 +8,7 @@ unverified precomputed return series.
 
 ## Run
 
-First prepare the source benchmark using `REAL_DATA_BENCHMARK.md`. Then:
+First prepare the source benchmark using [REAL_DATA_BENCHMARK.md](REAL_DATA_BENCHMARK.md). Then:
 
 ```bash
 uv run python -m quant_fund.research.net_tournament prepare \
