@@ -1,0 +1,63 @@
+{
+  "tool": "mutmut",
+  "hypothesis_profile": "ci",
+  "modules": [
+    {
+      "path": "src/quant_fund/execution/costs.py",
+      "tests": [
+        "tests/property/test_adversarial_costs.py",
+        "tests/unit/test_execution.py"
+      ],
+      "mutmut_version": "mutmut, version 3.8.0",
+      "elapsed_sec": 77.407,
+      "killed": 136,
+      "survived": 71,
+      "timeout": 0,
+      "suspicious": 0,
+      "skipped": 0,
+      "no_tests": 0,
+      "total": 207,
+      "score_percent": 65.70048309178743,
+      "score_formula": "(killed + timeout) / (total - skipped)"
+    },
+    {
+      "path": "src/quant_fund/metrics/returns.py",
+      "tests": [
+        "tests/property/test_adversarial_returns_and_sizing.py",
+        "tests/property/test_drawdown.py",
+        "tests/unit/test_returns_edges.py",
+        "tests/unit/test_metrics.py"
+      ],
+      "mutmut_version": "mutmut, version 3.8.0",
+      "elapsed_sec": 60.806,
+      "killed": 246,
+      "survived": 118,
+      "timeout": 0,
+      "suspicious": 0,
+      "skipped": 0,
+      "no_tests": 0,
+      "total": 364,
+      "score_percent": 67.58241758241758,
+      "score_formula": "(killed + timeout) / (total - skipped)"
+    },
+    {
+      "path": "src/quant_fund/utils/hashing.py",
+      "tests": [
+        "tests/property/test_adversarial_receipts.py",
+        "tests/property/test_utils_invariants_cov.py",
+        "tests/regression/test_receipt_set_and_array_canonical.py"
+      ],
+      "mutmut_version": "mutmut, version 3.8.0",
+      "elapsed_sec": 45.206,
+      "killed": 101,
+      "survived": 84,
+      "timeout": 2,
+      "suspicious": 0,
+      "skipped": 0,
+      "no_tests": 0,
+      "total": 187,
+      "score_percent": 55.080213903743314,
+      "score_formula": "(killed + timeout) / (total - skipped)"
+    }
+  ]
+}
