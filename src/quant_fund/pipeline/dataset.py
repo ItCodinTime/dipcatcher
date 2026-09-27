@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import ctypes
+import hashlib
 import os
-import struct
-import sys
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -30,157 +27,36 @@ from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.hashing import hash_file
 
 # Process-local cache: avoid re-reading gold parquet on every asof date. The
-# cache key is a content digest. Stat metadata (device, inode, size, mtime_ns,
-# ctime_ns) is only a cheap hint — a same-size rewrite can keep every one of
-# those fields unchanged — so a matching signature is trusted only when an
-# inode watch has seen no write since the digest was stored. Without a watch,
-# the digest is recomputed on every lookup.
+# cache key is a full content digest. Stat fields plus a bounded head/tail
+# sample decide when that digest is recomputed, so a same-size rewrite that
+# leaves st_mtime_ns unchanged cannot reuse a stale research input when the
+# sampled bytes change. Unchanged artifacts stay off the full-file hash.
 _PANEL_CACHE: dict[tuple[str, str, str, str], pl.DataFrame] = {}
-_FILE_DIGEST_CACHE: dict[Path, tuple[tuple[int, int, int, int, int], str]] = {}
-
-# inotify(7) masks. IN_MOVE_SELF and IN_NONBLOCK share a numeric value; they
-# belong to different calls and must not be mixed.
-_IN_MODIFY = 0x00000002
-_IN_CLOSE_WRITE = 0x00000008
-_IN_DELETE_SELF = 0x00000400
-_IN_MOVE_SELF = 0x00000800
-_IN_Q_OVERFLOW = 0x00004000
-_IN_IGNORED = 0x00008000
-_IN_NONBLOCK = 0x00000800
-_IN_CLOEXEC = 0x00080000
-_WATCH_MASK = _IN_MODIFY | _IN_CLOSE_WRITE | _IN_DELETE_SELF | _IN_MOVE_SELF
-_EVENT_HEADER = struct.Struct("iIII")
+_FileSignature = tuple[int, int, int, int, int, str]
+_FILE_DIGEST_CACHE: dict[Path, tuple[_FileSignature, str]] = {}
+# Files at or below this size are covered in full. Larger artifacts sample
+# both ends (parquet footers sit in the tail) so the hot path does not reread
+# the whole gold file on every panel lookup.
+_CONTENT_SAMPLE_BYTES = 65_536
 
 
-class _ArtifactWatch:
-    """Linux inotify fast path for the artifact digest cache.
+def _cheap_content_digest(path: Path, *, size: int) -> str:
+    """Hash at most 64KiB from each end of ``path``.
 
-    A stat signature cannot prove bytes are unchanged. This watch reports
-    in-place writes, including same-size rewrites that leave mtime, ctime,
-    inode, and size untouched. When the kernel interface is unavailable, or
-    a single file cannot be armed, callers must recompute the digest.
+    The result is a cache invalidator, not the published artifact digest.
     """
-
-    def __init__(self) -> None:
-        self._fd: int | None = None
-        self._disabled = False
-        self._by_path: dict[Path, int] = {}
-        self._by_wd: dict[int, Path] = {}
-        self._dirty: set[Path] = set()
-        self._libc: ctypes.CDLL | None = None
-
-    def arm(self, path: Path) -> bool:
-        """Watch ``path``. Return whether a later ``stable`` check is meaningful."""
-        if self._disabled:
-            return False
-        libc = self._load()
-        if libc is None or self._fd is None:
-            return False
-        add_watch = cast(Callable[[int, bytes, int], int], libc.inotify_add_watch)
-        wd = add_watch(self._fd, os.fsencode(path), _WATCH_MASK)
-        if wd < 0:
-            return False
-        previous = self._by_path.get(path)
-        if previous is not None and previous != wd:
-            self._by_wd.pop(previous, None)
-        self._by_path[path] = wd
-        self._by_wd[wd] = path
-        self._drain()
-        self._dirty.discard(path)
-        return True
-
-    def stable(self, path: Path) -> bool:
-        """True when ``path`` is watched and no write has been observed."""
-        if path not in self._by_path:
-            return False
-        self._drain()
-        if path in self._dirty:
-            self._dirty.discard(path)
-            return False
-        return True
-
-    def _load(self) -> ctypes.CDLL | None:
-        if self._disabled:
-            return None
-        if self._libc is not None and self._fd is not None:
-            return self._libc
-        if sys.platform != "linux":
-            self._disabled = True
-            return None
-        try:
-            libc = ctypes.CDLL("libc.so.6", use_errno=True)
-        except OSError:
-            self._disabled = True
-            return None
-        init1 = cast(Callable[[int], int], libc.inotify_init1)
-        fd = init1(_IN_NONBLOCK | _IN_CLOEXEC)
-        if fd < 0:
-            self._disabled = True
-            return None
-        self._libc = libc
-        self._fd = fd
-        return libc
-
-    def _drain(self) -> None:
-        fd = self._fd
-        if fd is None:
-            return
-        while True:
-            try:
-                raw = os.read(fd, 4096)
-            except BlockingIOError:
-                return
-            except OSError:
-                self._disable()
-                return
-            if not raw:
-                return
-            self._parse(raw)
-
-    def _parse(self, raw: bytes) -> None:
-        offset = 0
-        overflow = False
-        limit = len(raw)
-        while offset + _EVENT_HEADER.size <= limit:
-            wd, mask, _cookie, length = _EVENT_HEADER.unpack_from(raw, offset)
-            offset += _EVENT_HEADER.size
-            if length < 0 or offset + length > limit:
-                overflow = True
-                break
-            offset += length
-            if mask & _IN_Q_OVERFLOW:
-                overflow = True
-            path = self._by_wd.get(wd)
-            if mask & (_IN_IGNORED | _IN_DELETE_SELF | _IN_MOVE_SELF):
-                self._forget(wd)
-            if path is not None:
-                self._dirty.add(path)
-        if overflow:
-            self._dirty.update(self._by_path)
-
-    def _forget(self, wd: int) -> None:
-        path = self._by_wd.pop(wd, None)
-        if path is None:
-            return
-        self._by_path.pop(path, None)
-        self._dirty.add(path)
-
-    def _disable(self) -> None:
-        self._dirty.update(self._by_path)
-        self._by_path.clear()
-        self._by_wd.clear()
-        fd = self._fd
-        self._fd = None
-        self._libc = None
-        self._disabled = True
-        if fd is not None:
-            os.close(fd)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        head = handle.read(_CONTENT_SAMPLE_BYTES)
+        digest.update(head)
+        if size > _CONTENT_SAMPLE_BYTES:
+            handle.seek(max(size - _CONTENT_SAMPLE_BYTES, len(head)))
+            digest.update(handle.read(_CONTENT_SAMPLE_BYTES))
+    digest.update(int(size).to_bytes(8, "little", signed=False))
+    return digest.hexdigest()
 
 
-_ARTIFACT_WATCH = _ArtifactWatch()
-
-
-def _file_signature(path: Path) -> tuple[int, int, int, int, int]:
+def _file_signature(path: Path) -> _FileSignature:
     metadata = os.stat(path)
     return (
         metadata.st_dev,
@@ -188,6 +64,7 @@ def _file_signature(path: Path) -> tuple[int, int, int, int, int]:
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
+        _cheap_content_digest(path, size=metadata.st_size),
     )
 
 
@@ -195,15 +72,10 @@ def _cached_file_digest(path: Path) -> str:
     resolved = path.resolve()
     signature = _file_signature(resolved)
     cached = _FILE_DIGEST_CACHE.get(resolved)
-    if cached is not None and cached[0] == signature and _ARTIFACT_WATCH.stable(resolved):
+    if cached is not None and cached[0] == signature:
         return cached[1]
-    watched = _ARTIFACT_WATCH.arm(resolved)
     digest = hash_file(resolved)
-    if watched and not _ARTIFACT_WATCH.stable(resolved):
-        # The file was rewritten while we hashed it. Read once more, then
-        # let the next lookup observe any further write.
-        digest = hash_file(resolved)
-    _FILE_DIGEST_CACHE[resolved] = (_file_signature(resolved), digest)
+    _FILE_DIGEST_CACHE[resolved] = (signature, digest)
     return digest
 
 

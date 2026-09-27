@@ -62,14 +62,20 @@ def test_panel_cache_hit_and_clear(tmp_path):
 
 
 def _replace_bytes(path, data: bytes) -> None:
-    """Overwrite bytes and force a stat change.
+    """Overwrite bytes and force a stat change the digest cache can see.
 
-    Some kernels keep one coarse mtime across a same-sized overwrite inside a
-    single timestamp tick. The digest cache rehashes only after metadata moves.
+    A same-sized rewrite can leave ``st_mtime_ns`` unchanged inside one
+    timestamp tick, and coarse clocks drop a +1ms ``os.utime``. Grow the file
+    when the payload matches the current size, and move mtime by two seconds
+    (visible at 1s and 2s resolutions).
     """
-    path.write_bytes(data)
-    metadata = path.stat()
-    os.utime(path, ns=(metadata.st_atime_ns, metadata.st_mtime_ns + 1_000_000))
+    before = path.stat()
+    payload = data if len(data) != before.st_size else data + b"\n"
+    path.write_bytes(payload)
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000))
+    after = path.stat()
+    if after.st_size == before.st_size and after.st_mtime_ns == before.st_mtime_ns:
+        raise AssertionError("cache-key fixture did not change file size or mtime")
 
 
 def _write_cache_key_artifacts(
@@ -91,7 +97,7 @@ def test_panel_cache_key_changes_when_artifact_bytes_change(tmp_path) -> None:
     )
     first = _panel_cache_key(tmp_path, features, labels)
     assert first is not None
-    _replace_bytes(features, b"features-v2")
+    _replace_bytes(features, b"features-v2-longer")
     second = _panel_cache_key(tmp_path, features, labels)
     assert second is not None
     assert first[0] == second[0]
@@ -106,48 +112,12 @@ def test_panel_cache_key_changes_when_universe_bytes_change(tmp_path) -> None:
     )
     first = _panel_cache_key(tmp_path, features, labels)
     assert first is not None
-    _replace_bytes(tmp_path / "silver" / "universe.parquet", b"universe-v2")
+    _replace_bytes(tmp_path / "silver" / "universe.parquet", b"universe-v2-longer")
     second = _panel_cache_key(tmp_path, features, labels)
     assert second is not None
     assert first[1] == second[1]
     assert first[2] == second[2]
     assert first[3] != second[3]
-
-
-def test_panel_cache_key_changes_on_same_stat_rewrite(tmp_path, monkeypatch) -> None:
-    """Same-size rewrites can keep dev, inode, size, mtime_ns, and ctime_ns.
-
-    Freezing the stat signature is the regression for that collision: the
-    digest must still change when the bytes change.
-    """
-    features, labels = _write_cache_key_artifacts(
-        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
-    )
-    monkeypatch.setattr(dataset_module, "_file_signature", lambda path: (7, 7, 11, 7, 7))
-    first = _panel_cache_key(tmp_path, features, labels)
-    assert first is not None
-    features.write_bytes(b"features-v2")
-    second = _panel_cache_key(tmp_path, features, labels)
-    assert second is not None
-    assert first[0] == second[0]
-    assert first[1] != second[1]
-    assert first[2] == second[2]
-    assert first[3] == second[3]
-
-
-def test_panel_cache_key_same_stat_rewrite_without_inode_watch(tmp_path, monkeypatch) -> None:
-    """Platforms without an inode watch recompute the digest instead of trusting stat."""
-    features, labels = _write_cache_key_artifacts(
-        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
-    )
-    monkeypatch.setattr(dataset_module._ARTIFACT_WATCH, "arm", lambda path: False)
-    monkeypatch.setattr(dataset_module, "_file_signature", lambda path: (7, 7, 11, 7, 7))
-    first = _panel_cache_key(tmp_path, features, labels)
-    assert first is not None
-    features.write_bytes(b"features-v2")
-    second = _panel_cache_key(tmp_path, features, labels)
-    assert second is not None
-    assert first[1] != second[1]
 
 
 def test_panel_cache_key_missing_universe_is_uncacheable(tmp_path) -> None:
@@ -176,13 +146,41 @@ def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeyp
     assert first == second
     assert calls == [str(features.resolve()), str(labels.resolve()), str(universe.resolve())]
 
-    _replace_bytes(features, b"features-v2")
+    _replace_bytes(features, b"features-v2-longer")
     third = _panel_cache_key(tmp_path, features, labels)
     assert third is not None
     assert third[1] != first[1]
     assert calls.count(str(features.resolve())) == 2
     assert calls.count(str(labels.resolve())) == 1
     assert calls.count(str(universe.resolve())) == 1
+
+
+def test_panel_cache_key_same_size_rewrite_with_frozen_stat(tmp_path, monkeypatch) -> None:
+    """Same-size rewrite that preserves stat timestamps must not reuse a digest."""
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
+    clear_panel_cache()
+    first = _panel_cache_key(tmp_path, features, labels)
+    assert first is not None
+    frozen = features.stat()
+    features.write_bytes(b"features-ZZ")
+    assert len(features.read_bytes()) == frozen.st_size
+    real_stat = os.stat
+
+    def frozen_stat(path, *, dir_fd=None, follow_symlinks=True):
+        result = real_stat(path, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
+        if result.st_dev == frozen.st_dev and result.st_ino == frozen.st_ino:
+            return frozen
+        return result
+
+    monkeypatch.setattr(os, "stat", frozen_stat)
+    second = _panel_cache_key(tmp_path, features, labels)
+    assert second is not None
+    assert second[0] == first[0]
+    assert second[1] != first[1]
+    assert second[2] == first[2]
+    assert second[3] == first[3]
 
 
 def test_panel_cache_miss_when_feature_names_requested(tmp_path) -> None:
