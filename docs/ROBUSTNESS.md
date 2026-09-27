@@ -24,6 +24,8 @@ under `receipts/` are not rewritten.
 
 SYNTHETIC toys check these formulas. They are correctness tests, not market evidence.
 
+Cohen's radius equals the linear distance in exact arithmetic. In float64, `norm.ppf(norm.cdf(z))` drifts from `z` once the standardized margin is large. The property test checks that identity to `1e-8` for standardized margins at most `5.5`. A unit test pins the larger tail, where the gap is inversion error.
+
 The mean-to-scale ratio is the population form of a risk-adjusted return. The lab does not stamp that headline name into research receipts. The field is `worst_case_ratio`, with an explicit proof status.
 
 ## Threat models

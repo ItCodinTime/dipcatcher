@@ -39,6 +39,21 @@ def test_cohen_binary_radius_matches_the_simplified_formula() -> None:
     assert smoothing_radius(0.4, 0.4, sigma) == 0.0
 
 
+def test_gaussian_tail_round_trip_stays_near_the_geometric_radius() -> None:
+    # Hypothesis found weights [0, 1], sample [0, 1], sigma 0.15625.
+    # Standardized margin is 6.4. scipy.stats.norm.ppf(norm.cdf(6.4))
+    # undershoots by about 9e-8, so the radius gap is about 1.4e-8.
+    # That is float64 inversion error, not a gap in Cohen's identity.
+    weights = np.array([0.0, 1.0])
+    sample = np.array([0.0, 1.0])
+    sigma = 0.15625
+    distance = linear_l2_radius(weights, 0.0, sample)
+    assert distance / sigma > 5.5
+    positive = linear_positive_probability(weights, 0.0, sample, sigma)
+    certified = smoothing_radius(positive, 1.0 - positive, sigma)
+    assert abs(certified - distance) < 1e-7
+
+
 def test_linear_population_radius_equals_distance_to_the_boundary() -> None:
     weights = np.array([0.5, 0.0, -0.5, 1.0])
     sample = np.array([0.2, 1.0, -0.4, 0.3])
