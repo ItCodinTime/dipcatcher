@@ -76,7 +76,7 @@ def _source_stamp() -> str:
     """Separate test runs with different code or locked dependencies."""
     root = _repo_root() / "src" / "quant_fund"
     digest = hashlib.sha256()
-    digest.update(b"session-cache-v2\0")
+    digest.update(b"session-cache-v3\0")
     digest.update(sys.version.encode())
     for path in sorted(root.rglob("*.py")):
         digest.update(path.relative_to(root).as_posix().encode())
@@ -203,7 +203,18 @@ _SILVER_ARTIFACTS = (
     "bronze/security_master.parquet",
     "silver/bars.parquet",
     "silver/universe.parquet",
+    # ingest writes this next to the parquets. A cache hit that restores the
+    # lake without it leaves an empty root looking ingested while the manifest
+    # the synthetic pipeline reads is absent.
+    "metadata/data_manifest.json",
 )
+_MANIFEST_PATHS = {
+    "bars": "bronze/bars.parquet",
+    "actions": "bronze/corporate_actions.parquet",
+    "master": "bronze/security_master.parquet",
+    "silver": "silver/bars.parquet",
+    "universe": "silver/universe.parquet",
+}
 _GOLD_ARTIFACTS = (
     "gold/features.parquet",
     "gold/labels.parquet",
@@ -249,6 +260,27 @@ def _snapshot_artifacts(root: Path, dest: Path, rels: tuple[str, ...]) -> None:
         shutil.copy2(source, target)
 
 
+def _retarget_manifest(root: Path) -> None:
+    """Point a restored manifest at ``root``.
+
+    The cached JSON stores absolute paths from the worker that filled the
+    slot. Copying it unchanged would describe a different directory.
+    """
+    path = root / "metadata" / "data_manifest.json"
+    if not path.is_file():
+        return
+    manifest = json.loads(path.read_text())
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return
+    for name, info in artifacts.items():
+        rel = _MANIFEST_PATHS.get(str(name))
+        if rel is None or not isinstance(info, dict):
+            continue
+        info["path"] = str((root / rel).resolve())
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+
 def _restore_artifacts(src: Path, root: Path, rels: tuple[str, ...]) -> None:
     root.mkdir(parents=True, exist_ok=True)
     for rel in rels:
@@ -258,6 +290,8 @@ def _restore_artifacts(src: Path, root: Path, rels: tuple[str, ...]) -> None:
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+    if "metadata/data_manifest.json" in rels:
+        _retarget_manifest(root)
 
 
 def _silver_ready(root: Path) -> bool:

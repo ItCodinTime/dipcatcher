@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any
@@ -80,6 +81,16 @@ def test_synthetic_silver_cache_is_root_independent(tmp_path: Path) -> None:
     assert left.equals(right)
     assert (tmp_path / "b" / "silver" / "bars.parquet").is_file()
     assert data_stats()["hit"] >= 1
+    left_manifest = json.loads((tmp_path / "a" / "metadata" / "data_manifest.json").read_text())
+    right_manifest = json.loads((tmp_path / "b" / "metadata" / "data_manifest.json").read_text())
+    assert left_manifest["source"] == "synthetic"
+    assert (
+        right_manifest["artifacts"]["silver"]["sha256"]
+        == left_manifest["artifacts"]["silver"]["sha256"]
+    )
+    assert right_manifest["artifacts"]["silver"]["path"] == str(
+        (tmp_path / "b" / "silver" / "bars.parquet").resolve()
+    )
 
 
 def test_silver_cache_does_not_replace_existing_bars(tmp_path: Path) -> None:
