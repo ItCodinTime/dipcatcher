@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence audit-obs fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence audit-obs docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 .DEFAULT_GOAL := help
 
@@ -6,7 +6,7 @@ help: ## Show targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
-sync: ## Install the locked environment (project + dev groups + extras)
+sync: ## Install the locked environment (all groups and extras)
 	uv sync --frozen --all-groups --all-extras
 
 test: ## Lab test suite (unit/property/regression/end_to_end)
@@ -52,6 +52,12 @@ examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff format --check examples tests/examples
 	uv run mypy examples
 	uv run pytest tests/examples -q
+
+docs: ## Build the documentation site (strict)
+	uv run --only-group docs --frozen mkdocs build --strict
+
+docs-serve: ## Serve the documentation site locally
+	uv run --only-group docs --frozen mkdocs serve --dev-addr 127.0.0.1:8000
 
 # --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
 fx1-test: ## fx-1 test suite
