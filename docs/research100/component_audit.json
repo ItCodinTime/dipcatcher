@@ -1,0 +1,709 @@
+{
+  "claim": "component_availability_only",
+  "promotable": false,
+  "catalog_sha256": "240e57b4f7fc2036f7a177d4d448fde11ef6736840f0d18e040fa138a6d63402",
+  "available": 100,
+  "total": 100,
+  "components": [
+    {
+      "id": "R001",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.optimizer:optimize_mean_variance",
+      "module_sha256": "37f47215f9db69da33528b8cb794b87a5bdcb4176c6f3e77477d95c7433a3e3f",
+      "signature": "(alpha: 'Array', sigma: 'Array', w_prev: 'Array', config: 'AppConfig', *, sector_loadings: 'Array | None' = None, factor_loadings: 'Array | None' = None, beta_loadings: 'Array | None' = None, tc_linear: 'Array | None' = None, scenarios: 'Array | None' = None, adv_dollars: 'Array | None' = None, nav: 'float' = 1.0) -> 'tuple[Array, OptimizationDiagnostics]'"
+    },
+    {
+      "id": "R002",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:black_litterman",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(cov: 'Array', prior_mu: 'Array | None' = None, views_P: 'Array | None' = None, views_Q: 'Array | None' = None, tau: 'float' = 0.05, omega: 'Array | None' = None, delta: 'float' = 2.5) -> 'tuple[Array, Array]'"
+    },
+    {
+      "id": "R003",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:hierarchical_risk_parity",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(cov: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R004",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:equal_risk_contribution",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(cov: 'Array', x0: 'Array | None' = None) -> 'Array'"
+    },
+    {
+      "id": "R005",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:maximum_diversification",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(cov: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R006",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:cvar_minimization",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(returns: 'Array', alpha: 'float' = 0.95, *, long_only: 'bool' = True, target_return: 'float | None' = None) -> 'tuple[Array, float]'"
+    },
+    {
+      "id": "R007",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.allocators:kelly_weights",
+      "module_sha256": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d",
+      "signature": "(mu: 'Array', cov: 'Array', fraction: 'float' = 1.0, *, long_only: 'bool' = False) -> 'Array'"
+    },
+    {
+      "id": "R008",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.research_allocators:multi_period_target",
+      "module_sha256": "650aa263f4c037a2b133b3cb3cdaf21f182b8c8e7965a28799517cb2b8c8888b",
+      "signature": "(forecasts: 'Array', covariance: 'Array', previous: 'Array', *, risk_aversion: 'float' = 1.0, linear_cost: 'float' = 0.0, quadratic_cost: 'float' = 0.0, gross_limit: 'float' = 1.0, turnover_limit: 'float' = 2.0) -> 'AllocationResult'"
+    },
+    {
+      "id": "R009",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.research_allocators:risk_constrained_kelly",
+      "module_sha256": "650aa263f4c037a2b133b3cb3cdaf21f182b8c8e7965a28799517cb2b8c8888b",
+      "signature": "(gross_returns: 'Array', probabilities: 'Array', *, wealth_floor: 'float' = 0.7, drawdown_probability: 'float' = 0.1) -> 'AllocationResult'"
+    },
+    {
+      "id": "R010",
+      "available": true,
+      "entrypoint": "quant_fund.portfolio.research_allocators:volatility_managed_weights",
+      "module_sha256": "650aa263f4c037a2b133b3cb3cdaf21f182b8c8e7965a28799517cb2b8c8888b",
+      "signature": "(returns: 'Array', *, training_scale: 'float', window: 'int' = 21, variance_floor: 'float' = 1e-08, max_leverage: 'float' = 1.0) -> 'Array'"
+    },
+    {
+      "id": "R011",
+      "available": true,
+      "entrypoint": "quant_fund.models.covariance:ledoit_wolf_cov",
+      "module_sha256": "35e400e5bcd8f4c38d702f2ba2375996d2d747e91872b9d7e335e99cc7a2699f",
+      "signature": "(returns: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R012",
+      "available": true,
+      "entrypoint": "quant_fund.models.covariance:oracle_approximating_shrinkage_cov",
+      "module_sha256": "35e400e5bcd8f4c38d702f2ba2375996d2d747e91872b9d7e335e99cc7a2699f",
+      "signature": "(returns: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R013",
+      "available": true,
+      "entrypoint": "quant_fund.models.covariance:ledoit_wolf_nonlinear_cov",
+      "module_sha256": "35e400e5bcd8f4c38d702f2ba2375996d2d747e91872b9d7e335e99cc7a2699f",
+      "signature": "(returns: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R014",
+      "available": true,
+      "entrypoint": "quant_fund.models.poet:poet_cov",
+      "module_sha256": "29b02bf8d2575559bfc22f872146a1a11339ce74f2998b6a2854b4e35a902730",
+      "signature": "(returns: 'Array', k: 'int | None' = None, thresh: 'float | None' = None) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R015",
+      "available": true,
+      "entrypoint": "quant_fund.models.glasso:glasso",
+      "module_sha256": "5e2fda794c8ab4567a6fe007825855f9b795a18cd9f8c2609e2ee50a3aa769eb",
+      "signature": "(s: 'Array', rho: 'float', max_iter: 'int' = 200, tol: 'float' = 1e-06) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R016",
+      "available": true,
+      "entrypoint": "quant_fund.models.robust_cov:fast_mcd",
+      "module_sha256": "39d3d0c0d967bd29c84ba92a1018ff9b4972e4050e00499d8b77fc6d635d300b",
+      "signature": "(x: 'Array', h: 'int | None' = None, n_starts: 'int' = 50, max_iter: 'int' = 20, rng: 'np.random.Generator | None' = None) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R017",
+      "available": true,
+      "entrypoint": "quant_fund.models.robust_cov:ogk_cov",
+      "module_sha256": "39d3d0c0d967bd29c84ba92a1018ff9b4972e4050e00499d8b77fc6d635d300b",
+      "signature": "(x: 'Array') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R018",
+      "available": true,
+      "entrypoint": "quant_fund.models.rmt:eigenvalue_clip",
+      "module_sha256": "7568b4dd84522884b0b92888c6ef00e553a27f06a4eb4d13127fcd0b51ba7e9a",
+      "signature": "(cov: 'Array', q: 'float', *, constant_residual: 'bool' = True) -> 'Array'"
+    },
+    {
+      "id": "R019",
+      "available": true,
+      "entrypoint": "quant_fund.models.rmt:absorption_ratio",
+      "module_sha256": "7568b4dd84522884b0b92888c6ef00e553a27f06a4eb4d13127fcd0b51ba7e9a",
+      "signature": "(eigenvalues: 'Array', top_k: 'int | None' = None) -> 'float'"
+    },
+    {
+      "id": "R020",
+      "available": true,
+      "entrypoint": "quant_fund.models.factor_models:bai_ng_factors",
+      "module_sha256": "72f23fabbc6fb1091be2f485b2627513dac9c349a499a4c3d70990e4bd8d41b8",
+      "signature": "(returns: 'Array', r_max: 'int' = 8) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R021",
+      "available": true,
+      "entrypoint": "quant_fund.models.poet:poet_select_k",
+      "module_sha256": "29b02bf8d2575559bfc22f872146a1a11339ce74f2998b6a2854b4e35a902730",
+      "signature": "(returns: 'Array', kmax: 'int' = 10) -> 'int'"
+    },
+    {
+      "id": "R022",
+      "available": true,
+      "entrypoint": "quant_fund.models.momentum:jt_momentum",
+      "module_sha256": "c2ad0ecea669bee67b51e566d075daedfc897e6b57ff2c06b7d1f4fafae00612",
+      "signature": "(prices: 'Array', formation: 'int' = 252, skip: 'int' = 21) -> 'Array'"
+    },
+    {
+      "id": "R023",
+      "available": true,
+      "entrypoint": "quant_fund.models.momentum:high_52w",
+      "module_sha256": "c2ad0ecea669bee67b51e566d075daedfc897e6b57ff2c06b7d1f4fafae00612",
+      "signature": "(prices: 'Array', window: 'int' = 252) -> 'Array'"
+    },
+    {
+      "id": "R024",
+      "available": true,
+      "entrypoint": "quant_fund.models.momentum:residual_momentum",
+      "module_sha256": "c2ad0ecea669bee67b51e566d075daedfc897e6b57ff2c06b7d1f4fafae00612",
+      "signature": "(prices: 'Array', factor_returns: 'Array', formation: 'int' = 252, skip: 'int' = 21, est_window: 'int' = 252) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R025",
+      "available": true,
+      "entrypoint": "quant_fund.models.momentum:tsmom_signal",
+      "module_sha256": "c2ad0ecea669bee67b51e566d075daedfc897e6b57ff2c06b7d1f4fafae00612",
+      "signature": "(returns: 'Array', lookback: 'int' = 252, vol_window: 'int' = 60) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R026",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:FamaMacBethRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "() -> 'None'"
+    },
+    {
+      "id": "R027",
+      "available": true,
+      "entrypoint": "quant_fund.models.asset_pricing:IPCARanker",
+      "module_sha256": "e7f93e6c0fe50b1316f2fb9f2aa3003b2f7ea9cd991316749949bf3fce62feb1",
+      "signature": "(n_factors: 'int' = 3, max_iter: 'int' = 50, tol: 'float' = 1e-06, unrestricted: 'bool' = False) -> 'None'"
+    },
+    {
+      "id": "R028",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:ThreePassFilterRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "(n_factors: 'int' = 3) -> 'None'"
+    },
+    {
+      "id": "R029",
+      "available": true,
+      "entrypoint": "quant_fund.models.asset_pricing:random_fourier_features",
+      "module_sha256": "e7f93e6c0fe50b1316f2fb9f2aa3003b2f7ea9cd991316749949bf3fce62feb1",
+      "signature": "(x: 'NDArray[np.float64]', omega: 'NDArray[np.float64]', bandwidth: 'float') -> 'NDArray[np.float64]'"
+    },
+    {
+      "id": "R030",
+      "available": true,
+      "entrypoint": "quant_fund.models.asset_pricing:voc_ridge",
+      "module_sha256": "e7f93e6c0fe50b1316f2fb9f2aa3003b2f7ea9cd991316749949bf3fce62feb1",
+      "signature": "(signals: 'NDArray[np.float64]', y: 'NDArray[np.float64]', z: 'float') -> 'NDArray[np.float64]'"
+    },
+    {
+      "id": "R031",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:FNWRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "(n_intervals: 'int' = 4, lam: 'float' = 0.05) -> 'None'"
+    },
+    {
+      "id": "R032",
+      "available": true,
+      "entrypoint": "quant_fund.models.asset_pricing:sdf_ridge_loadings",
+      "module_sha256": "e7f93e6c0fe50b1316f2fb9f2aa3003b2f7ea9cd991316749949bf3fce62feb1",
+      "signature": "(managed: 'NDArray[np.float64]', z: 'float') -> 'tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]'"
+    },
+    {
+      "id": "R033",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:GBRTRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "(n_estimators: 'int' = 40, max_depth: 'int' = 2, learning_rate: 'float' = 0.1, seed: 'int' = 42) -> 'None'"
+    },
+    {
+      "id": "R034",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:PrincipalPortfolioRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "(n_factors: 'int' = 3) -> 'None'"
+    },
+    {
+      "id": "R035",
+      "available": true,
+      "entrypoint": "quant_fund.models.cs_papers:PCRRanker",
+      "module_sha256": "ecb9d48e0578c90502f4f4196517d728a01a18ab2aade603cd2d3f47b57cbadd",
+      "signature": "(n_factors: 'int' = 3) -> 'None'"
+    },
+    {
+      "id": "R036",
+      "available": true,
+      "entrypoint": "quant_fund.models.sparse:lars_path",
+      "module_sha256": "be4ad6878705a31b86e6e771039e5dfd00b12392d0f2c835c84eb90aed95d76d",
+      "signature": "(x: 'Array', y: 'Array', max_steps: 'int | None' = None) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R037",
+      "available": true,
+      "entrypoint": "quant_fund.models.sparse:lasso_cd",
+      "module_sha256": "be4ad6878705a31b86e6e771039e5dfd00b12392d0f2c835c84eb90aed95d76d",
+      "signature": "(x: 'Array', y: 'Array', lam: 'float', weights: 'Array | None' = None, max_iter: 'int' = 500, tol: 'float' = 1e-08) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R038",
+      "available": true,
+      "entrypoint": "quant_fund.models.sparse:adaptive_lasso",
+      "module_sha256": "be4ad6878705a31b86e6e771039e5dfd00b12392d0f2c835c84eb90aed95d76d",
+      "signature": "(x: 'Array', y: 'Array', lam: 'float', power: 'float' = 1.0) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R039",
+      "available": true,
+      "entrypoint": "quant_fund.models.sparse:ebic_select",
+      "module_sha256": "be4ad6878705a31b86e6e771039e5dfd00b12392d0f2c835c84eb90aed95d76d",
+      "signature": "(x: 'Array', y: 'Array', ebic_gamma: 'float' = 0.5) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R040",
+      "available": true,
+      "entrypoint": "quant_fund.models.sparse:omp",
+      "module_sha256": "be4ad6878705a31b86e6e771039e5dfd00b12392d0f2c835c84eb90aed95d76d",
+      "signature": "(x: 'Array', y: 'Array', k: 'int') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R041",
+      "available": true,
+      "entrypoint": "quant_fund.models.har:har_rv_fit",
+      "module_sha256": "bddd6cee3110fafe950a9fdafd39c4a753124b8c413b1eabbbec2c8c5e954736",
+      "signature": "(rv: 'Array', lags: 'tuple[int, int, int]' = (1, 5, 22)) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R042",
+      "available": true,
+      "entrypoint": "quant_fund.models.har:harq_fit",
+      "module_sha256": "bddd6cee3110fafe950a9fdafd39c4a753124b8c413b1eabbbec2c8c5e954736",
+      "signature": "(rv: 'Array', rq: 'Array', lags: 'tuple[int, int, int]' = (1, 5, 22)) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R043",
+      "available": true,
+      "entrypoint": "quant_fund.models.dcc:dcc_fit",
+      "module_sha256": "a3513ea2b0ee6deb2783db03060ec22b3ec08782e07925c7aa713763fa192558",
+      "signature": "(returns: 'Array') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R044",
+      "available": true,
+      "entrypoint": "quant_fund.models.egarch:egarch_fit",
+      "module_sha256": "9fed9470ce881efe5536767dc002cbd3d68b53c0ebc45fc8fa2d53dc999074e6",
+      "signature": "(y: 'Array') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R045",
+      "available": true,
+      "entrypoint": "quant_fund.models.egarch:gjr_garch_fit",
+      "module_sha256": "9fed9470ce881efe5536767dc002cbd3d68b53c0ebc45fc8fa2d53dc999074e6",
+      "signature": "(y: 'Array') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R046",
+      "available": true,
+      "entrypoint": "quant_fund.models.gas:gas_vol_fit",
+      "module_sha256": "63494017bee5ae77822524557e1dffb65df38f133532e12e1803084f2c5326ad",
+      "signature": "(y: 'Array', dist: 'str' = 'gauss', scaling: 'str' = 'inv_sqrt') -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R047",
+      "available": true,
+      "entrypoint": "quant_fund.models.garch_midas:garch_midas_fit",
+      "module_sha256": "4637ee43ba4f6138856d30752bf03340037f969ae2e75e013b951f2fcc7a21ed",
+      "signature": "(returns: 'Array', block: 'int' = 21, k_lag: 'int' = 12, fix_w2: 'float | None' = None) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R048",
+      "available": true,
+      "entrypoint": "quant_fund.models.caviar:caviar_fit",
+      "module_sha256": "c895e534b2cc8b3899baade1bee93aafb9148df43cf38998492403d0d3474deb",
+      "signature": "(returns: 'Array', tau: 'float' = 0.05, spec: 'str' = 'sav', n_starts: 'int' = 8, seed: 'int' = 0) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R049",
+      "available": true,
+      "entrypoint": "quant_fund.models.qar:qar_fit",
+      "module_sha256": "786ff66ea1513b8ea11690ddad47ac547c29eebcfa27dfc0cc40ba40bbe4fa7b",
+      "signature": "(y: 'Array', p: 'int', taus: 'Array') -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R050",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized_garch:RealizedGARCHVol",
+      "module_sha256": "8419acd0d423d09da66a02ba9bf6619d02535758672324022619a415b8d3796f",
+      "signature": "(*, min_obs: 'int' = 50, mean: 'str' = 'Constant', series_scope: 'str' = 'univariate_return_series', realized_measure: 'str' = 'parkinson_daily_ohlc') -> 'None'"
+    },
+    {
+      "id": "R051",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:realized_variance",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array') -> 'float'"
+    },
+    {
+      "id": "R052",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:bipower_variation",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array') -> 'float'"
+    },
+    {
+      "id": "R053",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:realized_kernel",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array', bandwidth: 'int | None' = None) -> 'float'"
+    },
+    {
+      "id": "R054",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:tsrv",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array', n_grids: 'int | None' = None) -> 'float'"
+    },
+    {
+      "id": "R055",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:preaveraged_rv",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array', theta: 'float' = 0.4) -> 'float'"
+    },
+    {
+      "id": "R056",
+      "available": true,
+      "entrypoint": "quant_fund.models.realized:lee_mykland_jumps",
+      "module_sha256": "b4aac97546c39c796a7980e46437eb18778f67351c9a3ab1a6b2dd7bdb4282f9",
+      "signature": "(r: 'Array', alpha: 'float' = 0.999) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R057",
+      "available": true,
+      "entrypoint": "quant_fund.models.rough_vol:logvol_hurst",
+      "module_sha256": "a4a9488c46f64fa06d846a9c9e1d5d2b2ced2c208526ec1b265818cb68c5b649",
+      "signature": "(log_vol: 'Array', qs: 'Array | None' = None, max_lag: 'int' = 50) -> 'dict[str, Array | float]'"
+    },
+    {
+      "id": "R058",
+      "available": true,
+      "entrypoint": "quant_fund.models.state_space:kalman_filter",
+      "module_sha256": "0a72bad2fc79ffb4297e399bb911ac6388389e650404b226197ea5b68ad1d205",
+      "signature": "(y: 'Array', F: 'Array', H: 'Array', Q: 'Array', R: 'Array', x0: 'Array | None' = None, P0: 'Array | None' = None) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R059",
+      "available": true,
+      "entrypoint": "quant_fund.models.state_space:kalman_smoother",
+      "module_sha256": "0a72bad2fc79ffb4297e399bb911ac6388389e650404b226197ea5b68ad1d205",
+      "signature": "(filt: 'dict[str, Array]', F: 'Array') -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R060",
+      "available": true,
+      "entrypoint": "quant_fund.models.nonlinear_filters:particle_filter",
+      "module_sha256": "5f23f460308b4d916e259f4380381ae23eaa4aa410d74bb1903506920ff07806",
+      "signature": "(y: 'Array', f, obs_loglik, q_std: 'float', n_particles: 'int' = 500, x0: 'float' = 0.0, p0_std: 'float' = 1.0, seed: 'int' = 0, resample_frac: 'float' = 0.5) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R061",
+      "available": true,
+      "entrypoint": "quant_fund.models.regime_switch:fit_markov_switching_mean",
+      "module_sha256": "6ef010efeda9d90f51690518fd1a85fe0a85f9a69c8f0d1c8a6f2b2204d1c520",
+      "signature": "(y: 'Array', n_states: 'int' = 2, max_iter: 'int' = 200, tol: 'float' = 1e-06, seed: 'int' = 0) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R062",
+      "available": true,
+      "entrypoint": "quant_fund.models.pairs:gatev_select",
+      "module_sha256": "8e21a68f45da230e989afb376fc85d4069940d4265df2ea6c7c5707027476fc4",
+      "signature": "(prices: 'Array', n_pairs: 'int' = 10) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R063",
+      "available": true,
+      "entrypoint": "quant_fund.models.var_coint:engle_granger",
+      "module_sha256": "5149a1c1746e3550dca41e1631fb9e5edf5e441d6554af1cc66d41ec3530705a",
+      "signature": "(y: 'Array', x: 'Array', max_lag: 'int | None' = None) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R064",
+      "available": true,
+      "entrypoint": "quant_fund.models.var_coint:johansen_test",
+      "module_sha256": "5149a1c1746e3550dca41e1631fb9e5edf5e441d6554af1cc66d41ec3530705a",
+      "signature": "(y: 'Array', p: 'int' = 2, det: 'int' = 0) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R065",
+      "available": true,
+      "entrypoint": "quant_fund.models.var_coint:diebold_yilmaz",
+      "module_sha256": "5149a1c1746e3550dca41e1631fb9e5edf5e441d6554af1cc66d41ec3530705a",
+      "signature": "(y: 'Array', p: 'int' = 2, horizon: 'int' = 10) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R066",
+      "available": true,
+      "entrypoint": "quant_fund.execution.almgren_chriss:almgren_chriss_trajectory",
+      "module_sha256": "da38e941aecdbd56b6db3f2f701337377809c0b4f2609e585c721522b7b45950",
+      "signature": "(quantity: 'float', n_slices: 'int', *, sigma: 'float', eta: 'float', gamma: 'float', risk_aversion: 'float', tau: 'float' = 1.0) -> 'Array'"
+    },
+    {
+      "id": "R067",
+      "available": true,
+      "entrypoint": "quant_fund.models.market_making:as_optimal_quotes",
+      "module_sha256": "066eb78e13bce1c2a9abaa18e948287017cbb928efb8c9a0a3743b4cccd4ec1c",
+      "signature": "(mid: 'float', inventory: 'float', gamma: 'float', sigma: 'float', tau: 'float', kappa: 'float') -> 'dict[str, float]'"
+    },
+    {
+      "id": "R068",
+      "available": true,
+      "entrypoint": "quant_fund.northset.kyle_ofi:cont_ofi_series",
+      "module_sha256": "62e45ac2bd0745c5f4bedec27b0585b400b50757a9f94e4a8e2c3930c7eac729",
+      "signature": "(best_bid: 'Array', top_bid_size: 'Array', best_ask: 'Array', top_ask_size: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R069",
+      "available": true,
+      "entrypoint": "quant_fund.models.trade_sign:lee_ready",
+      "module_sha256": "6b5d82cea6ec541bdfb7952d0d0dd0ebbbefa51b858e8a492a5d19afd71fecc9",
+      "signature": "(price: 'Array', bid: 'Array', ask: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R070",
+      "available": true,
+      "entrypoint": "quant_fund.models.trade_sign:bulk_volume_classify",
+      "module_sha256": "6b5d82cea6ec541bdfb7952d0d0dd0ebbbefa51b858e8a492a5d19afd71fecc9",
+      "signature": "(close: 'Array', volume: 'Array', sigma_dp: 'float | None' = None) -> 'dict[str, Array]'"
+    },
+    {
+      "id": "R071",
+      "available": true,
+      "entrypoint": "quant_fund.models.point_process:hawkes_mle",
+      "module_sha256": "41c02ff6d3027d88955acdbd7e70f53b3ee6d1cef9a3f274c79cc60694d43ab2",
+      "signature": "(t: 'Array') -> 'dict[str, float]'"
+    },
+    {
+      "id": "R072",
+      "available": true,
+      "entrypoint": "quant_fund.validation.cpcv:combinatorial_purged_cv",
+      "module_sha256": "c718a8eef270ce99a2178ad7cee736fa6dda74583fcbfcd7334a45dac59df2a8",
+      "signature": "(times: 'list[datetime]', n_groups: 'int', n_test_groups: 'int', horizon_bars: 'int', embargo_bars: 'int') -> 'list[Fold]'"
+    },
+    {
+      "id": "R073",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.overfitting:probability_of_backtest_overfitting",
+      "module_sha256": "60f059be25edb95251ed8ca8bd8a25205f7cfd3a5ab8ea5d70784421318c3bb8",
+      "signature": "(is_sharpes: 'Array', oos_sharpes: 'Array') -> 'float'"
+    },
+    {
+      "id": "R074",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.overfitting:deflated_sharpe",
+      "module_sha256": "60f059be25edb95251ed8ca8bd8a25205f7cfd3a5ab8ea5d70784421318c3bb8",
+      "signature": "(sr: 'float', n_obs: 'int', skew: 'float', kurtosis_raw: 'float', n_trials: 'int', var_sr: 'float') -> 'float'"
+    },
+    {
+      "id": "R075",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.overfitting:probabilistic_sharpe",
+      "module_sha256": "60f059be25edb95251ed8ca8bd8a25205f7cfd3a5ab8ea5d70784421318c3bb8",
+      "signature": "(sr: 'float', sr_star: 'float', n_obs: 'int', skew: 'float', kurtosis_raw: 'float') -> 'float'"
+    },
+    {
+      "id": "R076",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.research_evaluation:serial_adjusted_sharpe",
+      "module_sha256": "bf6ea664afe1d4df8a75dd971c131d949171d333a0d1ba789af457d33e754115",
+      "signature": "(excess_returns: 'Array', *, periods: 'int' = 252, max_lag: 'int' = 20) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R077",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.snooping:reality_check",
+      "module_sha256": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+      "signature": "(f: 'Array', *, n_boot: 'int' = 2000, block: 'float | None' = None, seed: 'int' = 7) -> 'SnoopingResult'"
+    },
+    {
+      "id": "R078",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.snooping:spa_test",
+      "module_sha256": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+      "signature": "(f: 'Array', *, n_boot: 'int' = 2000, block: 'float | None' = None, seed: 'int' = 7) -> 'SpaResult'"
+    },
+    {
+      "id": "R079",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.snooping:stepm",
+      "module_sha256": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+      "signature": "(f: 'Array', *, n_boot: 'int' = 2000, block: 'float | None' = None, alpha: 'float' = 0.05, seed: 'int' = 7) -> 'StepMResult'"
+    },
+    {
+      "id": "R080",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.snooping:model_confidence_set",
+      "module_sha256": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa",
+      "signature": "(f: 'Array', *, n_boot: 'int' = 2000, block: 'float | None' = None, alpha: 'float' = 0.1, seed: 'int' = 7) -> 'McsResult'"
+    },
+    {
+      "id": "R081",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.inference:stationary_bootstrap_indices",
+      "module_sha256": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
+      "signature": "(n: 'int', n_boot: 'int', mean_block: 'float', rng: 'np.random.Generator') -> 'NDArray[np.intp]'"
+    },
+    {
+      "id": "R082",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.inference:optimal_block_length",
+      "module_sha256": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
+      "signature": "(x: 'Array') -> 'float'"
+    },
+    {
+      "id": "R083",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.hac:newey_west_lrv",
+      "module_sha256": "a573b884b73e4b06db6dd855a3714b087136229e1539445c9c44781f1f1189bf",
+      "signature": "(x: 'Array', lag: 'int | None' = None) -> 'float'"
+    },
+    {
+      "id": "R084",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.hac:andrews_bandwidth",
+      "module_sha256": "a573b884b73e4b06db6dd855a3714b087136229e1539445c9c44781f1f1189bf",
+      "signature": "(x: 'Array', kernel: 'str' = 'quadratic_spectral') -> 'float'"
+    },
+    {
+      "id": "R085",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.inference:diebold_mariano",
+      "module_sha256": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
+      "signature": "(loss_a: 'Array', loss_b: 'Array', *, lags: 'int | None' = None, name_a: 'str' = 'a', name_b: 'str' = 'b') -> 'DieboldMarianoResult'"
+    },
+    {
+      "id": "R086",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.forecast_eval:giacomini_white_test",
+      "module_sha256": "e8698bf98b43b9fd264e4fb706db06fd870c582cad16a0863ac293f528f51710",
+      "signature": "(loss1: 'Array', loss2: 'Array', instruments: 'Array | None' = None) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R087",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.forecast_eval:clark_west_test",
+      "module_sha256": "e8698bf98b43b9fd264e4fb706db06fd870c582cad16a0863ac293f528f51710",
+      "signature": "(errors_alt: 'Array', errors_null: 'Array', preds_alt: 'Array') -> 'dict[str, float]'"
+    },
+    {
+      "id": "R088",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.vol_eval:qlike",
+      "module_sha256": "185470f32f3c4031d074dee68874f7faedf0d2da444c86f82d7752b7a7e18b92",
+      "signature": "(x: 'Array', f: 'Array') -> 'Array'"
+    },
+    {
+      "id": "R089",
+      "available": true,
+      "entrypoint": "quant_fund.validation.fdr:benjamini_hochberg",
+      "module_sha256": "3b47faf053b351bc840454276a2975fd751c80aabd7447c7c4e5fe00a9f2fb84",
+      "signature": "(pvals: 'Array', alpha: 'float' = 0.05) -> 'AdjMap'"
+    },
+    {
+      "id": "R090",
+      "available": true,
+      "entrypoint": "quant_fund.validation.fdr:benjamini_yekutieli",
+      "module_sha256": "3b47faf053b351bc840454276a2975fd751c80aabd7447c7c4e5fe00a9f2fb84",
+      "signature": "(pvals: 'Array', alpha: 'float' = 0.05) -> 'AdjMap'"
+    },
+    {
+      "id": "R091",
+      "available": true,
+      "entrypoint": "quant_fund.validation.fdr:holm",
+      "module_sha256": "3b47faf053b351bc840454276a2975fd751c80aabd7447c7c4e5fe00a9f2fb84",
+      "signature": "(pvals: 'Array', alpha: 'float' = 0.05) -> 'AdjMap'"
+    },
+    {
+      "id": "R092",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.var_backtest:kupiec_test",
+      "module_sha256": "52a71738f411e877c5467fb33866c25e70914eac38ddcacc2db3c0c2e422af2e",
+      "signature": "(hits: 'Array', alpha: 'float' = 0.99) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R093",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.var_backtest:christoffersen_test",
+      "module_sha256": "52a71738f411e877c5467fb33866c25e70914eac38ddcacc2db3c0c2e422af2e",
+      "signature": "(hits: 'Array', alpha: 'float' = 0.99) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R094",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.es_backtest:mcneil_frey_test",
+      "module_sha256": "b431c7bea48b7ffb38107fcff2dbc3c8b8a99c6086632e42deee9185356ebfe7",
+      "signature": "(returns: 'Array', var: 'Array', es: 'Array', n_boot: 'int' = 500, seed: 'int' = 0) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R095",
+      "available": true,
+      "entrypoint": "quant_fund.metrics.es_backtest:du_escanciano_test",
+      "module_sha256": "b431c7bea48b7ffb38107fcff2dbc3c8b8a99c6086632e42deee9185356ebfe7",
+      "signature": "(hits: 'Array', alpha: 'float' = 0.99) -> 'dict[str, float]'"
+    },
+    {
+      "id": "R096",
+      "available": true,
+      "entrypoint": "quant_fund.models.conformal:SplitCQR",
+      "module_sha256": "d886b92c6fb78813e2f3e9be19f22027197358ed4753217021bd27f7188881a3",
+      "signature": "(alpha: 'float' = 0.1) -> 'None'"
+    },
+    {
+      "id": "R097",
+      "available": true,
+      "entrypoint": "quant_fund.models.conformal:AdaptiveConformal",
+      "module_sha256": "d886b92c6fb78813e2f3e9be19f22027197358ed4753217021bd27f7188881a3",
+      "signature": "(alpha: 'float' = 0.1, gamma: 'float' = 0.05, score_window: 'int | None' = None) -> 'None'"
+    },
+    {
+      "id": "R098",
+      "available": true,
+      "entrypoint": "quant_fund.models.weighted_conformal:WeightedSplitCQR",
+      "module_sha256": "2c89c3a2e019709b8b8a592bd619046162f81466be2674281f075c964bf9d803",
+      "signature": "(alpha: 'float' = 0.1, bins: 'int' = 8) -> 'None'"
+    },
+    {
+      "id": "R099",
+      "available": true,
+      "entrypoint": "quant_fund.models.jackknife_plus:JackknifePlus",
+      "module_sha256": "22b7098e251942229cf07c740cc8cae12b12a0a7edbe4c972d4cbcb37775d261",
+      "signature": "(alpha: 'float' = 0.1, residual_model: 'ResidualModel | None' = None) -> 'None'"
+    },
+    {
+      "id": "R100",
+      "available": true,
+      "entrypoint": "quant_fund.models.crc:ConformalRiskControl",
+      "module_sha256": "9048f0e36a48ed172d16ef7dd1666b99242ac5648c51da14d35c6ca96f4ca011",
+      "signature": "(alpha: 'float' = 0.05, B: 'float' = 1.0) -> 'None'"
+    }
+  ]
+}

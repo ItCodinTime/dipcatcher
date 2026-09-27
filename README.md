@@ -198,6 +198,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/FORWARD_SHADOW_RECORD.md` | Local simulated forward decision and settlement journal |
 | `docs/RESEARCH_CENTRE.md` | Benches and research centre |
 | `docs/VALIDATION.md` | Walk-forward, CPCV, multiple-testing, conformal gates |
+| `docs/STRESS.md` | Research stress catalog, scenarios, reverse stress, VaR/ES backtests |
 | `docs/ROBUSTNESS.md` | Strategy robustness certificates, attacks, and receipt stamp |
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
@@ -219,3 +220,11 @@ evidence only. Nothing here is investment advice or a promise of live profit.*
 ## Evidence
 
 Sealed benchmark results, including negative and failed runs, are rendered only from committed receipts into [docs/evidence/index.md](docs/evidence/index.md). Regenerate with `make evidence`.
+
+### Research 100
+
+[100 source-linked research references](docs/RESEARCH100_CATALOG.md) map to
+executable components and tests. [Usage and evidence](docs/RESEARCH100.md) cover
+new cost-aware allocation, risk-constrained Kelly, causal volatility management,
+and serial-adjusted evaluation. Existing components and new work are distinguished;
+no claim of 100 reproduced studies or demonstrated market-performance uplift is made.
