@@ -93,7 +93,7 @@ class InMemoryRecorder:
         """
         reads = self.reads
         return DataManifestSummary(
-            reads=reads,
+            reads=tuple(reads),
             merkle_root=merkle_root_hex([read_leaf_hash(read) for read in reads]),
             n_reads=len(reads),
         )

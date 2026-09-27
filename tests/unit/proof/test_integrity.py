@@ -223,6 +223,22 @@ def test_bundle_digest_fields_reject_non_hex(field: str) -> None:
         ProofBundleV1(**upper)
 
 
+def test_signed_bundle_nested_payload_is_immutable() -> None:
+    bundle = ProofBundleV1(**_bundle_kwargs())
+    before = canonical_json_bytes(bundle.model_dump(mode="json"))
+    with pytest.raises((AttributeError, TypeError)):
+        bundle.data_manifest.reads.append(  # type: ignore[attr-defined]
+            make_read_record(
+                "silver/bars", datetime(2024, 1, 1, tzinfo=UTC), rows=1, content_sha256=HEX
+            )
+        )
+    with pytest.raises(TypeError):
+        bundle.env.packages["dipcatcher"] = "tampered"
+    with pytest.raises(TypeError):
+        bundle.metrics_recompute["pinball"] = 9.9
+    assert canonical_json_bytes(bundle.model_dump(mode="json")) == before
+
+
 def test_manifest_merkle_root_rejects_non_hex() -> None:
     with pytest.raises(ValidationError):
         DataManifestSummary(reads=[], merkle_root=BAD, n_reads=0)
