@@ -319,6 +319,10 @@ def _run_backtest_event_loop(
         for sid in close_mark:
             if sid not in marked_today:
                 next_mark_ages[sid] = next_mark_ages.get(sid, 0) + 1
+        # Marks knowable at execution time: before this bar's close prints.
+        # Non-executing names must be valued at the pre-update mark; marking
+        # them at exec_dt's own close leaks future prices into sizing.
+        pre_exec_marks = last_marks
         last_marks = dict(close_mark)
         mark_ages = next_mark_ages
         stale_held = {
@@ -357,10 +361,11 @@ def _run_backtest_event_loop(
             if known_adv is not None:
                 advs[sid] = known_adv
             vols[sid] = _valid_price(row["vol_20"]) or 0.02
-        # Value held names without an execution bar at the last close rather
-        # than at 0.0: a missing open must not understate NAV / exposures and
-        # silently let the risk gate admit orders.
-        nav_prices = {**last_marks, **exec_mark}
+        # Value held names without an execution print at the last mark known
+        # before this bar's close rather than at 0.0: a missing open must not
+        # understate NAV / exposures and silently let the risk gate admit
+        # orders, but the same bar's close would be look-ahead.
+        nav_prices = {**pre_exec_marks, **exec_mark}
         nav = book.nav(nav_prices)
         if nav <= 0:
             break
