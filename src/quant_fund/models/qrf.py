@@ -19,8 +19,10 @@ lookup via ``apply``); all distributional logic is in-tree and pure numpy.
   counts, including the tree's own bootstrap sample (biased toward the
   training response of x when x is a training point).
 * ``"oob"`` — only out-of-bag training points contribute to each tree's
-  weights (Athey, Tibshirani & Wager 2019 "honest" flavour; Johnson 2024
-  quantile-forest). Used for in-sample PIT diagnostics.
+  support weights. This alone does not make in-sample PIT honest because the
+  queried row may have trained the tree. Use ``pit_oob_train`` for that
+  diagnostic: it also excludes trees that trained on the query and removes
+  the query response from its own weighted distribution.
 
 Fail-closed: quantile levels outside (0, 1), unfitted use, dimensionality
 mismatch, non-finite inputs all raise. Honesty: pinball/CRPS-style outputs
@@ -47,7 +49,14 @@ def weighted_quantiles(values: Array, weights: Array, taus: Array) -> Array:
     values = np.asarray(values, dtype=float).ravel()
     weights = np.atleast_2d(np.asarray(weights, dtype=float))
     taus = np.asarray(taus, dtype=float).ravel()
-    if taus.size == 0 or np.any(taus <= 0.0) or np.any(taus >= 1.0):
+    if values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("values must be non-empty and finite")
+    if (
+        taus.size == 0
+        or not np.all(np.isfinite(taus))
+        or np.any(taus <= 0.0)
+        or np.any(taus >= 1.0)
+    ):
         raise ValueError("taus must be non-empty and in (0, 1)")
     if weights.shape[1] != values.shape[0]:
         raise ValueError("weights columns must match values length")
@@ -173,6 +182,33 @@ class QuantileRegressionForest:
         w = self.weights(X)
         return np.asarray(w @ self._y, dtype=float)
 
+    def weights_oob_train(self) -> Array:
+        """Leave-one-out forest weights for every training row.
+
+        A tree contributes to row ``i`` only if ``i`` was out of bag. Its
+        conditional distribution uses other out-of-bag rows in the same leaf,
+        excluding ``i`` itself. A row without any eligible neighbour fails
+        closed rather than using a tree fitted on that row.
+        """
+        if self._forest is None:
+            raise RuntimeError("QuantileRegressionForest is not fitted")
+        n = self._y.shape[0]
+        weights = np.zeros((n, n), dtype=float)
+        for b in range(self.n_estimators):
+            oob_rows = np.flatnonzero(~self._in_bag[:, b])
+            leaves = self._train_leaves[oob_rows, b]
+            for leaf in np.unique(leaves):
+                neighbours = oob_rows[leaves == leaf]
+                if neighbours.size < 2:
+                    continue
+                mass = 1.0 / (neighbours.size - 1)
+                weights[np.ix_(neighbours, neighbours)] += mass
+                weights[neighbours, neighbours] -= mass
+        row_mass = weights.sum(axis=1, keepdims=True)
+        if np.any(row_mass[:, 0] <= 0.0):
+            raise ValueError("a training row has no out-of-bag neighbour")
+        return weights / row_mass
+
     def predict_cdf(self, X: Array, y_grid: Array) -> Array:
         """F_hat(y | x) evaluated on ``y_grid``; shape (m, len(y_grid))."""
         w = self.weights(X)
@@ -183,7 +219,11 @@ class QuantileRegressionForest:
         return np.asarray(w @ ind.T, dtype=float)
 
     def pit(self, X: Array, y: Array) -> Array:
-        """Randomized PIT of ``y`` under the forest CDF (uniform if calibrated)."""
+        """Randomized PIT of ``y`` under the forest CDF (uniform if calibrated).
+
+        For training-set diagnostics, use ``pit_oob_train`` so that no tree
+        or response used to fit the query contributes to its PIT.
+        """
         w = self.weights(X)
         y = np.asarray(y, dtype=float).ravel()
         if y.shape[0] != w.shape[0]:
@@ -192,6 +232,17 @@ class QuantileRegressionForest:
             raise ValueError("y must be finite")
         below = (self._y[None, :] < y[:, None]).astype(float)
         at = (self._y[None, :] == y[:, None]).astype(float)
+        f_minus = (w * below).sum(axis=1)
+        mass = (w * at).sum(axis=1)
+        rng = np.random.default_rng(self.seed)
+        return np.asarray(f_minus + rng.uniform(size=y.shape[0]) * mass, dtype=float)
+
+    def pit_oob_train(self) -> Array:
+        """Randomized training PIT with leave-one-out tree and response weights."""
+        w = self.weights_oob_train()
+        y = self._y
+        below = (y[None, :] < y[:, None]).astype(float)
+        at = (y[None, :] == y[:, None]).astype(float)
         f_minus = (w * below).sum(axis=1)
         mass = (w * at).sum(axis=1)
         rng = np.random.default_rng(self.seed)

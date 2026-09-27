@@ -293,7 +293,12 @@ class NGBoostGaussian:
 
     def predict_quantiles(self, X: Array, taus: Array) -> Array:
         taus = np.asarray(taus, dtype=float).ravel()
-        if taus.size == 0 or np.any(taus <= 0.0) or np.any(taus >= 1.0):
+        if (
+            taus.size == 0
+            or not np.all(np.isfinite(taus))
+            or np.any(taus <= 0.0)
+            or np.any(taus >= 1.0)
+        ):
             raise ValueError("taus must be non-empty and in (0, 1)")
         mu, sigma = self.predict_params(X)
         return np.asarray(mu[:, None] + sigma[:, None] * norm.ppf(taus)[None, :], dtype=float)

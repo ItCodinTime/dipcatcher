@@ -142,6 +142,8 @@ def test_watch_monitor_weights_and_edges() -> None:
         mon.step(np.nan)
     with pytest.raises(ValueError):
         mon.step(0.0, weight=-1.0)
+    with pytest.raises(ValueError, match="positive mass"):
+        WatchMonitor().step(0.0, weight=0.0)
     for kw in ({"alpha": 0}, {"warmup": 0}, {"jump": 2.0}, {"max_window": 3, "warmup": 5}):
         with pytest.raises(ValueError):
             WatchMonitor(**kw)  # type: ignore[arg-type]

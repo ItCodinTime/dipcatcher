@@ -214,7 +214,8 @@ class WatchMonitor:
     ----------
     alpha:
         Alarm level; alarm when wealth >= 1/alpha. Per-segment false alarm
-        probability <= alpha under exchangeability (Ville).
+        probability <= alpha under exchangeability with the full-history
+        sequential ranks and valid likelihood-ratio weights (Ville).
     warmup:
         Minimum calibration scores held before betting starts after each
         reset; p-values during warm-up are still recorded, but wealth is
@@ -222,7 +223,9 @@ class WatchMonitor:
     jump:
         Simple Jumper jump rate.
     max_window:
-        Optional cap on the calibration window length (sliding window).
+        Optional cap on the calibration window length. Sliding ranks need not
+        be independent under exchangeability, so the Ville false-alarm bound
+        applies only when this is None. With a cap, the alarm is diagnostic.
     """
 
     def __init__(
@@ -265,9 +268,8 @@ class WatchMonitor:
         u = float(self._rng.uniform())
         w_all = np.asarray(self._weights + [weight], dtype=float)
         if w_all.sum() <= 0.0:
-            p = u
-        else:
-            p = weighted_conformal_p_value(np.asarray(self._window), score, w_all, u)
+            raise ValueError("weights must have positive mass")
+        p = weighted_conformal_p_value(np.asarray(self._window), score, w_all, u)
         self._window.append(float(score))
         self._weights.append(float(weight))
         if self.max_window is not None and len(self._window) > self.max_window:

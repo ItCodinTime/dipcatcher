@@ -155,3 +155,5 @@ def test_fail_closed_edges() -> None:
         m.predict(np.zeros((2, 3)))
     with pytest.raises(ValueError):
         m.predict_quantiles(X[:2], np.array([0.0, 0.5]))
+    with pytest.raises(ValueError):
+        m.predict_quantiles(X[:2], np.array([np.nan]))

@@ -42,6 +42,10 @@ def test_weighted_quantiles_fail_closed() -> None:
         weighted_quantiles(v, np.zeros((1, 3)), TAUS)
     with pytest.raises(ValueError):
         weighted_quantiles(v, -np.ones((1, 3)), TAUS)
+    with pytest.raises(ValueError):
+        weighted_quantiles(np.array([0.0, np.nan, 1.0]), np.ones((1, 3)), TAUS)
+    with pytest.raises(ValueError):
+        weighted_quantiles(v, np.ones((1, 3)), np.array([np.nan]))
 
 
 def test_weights_sum_to_one_and_mean_matches_weights() -> None:
@@ -81,7 +85,10 @@ def test_oob_pit_is_approximately_uniform() -> None:
     qrf = QuantileRegressionForest(
         n_estimators=200, min_samples_leaf=10, leaf_mode="oob", seed=3
     ).fit(X, y)
-    pit = qrf.pit(X, y)
+    weights = qrf.weights_oob_train()
+    assert np.all(np.diag(weights) == 0.0)
+    np.testing.assert_allclose(weights.sum(axis=1), 1.0, atol=1e-12)
+    pit = qrf.pit_oob_train()
     assert np.all((pit >= 0.0) & (pit <= 1.0))
     assert kstest(pit, "uniform").pvalue > 0.01
 
@@ -125,6 +132,8 @@ def test_fail_closed_edges() -> None:
         qrf.predict_quantiles(np.zeros((2, 3)), TAUS)
     with pytest.raises(ValueError):
         qrf.predict_quantiles(X[:2], np.array([1.5]))
+    with pytest.raises(ValueError):
+        qrf.predict_quantiles(X[:2], np.array([np.nan]))
     with pytest.raises(ValueError):
         qrf.predict_cdf(X[:2], np.array([]))
     with pytest.raises(ValueError):
