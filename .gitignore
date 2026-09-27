@@ -58,3 +58,5 @@ data/hf_ohlcv_1m/
 coverage.xml
 .coverage
 .coverage.*
+# Optional PyO3 extension build tree (regenerate with `make native`).
+rust/quant_core/target/

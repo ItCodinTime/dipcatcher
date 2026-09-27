@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 .DEFAULT_GOAL := help
 
@@ -37,6 +37,10 @@ audit: ## Locked-deps vulnerability audit (pip-audit)
 
 doctor: ## Harness environment check
 	uv run dipcatcher doctor
+
+native: ## Build optional quant_core (Rust + maturin). NumPy stays the fallback.
+	uv pip install "maturin>=1.7,<2"
+	uv run maturin develop --release --manifest-path rust/quant_core/Cargo.toml
 
 evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py
