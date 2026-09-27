@@ -63,7 +63,7 @@ candles must not be persisted into downstream feature, label, or backtest inputs
 Computed, never replacing raw:
 
 - `close_split_adjusted`
-- `close_total_return` (splits + cash dividends reinvested)
+- `close_total_return` (splits + cash dividends reinvested). The cash-dividend simple yield is `amount * split_factor_prev / (previous raw close * split_factor)`. When those cumulative future-split factors match, this is `amount / previous raw close`. A split on the same ex-date as the dividend scales the yield by `split_factor_prev / split_factor` so wealth is conserved on the split-adjusted basis.
 - `open/high/low` split-adjusted with the same cumulative split factor
 
 **Label mapping**
