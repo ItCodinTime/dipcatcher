@@ -302,9 +302,21 @@ def verify_research(
     import json
 
     if path.is_dir():
-        from quant_fund.research.phase1_verify import verify_phase1_run
+        try:
+            directory_manifest = json.loads((path / "manifest.json").read_text())
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            directory_manifest = None
+        if (
+            isinstance(directory_manifest, dict)
+            and directory_manifest.get("kind") == "forward_shadow_manifest"
+        ):
+            from quant_fund.paper.forward_shadow import verify
 
-        result = verify_phase1_run(path)
+            result = verify(path)
+        else:
+            from quant_fund.research.phase1_verify import verify_phase1_run
+
+            result = verify_phase1_run(path)
     elif path.is_file() and path.name.endswith(".json"):
         try:
             payload = json.loads(path.read_text())
@@ -324,6 +336,34 @@ def verify_research(
         result = verify_research_artifact(path)
     typer.echo(json.dumps(result, indent=2))
     raise typer.Exit(code=0 if result["valid"] else 1)
+
+
+@app.command("verify-identities")
+def verify_identities(
+    out: Path = typer.Option(
+        Path("data/metadata/research/identity_sweep.json"), "--out", help="Receipt JSON path."
+    ),
+    trials: int = typer.Option(8, "--trials", help="Seeded SYNTHETIC draws per identity."),
+    seed: int = typer.Option(7, "--seed", help="Base seed for the synthetic generators."),
+) -> None:
+    """Prove catalog/northset microstructure identities on SYNTHETIC draws.
+
+    Prints the identity/residual table and writes an immutable receipt.
+    Exits non-zero when any identity's max-abs residual exceeds its
+    tolerance — fail-closed, CI gate candidate.
+    """
+    from quant_fund.research.identity_sweep import (
+        format_identity_table,
+        run_identity_sweep,
+        write_identity_receipt,
+    )
+
+    receipt = run_identity_sweep(n_trials=int(trials), seed=int(seed))
+    write_identity_receipt(out, receipt)
+    typer.echo("SYNTHETIC")
+    typer.echo(format_identity_table(receipt))
+    typer.echo(f"receipt={out}")
+    raise typer.Exit(code=0 if receipt["all_passed"] else 1)
 
 
 @app.command(hidden=True)

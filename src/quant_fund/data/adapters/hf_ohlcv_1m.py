@@ -25,12 +25,13 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request
 from zoneinfo import ZoneInfo
 
 import polars as pl
 
 from quant_fund.data.calendars import session_days
+from quant_fund.data.concurrent_io import IoError, call_with_retry, map_ordered, pooled_stream
 from quant_fund.data.sources.base import HttpClient, SourceAdapter, SourceError, utc_now
 
 DATASET_ID = "mito0o852/OHLCV-1m"
@@ -285,11 +286,13 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
     """Flag missing regular-session minutes. Does not insert bars.
 
     Each observed America/New_York session date is compared with the 390
-    minute starts from 09:30 through 15:59. Early closes and holidays inside
-    a name's span show up as gaps: the weekday calendar has no holiday set,
-    and this report does not invent one. ``n_missing_weekdays`` counts
-    weekdays between a name's first and last observed session date that have
-    no print at all.
+    minute starts from 09:30 through 15:59. Counts are distinct minute starts,
+    so a duplicated print does not fill a gap or drive ``n_rth_missing``
+    negative. A row labeled ``rth`` outside that window is not a regular-session
+    minute. Early closes and holidays inside a name's span show up as gaps:
+    the weekday calendar has no holiday set, and this report does not invent
+    one. ``n_missing_weekdays`` counts weekdays between a name's first and last
+    observed session date that have no print at all.
     """
     if bars.is_empty():
         return empty_quality()
@@ -308,12 +311,21 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
             + pl.col("_start").dt.minute().cast(pl.Int32)
         ).alias("_mod"),
     )
-    base = work.group_by(["security_id", "session_date"]).agg(
-        (pl.col("session") == "rth").sum().cast(pl.Int64).alias("n_rth"),
-        (pl.col("session") == "ext").sum().cast(pl.Int64).alias("n_ext"),
-        (pl.col("session") == "off").sum().cast(pl.Int64).alias("n_off"),
+    in_rth_clock = (
+        (pl.col("session") == "rth")
+        & (pl.col("_mod") >= RTH_OPEN_MOD)
+        & (pl.col("_mod") < RTH_CLOSE_MOD)
     )
-    rth = work.filter(pl.col("session") == "rth").sort(["security_id", "session_date", "_mod"])
+    base = work.group_by(["security_id", "session_date"]).agg(
+        pl.col("_mod").filter(in_rth_clock).n_unique().cast(pl.Int64).alias("n_rth"),
+        pl.col("_mod").filter(pl.col("session") == "ext").n_unique().cast(pl.Int64).alias("n_ext"),
+        pl.col("_mod").filter(pl.col("session") == "off").n_unique().cast(pl.Int64).alias("n_off"),
+    )
+    rth = (
+        work.filter(in_rth_clock)
+        .unique(subset=["security_id", "session_date", "_mod"], keep="first")
+        .sort(["security_id", "session_date", "_mod"])
+    )
     if rth.is_empty():
         steps = pl.DataFrame(
             schema={
@@ -472,6 +484,39 @@ def security_master_from_bars(bars: pl.DataFrame, *, clock: Clock | None = None)
     if bars.is_empty():
         return pl.DataFrame(schema=_MASTER_SCHEMA)
     now = _require_clock(clock or utc_now)
+    event_dtype = bars.schema["event_time"]
+    if not isinstance(event_dtype, pl.Datetime):
+        return _security_master_by_scan(bars, now)
+    firsts = (
+        bars.group_by("security_id")
+        .agg(pl.col("event_time").min().alias("valid_from"))
+        .sort("security_id")
+    )
+    missing = firsts.filter(pl.col("valid_from").is_null())
+    if missing.height:
+        security_id = missing["security_id"][0]
+        raise OhlcvQualityError(f"security {security_id} has no event_time")
+    ingested = pl.lit(now).cast(pl.Datetime("us", "UTC"))
+    return firsts.select(
+        pl.col("security_id").cast(pl.String),
+        pl.col("security_id").cast(pl.String).alias("ticker"),
+        pl.col("security_id").cast(pl.String).alias("name"),
+        pl.lit("UNKNOWN").alias("exchange"),
+        pl.lit("USD").alias("currency"),
+        pl.lit("Unknown").alias("sector"),
+        pl.lit("Unknown").alias("industry"),
+        pl.lit("unknown").alias("security_type"),
+        pl.col("valid_from").cast(pl.Datetime("us", "UTC")),
+        pl.lit(None).cast(pl.Datetime("us", "UTC")).alias("valid_to"),
+        pl.col("valid_from").cast(pl.Datetime("us", "UTC")).alias("available_time"),
+        ingested.alias("ingested_time"),
+        pl.lit(SOURCE_NAME).alias("source"),
+        pl.lit(REVISION_ID).alias("revision_id"),
+    )
+
+
+def _security_master_by_scan(bars: pl.DataFrame, now: datetime) -> pl.DataFrame:
+    """Row scan for non-datetime clocks. Preserves the original error text."""
     rows: list[dict[str, object]] = []
     for security_id in bars["security_id"].unique().sort().to_list():
         name_bars = bars.filter(pl.col("security_id") == security_id)
@@ -500,8 +545,43 @@ def security_master_from_bars(bars: pl.DataFrame, *, clock: Clock | None = None)
 
 
 def http_download(url: str, dest: Path) -> None:
-    """Stream one HTTPS object to ``dest``. Caller checks the Parquet footer."""
-    stream_https(url, dest, opener=urlopen, max_bytes=MAX_MONTH_BYTES, timeout=180.0)
+    """Stream one HTTPS object to ``dest``. Caller checks the Parquet footer.
+
+    Transient statuses and socket errors are retried. 404 and oversize
+    responses are not.
+    """
+
+    def once() -> None:
+        try:
+            status = pooled_stream(
+                url,
+                dest,
+                headers={"User-Agent": USER_AGENT},
+                timeout=180.0,
+                max_bytes=MAX_MONTH_BYTES,
+            )
+        except IoError as exc:
+            text = str(exc)
+            if "exceeded" in text:
+                raise SourceError(text) from exc
+            raise SourceError(f"GET failed: {url}") from exc
+        if status == 404:
+            raise MonthNotFound(f"monthly parquet not found: {url}")
+        if status in (429, 500, 502, 503, 504):
+            raise OSError(status, f"HTTP {status} for {url}")
+        if status >= 400:
+            raise SourceError(f"GET failed ({status}): {url}")
+        if not dest.is_file() or dest.stat().st_size < 1:
+            raise SourceError(f"empty response: {url}")
+
+    call_with_retry(
+        once,
+        retries=2,
+        backoff_s=0.5,
+        max_backoff_s=8.0,
+        jitter=True,
+        retry_on=(TimeoutError, OSError),
+    )
 
 
 def stream_https(
@@ -1058,8 +1138,10 @@ def _month_paths(
         raise OhlcvQualityError(
             f"requested span covers {len(months)} monthly files; max_months={max_months}"
         )
-    return [
-        _ensure_month(
+
+    def _one(year_month: tuple[int, int]) -> Path:
+        year, month = year_month
+        return _ensure_month(
             cache=cache,
             revision=revision,
             year=year,
@@ -1067,8 +1149,8 @@ def _month_paths(
             allow_download=allow_download,
             fetcher=fetcher,
         )
-        for year, month in months
-    ]
+
+    return map_ordered(_one, months, max_workers=min(4, len(months)))
 
 
 def _months_between(start: datetime, end: datetime) -> list[tuple[int, int]]:

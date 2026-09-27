@@ -195,8 +195,10 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 |---|---|
 | `docs/ARCHITECTURE.md` | Pipeline, packages, runtime modes, point-in-time rules |
 | `docs/RECEIPT_VERIFICATION.md` | Sealed phase-1 runs and blocked tournaments |
+| `docs/FORWARD_SHADOW_RECORD.md` | Local simulated forward decision and settlement journal |
 | `docs/RESEARCH_CENTRE.md` | Benches and research centre |
 | `docs/VALIDATION.md` | Walk-forward, CPCV, multiple-testing, conformal gates |
+| `docs/ROBUSTNESS.md` | Strategy robustness certificates, attacks, and receipt stamp |
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
 | `docs/FORMAL_VERIFICATION.md` | Order-lifecycle model check, trace conformance, accounting proofs |

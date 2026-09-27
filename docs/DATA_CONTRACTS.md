@@ -42,7 +42,8 @@ Identity silver factors do not mean splits were removed. Bad prints (duplicate
 keys, `high < low`, non-positive prices, unaligned timestamps) raise
 `OhlcvQualityError` and are not rewritten. Missing regular-session minutes are
 reported by `minute_gap_report` and are not forward-filled. See
-[`HF_OHLCV_1M.md`](HF_OHLCV_1M.md).
+[`HF_OHLCV_1M.md`](HF_OHLCV_1M.md). Byte-preserving lake registration,
+lineage, and as-of queries over these files are in [`DATA_LAKE.md`](DATA_LAKE.md).
 
 ## Bars (bronze)
 
