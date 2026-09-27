@@ -75,7 +75,10 @@ from quant_fund.models.deep_rl import PolicyGradientRanker, run_policy_gradient_
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
+    GMMDistribution,
+    IsotonicPitDistribution,
     LinearQuantileDistribution,
+    SkewTDistribution,
     TreeQuantileDistribution,
 )
 from quant_fund.models.quantile_bandit import QuantileThompson
@@ -807,7 +810,16 @@ def _predict_ranker(model: Any, name: str, x, dates, ids=None) -> np.ndarray:
 def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[str, Any]:
     _require_model(
         model_name,
-        {"empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"},
+        {
+            "empirical",
+            "gaussian",
+            "linear_qr",
+            "xgboost",
+            "lightgbm",
+            "skew_t",
+            "gmm",
+            "isotonic",
+        },
         "distribution",
     )
     set_global_seed(config.train.random_seed)
@@ -824,6 +836,9 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr": LinearQuantileDistribution(taus),
             "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
+            "skew_t": SkewTDistribution(taus),
+            "gmm": GMMDistribution(taus, seed=config.train.random_seed),
+            "isotonic": IsotonicPitDistribution(taus),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")

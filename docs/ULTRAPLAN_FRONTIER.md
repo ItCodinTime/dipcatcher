@@ -102,8 +102,13 @@ a `v5_*` fleet column on existing shards' protocol.
       trailing returns, BIC or fixed-K; the "heads not backbones" result
       predicts +2–4% CRPS in high-vol regimes). Closed-form mixture CRPS
       (Grimit et al. 2006 identity) — no sampling noise.
+      Head wired: `train distribution --model gmm` (`GMMDistribution`,
+      BIC over K∈{2,3,4} or fixed) + `gaussian_mixture_crps_1d` in
+      `models/mixture.py`. Fleet cell still open.
 - [ ] P1.2 `dip_skt` — Hansen/Fernández–Steel skew-t MLE (captures asymmetry
       that symmetric-t misses on crypto).
+      Head wired: `train distribution --model skew_t` (`SkewTDistribution`
+      wraps `models/skew_t.py` MLE + ppf). Fleet cell still open.
 - [ ] P1.3 `dip_qar` — quantile autoregression (Koenker–Xiao) direct per-τ
       fit; monotone-quantile enforced.
 - [ ] P1.4 `dip_conf_t` — conformalized Student-t: parametric base +
@@ -116,6 +121,10 @@ a `v5_*` fleet column on existing shards' protocol.
       asymmetry already present; quantile-level tail check.
 - [ ] P1.7 `dip_isotonic` — isotonic-recalibrated empirical (PIT-based
       recalibration on trailing window; cheap calibration challenger).
+      Head wired: `train distribution --model isotonic`
+      (`IsotonicPitDistribution` — PIT-quantile map recalibrating a
+      Gaussian base; empirical-base variant is vacuous, so the calibrated
+      parametric base carries the challenger role). Fleet cell still open.
 - [ ] P1.8 `dip_lgbm_q2` — LightGBM quantiles v2: richer causal feature set
       (realized-vol term structure, OHLC range, amount), Dask-free, ≤30
       features; keep warmup disclosure.
