@@ -75,6 +75,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `research` | Honesty catalog (`research/catalog/` package), agent, verify, benches, tournaments |
 | `risk` | Risk gates, overlays, pyrisk/pyriskmgmt adapters |
 | `paper` | Paper-trading loop: clock, ledger, reconciliation, sim-live |
+| `parity` | Backtest/shadow replay, divergence ledger, shortfall attribution, code-path guard |
 | `reporting` | Evidence reports and tearsheets |
 
 ## Runtime modes

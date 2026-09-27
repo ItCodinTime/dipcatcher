@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate parity-smoke
 
 .DEFAULT_GOAL := help
 
@@ -11,6 +11,10 @@ sync: ## Install the locked environment (project + dev groups + extras)
 
 test: ## Lab test suite (unit/property/regression/end_to_end)
 	uv run pytest
+
+parity-smoke: ## SYNTHETIC backtest/shadow parity smoke (simulated broker only)
+	uv run pytest -q tests/unit/parity
+	uv run python -m quant_fund.parity smoke --out data/metadata/parity-smoke
 
 coverage: ## Lab tests + coverage (threshold in pyproject [tool.coverage.report])
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline

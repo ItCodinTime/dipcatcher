@@ -254,6 +254,27 @@ jobs:
             data/metadata/research/latest.md
             data/metadata/research/runs/
 
+  parity-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Parity unit tests and SYNTHETIC smoke
+        run: make parity-smoke
+      - name: Upload parity smoke report
+        uses: actions/upload-artifact@v7
+        with:
+          name: dipcatcher-parity-smoke
+          path: data/metadata/parity-smoke/
+          if-no-files-found: error
+
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 20
