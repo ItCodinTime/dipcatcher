@@ -38,7 +38,10 @@ HEX = "ab" * 32
 BAD = "g" * 64
 UPPER = "AB" * 32
 
-_UNIMPLEMENTED = (
+# The proof surface these names belong to SHIPPED in the proofcore wave
+# (runner/bundle/replay/verify). The pre-ship version of this module asserted
+# they were unimplemented; the stale assertions are inverted below.
+_IMPLEMENTED = (
     "ASOF_SENTINEL",
     "VerificationResult",
     "build_bundle",
@@ -409,25 +412,22 @@ def test_proof_star_import_only_loads_implemented_surface() -> None:
     namespace: dict[str, object] = {}
     exec("from quant_fund.proof import *", namespace, namespace)
     exported = set(proof.__all__)
-    assert exported.isdisjoint(_UNIMPLEMENTED)
+    # the implemented runner/bundle/replay/verify surface IS exported
+    assert set(_IMPLEMENTED) <= exported
     for name in proof.__all__:
         assert getattr(proof, name) is namespace[name]
-    for name in _UNIMPLEMENTED:
-        assert name not in dir(proof)
-        with pytest.raises(AttributeError):
-            getattr(proof, name)
 
 
-def test_proof_cli_does_not_expose_unimplemented_commands() -> None:
+def test_proof_cli_exposes_implemented_commands() -> None:
     names = {command.name for command in proof_app.registered_commands}
-    assert names.isdisjoint({"run", "verify", "chain-head"})
+    assert {"run", "verify", "chain-head"} <= names
     runner = CliRunner()
     help_result = runner.invoke(proof_app, ["--help"])
     assert help_result.exit_code == 0
     assert help_result.exception is None
     for name in ("run", "verify", "chain-head"):
-        result = runner.invoke(proof_app, [name])
-        assert result.exit_code != 0
+        result = runner.invoke(proof_app, [name, "--help"])
+        assert result.exit_code == 0, result.output
         assert not isinstance(result.exception, ModuleNotFoundError)
         combined = f"{result.output}{result.exc_info}"
         assert "ModuleNotFoundError" not in combined
