@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -25,9 +26,17 @@ def train_callback(
     )
 
 
-def _train(family: str, config: Path, model: str | None) -> None:
-    from quant_fund.pipeline.train import train_family
+def train_family(cfg: Any, family: str, model: str | None) -> Any:
+    """Resolve the trainer on first call so ``--help`` does not import it.
 
+    Tests patch this module attribute; the import stays inside the function.
+    """
+    from quant_fund.pipeline.train import train_family as _train_family
+
+    return _train_family(cfg, family, model)
+
+
+def _train(family: str, config: Path, model: str | None) -> None:
     cfg = _cfg(config)
     result = train_family(cfg, family, model)
     typer.echo(result)

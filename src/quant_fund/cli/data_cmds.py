@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -57,10 +58,20 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         raise typer.Exit(code=1)
 
 
+def get_logger(**binds: Any) -> Any:
+    """Resolve the structured logger on first call.
+
+    Kept as a module attribute so tests can patch it, without importing
+    structlog (and the utils barrel) when the CLI is only showing help.
+    """
+    from quant_fund.utils.logging import get_logger as _get_logger
+
+    return _get_logger(**binds)
+
+
 @app.command()
 def ingest(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     from quant_fund.data.ingest import ingest as do_ingest
-    from quant_fund.utils.logging import get_logger
 
     cfg = _cfg(config)
     paths = do_ingest(cfg)
