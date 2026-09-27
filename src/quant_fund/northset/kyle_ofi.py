@@ -151,6 +151,12 @@ def fuse_bars_l2_kyle_frame(
     External panels must stamp a single ``source`` column. Always writes
     ``book_source`` / ``book_dgp`` / ``join_coverage``. Fail-closed on empty join
     and coverage below ``min_join_coverage`` (1.0 synthetic, 0.5 external).
+
+    ``delta_mid`` and ``fwd_delta_mid`` are identical columns — the mid change
+    to the NEXT fused row (book-event clock), i.e. a forward-looking target,
+    not a contemporaneous change. ``fwd_ret_*`` are forward mid returns on the
+    same fused-row clock; when the inner join dropped rows they span whatever
+    rows survived, not consecutive bars.
     """
     if bars.height == 0:
         raise ValueError("bars must be non-empty")

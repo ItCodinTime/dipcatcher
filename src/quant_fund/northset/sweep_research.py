@@ -194,6 +194,7 @@ def _attach_event_costs(frame: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
     )
     out = frame
     if "sweep_lagged_vol" not in out.columns:
+        lookback = max(3, int(config.northset.sweep_vol_lookback))
         out = out.sort(["security_id", "event_time"]).with_columns(
             (pl.col("close") / pl.col("close").shift(1).over("security_id"))
             .log()
@@ -202,7 +203,7 @@ def _attach_event_costs(frame: pl.DataFrame, config: AppConfig) -> pl.DataFrame:
         out = out.with_columns(
             pl.col("_cost_ret")
             .shift(1)
-            .rolling_std(window_size=20, min_samples=20)
+            .rolling_std(window_size=lookback, min_samples=lookback)
             .over("security_id")
             .alias("sweep_lagged_vol")
         ).drop("_cost_ret")
