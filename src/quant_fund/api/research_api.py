@@ -394,7 +394,7 @@ def _int_or_none(value: object) -> int | None:
 # ---------------------------------------------------------------------------
 
 
-def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
+def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:  # noqa: C901
     cfg = settings or ResearchApiSettings.from_env()
     cfg = replace(
         cfg,

@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING
 
 import typer
 
-from quant_fund.hmm.cli import hmm_app
+from quant_fund.hmm.cli import hmm_app as hmm_app
 from quant_fund.leakage.cli import leakage_app
-from quant_fund.lightspeed.cli import ls_app
+from quant_fund.lightspeed.cli import ls_app as ls_app
 from quant_fund.pit.cli import pit_app
 from quant_fund.proof.cli import proof_app
 from quant_fund.proofcore.cli import proofcore_app
-from quant_fund.quant_models.cli import qm_app
+from quant_fund.quant_models.cli import qm_app as qm_app
 from quant_fund.reality.cli import reality_app
 from quant_fund.research.research100_cli import research100_app
 from quant_fund.stress.cli import stress_app

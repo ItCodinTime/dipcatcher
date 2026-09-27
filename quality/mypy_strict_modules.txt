@@ -350,7 +350,11 @@ src/quant_fund/reporting/report.py
 src/quant_fund/reporting/tearsheet.py
 src/quant_fund/research/__init__.py
 src/quant_fund/research/agent.py
-src/quant_fund/research/benches.py
+src/quant_fund/research/benches/__init__.py
+src/quant_fund/research/benches/common.py
+src/quant_fund/research/benches/families.py
+src/quant_fund/research/benches/intervals.py
+src/quant_fund/research/benches/ranking.py
 src/quant_fund/research/benches_extra.py
 src/quant_fund/research/catalog/__init__.py
 src/quant_fund/research/catalog/constants.py
