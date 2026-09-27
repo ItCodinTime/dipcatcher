@@ -4,6 +4,8 @@ import gzip
 import hashlib
 import json
 import shutil
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -196,6 +198,161 @@ def test_index_rejects_nonexistent_git_revision(runs):
     index["git_revision"] = "a" * 40
     _write(path, _seal(index))
     assert any("does not identify a local commit" in e for e in verify_phase1_index(path)["errors"])
+
+
+def test_historical_code_hashes_resolve_real_git_blobs(tmp_path, monkeypatch):
+    import quant_fund.research.phase1_verify as verifier_module
+
+    root = tmp_path / "historical_source_repo"
+    modules = (
+        verifier_module.real_benchmark,
+        verifier_module.net_tournament,
+        verifier_module.net_tournament.net_replay,
+        verifier_module.net_tournament.cost_allocation,
+        verifier_module.net_tournament.inference,
+        verifier_module.net_tournament.snooping,
+    )
+    expected = {}
+    changed_source = None
+    for module in modules:
+        relative = Path("src/quant_fund/research") / Path(module.__file__).name
+        source = root / relative
+        source.parent.mkdir(parents=True, exist_ok=True)
+        content = f"archived {relative.as_posix()}\n".encode()
+        source.write_bytes(content)
+        expected[source.name] = hashlib.sha256(content).hexdigest()
+        monkeypatch.setattr(module, "__file__", str(source))
+        changed_source = source
+    locator = root / "src/quant_fund/research/phase1_verify.py"
+    locator.write_text("# locate historical source repo\n")
+    monkeypatch.setattr(verifier_module, "__file__", str(locator))
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "src"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Receipt Test",
+            "-c",
+            "user.email=receipt-test@example.com",
+            "commit",
+            "-qm",
+            "archive source",
+        ],
+        check=True,
+    )
+    revision = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    assert changed_source is not None
+    changed_source.write_text("uncommitted later solver code\n")
+    errors = []
+    assert verifier_module._committed_code_hashes(revision, errors) == expected
+    assert errors == []
+
+
+def test_index_verifies_historical_tournament_code_without_current_solver(runs, monkeypatch):
+    import quant_fund.research.net_tournament as tournament_module
+    import quant_fund.research.phase1_verify as verifier_module
+
+    manifest = json.loads((runs / "tournament/manifest.json").read_text())
+    old_hashes = manifest["code_sha256"]
+    recorded_runtime = manifest["runtime"]
+    historical_runtime = {
+        **recorded_runtime,
+        "python": ".".join(recorded_runtime["python"].split(".")[:2]),
+    }
+    monkeypatch.setattr(
+        verifier_module,
+        "_committed_code_hashes",
+        lambda revision, errors: old_hashes,
+    )
+    monkeypatch.setattr(
+        verifier_module,
+        "_committed_runtime",
+        lambda revision, errors: historical_runtime,
+    )
+    monkeypatch.setattr(verifier_module, "git_revision", lambda: "0" * 40)
+    monkeypatch.setattr(
+        tournament_module,
+        "_code_hashes",
+        lambda: {**old_hashes, "cost_allocation.py": "0" * 64},
+    )
+    assert not verify_phase1_run(runs / "tournament")["valid"]
+    assert verify_phase1_index(runs / "research/index.json")["valid"]
+
+
+def test_historical_runtime_uses_real_committed_lock_not_current_environment(
+    runs, tmp_path, monkeypatch
+):
+    import quant_fund.research.net_tournament as tournament_module
+    import quant_fund.research.phase1_verify as verifier_module
+
+    manifest_path = runs / "tournament/manifest.json"
+    sealed = json.loads(manifest_path.read_text())
+    recorded = sealed["runtime"]
+    root = tmp_path / "historical_repo"
+    fake_module = root / "src/quant_fund/research/phase1_verify.py"
+    fake_module.parent.mkdir(parents=True)
+    fake_module.write_text("# git-root locator for this test\n")
+    (root / ".python-version").write_text(".".join(sys.version.split(".")[:2]) + "\n")
+    (root / "uv.lock").write_text(
+        "\n".join(
+            f'[[package]]\nname = "{name}"\nversion = "{recorded[name]}"\n'
+            for name in ("numpy", "polars", "cvxpy", "clarabel", "scipy")
+        )
+    )
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "add", ".python-version", "uv.lock"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Receipt Test",
+            "-c",
+            "user.email=receipt-test@example.com",
+            "commit",
+            "-qm",
+            "record runtime lock",
+        ],
+        check=True,
+    )
+    revision = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    index_path = runs / "research/index.json"
+    index = json.loads(index_path.read_text())
+    index.pop("receipt_sha256")
+    index["git_revision"] = revision
+    _write(index_path, _seal(index))
+
+    # The source fixture is unchanged; the runtime resolver itself uses real Git
+    # objects. Simulate a newer installed CVXPY without modifying the environment.
+    old_hashes = sealed["code_sha256"]
+    monkeypatch.setattr(verifier_module, "__file__", str(fake_module))
+    monkeypatch.setattr(verifier_module, "_committed_code_hashes", lambda rev, errors: old_hashes)
+    monkeypatch.setattr(verifier_module, "git_revision", lambda: "0" * 40)
+    monkeypatch.setattr(
+        tournament_module,
+        "_tournament_runtime",
+        lambda: {**recorded, "cvxpy": "9.9.9"},
+    )
+    assert not verify_phase1_run(runs / "tournament")["valid"]
+    assert verify_phase1_index(index_path)["valid"]
+
+    # A resealed manifest with an arbitrary dependency version still fails,
+    # even after the index's own SHA seal is recomputed.
+    sealed.pop("receipt_sha256")
+    sealed["runtime"]["cvxpy"] = "9.9.9"
+    _write(manifest_path, _seal(sealed))
+    assert any(
+        "runtime differs from indexed Git lock" in error
+        for error in verify_phase1_index(index_path)["errors"]
+    )
 
 
 def test_gzip_report_verifies_and_duplicate_representation_fails(runs):

@@ -111,6 +111,7 @@ from quant_fund.research.catalog import (
     tail_var_battery_missing_keys,
 )
 from quant_fund.research.receipt_schema import overfitting_block_errors
+from quant_fund.robustness.schema import robustness_extension_errors
 from quant_fund.utils.hashing import hash_bytes, hash_file
 
 
@@ -225,8 +226,11 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
         or schema_version not in RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED
     ):
         errors.append("invalid_research_receipt_schema_version")
-    elif isinstance(notebook, dict):
+    else:
         errors.extend(overfitting_block_errors(notebook))
+    # Optional robustness extension. Absence is valid on every parent schema
+    # this verifier accepts. A present block must match its own schema.
+    errors.extend(robustness_extension_errors(notebook))
     for key in ("version", "data_source", "disclaimer", "ranking_target"):
         value = notebook.get(key)
         if not isinstance(value, str) or not value.strip():
@@ -331,6 +335,11 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
         value = provenance.get(key)
         if not _is_sha256(value):
             errors.append(f"invalid_{key}")
+    # Optional. Existing receipts omit it. When a lake snapshot is cited, the
+    # id must be the content hash of that immutable manifest.
+    snapshot_id = provenance.get("data_snapshot_id")
+    if snapshot_id is not None and not _is_sha256(snapshot_id):
+        errors.append("invalid_data_snapshot_id")
     for key in ("row_count", "column_count"):
         value = provenance.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
