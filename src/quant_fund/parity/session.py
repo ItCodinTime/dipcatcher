@@ -12,6 +12,7 @@ it does not submit orders.
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -33,7 +34,7 @@ def _positive(value: object, *, field: str) -> float:
         number = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field} must be a finite positive price") from exc
-    if number != number or number <= 0.0:  # NaN
+    if not math.isfinite(number) or number <= 0.0:
         raise ValueError(f"{field} must be a finite positive price")
     return number
 
@@ -43,7 +44,7 @@ def _non_negative(value: object, *, field: str) -> float:
         number = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field} must be a finite non-negative number") from exc
-    if number != number or number < 0.0:
+    if not math.isfinite(number) or number < 0.0:
         raise ValueError(f"{field} must be a finite non-negative number")
     return number
 
@@ -198,7 +199,15 @@ class MarketSession:
         ``revision_id`` (default ``0``), ``available_time`` (default
         ``event_time``), ``adv``, ``vol_20``.
         """
-        required = {"security_id", "event_time", "open", "high", "low", "close", "volume"}
+        required = {
+            "security_id",
+            "event_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        }
         missing = required - set(frame.columns)
         if missing:
             raise ValueError(f"bar frame missing columns: {sorted(missing)}")

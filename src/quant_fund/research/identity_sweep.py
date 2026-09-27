@@ -84,10 +84,16 @@ IDENTITY_SWEEP_SCHEMA_VERSION = 1
 
 _CATALOG_MODULES = (
     "quant_fund.research.catalog.session",
-    "quant_fund.research.catalog.consistency",
-    "quant_fund.research.catalog.northset",
     "quant_fund.research.catalog.candle",
     "quant_fund.research.catalog.kyle",
+    "quant_fund.research.catalog.hypotheses",
+    "quant_fund.research.catalog.dispatch",
+    "quant_fund.research.catalog.rates",
+    "quant_fund.research.catalog.ic_packs",
+    "quant_fund.research.catalog.receipt",
+    "quant_fund.research.catalog.sweep",
+    "quant_fund.research.catalog.never_equate",
+    "quant_fund.research.catalog.never_equate_gap",
 )
 _IMPL_MODULES = (
     "quant_fund.northset.identities",

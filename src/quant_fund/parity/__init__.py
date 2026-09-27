@@ -7,7 +7,12 @@ No live order submission.
 
 from quant_fund.parity.checker import CAUSE_PRECEDENCE, attribute_pair, check_parity
 from quant_fund.parity.reference import run_backtest_session
-from quant_fund.parity.replay import ParityRun, ParityValuationError, ReplayOptions, replay_session
+from quant_fund.parity.replay import (
+    ParityRun,
+    ParityValuationError,
+    ReplayOptions,
+    replay_session,
+)
 from quant_fund.parity.report import assert_clean_report, build_report, write_report
 from quant_fund.parity.session import Bar, MarketSession
 from quant_fund.parity.shadow import run_shadow_session

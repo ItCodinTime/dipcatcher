@@ -19,6 +19,8 @@ from quant_fund.metrics.analytics import (
     underwater_periods,
 )
 
+pytestmark = pytest.mark.smoke
+
 
 def test_underwater_periods_known_path() -> None:
     # Peak at 0, then drop, recover, drop again

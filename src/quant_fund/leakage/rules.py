@@ -273,7 +273,9 @@ LH009_EXEMPT_GLOBS: frozenset[str] = frozenset(
 # use LAZY_WHITELIST.
 LH011_WHITELIST: dict[str, frozenset[str]] = {
     "pit": frozenset({"proofcore", "schemas", "utils", "data"}),
-    "proof": frozenset({"proofcore", "schemas", "utils"}),
+    # proof -> config (layer-0, §1.3): the runner binds AppConfig at top level;
+    # config imports nothing from the SCC, so the edge stays acyclic.
+    "proof": frozenset({"proofcore", "schemas", "utils", "config"}),
     "leakage": frozenset({"proofcore", "schemas"}),
     "reality": frozenset({"proofcore", "metrics", "validation"}),
     "proofcore": frozenset(),
@@ -283,7 +285,10 @@ LH011_WHITELIST: dict[str, frozenset[str]] = {
 _LH011_LAYER0_LAZY = frozenset({"config", "utils"})
 LH011_LAZY_WHITELIST: dict[str, frozenset[str]] = {
     "pit": _LH011_LAYER0_LAZY,
-    "proof": _LH011_LAYER0_LAZY | {"backtest"},
+    # proof lazily reaches pit (W1 vault seam, §5.2), leakage (W3 watchdog,
+    # §5.2 step 2), and metrics (A1 F2 headline recompute). None of pit /
+    # leakage import proof back, so the lazy edges cannot create a cycle.
+    "proof": _LH011_LAYER0_LAZY | {"backtest", "pit", "metrics", "leakage"},
     # §6.2: patterns.py lazily sources FORBIDDEN_HEADLINE_TOKENS from
     # research.catalog.FORBIDDEN_RESEARCH_METRIC_KEYS (no copy); lazy-only so
     # no import-time edge into the SCC.

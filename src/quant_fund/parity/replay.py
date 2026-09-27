@@ -15,6 +15,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -151,10 +152,12 @@ def _config_for_run(config: AppConfig, options: ReplayOptions) -> AppConfig:
     _refuse_live(config)
     cfg = config.model_copy(deep=True)
     if options.cost_overrides:
-        unknown = set(options.cost_overrides) - set(cfg.costs.model_fields)
+        unknown = set(options.cost_overrides) - set(type(cfg.costs).model_fields)
         if unknown:
             raise ValueError(f"unknown cost overrides: {sorted(unknown)}")
-        cfg.costs = cfg.costs.model_copy(update=dict(options.cost_overrides))
+        cfg.costs = type(cfg.costs).model_validate(
+            {**cfg.costs.model_dump(), **options.cost_overrides}
+        )
     _refuse_live(cfg)
     return cfg
 
@@ -264,7 +267,7 @@ def _execute_pending(
                 use_close=use_close,
             )
         )
-        if not price > 0.0 or price != price:
+        if not math.isfinite(price) or price <= 0.0:
             raise ValueError("fill price must be finite and strictly positive")
         cash_before = broker.cash
         record = broker.submit(
@@ -343,7 +346,7 @@ def _pace(
         return decision_time
     if options.pacing != "wall_clock":
         raise ValueError(f"unknown pacing {options.pacing!r}")
-    if not options.speed > 0.0 or options.speed != options.speed:
+    if not math.isfinite(options.speed) or options.speed <= 0.0:
         raise ValueError("wall-clock speed must be finite and strictly positive")
     delta = (decision_time - previous).total_seconds()
     wait = max(0.0, delta / float(options.speed))
@@ -393,10 +396,14 @@ def replay_session(
     if origin not in ("backtest", "shadow"):
         raise ValueError("origin must be 'backtest' or 'shadow'")
     opts = options or ReplayOptions()
-    if opts.lot_size < 0.0 or opts.lot_size != opts.lot_size:
+    if not math.isfinite(opts.lot_size) or opts.lot_size < 0.0:
         raise ValueError("lot_size must be finite and non-negative")
-    if opts.initial_cash <= 0.0 or opts.initial_cash != opts.initial_cash:
+    if not math.isfinite(opts.initial_cash) or opts.initial_cash <= 0.0:
         raise ValueError("initial_cash must be finite and strictly positive")
+    if opts.pacing not in ("accelerated", "wall_clock"):
+        raise ValueError(f"unknown pacing {opts.pacing!r}")
+    if opts.pacing == "wall_clock" and (not math.isfinite(opts.speed) or opts.speed <= 0.0):
+        raise ValueError("wall-clock speed must be finite and strictly positive")
     cfg = _config_for_run(config, opts)
     broker = SimulatedBroker(
         config=cfg,

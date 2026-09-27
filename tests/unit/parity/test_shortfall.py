@@ -125,9 +125,17 @@ def test_round_trip_delay_is_not_netted_away() -> None:
                 "signed_qty": st.one_of(
                     st.just(0.0),
                     st.floats(
-                        min_value=-40, max_value=-0.05, allow_nan=False, allow_infinity=False
+                        min_value=-40,
+                        max_value=-0.05,
+                        allow_nan=False,
+                        allow_infinity=False,
                     ),
-                    st.floats(min_value=0.05, max_value=40, allow_nan=False, allow_infinity=False),
+                    st.floats(
+                        min_value=0.05,
+                        max_value=40,
+                        allow_nan=False,
+                        allow_infinity=False,
+                    ),
                 ),
                 "price": st.floats(
                     min_value=5, max_value=200, allow_nan=False, allow_infinity=False
@@ -154,9 +162,17 @@ def test_round_trip_delay_is_not_netted_away() -> None:
                 "signed_qty": st.one_of(
                     st.just(0.0),
                     st.floats(
-                        min_value=-40, max_value=-0.05, allow_nan=False, allow_infinity=False
+                        min_value=-40,
+                        max_value=-0.05,
+                        allow_nan=False,
+                        allow_infinity=False,
                     ),
-                    st.floats(min_value=0.05, max_value=40, allow_nan=False, allow_infinity=False),
+                    st.floats(
+                        min_value=0.05,
+                        max_value=40,
+                        allow_nan=False,
+                        allow_infinity=False,
+                    ),
                 ),
                 "price": st.floats(
                     min_value=5, max_value=200, allow_nan=False, allow_infinity=False

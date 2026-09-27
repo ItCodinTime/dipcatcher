@@ -18,7 +18,7 @@ underperformed the backtest book by that many dollars of marked value.
   explains the gap, plus any shared-quantity difference in the terminal
   print (a vendor/revision mark gap)
 
-Fills are paired in listed order within ``(event_time, security_id)``.
+Fills are paired by price and signed quantity within ``(event_time, security_id)``.
 The six components sum to the fill-implied gap for any pairing. This is
 a simulated research diagnostic. It is not a live P&L claim.
 
@@ -80,6 +80,8 @@ def _explicit_parts(row: Mapping[str, Any]) -> tuple[float, float, float]:
     if spread < 0.0 or impact < 0.0 or explicit < -1e-8:
         raise ValueError("explicit costs must be non-negative")
     fees = explicit - spread - impact
+    if fees < -1e-8:
+        raise ValueError("explicit cost must cover spread and impact")
     return fees, spread, impact
 
 
@@ -131,15 +133,17 @@ def _split_pair(
     return out
 
 
-def _group(rows: Sequence[Mapping[str, Any]]) -> dict[tuple[Any, str], list[dict[str, Any]]]:
+def _group(
+    rows: Sequence[Mapping[str, Any]],
+) -> dict[tuple[Any, str], list[dict[str, Any]]]:
     grouped: dict[tuple[Any, str], list[dict[str, Any]]] = {}
     for row in rows:
         if "security_id" not in row:
             raise ValueError("fill row missing security_id")
         key = (row.get("event_time"), str(row["security_id"]))
         grouped.setdefault(key, []).append(dict(row))
-    for key in grouped:
-        grouped[key].sort(
+    for group in grouped.values():
+        group.sort(
             key=lambda item: (
                 float(item.get("price") or 0.0),
                 float(item.get("signed_qty") or 0.0),
@@ -150,7 +154,13 @@ def _group(rows: Sequence[Mapping[str, Any]]) -> dict[tuple[Any, str], list[dict
 
 def _arrival(paper_rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Supplemental decision-price shortfall. Not part of the cross-book identity."""
-    total = {"drift": 0.0, "fee": 0.0, "spread_cost": 0.0, "impact_cost": 0.0, "total_is": 0.0}
+    total = {
+        "drift": 0.0,
+        "fee": 0.0,
+        "spread_cost": 0.0,
+        "impact_cost": 0.0,
+        "total_is": 0.0,
+    }
     n = 0
     for row in paper_rows:
         qty = _f(row.get("signed_qty"))

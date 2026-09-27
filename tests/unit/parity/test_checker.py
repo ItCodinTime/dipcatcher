@@ -69,7 +69,11 @@ def test_each_injected_cause() -> None:
         "data": {"revision_id": "r1"},
         "timing": {"decision_time": stamp + timedelta(seconds=1)},
         "code_path": {"code_path_digest": "other"},
-        "state_drift": {"state_digest": "state-1", "restart_generation": 1, "restarted": True},
+        "state_drift": {
+            "state_digest": "state-1",
+            "restart_generation": 1,
+            "restarted": True,
+        },
         "rounding": {"lot_size": 0.03, "rounded_weight": 0.06},
         "costs": {"commission_bps": 8.0, "fill_fee": 4.0, "explicit_cost": 9.0},
         "fills": {"fill_price": 103.0},

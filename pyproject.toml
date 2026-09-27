@@ -34,11 +34,16 @@ dependencies = [
     "uvicorn>=0.32",
     "python-dotenv>=1.0",
     "joblib>=1.4",
+    "numba>=0.60",
     "exchange-calendars==4.13.2",
 ]
 
 [project.optional-dependencies]
 nn = ["torch>=2.4"]
+# CPU JAX is enough for the differentiable backtest. Not a core dependency:
+# `uv sync --frozen --all-groups` (no extras) does not install it. The
+# `diffbacktest` CI job installs this extra explicitly and pins JAX to CPU.
+jax = ["jax>=0.4.38"]
 
 [project.urls]
 Repository = "https://github.com/artificial-hedge/dipcatcher"
@@ -50,13 +55,17 @@ fx1 = "fx1.cli:app"
 # evaluate, and verify fx-1.
 quant = "quant_fund.cli.main:app"
 dipcatcher = "quant_fund.cli.main:app"
+mc-engine = "quant_fund.mc_engine.cli:app"
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-benchmark>=5.1",
     "pytest-cov>=6.0",
+    "pytest-xdist>=3.6",
+    "pytest-split>=0.10",
     "hypothesis>=6.115",
+    "z3-solver>=4.13",
     "ruff>=0.8",
     "mypy>=1.13",
     "pre-commit>=4.0",
@@ -75,6 +84,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fx1", "src/quant_fund"]
+
+# The H.15/H.10 extract is data, not a Python module. Force it into the wheel
+# so an installed dipcatcher can replay the public-domain windows.
+[tool.hatch.build.targets.wheel.force-include]
+"src/quant_fund/stress/public_domain/fred_h10_h15.json" = "quant_fund/stress/public_domain/fred_h10_h15.json"
 
 # Default sdist = every VCS-tracked file (data/, notebooks, host symlinks —
 # 37k files). The distributable source is the buildable package + tests.
@@ -155,11 +169,13 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 # Canonical discovery: the fx-1 suite runs via `make fx1-test` (tests/fx1 is
 # intentionally outside testpaths; the dead tests/tests mirror was removed).
-testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end"]
+testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_end", "tests/formal"]
 addopts = "-q --strict-markers"
 markers = [
     "network: tests that require internet (disabled by default)",
-    "slow: longer integration tests",
+    "slow: long tests; full suite on schedule/workflow_dispatch, excluded from the PR gate",
+    "smoke: paper, ledger, and analytics modules collected by the CI smoke job",
+    "native: quant_core parity tests selected by the rust-accel CI job",
     "synthetic: uses synthetic market data",
     "perf_full: larger synthetic performance benchmarks (not the CI fast subset)",
 ]
@@ -193,3 +209,16 @@ output = "coverage.xml"
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+# PROOFCORE per-package coverage floors (A3 #2, DESIGN.md §9.3/§12) — ADDITIVE
+# to the global 80% floor above, which is unchanged. Enforced by
+# `make proofcore-coverage` / the coverage-floors job in
+# .github/workflows/proofcore.yml via `python -m quant_fund.proofcore.ci
+# coverage-gate`, which reads this table (single source of truth).
+# Ratchet-only thereafter: raise, never lower.
+[tool.proofcore.coverage-floors]
+pit = 90
+proof = 90
+leakage = 85
+reality = 90
+proofcore = 90

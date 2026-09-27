@@ -21,6 +21,7 @@ The checker does not raise on mismatches. The ledger is the verdict.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
@@ -123,7 +124,7 @@ def attribute_pair(
     other_shadow: Sequence[Mapping[str, Any]] = (),
 ) -> tuple[str | None, str]:
     """Return ``(cause, detail)``. ``cause`` is ``None`` when the rows match."""
-    if tol < 0.0 or tol != tol:
+    if not math.isfinite(tol) or tol < 0.0:
         raise ValueError("tol must be finite and non-negative")
     if backtest is None and shadow is None:
         raise ValueError("at least one side of a parity row must be present")

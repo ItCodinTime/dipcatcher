@@ -23,7 +23,7 @@ import textwrap
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from types import FrameType
-from typing import Any
+from typing import Any, Self
 
 RUNNER_MODULES: tuple[str, str] = (
     "quant_fund.parity.reference",
@@ -116,7 +116,7 @@ class CallTracer:
         self.calls: list[str] = []
         self._prev: Any = None
 
-    def __enter__(self) -> CallTracer:
+    def __enter__(self) -> Self:
         self.calls = []
         self._prev = sys.getprofile()
         sys.setprofile(self._profile)

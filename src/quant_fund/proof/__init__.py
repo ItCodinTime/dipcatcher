@@ -1,13 +1,8 @@
-"""Proof-carrying backtester (PROOFCORE W2, DESIGN.md §5).
+"""Proof bundle construction and verification primitives (PROOFCORE W2).
 
-The package exports the recorder and signer that exist in this revision.
-Bundle minting, replay, chain heads, and verification stay unexported until
-``proof.bundle``, ``proof.replay``, ``proof.runner``, and ``proof.verify``
-land. Advertising them earlier makes ``from quant_fund.proof import *`` and
-attribute access fail with ``ModuleNotFoundError``.
-
-Heavy dependencies stay behind ``__getattr__`` so ``import quant_fund.proof``
-stays cheap and acyclic (§1.3 layering contract).
+The runner and deterministic replay fail closed until explicit decision-time
+vault reads exist. Heavy dependencies stay behind ``__getattr__`` so importing
+this package remains cheap and acyclic.
 """
 
 from __future__ import annotations
@@ -24,6 +19,14 @@ __all__ = [
     "ProofError",
     "ProofVerificationError",
     "Signer",
+    "VerificationResult",
+    "asof_utc_text",
+    "build_bundle",
+    "chain_head",
+    "recompute_headline_metrics",
+    "replay_bundle",
+    "run_backtest_proven",
+    "verify_bundle",
 ]
 
 _LAZY = {
@@ -32,6 +35,14 @@ _LAZY = {
     "InMemoryRecorder": ("quant_fund.proof.recorder", "InMemoryRecorder"),
     "NullSigner": ("quant_fund.proof.sign", "NullSigner"),
     "Signer": ("quant_fund.proof.sign", "Signer"),
+    "VerificationResult": ("quant_fund.proof.verify", "VerificationResult"),
+    "asof_utc_text": ("quant_fund.proof.recorder", "asof_utc_text"),
+    "build_bundle": ("quant_fund.proof.bundle", "build_bundle"),
+    "chain_head": ("quant_fund.proof.bundle", "chain_head"),
+    "recompute_headline_metrics": ("quant_fund.proof.bundle", "recompute_headline_metrics"),
+    "replay_bundle": ("quant_fund.proof.replay", "replay_bundle"),
+    "run_backtest_proven": ("quant_fund.proof.runner", "run_backtest_proven"),
+    "verify_bundle": ("quant_fund.proof.verify", "verify_bundle"),
 }
 
 
