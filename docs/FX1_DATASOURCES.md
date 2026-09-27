@@ -1,9 +1,9 @@
 # fx-1 Datasource Layer — 18 Professional Sources, One Honest Interface
 
 Every installed finance plugin is wired into the repo as a first-class,
-honesty-gated datasource. fx-1 (the model) learns from and cites these
-sources through the dipcatcher harness; nothing is answered from model
-memory when a source exists.
+honesty-gated datasource. Corpus ingest records these sources for a future
+training run. The harness fetches them when a source exists. No trained
+fx-1 checkpoint is in this repository.
 
 ## Design invariants
 

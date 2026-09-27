@@ -31,9 +31,14 @@ from quant_fund.metrics.inference import (
     stationary_bootstrap_indices,
 )
 from quant_fund.metrics.overfitting import (
+    CORRELATED_TRIAL_MIN_RHO,
+    choose_cscv_slices,
+    cscv_performance,
     deflated_sharpe,
+    effective_n_trials,
     min_track_record_length,
     min_trl_from_returns,
+    overfitting_diagnostics,
     probabilistic_sharpe,
     probability_of_backtest_overfitting,
 )
@@ -155,6 +160,11 @@ __all__ = [
     "StepMResult",
     "McsResult",
     "probability_of_backtest_overfitting",
+    "CORRELATED_TRIAL_MIN_RHO",
+    "choose_cscv_slices",
+    "cscv_performance",
+    "effective_n_trials",
+    "overfitting_diagnostics",
     "cagr",
     "calmar_ratio",
     "GARCH_ONE_STEP_CRPS_TAUS",
