@@ -106,3 +106,16 @@ canon wave 8 (anytime-valid + calibration + multivariate scores, 2026-09-27):
     rates (Zaffran et al. 2022 ICML/NeurIPS).
   108 tests green (7+12+40+27+22); ruff + ruff-format + mypy clean on all 10 files.
   No commits. Research/infrastructure only — no live broker / vendor MD / live_pnl_claim.
+canon wave 9 (time-series conformal + distributional tree/boosting baselines, 2026-09-27):
+  branch devin/1790496175-wave9-conformal-ts-trees (PR).
+  - models/enbpi.py: EnbPI (Xu & Xie 2021/2023) — circular block bootstrap ensemble,
+    OOB/LOO residuals, sliding residual window, batch online predict_online.
+  - models/qrf.py: QuantileRegressionForest (Meinshausen 2006) — leaf-weight conditional
+    CDF from sklearn RandomForestRegressor, all-tree or OOB weights; quantiles/CDF/PIT.
+  - models/ngboost_lite.py: NGBoostGaussian (Duan et al. 2020) — natural-gradient Gaussian
+    boosting, logscore/CRPS objectives, scalar line search, validation early stopping.
+  - metrics/conformal_martingale.py: smoothed/weighted conformal p-values, power/mixture/
+    Simple-Jumper test martingales (Vovk et al. 2005/2021), Ville 1/alpha alarm,
+    WatchMonitor reset-on-alarm (WATCH-style).
+  36 tests green; ruff + ruff-format + mypy clean. SYNTHETIC-only assertions.
+  No live broker / vendor MD / live_pnl_claim.

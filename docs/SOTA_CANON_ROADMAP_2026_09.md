@@ -94,9 +94,20 @@ data-procurement items, not code items.
   - `models/posthoc_calibration.py` — distributional recalibrators
     (Gaussian/t variance scaling, quantile mapping, isotonic-on-quantiles).
   - `models/agaci.py` — FACI aggregated adaptive conformal inference.
-- **Wave 9 candidates:** NGBoost-lite + QRF baselines; leaky-oracle red-team
-  protocol; EnbPI; WATCH conformal test martingales; regime-conditional
-  evaluation gate in `validation/gates.py`.
+- **Wave 9 (2026-09-27): time-series conformal + tree/boosting distributional
+  baselines + conformal change monitoring.**
+  - `models/enbpi.py` — Xu & Xie EnbPI (block-bootstrap ensemble, OOB/LOO
+    residuals, sliding residual window, batch online updates).
+  - `models/qrf.py` — Meinshausen quantile regression forest (leaf-weight
+    conditional CDF; all-tree or OOB weights; quantiles, CDF, PIT).
+  - `models/ngboost_lite.py` — NGBoost-lite natural-gradient Gaussian boosting
+    (log score / CRPS, line search, validation early stopping).
+  - `metrics/conformal_martingale.py` — smoothed/weighted conformal p-values,
+    power/mixture/Simple-Jumper test martingales, Ville alarm, WATCH-style
+    reset monitor.
+- **Wave 10 candidates:** leaky-oracle red-team protocol; regime-conditional
+  evaluation gate in `validation/gates.py`; QRF/NGBoost vs. existing quantile
+  baselines on the research catalog (proper-score comparison only).
 - **Engineering waves:** hypothesis CI profile pinning; chaos/fault-injection
   property tests; benchmark regression gate; artifact attestations;
   mutation testing on the verify layer.
