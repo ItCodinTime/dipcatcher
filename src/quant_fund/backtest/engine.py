@@ -202,7 +202,7 @@ def run_backtest(
     book = Book(cash=initial_nav)
     navs: list[dict] = []
     fill_rows: list[dict] = []
-    cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+    cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
     last_marks: dict[str, float] = {}
     mark_ages: dict[str, int] = {}
     synthetic = (
@@ -394,8 +394,9 @@ def run_backtest(
             # Turnover is based on executed notional, not the requested target
             # change; participation caps can make those materially different.
             traded_turn += abs(notional) / max(nav, 1e-12)
-            for k in ("commission", "spread", "impact"):
-                cost_sum[k] += float(costs[k])
+            for k in ("commission", "spread", "impact", "turnover_bps"):
+                bucket = "turnover" if k == "turnover_bps" else k
+                cost_sum[bucket] += float(costs[k])
             fill_rows.append(
                 {
                     "fill_time": exec_dt,
@@ -406,6 +407,7 @@ def run_backtest(
                     "fee": costs["commission"],
                     "spread_cost": costs["spread"],
                     "impact_cost": costs["impact"],
+                    "turnover_cost": costs["turnover_bps"],
                     "decision_price": decision_marks.get(sid),
                 }
             )
@@ -488,6 +490,7 @@ def _build_result(
             )
 
             is_summary = aggregate_shortfall(shortfall_frame(scored))
+    turnover_bps_cost = float(cost_sum.get("turnover", 0.0))
     if eq.height >= 2:
         rets = eq["nav"].pct_change().drop_nulls().to_numpy()
         sr = sharpe_ratio(rets)
@@ -513,6 +516,7 @@ def _build_result(
                 "commission": cost_sum["commission"],
                 "spread": cost_sum["spread"],
                 "impact": cost_sum["impact"],
+                "turnover_bps_cost": turnover_bps_cost,
                 "flag_high_sharpe": sr["flag_high_sharpe"],
                 "risk_gate_rejects": reject_count,
                 "cash_rejects": cash_reject_count,
@@ -528,6 +532,7 @@ def _build_result(
             "commission": cost_sum["commission"],
             "spread": cost_sum["spread"],
             "impact": cost_sum["impact"],
+            "turnover_bps_cost": turnover_bps_cost,
             "flag_high_sharpe": sr["flag_high_sharpe"],
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
@@ -539,12 +544,18 @@ def _build_result(
             "live_pnl_claim": False,
         }
     else:
-        # Empty / short panel: no equity path long enough for returns.
-        # Still force research-only labeling (never a live P&L claim).
+        # No pct_change sample (zero or one equity row). A single mark still
+        # has a level return against starting capital; an empty path does not.
+        # Sharpe stays undefined. Research-only labeling is unchanged.
+        if eq.height == 1:
+            total_return = float(eq["nav"][0]) / float(initial_nav) - 1.0
+        else:
+            total_return = 0.0
         metrics = {
-            "total_return": 0.0,
+            "total_return": total_return,
             "sharpe": float("nan"),
             "n": 0,
+            "turnover_bps_cost": turnover_bps_cost,
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,

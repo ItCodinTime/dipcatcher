@@ -342,6 +342,7 @@ def _replay_kernel(
     f_fee: np.ndarray,  # (M,) f64
     f_spr: np.ndarray,  # (M,) f64
     f_imp: np.ndarray,  # (M,) f64
+    f_bpt: np.ndarray,  # (M,) f64 turnover bps charged in ``total``
     f_asset: np.ndarray,  # (M,) i64
     f_et: np.ndarray,  # (M,) i64
     f_st: np.ndarray,  # (M,) i64
@@ -607,11 +608,17 @@ def _replay_kernel(
             cost_comm += comm
             cost_spr += spr
             cost_imp += imp
+            if frictionless:
+                bpt = 0.0
+            else:
+                nt = abs(delta) * price
+                bpt = abs(nt) * bps_per_turnover / 1e4
             f_qty[n_fills] = delta
             f_px[n_fills] = price
             f_fee[n_fills] = comm
             f_spr[n_fills] = spr
             f_imp[n_fills] = imp
+            f_bpt[n_fills] = bpt
             f_asset[n_fills] = a
             f_et[n_fills] = exec_t
             f_st[n_fills] = i
@@ -719,6 +726,7 @@ def _replay_driver(
     f_fee = np.empty(max_fills)
     f_spr = np.empty(max_fills)
     f_imp = np.empty(max_fills)
+    f_bpt = np.empty(max_fills)
     f_asset = np.empty(max_fills, dtype=np.int64)
     f_et = np.empty(max_fills, dtype=np.int64)
     f_st = np.empty(max_fills, dtype=np.int64)
@@ -776,6 +784,7 @@ def _replay_driver(
         f_fee,
         f_spr,
         f_imp,
+        f_bpt,
         f_asset,
         f_et,
         f_st,
@@ -825,11 +834,17 @@ def _replay_driver(
             "fee": f_fee[j],
             "spread_cost": f_spr[j],
             "impact_cost": f_imp[j],
+            "turnover_cost": f_bpt[j],
             "decision_price": f_dec[j] if f_decok[j] else None,
         }
         for j in range(n_fills)
     ]
-    cost_sum = {"commission": cost_comm, "spread": cost_spr, "impact": cost_imp}
+    cost_sum = {
+        "commission": cost_comm,
+        "spread": cost_spr,
+        "impact": cost_imp,
+        "turnover": float(f_bpt[:n_fills].sum()) if n_fills else 0.0,
+    }
     return (
         navs,
         fill_rows,
@@ -1027,7 +1042,7 @@ def run_backtest_fast(
 
         navs = []
         fill_rows = []
-        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
         reject_count = 0
         cash_reject_count = 0
         halt_count = 0
@@ -1207,9 +1222,15 @@ def run_backtest_fast(
                 shares[a] = current + delta
                 terms_base[a] = shares[a] * npv[a]
                 traded_turn += abs(notional) / nav_safe
+                if costs_cfg.frictionless:
+                    bpt = 0.0
+                else:
+                    nt = abs(delta) * price
+                    bpt = abs(nt) * costs_cfg.bps_per_turnover / 1e4
                 cost_sum["commission"] += float(comm)
                 cost_sum["spread"] += float(spr)
                 cost_sum["impact"] += float(imp)
+                cost_sum["turnover"] += bpt
                 fill_rows.append(
                     {
                         "fill_time": dates[exec_t],
@@ -1220,6 +1241,7 @@ def run_backtest_fast(
                         "fee": comm,
                         "spread_cost": spr,
                         "impact_cost": imp,
+                        "turnover_cost": bpt,
                         "decision_price": dec_l[a] if dec_ok_d[a] else None,
                     }
                 )
