@@ -53,6 +53,12 @@ Charts are hand-rolled SVG (`src/lib/chart.ts` + `components/LineChart.tsx`):
 linear/time scales, 1-2-5 "nice" ticks, and min-max bucket decimation that
 preserves peak/drawdown extremes — no chart dependency.
 
+`@types/node` is intentionally not a dependency. The only Node-only surface is
+`playwright.config.ts` (`process.env.CI`) and vitest fixture tests
+(`node:fs`/`node:path`/`import.meta.dirname`); `web/node-globals.d.ts`
+declares that minimal surface so `tsc --noEmit` stays clean — delete the file
+if `@types/node` is ever added.
+
 ## Tests
 
 | Suite | Command | Covers |
