@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
 
 .DEFAULT_GOAL := help
 
@@ -49,6 +49,10 @@ evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py
 
 ci: lint typecheck coverage ## Local mirror of the CI gate
+
+formal: ## TLC order-lifecycle check + Z3/conformance/stateful tests
+	bash scripts/run_tlc.sh
+	uv run pytest tests/formal -q
 
 mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
 	uv run pytest tests/unit/mc_engine -q -m "not slow"

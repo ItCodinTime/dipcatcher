@@ -510,6 +510,7 @@ class SimulatedBroker:
             spread_cost=float(costs["spread"]),
             impact_cost=float(costs["impact"]),
             slippage=drift_slippage,
+            turnover_cost=float(costs["turnover_bps"]),
             is_partial=abs(exec_qty) + 1e-12 < abs(requested_signed),
             decision_price=decision_price,
         )

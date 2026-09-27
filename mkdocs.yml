@@ -138,6 +138,7 @@ nav:
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
+      - Formal verification: FORMAL_VERIFICATION.md
       - Backtest overfitting: BACKTEST_OVERFITTING.md
       - Mathematical specification: MATH_SPEC.md
       - Research references: RESEARCH_REFERENCES.md
