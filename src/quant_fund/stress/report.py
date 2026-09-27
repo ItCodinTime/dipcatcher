@@ -62,8 +62,8 @@ def _jsonable(value: Any) -> Any:
 def _assert_no_forbidden_keys(payload: Any, path: str = "") -> None:
     if isinstance(payload, dict):
         for key, value in payload.items():
-            token = str(key).lower()
-            if token in FORBIDDEN_RESEARCH_METRIC_KEYS:
+            tokens = str(key).lower().replace("-", "_").split("_")
+            if any(token in FORBIDDEN_RESEARCH_METRIC_KEYS for token in tokens if token):
                 raise ValueError(f"forbidden research metric key at {path}.{key}")
             _assert_no_forbidden_keys(value, f"{path}.{key}")
     elif isinstance(payload, list):
@@ -184,7 +184,10 @@ def _synthetic_block(panel: Array, portfolio: Array, n_scenarios: int, seed: int
     except (ValueError, np.linalg.LinAlgError) as exc:
         out["hmm"] = {"status": "unavailable", "reason": str(exc)}
     try:
-        calibrated = calibrate_merton_to_moments(portfolio)
+        if np.any(portfolio <= -1.0):
+            raise ValueError("Merton log returns require simple portfolio returns above -1")
+        log_portfolio = np.log1p(portfolio)
+        calibrated = calibrate_merton_to_moments(log_portfolio)
         drawn_j = merton_scenario_log_returns(
             tenor=calibrated["tenor"],
             rate=calibrated["rate"],
@@ -198,6 +201,7 @@ def _synthetic_block(panel: Array, portfolio: Array, n_scenarios: int, seed: int
         out["jump_diffusion"] = {
             "status": "ok",
             "scope": "univariate_portfolio_log_return",
+            "input_return_convention": "log1p(simple_portfolio_return)",
             "lam": calibrated["lam"],
             "analytic_mean": calibrated["analytic_mean"],
             "analytic_var": calibrated["analytic_var"],
@@ -311,8 +315,11 @@ def build_stress_report(
         "reverse_historical_equity": _historical_equity_cloud(strategy),
     }
     if panel is not None and names is not None:
-        if panel.ndim != 2 or panel.shape[1] != len(names):
-            raise ValueError("panel columns must match names")
+        panel = np.asarray(panel, dtype=np.float64)
+        if panel.ndim != 2 or panel.shape[1] != len(names) or not names:
+            raise ValueError("panel columns must match non-empty names")
+        if len(set(names)) != len(names) or not np.isfinite(panel).all():
+            raise ValueError("panel names must be unique and returns finite")
         portfolio = portfolio_returns(names, panel, strategy.asset_weights)
         report["synthetic"] = _synthetic_block(panel, portfolio, n_scenarios, seed)
         report["risk"] = _risk_block(portfolio, level, n_boot, seed)

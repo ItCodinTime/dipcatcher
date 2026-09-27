@@ -301,6 +301,71 @@ def oos_rank_scores(
     return pred
 
 
+def _paper_ranker_public_row(item: tuple[Any, ...], _seed: int) -> dict[str, Any] | None:
+    """One paper ranker's public-feature OOS row. ``_seed`` is not consumed.
+
+    Rankers draw from ``config.train.random_seed`` inside the model. Passing
+    an index-dependent seed into the fit would change published scores.
+    """
+    (
+        model_name,
+        config,
+        x_pub,
+        y_pub,
+        dates_pub,
+        ids_pub,
+        horizon,
+        public_feats,
+        n_buckets,
+        hac,
+    ) = item
+    row_name = f"{model_name}_public"
+    try:
+        scores = oos_rank_scores(
+            model_name,
+            config,
+            x_pub,
+            y_pub,
+            dates_pub,
+            ids_pub,
+            horizon_bars=horizon,
+            feature_names=public_feats,
+        )
+    except (ValueError, np.linalg.LinAlgError):
+        return None
+    mask = np.isfinite(scores) & np.isfinite(y_pub)
+    if int(mask.sum()) < 5:
+        return None
+    ic = date_ic_series(scores[mask], y_pub[mask], dates_pub[mask], min_names=5, hac_lags=hac)
+    dec = decile_portfolios(
+        scores[mask],
+        y_pub[mask],
+        dates_pub[mask],
+        n_buckets=n_buckets,
+        min_names=5,
+        hac_lags=hac,
+    )
+    return {
+        "name": row_name,
+        "feature_set": "public",
+        "engine": model_name,
+        "mean_ic": ic.mean_pearson,
+        "mean_rank_ic": ic.mean_spearman,
+        "t_ic": ic.t_pearson,
+        "p_ic": ic.p_pearson,
+        "icir": ic.icir_pearson,
+        "n_dates": ic.n_dates,
+        "n_folds": ic.n_dates,
+        "decile_monotonicity": dec.monotonicity,
+        "ls_mean": dec.mean_ls,
+        "ls_t": dec.t_ls,
+        "ls_p": dec.p_ls,
+        "decile_means": dec.mean_returns,
+        "ic_series": [float(v) for v in ic.pearson.tolist()],
+        "ic_dates": [str(date) for date in ic.dates],
+    }
+
+
 def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     specs: list[tuple[str, str, list[str] | None, str | None]] = [
@@ -367,56 +432,27 @@ def bench_ranking(frame: pl.DataFrame, config: AppConfig, label: str) -> list[di
         # dates and names for managed-portfolio estimators) always runs it.
         run_paper = n_dates_pub >= 80 and n_names >= 12
         if run_paper:
+            # Paper rankers are independent, but on this machine a process
+            # pool oversubscribed BLAS and made the sweep slower. They stay
+            # in-process. ``_seed`` is ignored; models use ``random_seed``.
             for model_name in config.train.paper_rankers:
-                row_name = f"{model_name}_public"
-                try:
-                    scores = oos_rank_scores(
+                row = _paper_ranker_public_row(
+                    (
                         model_name,
                         config,
                         x_pub,
                         y_pub,
                         dates_pub,
                         ids_pub,
-                        horizon_bars=horizon,
-                        feature_names=public_feats,
-                    )
-                except (ValueError, np.linalg.LinAlgError):
-                    continue
-                mask = np.isfinite(scores) & np.isfinite(y_pub)
-                if int(mask.sum()) < 5:
-                    continue
-                ic = date_ic_series(
-                    scores[mask], y_pub[mask], dates_pub[mask], min_names=5, hac_lags=hac
+                        horizon,
+                        public_feats,
+                        n_buckets,
+                        hac,
+                    ),
+                    0,
                 )
-                dec = decile_portfolios(
-                    scores[mask],
-                    y_pub[mask],
-                    dates_pub[mask],
-                    n_buckets=n_buckets,
-                    min_names=5,
-                    hac_lags=hac,
-                )
-                rows.append(
-                    {
-                        "name": row_name,
-                        "feature_set": "public",
-                        "engine": model_name,
-                        "mean_ic": ic.mean_pearson,
-                        "mean_rank_ic": ic.mean_spearman,
-                        "t_ic": ic.t_pearson,
-                        "p_ic": ic.p_pearson,
-                        "icir": ic.icir_pearson,
-                        "n_dates": ic.n_dates,
-                        "n_folds": ic.n_dates,
-                        "decile_monotonicity": dec.monotonicity,
-                        "ls_mean": dec.mean_ls,
-                        "ls_t": dec.t_ls,
-                        "ls_p": dec.p_ls,
-                        "decile_means": dec.mean_returns,
-                        "ic_series": [float(v) for v in ic.pearson.tolist()],
-                        "ic_dates": [str(date) for date in ic.dates],
-                    }
-                )
+                if row is not None:
+                    rows.append(row)
     # Pairwise Diebold–Mariano on -IC series across rankers. Align by the
     # intersection of date keys, never by positional truncation: different
     # feature sets can have different missing-date patterns.

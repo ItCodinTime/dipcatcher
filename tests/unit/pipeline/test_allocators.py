@@ -183,3 +183,50 @@ class TestCVaR:
             cvar_minimization(np.random.default_rng(0).normal(size=(3, 2)))
         with pytest.raises(ValueError):
             cvar_minimization(np.random.default_rng(0).normal(size=(50, 3)), alpha=1.5)
+
+
+def test_cvar_fractional_tail_mass_matches_lp():
+    # Identical assets fix the loss law independently of optimizer weights.
+    losses = np.arange(5.0)
+    returns = np.column_stack([-losses, -losses])
+    _, risk = cvar_minimization(returns, alpha=0.7)
+    assert risk == pytest.approx((4 + 0.5 * 3) / 1.5)
+
+
+def test_cvar_ties_and_invalid_target():
+    losses = np.array([0.0, 0.0, 0.0, 1.0, 4.0])
+    _, risk = cvar_minimization(np.column_stack([-losses, -losses]), alpha=0.7)
+    assert risk == pytest.approx(3.0)
+    with pytest.raises(ValueError, match="target_return"):
+        cvar_minimization(np.column_stack([-losses, -losses]), target_return=np.nan)
+
+
+def test_erc_is_covariance_scale_invariant():
+    cov = np.array([[4.0, 1.0, 0.5], [1.0, 2.0, 0.1], [0.5, 0.1, 1.0]])
+    reference = equal_risk_contribution(cov)
+    scaled = equal_risk_contribution(cov * 1e-8)
+    np.testing.assert_allclose(scaled, reference, atol=1e-5)
+    contribution = scaled * (cov @ scaled)
+    np.testing.assert_allclose(contribution / contribution.sum(), np.full(3, 1 / 3), atol=1e-5)
+
+
+def test_covariance_rejects_indefinite_matrix():
+    with pytest.raises(ValueError, match="semidefinite"):
+        equal_risk_contribution(np.array([[1.0, 2.0], [2.0, 1.0]]))
+
+
+def test_cvar_sparse_scenario_constraints(monkeypatch):
+    from scipy import sparse
+
+    from quant_fund.portfolio import allocators
+
+    original = allocators.opt.linprog
+
+    def check(*args, **kwargs):
+        assert sparse.issparse(kwargs["A_ub"])
+        assert kwargs["A_ub"].nnz <= 4 * 1000
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(allocators.opt, "linprog", check)
+    r = np.random.default_rng(1).normal(0, 0.01, (1000, 2))
+    cvar_minimization(r)

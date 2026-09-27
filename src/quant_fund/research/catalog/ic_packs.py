@@ -259,7 +259,7 @@ def northset_all_mean_ic_finite_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue

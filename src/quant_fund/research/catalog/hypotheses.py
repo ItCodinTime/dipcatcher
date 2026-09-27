@@ -5,6 +5,8 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
+from typing import Any
+
 from .primitives import _finite_scalar
 
 # Soft H4b H-table consistency (Day Wave 26 research diagnostic).
@@ -164,7 +166,7 @@ H2_HYPOTHESIS_ID = "H2_decile_mono"
 H2_EXPECTED_FAMILY = "discovery"
 
 
-def rankers_oracle_raw(rankers: object) -> dict | None:
+def rankers_oracle_raw(rankers: object) -> dict[str, Any] | None:
     """Return the ``oracle_raw`` ranker dict from *rankers*, or None.
 
     Skips non-dicts and names starting with ``_`` (same filter as agent
@@ -274,7 +276,7 @@ H99_EXPECTED_FAMILY = "discovery"
 _DATA_SNOOPING_P_KEYS = ("reality_check_p", "spa_p_lower", "spa_p_consistent", "spa_p_upper")
 
 
-def ranking_data_snooping_blob(ranking: object) -> dict | None:
+def ranking_data_snooping_blob(ranking: object) -> dict[str, Any] | None:
     """Return the nested ``data_snooping`` dict from a ranking family blob."""
     if not isinstance(ranking, dict):
         return None
@@ -408,7 +410,7 @@ H7_HYPOTHESIS_ID = "H7_aci_coverage"
 H7_EXPECTED_FAMILY = "calibration"
 
 
-def conformal_aci_blob(conformal: object) -> dict | None:
+def conformal_aci_blob(conformal: object) -> dict[str, Any] | None:
     """Return ``families['conformal']['aci']`` dict, or None.
 
     *conformal* is ``families.get("conformal")`` (the conformal family blob),
@@ -473,7 +475,7 @@ H8_HYPOTHESIS_ID = "H8_mondrian_high_vol"
 H8_EXPECTED_FAMILY = "calibration"
 
 
-def conformal_mondrian_aci_blob(conformal: object) -> dict | None:
+def conformal_mondrian_aci_blob(conformal: object) -> dict[str, Any] | None:
     """Return ``families['conformal']['mondrian_aci']`` dict, or None.
 
     *conformal* is ``families.get("conformal")`` (the conformal family blob),

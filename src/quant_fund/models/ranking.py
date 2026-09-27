@@ -132,15 +132,16 @@ class CompositeRanker(JoblibMixin):
 
 def _demean_by_date(y: NDArray[np.float64], dates: NDArray[Any]) -> NDArray[np.float64]:
     """Subtract the date-level mean so pooled fits target CS rank, not the date mean."""
-    y = np.asarray(y, dtype=float).copy()
-    keys = np.asarray(dates)
-    out = y
-    for key in np.unique(keys):
-        sl = keys == key
-        block = out[sl]
+    from quant_fund.models.asset_pricing import date_groups
+
+    out = np.asarray(y, dtype=float).copy()
+    # ``np.mean`` on the finite entries in original row order, one group at a
+    # time. Group order does not affect the result.
+    for idx in date_groups(np.asarray(dates)):
+        block = out[idx]
         finite = np.isfinite(block)
         if finite.any():
-            out[sl] = block - float(np.mean(block[finite]))
+            out[idx] = block - float(np.mean(block[finite]))
     return out
 
 
@@ -164,13 +165,17 @@ class RidgeRanker(JoblibMixin):
             n_dates = int(len({str(k) for k in d.tolist()}))
             alpha = alpha * float(max(n_dates, 1))
         self.alpha_used = alpha
+        # C-contiguous float64 is the layout BLAS gemm wants. Copies are
+        # skipped when the design is already in that layout.
+        xx = np.ascontiguousarray(xx, dtype=np.float64)
+        yy = np.ascontiguousarray(yy, dtype=np.float64)
         self.scaler.fit(xx)
         self.model.set_params(alpha=alpha)
         self.model.fit(self.scaler.transform(xx), yy)
         return self
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
-        x = np.where(np.isfinite(x), x, 0.0)
+        x = np.ascontiguousarray(np.where(np.isfinite(x), x, 0.0), dtype=np.float64)
         return np.asarray(self.model.predict(self.scaler.transform(x)), dtype=float)
 
     def metadata(self) -> ModelMeta:

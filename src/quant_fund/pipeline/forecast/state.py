@@ -26,15 +26,15 @@ INTERVAL_ALPHA = 0.10
 _RANKER_CACHE: dict[tuple[str, str], object] = {}
 _RL_POLICY_CACHE: dict[tuple[str, float], object] = {}
 _GARCH_SPEC_CACHE: dict[tuple[str, str], GARCHVol] = {}
-_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
-_GARCH_NAME_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_GARCH_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
+_GARCH_NAME_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 _REALIZED_GARCH_SPEC_CACHE: dict[tuple[str, str], RealizedGARCHVol] = {}
-_REALIZED_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_REALIZED_GARCH_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 _PANEL_ASOF_CACHE: dict[tuple[str, float, float], pl.DataFrame] = {}
-_CONFORMAL_CACHE: dict[tuple, ForecastIntervals] = {}
+_CONFORMAL_CACHE: dict[tuple[object, ...], ForecastIntervals] = {}
 # Wrappee train-fit reuse: key = train-primary fingerprint + selected family name.
 # Family is re-selected on current cal each call; fit reused only when family matches.
-_WRAPPEE_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_WRAPPEE_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 
 __all__ = [
     "Array",

@@ -7,6 +7,7 @@ A strategy is a set of factor exposures plus an optional decimal-return panel.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -103,8 +104,9 @@ def load_strategy(path: Path) -> ResearchStrategy:
 def load_return_panel(path: Path) -> tuple[tuple[str, ...], NDArray[np.float64]]:
     """Load a decimal-return CSV.
 
-    A ``date`` or ``observation_date`` column is ignored. Rows with a non-finite
-    value are dropped. At least ten rows and two columns are required.
+    An ISO ``date`` or ``observation_date`` column must increase strictly in
+    time, so expanding-window forecasts use chronological observations. Rows
+    with a non-finite return are dropped. At least ten finite rows are required.
     """
     text = path.read_text(encoding="utf-8").splitlines()
     if not text:
@@ -113,16 +115,35 @@ def load_return_panel(path: Path) -> tuple[tuple[str, ...], NDArray[np.float64]]
     if len(header) < 2:
         raise ValueError("return panel needs a header and at least one series")
     drop = {i for i, name in enumerate(header) if name.lower() in {"date", "observation_date"}}
-    names = tuple(name for i, name in enumerate(header) if i not in drop and name)
+    if len(drop) > 1:
+        raise ValueError("return panel must have at most one date column")
+    names = tuple(name for i, name in enumerate(header) if i not in drop)
+    if any(not name for name in names) or len(set(names)) != len(names):
+        raise ValueError("return panel series names must be non-empty and unique")
     if len(names) < 1:
         raise ValueError("return panel has no series columns")
     rows: list[list[float]] = []
+    previous_date: datetime | None = None
     for line in text[1:]:
         if not line.strip():
             continue
         cells = [cell.strip() for cell in line.split(",")]
         if len(cells) != len(header):
             raise ValueError("return panel has a ragged row")
+        if drop:
+            raw_date = cells[next(iter(drop))]
+            try:
+                parsed_date = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("return panel has a non-ISO date") from exc
+            if parsed_date.tzinfo is not None:
+                parsed_date = parsed_date.astimezone(UTC)
+            if previous_date is not None:
+                if (previous_date.tzinfo is None) != (parsed_date.tzinfo is None):
+                    raise ValueError("return panel mixes naive and timezone-aware dates")
+                if parsed_date <= previous_date:
+                    raise ValueError("return panel dates must increase strictly")
+            previous_date = parsed_date
         try:
             values = [float(cells[i]) for i in range(len(header)) if i not in drop]
         except ValueError as exc:
