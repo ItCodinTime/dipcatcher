@@ -9,6 +9,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+# Lowercase hex digest length of SHA-256. Receipt code compares against this,
+# not a bare 64, so the digest width cannot drift between checkers.
+SHA256_HEX_LENGTH = 64
+
 
 def hash_bytes(data: bytes) -> str:
     """SHA-256 hex digest.
@@ -128,12 +132,13 @@ def canonical_json_bytes(value: Any) -> bytes:
 def canonical_frame_fingerprint(frame: Any) -> str:
     """Hash a materialized tabular frame independent of row/column ordering.
 
-    The function intentionally uses only the frame's public ``columns``,
-    ``schema`` and ``to_dicts`` protocol, so the hashing layer does not depend
-    on a particular dataframe implementation. Duplicate rows remain counted.
+    The frame must expose ``columns``, strict list-of-name ``__getitem__``,
+    ``schema`` and ``to_dicts``. Duplicate rows remain counted.
     """
     columns = sorted(str(column) for column in frame.columns)
-    selected = frame.select(columns)
+    # List indexing resolves literal names; select parses "*" and digit names
+    # as expressions and can duplicate or reorder projected columns.
+    selected = frame[columns]
     records = [_canonicalize(row) for row in selected.to_dicts()]
     records.sort(key=canonical_json_bytes)
     schema = {

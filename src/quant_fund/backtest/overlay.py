@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Protocol
 
 import numpy as np
 
@@ -104,10 +105,16 @@ class DrawdownGovernor:
         return {sid: w * f for sid, w in targets.items()}
 
 
+class _ChainedScaler(Protocol):
+    def observe(self, dt: datetime, nav: float) -> None: ...
+
+    def scale(self, dt: datetime, targets: dict[str, float]) -> dict[str, float]: ...
+
+
 class CompositeScaler:
     """Chain scalers: all observe; scale factors multiply."""
 
-    def __init__(self, scalers: list) -> None:
+    def __init__(self, scalers: list[_ChainedScaler]) -> None:
         self._scalers = list(scalers)
 
     def observe(self, dt: datetime, nav: float) -> None:

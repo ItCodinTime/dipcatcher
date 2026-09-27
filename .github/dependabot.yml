@@ -1,6 +1,26 @@
 version: 2
 updates:
+  # Python dependencies. uv.lock is the lockfile CI installs with
+  # `uv sync --frozen`. Dependabot's uv ecosystem opens PRs that update
+  # both pyproject.toml and uv.lock.
   - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-tools:
+        patterns:
+          - pytest*
+          - hypothesis
+          - ruff
+          - mypy
+          - pre-commit
+  # PEP 621 / pip ecosystem for the same manifest. A pip PR that does not
+  # refresh uv.lock fails `uv lock --check` in CI; merge the uv PR when both
+  # open for the same bump. Kept so the pip ecosystem is configured, which
+  # is what Scorecard and reviewers look for alongside GitHub Actions.
+  - package-ecosystem: pip
     directory: /
     schedule:
       interval: weekly
@@ -18,3 +38,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

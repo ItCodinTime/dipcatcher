@@ -11,6 +11,7 @@ from mlflow.tracking import MlflowClient
 
 from quant_fund.config.models import AppConfig, PromotionConfig
 from quant_fund.utils.hashing import fingerprint
+from quant_fund.utils.numeric import positive_integral_count
 
 ALIASES = ("candidate", "champion", "shadow", "retired")
 
@@ -238,14 +239,9 @@ def _numeric_or_nan(value: Any) -> float:
     return float(value) if _finite_number(value) else float("nan")
 
 
-def _positive_integral_count(value: Any) -> int:
+def _positive_integral_count(value: object) -> int:
     """Parse fold counts without accepting truthy or string coercions."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return 0
-    numeric = float(value)
-    if not math.isfinite(numeric) or numeric <= 0 or not numeric.is_integer():
-        return 0
-    return int(numeric)
+    return positive_integral_count(value)
 
 
 def dataset_fingerprint_from_frame(

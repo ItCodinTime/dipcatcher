@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -47,8 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -66,8 +66,8 @@ jobs:
     env:
       PROOFCORE_SIGNING_KEY: ${{ secrets.PROOFCORE_SIGNING_KEY }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -87,8 +87,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -99,25 +99,26 @@ jobs:
         run: make leakage-scan
       - name: Upload leakage report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: leakage-report
           path: leakage-report.json
           if-no-files-found: ignore
 
   # §9.3 reality-filter. data/metadata/proofcore.duckdb is not in the repo
-  # at HEAD or on main (data/metadata/** is gitignored). Export would create
-  # an empty DB and write 0 rows. `quant reality preflight --db` exits 3
-  # with REALITY_FILTER_SKIP; `make reality-gate` maps that to exit 0. This
-  # step turns the skip line into a notice. A database that has rows is
-  # exported and scored with the unchanged filter and fails the job unless
-  # the verdict is pass. continue-on-error is not used.
+  # (data/metadata/** is gitignored). When that file is absent and
+  # research/reality/trials.jsonl is a non-empty export, `make reality-gate`
+  # scores that committed ledger with the unchanged filter. A missing db and
+  # a missing committed ledger still prints REALITY_FILTER_SKIP; make maps
+  # that to exit 0 and this step turns the skip line into a notice. A scored
+  # verdict other than pass fails the job. continue-on-error is not used.
+  # pipefail so tee does not hide a non-zero gate status.
   reality-filter:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -126,6 +127,7 @@ jobs:
         run: uv sync --frozen --all-groups
       - name: Reality-filter gate
         run: |
+          set -o pipefail
           make reality-gate | tee "${RUNNER_TEMP:-/tmp}/reality-gate.log"
           if grep -q '^REALITY_FILTER_SKIP:' "${RUNNER_TEMP:-/tmp}/reality-gate.log"; then
             echo "::notice title=reality-filter::$(grep -m1 '^REALITY_FILTER_SKIP:' "${RUNNER_TEMP:-/tmp}/reality-gate.log")"
@@ -139,8 +141,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -156,8 +158,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: "3.12"
           enable-cache: true

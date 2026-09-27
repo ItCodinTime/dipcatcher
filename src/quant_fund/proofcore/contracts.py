@@ -36,13 +36,13 @@ class _FrozenDict(dict[str, object]):
     def _immutable(self, *_args: object, **_kwargs: object) -> None:
         raise TypeError("proof payload is immutable")
 
-    __setitem__ = _immutable  # type: ignore[assignment]
-    __delitem__ = _immutable  # type: ignore[assignment]
-    clear = _immutable  # type: ignore[assignment]
-    pop = _immutable  # type: ignore[assignment]
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    clear = _immutable
+    pop = _immutable
     popitem = _immutable  # type: ignore[assignment]
-    setdefault = _immutable  # type: ignore[assignment]
-    update = _immutable  # type: ignore[assignment]
+    setdefault = _immutable
+    update = _immutable
     __ior__ = _immutable  # type: ignore[assignment]
 
 

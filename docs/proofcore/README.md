@@ -46,7 +46,7 @@ make proofcore-coverage   # per-package floors: pit/proof/reality/proofcore 90, 
 make proof-integrity      # current signer/recorder tests
 make proof-verify         # bundle verifier tests; no historical replay claim
 make leakage-scan         # warn mode this wave (adjudicated)
-make reality-gate         # score trials; absent proofcore.duckdb prints REALITY_FILTER_SKIP and exits 0
+make reality-gate         # score trials; a committed research/reality/trials.jsonl is scored when the db is absent, otherwise an absent db skips
 make receipts-reverify    # fail-closed audit; heterogeneous receipt verifiers pending
 ```
 

@@ -16,14 +16,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import optimize as opt
 
+from quant_fund.utils.series import finite_series
+
 Array = NDArray[np.float64]
 
 
 def _v(x: Array, n: int = 20) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    if v.size < n or not np.all(np.isfinite(v)):
-        raise ValueError(f"series must be finite with length >= {n}")
-    return v
+    return finite_series(x, n)
 
 
 def beta_weights(k: int, theta1: float, theta2: float) -> Array:
@@ -72,7 +71,7 @@ def fit_midas(
     Xr = X[rows]
     yl = ylag[rows]
 
-    def unpack(theta: Array):
+    def unpack(theta: Array) -> tuple[float, float, float, float, float]:
         if ar_lag:
             a, b, t1, t2, c = theta
         else:

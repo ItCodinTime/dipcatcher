@@ -269,6 +269,16 @@ def main() -> None:
     _materialize_sealed_tape()
     if not INDEX_PATH.is_file():
         raise SystemExit(f"phase-1 evidence index is absent: {INDEX_PATH}")
+    print("verifier=phase1_evidence_index")
+    print("claim=research_only")
+    print("not_investment_advice=true")
+    print("no_live_trading_claim=true")
+    print("verification_authorizes_live_trading=false")
+    if not (ROOT / _SEALED_TAPE).is_file():
+        print("data_label=absent_tracked_real_snapshot")
+        print("SKIP: tracked real US snapshot absent; receipt verification unmeasured")
+        return
+    print("data_label=tracked_real_snapshot")
     index = _load_object(INDEX_PATH)
     verified = verify_phase1_index(INDEX_PATH)
     errors = _errors(verified)
