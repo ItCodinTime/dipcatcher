@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke
 
 .DEFAULT_GOAL := help
 
@@ -9,13 +9,17 @@ help: ## Show targets
 sync: ## Install the locked environment (all groups and extras)
 	uv sync --frozen --all-groups --all-extras
 
-test: ## Lab test suite (unit/property/regression/end_to_end)
-	uv run pytest
+test: ## PR-gate lab tests (not network, not slow; xdist)
+	uv run pytest -n auto --dist loadfile -m "not network and not slow"
 
-coverage: ## Lab tests + coverage (threshold in pyproject [tool.coverage.report])
+test-full: ## Full offline lab suite, including slow tests
+	uv run pytest -n auto --dist loadfile -m "not network"
+
+coverage: ## PR-gate tests + coverage (threshold in pyproject)
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
-	# --cov-fail-under so CI and local cannot drift.
-	uv run pytest -m "not network" --cov --cov-report=term-missing --cov-report=xml
+	# --cov-fail-under so CI and local cannot drift. Sharded CI combines
+	# partial data files and applies the same threshold once.
+	uv run pytest -n auto --dist loadfile -m "not network and not slow" --cov --cov-report=term-missing --cov-report=xml
 
 lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
