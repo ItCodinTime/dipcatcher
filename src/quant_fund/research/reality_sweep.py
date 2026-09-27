@@ -29,14 +29,6 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.inference import bootstrap_sharpe_ci
 from quant_fund.metrics.overfitting import deflated_sharpe, moments_from_returns
 from quant_fund.metrics.returns import max_drawdown
-from quant_fund.proofcore.contracts import (
-    DataAccessRecord,
-    DataManifestSummary,
-    TrialLedgerRow,
-    merkle_root_hex,
-    sha256_hex_bytes,
-    sha256_hex_json,
-)
 
 _NY = ZoneInfo("America/New_York")
 _ROOT = Path(__file__).resolve().parents[3]
@@ -51,6 +43,8 @@ class Cell:
     params: dict[str, Any]
 
     def trial_id(self, study_id: str) -> str:
+        from quant_fund.proofcore.contracts import sha256_hex_json
+
         return sha256_hex_json(
             {"params": self.params, "strategy": self.strategy, "study_id": study_id}
         )
@@ -470,6 +464,8 @@ def fetch_yahoo_panel(spec: dict[str, Any], cache: Path) -> tuple[pl.DataFrame, 
     cache.mkdir(parents=True, exist_ok=True)
     parquet_path = cache / "bars.parquet"
     prepared.write_parquet(parquet_path)
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+
     digest = sha256_hex_bytes(parquet_path.read_bytes())
     meta = {
         "symbols_included": included,
@@ -482,6 +478,8 @@ def fetch_yahoo_panel(spec: dict[str, Any], cache: Path) -> tuple[pl.DataFrame, 
 
 
 def _returns_sha(returns: np.ndarray) -> str:
+    from quant_fund.proofcore.contracts import sha256_hex_json
+
     rounded = [round(float(value), 12) for value in np.asarray(returns, dtype=float).reshape(-1)]
     return sha256_hex_json(rounded)
 
@@ -601,9 +599,9 @@ def raw_count_deflated(scored: list[ScoredCell], winner: ScoredCell) -> float:
     )
 
 
-def _ledger_row(
-    row: ScoredCell, *, bundle_hash: str, created_utc: str, periods: float
-) -> TrialLedgerRow:
+def _ledger_row(row: ScoredCell, *, bundle_hash: str, created_utc: str, periods: float) -> Any:
+    from quant_fund.proofcore.contracts import TrialLedgerRow
+
     stats = row.by_window["validation"]
     return TrialLedgerRow(
         trial_id=row.trial_id,
@@ -621,7 +619,7 @@ def _ledger_row(
     )
 
 
-def persist_trials(db_path: Path, bundle: Any, rows: list[TrialLedgerRow]) -> int:
+def persist_trials(db_path: Path, bundle: Any, rows: list[Any]) -> int:
     """Insert the bundle, then every trial row. Losers are not filtered."""
     from quant_fund.proofcore.provenance import ProvenanceDB
 
@@ -812,6 +810,13 @@ def run_sweep(
     if not isinstance(last_stamp, datetime):
         raise RuntimeError("panel event_time max is not a datetime")
     content_hash = str(meta["dataset_sha256"])
+    from quant_fund.proofcore.contracts import (
+        DataAccessRecord,
+        DataManifestSummary,
+        merkle_root_hex,
+        sha256_hex_bytes,
+    )
+
     manifest = DataManifestSummary(
         reads=(
             DataAccessRecord(
