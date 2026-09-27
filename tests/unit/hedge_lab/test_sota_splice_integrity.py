@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-_PATH = Path(__file__).resolve().parents[2] / "scripts" / "splice_kronos_fix.py"
+_PATH = Path(__file__).resolve().parents[3] / "scripts" / "splice_kronos_fix.py"
 _SPEC = importlib.util.spec_from_file_location("sota_splice", _PATH)
 assert _SPEC is not None and _SPEC.loader is not None
 splice = importlib.util.module_from_spec(_SPEC)

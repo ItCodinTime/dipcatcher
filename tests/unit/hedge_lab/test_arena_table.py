@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-_PATH = Path(__file__).resolve().parents[2] / "scripts" / "arena_table.py"
+_PATH = Path(__file__).resolve().parents[3] / "scripts" / "arena_table.py"
 _SPEC = importlib.util.spec_from_file_location("arena_table", _PATH)
 assert _SPEC is not None and _SPEC.loader is not None
 arena = importlib.util.module_from_spec(_SPEC)

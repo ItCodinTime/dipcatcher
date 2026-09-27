@@ -442,7 +442,7 @@ def test_kronos_mini_three_way_skips_without_local_weights() -> None:
 
 
 def _local_kronos_mini_dirs() -> tuple[Path, Path] | None:
-    repo = Path(__file__).resolve().parents[2]
+    repo = Path(__file__).resolve().parents[3]
     tok = repo / "third_party" / "kronos_weights" / "Kronos-Tokenizer-2k"
     model = repo / "third_party" / "kronos_weights" / "Kronos-mini"
     if tok.is_dir() and model.is_dir() and (model / "model.safetensors").is_file():
