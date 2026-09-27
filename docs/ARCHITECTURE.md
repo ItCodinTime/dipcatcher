@@ -76,6 +76,7 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `risk` | Risk gates, overlays, pyrisk/pyriskmgmt adapters |
 | `mc_engine` | Reproducible scenario Monte Carlo (Philox streams, variance reduction, tail risk). Research simulation only; see `docs/MC_ENGINE.md` |
 | `paper` | Paper-trading loop: clock, ledger, reconciliation, sim-live |
+| `formal` | Order-lifecycle specification, trace conformance, accounting identities |
 | `reporting` | Evidence reports and tearsheets |
 
 ## Runtime modes
