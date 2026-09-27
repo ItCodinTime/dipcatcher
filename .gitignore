@@ -68,3 +68,5 @@ data/file_us_wide/**
 # 24x7 derived eval dumps + simulated paper ledgers — evidence text stays tracked.
 .dsh-24x7/eval-full/**
 .dsh-24x7/paper_data/**
+# mutmut work tree (scores are written by scripts/mutation_score.py)
+mutants/
