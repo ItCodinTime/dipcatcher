@@ -5,7 +5,10 @@ from __future__ import annotations
 BENCHMARK_CATALOG_VERSION = 2
 
 
-RESEARCH_RECEIPT_SCHEMA_VERSION = 1
+# Schema 2 stamps ``backtest_overfitting`` (PBO, DSR, PSR, MinTRL, trial counts).
+# Schema 1 receipts remain valid: they predate the block and are not rewritten.
+RESEARCH_RECEIPT_SCHEMA_VERSION = 2
+RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED = frozenset({1, 2})
 
 
 REQUIRED_BENCHMARK_FAMILIES = frozenset(
