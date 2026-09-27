@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from quant_fund.config import load_config
 from quant_fund.config.models import (
@@ -49,11 +50,11 @@ def test_config_inheritance_cannot_escape_root(tmp_path: Path) -> None:
 
 
 def test_live_requires_flag() -> None:
-    try:
+    # A3 #1 / F2.1 (PROOFCORE W5): the previous try/except-pass body swallowed
+    # its own AssertionError and could never fail. This is the only unit test
+    # guarding AGENTS.md rule 3 (no live trading) by name — it must bite.
+    with pytest.raises(ValidationError):
         AppConfig.model_validate({"runtime": {"mode": "live", "allow_live": False}})
-        raise AssertionError("should have failed")
-    except Exception:
-        pass
 
 
 def test_pit_invariant() -> None:
