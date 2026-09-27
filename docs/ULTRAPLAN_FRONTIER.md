@@ -304,10 +304,21 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
 - [ ] P7.2 Receipt v2 schema: unified `receipt.json` fields across eval,
       incumbent, carry, paper lanes (dataset hash, code hash, params,
       environment, `live_pnl_claim`, verdict).
+      Partially landed: `research/receipt_v2.py` defines the unified
+      `receipt.v2` envelope (pydantic model + published
+      `receipt_v2.schema.json`), `dipcatcher verify-receipt` validates v1/v2
+      structure + seal/digest consistency, and `fleet_eval` writes v2 behind
+      `--receipt-version 2` (default stays v1). Incumbent/carry/paper lanes
+      still emit v1 — migrate them onto `build_receipt_v2` next.
 - [ ] P7.3 Experiment registry hardening: mlflow.db exists locally — wire
       fleet runs into it or document why not.
 - [ ] P7.4 Determinism sweep: BLAS threading notes already documented; add
       per-receipt `numpy`/`scipy`/`blas` fingerprint block.
+      Partially landed: every `receipt.v2` envelope carries an `environment`
+      block (python/numpy/polars/scipy versions, BLAS/LAPACK build from
+      `np.__config__.CONFIG`, loaded BLAS threadpools via threadpoolctl) with
+      a `fingerprint_sha256` digest over the block. Still open: adopt v2 in
+      the remaining lanes and sweep fingerprints across machines.
 - [ ] P7.5 Remote-fleet ops: consolidate `spawn_*.ps1` into one parametrized
       launcher + watchdog (auto-respawn dead shards, heartbeat file).
 - [ ] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI
