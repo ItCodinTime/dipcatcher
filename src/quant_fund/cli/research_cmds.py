@@ -340,10 +340,76 @@ def verify_receipt_cmd(
     raise typer.Exit(code=0 if result["valid"] else 1)
 
 
+@app.command("vol-bench")
+def vol_bench(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None,
+        help="Comma-separated vol model names (default: rv_roll, rv_ewma, har, "
+        "realized_garch, dip_garch_t).",
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all SYNTHETIC vol shards)."
+    ),
+    horizons: str = typer.Option(
+        "1,5", "--horizons", help="Comma-separated forecast horizons in bars."
+    ),
+    min_history: int = typer.Option(300, help="Leading fit bars per origin."),
+    n_origins: int = typer.Option(24, help="Scored origins per shard/horizon (>=10)."),
+    stride: int | None = typer.Option(None, help="Origin spacing in bars (default: max horizon)."),
+    n_bars: int | None = typer.Option(
+        None, help="Shard length (default: minimal for the origin schedule)."
+    ),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Run the SYNTHETIC volatility bench and write a sealed receipt.
+
+    QLIKE + MSE on next-bar/h-step cumulative realized variance for HAR,
+    realized-GARCH, dip_garch_t and RV baselines over seeded synthetic vol
+    shards (GARCH clustering, rough vol, structural breaks). Proper scores
+    only — correctness evidence, never market or live-P&L claims.
+    """
+    from quant_fund.research.vol_bench import (
+        resolve_vol_models,
+        resolve_vol_shard_generators,
+        run_vol_bench,
+        write_vol_bench_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        horizon_set = tuple(int(h.strip()) for h in horizons.split(",") if h.strip())
+        forecasters = resolve_vol_models(None if models is None else models.split(","))
+        resolved_shards = resolve_vol_shard_generators(
+            None if shards is None else shards.split(",")
+        )
+        frame, receipt = run_vol_bench(
+            forecasters,
+            resolved_shards,
+            horizons=horizon_set,
+            min_history=int(min_history),
+            n_origins=int(n_origins),
+            stride=None if stride is None else int(stride),
+            n_bars=None if n_bars is None else int(n_bars),
+            seed=int(base_seed),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_vol_bench_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(frame)
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "execution_sensitivity_cmd",
     "fleet",
     "research",
     "verify_identities",
     "verify_receipt_cmd",
+    "vol_bench",
 ]

@@ -246,6 +246,11 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P3.5 Volatility-forecast cell: QLIKE on next-bar/h-step realized vol —
       `dip_garch_t` already near-top CRPS; formal vol bench vs published
       vol baselines (HAR, realized-GARCH).
+      Harness landed: `research/vol_bench.py` + `dipcatcher vol-bench`
+      (seeded SYNTHETIC shards — garch_vol / rough_vol / break_vol — scoring
+      HAR-RV, realized-GARCH, dip_garch_t and RV baselines with QLIKE/MSE on
+      cumulative h-step realized variance, NW loss diffs vs `har`, sealed
+      receipts). Real-data vol cells still open.
 
 ### P4 — Industry-grade bar (the open one)
 
