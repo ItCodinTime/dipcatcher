@@ -84,6 +84,7 @@ from quant_fund.models.distribution import (
     TreeQuantileDistribution,
 )
 from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.hstep import HStepScaledDistribution
 from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
 from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.ranking import (
@@ -829,6 +830,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "conf_t",
             "fhs_skew",
             "regime",
+            "hstep",
         },
         "distribution",
     )
@@ -861,6 +863,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "conf_t": ConformalTDistribution(taus),
             "fhs_skew": FhsSkewDistribution(taus),
             "regime": RegimeDistribution(taus, seed=config.train.random_seed),
+            "hstep": HStepScaledDistribution(taus),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")
