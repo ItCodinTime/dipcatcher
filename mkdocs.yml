@@ -172,6 +172,7 @@ nav:
       - Model cards: MODEL_CARDS.md
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
+      - Scenario Monte Carlo: MC_ENGINE.md
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
@@ -230,6 +231,9 @@ nav:
       - Validation: api/validation.md
       - Metrics: api/metrics.md
       - research.verify: api/research_verify.md
+  - Proofcore:
+      - Overview: proofcore/README.md
+      - Migration: proofcore/MIGRATION.md
   - Archive:
       - archive.md
       - Implementation plan: IMPLEMENTATION_PLAN.md
