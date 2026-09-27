@@ -326,6 +326,34 @@ def verify_research(
     raise typer.Exit(code=0 if result["valid"] else 1)
 
 
+@app.command("verify-identities")
+def verify_identities(
+    out: Path = typer.Option(
+        Path("data/metadata/research/identity_sweep.json"), "--out", help="Receipt JSON path."
+    ),
+    trials: int = typer.Option(8, "--trials", help="Seeded SYNTHETIC draws per identity."),
+    seed: int = typer.Option(7, "--seed", help="Base seed for the synthetic generators."),
+) -> None:
+    """Prove catalog/northset microstructure identities on SYNTHETIC draws.
+
+    Prints the identity/residual table and writes an immutable receipt.
+    Exits non-zero when any identity's max-abs residual exceeds its
+    tolerance — fail-closed, CI gate candidate.
+    """
+    from quant_fund.research.identity_sweep import (
+        format_identity_table,
+        run_identity_sweep,
+        write_identity_receipt,
+    )
+
+    receipt = run_identity_sweep(n_trials=int(trials), seed=int(seed))
+    write_identity_receipt(out, receipt)
+    typer.echo("SYNTHETIC")
+    typer.echo(format_identity_table(receipt))
+    typer.echo(f"receipt={out}")
+    raise typer.Exit(code=0 if receipt["all_passed"] else 1)
+
+
 @app.command(hidden=True)
 def lab(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     """Legacy compatibility alias for `dipcatcher research`."""
@@ -337,3 +365,56 @@ def lab(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         typer.echo("SYNTHETIC")
     typer.echo(nb.disclaimer)
     typer.echo(nb.artifacts.get("json"))
+
+
+@app.command()
+def fleet(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None, help="Comma-separated head names (default: full fleet registry)."
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all synthetic shards)."
+    ),
+    n_train: int = typer.Option(512, help="Leading fit rows per shard."),
+    n_eval: int = typer.Option(256, help="Trailing scored rows per shard."),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Run the SYNTHETIC distribution-challenger fleet and write a receipt.
+
+    Proper scores only (pinball/CRPS/PIT-KS/coverage) on labeled synthetic
+    shards — correctness evidence, never market or live-P&L claims.
+    """
+    from quant_fund.research.fleet_eval import (
+        fleet_head_factories,
+        resolve_shard_generators,
+        run_distribution_fleet,
+        write_fleet_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        factories = fleet_head_factories(
+            cfg.quantiles.levels,
+            base_seed,
+            None if models is None else models.split(","),
+        )
+        resolved_shards = resolve_shard_generators(None if shards is None else shards.split(","))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    frame, receipt = run_distribution_fleet(
+        factories,
+        resolved_shards,
+        n_train=n_train,
+        n_eval=n_eval,
+        seed=base_seed,
+        taus=cfg.quantiles.levels,
+    )
+    path = write_fleet_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(frame)
+    typer.echo(f"receipt={path}")

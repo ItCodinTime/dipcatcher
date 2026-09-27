@@ -1,6 +1,7 @@
 # fx-1 Data Contract — industry-grade corpus pipeline
 
-Every byte fx-1 trains on passes through this pipeline. No exceptions.
+Every byte that would enter an fx-1 training run passes through this
+pipeline. No trained checkpoint is in this repository.
 
 ## Sources (all provenance-hashed)
 
@@ -24,8 +25,8 @@ Every byte fx-1 trains on passes through this pipeline. No exceptions.
 DPO pairs are generated per honesty-bait class: shared prompt, chosen =
 contract-honoring refusal/report, rejected = the exact forbidden behavior
 (Sharpe headline, live P&L claim, synthetic-as-live, gate relaxation,
-guaranteed returns). Preference training is what makes honesty *native* rather
-than prompt-scaffolded.
+guaranteed returns). Those pairs are how the plan makes honesty native in a
+future training run, rather than leaving it to the system prompt.
 
 ## Format
 
