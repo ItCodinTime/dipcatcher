@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime
 
 import polars as pl
@@ -60,6 +61,17 @@ def test_panel_cache_hit_and_clear(tmp_path):
     assert c.height == a.height
 
 
+def _replace_bytes(path, data: bytes) -> None:
+    """Overwrite bytes and force a stat change.
+
+    Some kernels keep one coarse mtime across a same-sized overwrite inside a
+    single timestamp tick. The digest cache rehashes only after metadata moves.
+    """
+    path.write_bytes(data)
+    metadata = path.stat()
+    os.utime(path, ns=(metadata.st_atime_ns, metadata.st_mtime_ns + 1_000_000))
+
+
 def _write_cache_key_artifacts(
     tmp_path, *, features: bytes, labels: bytes, universe: bytes
 ) -> tuple:
@@ -79,7 +91,7 @@ def test_panel_cache_key_changes_when_artifact_bytes_change(tmp_path) -> None:
     )
     first = _panel_cache_key(tmp_path, features, labels)
     assert first is not None
-    features.write_bytes(b"features-v2")
+    _replace_bytes(features, b"features-v2")
     second = _panel_cache_key(tmp_path, features, labels)
     assert second is not None
     assert first[0] == second[0]
@@ -94,7 +106,7 @@ def test_panel_cache_key_changes_when_universe_bytes_change(tmp_path) -> None:
     )
     first = _panel_cache_key(tmp_path, features, labels)
     assert first is not None
-    (tmp_path / "silver" / "universe.parquet").write_bytes(b"universe-v2")
+    _replace_bytes(tmp_path / "silver" / "universe.parquet", b"universe-v2")
     second = _panel_cache_key(tmp_path, features, labels)
     assert second is not None
     assert first[1] == second[1]
@@ -128,7 +140,7 @@ def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeyp
     assert first == second
     assert calls == [str(features.resolve()), str(labels.resolve()), str(universe.resolve())]
 
-    features.write_bytes(b"features-v2")
+    _replace_bytes(features, b"features-v2")
     third = _panel_cache_key(tmp_path, features, labels)
     assert third is not None
     assert third[1] != first[1]

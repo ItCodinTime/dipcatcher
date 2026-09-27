@@ -80,11 +80,21 @@ excluding `receipt_sha256`, encoded with sorted keys and compact separators.
 blocked, with no test receipt or attempt. The verifier checks each config's
 raw-byte hash and agreement with the frozen protocol or slate. The index's
 Git revision must identify a local commit whose source blobs match the run
-code hashes. A run made from a dirty checkout can instead match the current
-revision and the repository's current dirty-worktree fingerprint; this cannot
-be independently reconstructed after those changes disappear. The index is
-not a digital signature or an independent attestation of past worktree
-contents. Source
+code hashes. For an indexed historical run, its benchmark and tournament code
+hashes are checked against that commit even when the current implementation
+has since changed. The indexed run's NumPy, Polars, CVXPY, CLARABEL and SciPy
+versions must match that commit's `uv.lock`, not the current environment.
+Its Python major/minor series must match that commit's `.python-version`;
+the historical Python patch version is recorded by the receipt but is not
+independently pinned by the repository. Unindexed run directories still
+require exact current source and runtime versions. Structural validation uses
+the current verifier, so checking out the recorded commit and its locked
+environment remains the strongest way to reproduce the original run.
+A shallow clone must fetch the indexed commit before verification. A run made
+from a dirty checkout can instead match the current revision and the
+repository's current dirty-worktree fingerprint; this cannot be independently
+reconstructed after those changes disappear. The index is not a digital
+signature or an independent attestation of past worktree contents. Source
 entitlements, vendor adjustments, historical availability reconstruction,
 survivorship, undisclosed experiments, and prior holdout inspection remain
 disclosed limitations. Passing verification never authorizes live trading.
