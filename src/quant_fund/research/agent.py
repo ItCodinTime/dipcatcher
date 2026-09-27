@@ -70,6 +70,14 @@ from quant_fund.research.benches_extra import (
     bench_roughness,
     bench_serial_randomness,
 )
+from quant_fund.research.benches_w810 import (
+    bench_anytime_valid,
+    bench_distributional_ml,
+    bench_energy_score,
+    bench_leakage_redteam,
+    bench_regime_eval,
+    bench_ts_conformal,
+)
 from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
@@ -1644,6 +1652,12 @@ def run_research(config: AppConfig) -> ResearchNotebook:
         "complexity": bench_complexity(df),
         "roughness": bench_roughness(df),
         "serial_randomness": bench_serial_randomness(df),
+        "anytime_valid": bench_anytime_valid(),
+        "energy_score": bench_energy_score(),
+        "ts_conformal": bench_ts_conformal(),
+        "regime_eval": bench_regime_eval(),
+        "leakage_redteam": bench_leakage_redteam(),
+        "distributional_ml": bench_distributional_ml(),
     }
 
     hyps = _build_hypotheses(families, rankers)
