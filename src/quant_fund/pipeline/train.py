@@ -84,6 +84,7 @@ from quant_fund.models.distribution import (
     TreeQuantileDistribution,
 )
 from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
 from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.ranking import (
     CompositeRanker,
@@ -819,6 +820,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr",
             "xgboost",
             "lightgbm",
+            "lgbm_q2",
             "skew_t",
             "gmm",
             "isotonic",
@@ -849,6 +851,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr": LinearQuantileDistribution(taus),
             "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
+            "lgbm_q2": LGBMQ2Distribution(taus, seed=config.train.random_seed),
             "skew_t": SkewTDistribution(taus),
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
             "isotonic": IsotonicPitDistribution(taus),
