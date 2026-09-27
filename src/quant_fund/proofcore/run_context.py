@@ -25,7 +25,9 @@ escape both the recorder and the watchdog. Two defenses:
   vault read from ANY thread during a proven run still attaches to the run's
   recorder/watchdog (with a cross-thread warning from the vault) and is
   checked against the run's CURRENT decision window — a future read raises
-  ``LeakageError`` in the reading thread instead of escaping silently.
+  ``LeakageError`` in the reading thread, and a read outside any decision
+  window fails closed with ``VaultError`` there, instead of escaping
+  silently.
 
 Layering (DESIGN.md §1.3, layer 1): stdlib + contracts only; pit, proof, and
 leakage may all import this module.
@@ -40,6 +42,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
+
+from quant_fund.proofcore.contracts import ProofError
 
 __all__ = [
     "PropagatingThread",
@@ -78,16 +82,17 @@ class _RunRegistry:
         with self._lock:
             return self._recorder, self._watchdog, self._decision_time
 
-    def set_run(self, recorder: Any | None, watchdog: Any | None) -> tuple[Any, Any]:
+    def set_run(self, recorder: Any | None, watchdog: Any | None) -> tuple[Any, Any, Any]:
         with self._lock:
-            previous = (self._recorder, self._watchdog)
+            previous = (self._recorder, self._watchdog, self._decision_time)
             self._recorder = recorder
             self._watchdog = watchdog
+            self._decision_time = None
             return previous
 
-    def restore_run(self, previous: tuple[Any, Any]) -> None:
+    def restore_run(self, previous: tuple[Any, Any, Any]) -> None:
         with self._lock:
-            self._recorder, self._watchdog = previous
+            self._recorder, self._watchdog, self._decision_time = previous
 
     def set_decision_time(self, decision_time: datetime | None) -> datetime | None:
         with self._lock:
@@ -148,12 +153,15 @@ def context_is_proven() -> bool:
 def proven_run(recorder: Any, watchdog: Any | None = None) -> Iterator[None]:
     """Mark the current context as an active proven run.
 
-    Vaults that read while this context is active and carry no recorder of
-    their own auto-attach to ``recorder``/``watchdog`` (with a warning) so
-    their reads are recorded. The run is also mirrored into the thread-visible
-    registry so worker threads without this context still attach (ADVERSARIAL
-    R2 §1-W6).
+    The active hooks take precedence over private vault hooks. A decision
+    window is mandatory for each read; this context does not implement the
+    still-unavailable proven backtest orchestrator. The run is also mirrored
+    into the thread-visible registry so worker threads without this context
+    still attach (ADVERSARIAL R2 §1-W6).
     """
+    if recorder is None or watchdog is None:
+        raise ProofError("proven context requires both recorder and watchdog")
+    token_clock = _active_decision_time.set(None)
     token_recorder = _active_recorder.set(recorder)
     token_watchdog = _active_watchdog.set(watchdog)
     previous = _REGISTRY.set_run(recorder, watchdog)
@@ -163,6 +171,7 @@ def proven_run(recorder: Any, watchdog: Any | None = None) -> Iterator[None]:
         _REGISTRY.restore_run(previous)
         _active_watchdog.reset(token_watchdog)
         _active_recorder.reset(token_recorder)
+        _active_decision_time.reset(token_clock)
 
 
 @contextmanager
@@ -175,6 +184,8 @@ def decision_window(decision_time: datetime) -> Iterator[None]:
     without this context are checked against the run's CURRENT decision
     window (ADVERSARIAL R2 §1-W6).
     """
+    if decision_time.tzinfo is None or decision_time.utcoffset() is None:
+        raise ProofError("decision time must be timezone-aware")
     token = _active_decision_time.set(decision_time)
     previous = _REGISTRY.set_decision_time(decision_time)
     try:
