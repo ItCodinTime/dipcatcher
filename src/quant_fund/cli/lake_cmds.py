@@ -13,7 +13,6 @@ from pathlib import Path
 import typer
 
 from quant_fund.cli._app import app
-from quant_fund.data.lakehouse.quality import QualityThresholdError
 from quant_fund.schemas.errors import DataContractError
 
 lineage_app = typer.Typer(help="Lineage DAG for derived datasets.")
@@ -78,6 +77,7 @@ def lake_quality(
 ) -> None:
     """Write a machine-readable quality report to stdout."""
     from quant_fund.data.lakehouse.quality import (
+        QualityThresholdError,
         QualityThresholds,
         quality_report_path,
         report_json,

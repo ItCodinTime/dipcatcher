@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import polars as pl
 import typer
 
 from ._app import (
@@ -360,6 +359,8 @@ def execution_sensitivity_cmd(
     initial_nav: float = typer.Option(1_000_000.0),
 ) -> None:
     """Latency/impact grid for one strategy. Execution diagnostic, not a live P&L claim."""
+    import polars as pl
+
     from quant_fund.backtest.event_sim import execution_sensitivity, format_sensitivity_table
     from quant_fund.features.engine import build_features
     from quant_fund.pipeline.dataset import ensure_silver
