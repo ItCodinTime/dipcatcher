@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import types
 from pathlib import Path
 
 import typer
@@ -76,84 +75,6 @@ from quant_fund.cli.train_cmds import (
     train_reinforcement,
     train_liquidity,
 )
-from quant_fund.cli import book_cmds as _book_cmds
-from quant_fund.cli import data_cmds as _data_cmds
-from quant_fund.cli import forecast_cmds as _forecast_cmds
-from quant_fund.cli import micro_cmds as _micro_cmds
-from quant_fund.cli import ops_cmds as _ops_cmds
-from quant_fund.cli import report_cmds as _report_cmds
-from quant_fund.cli import research_cmds as _research_cmds
-from quant_fund.cli import support as _support
-from quant_fund.cli import train_cmds as _train_cmds
-
-_COMMAND_MODULES = (
-    _support,
-    _data_cmds,
-    _forecast_cmds,
-    _micro_cmds,
-    _research_cmds,
-    _book_cmds,
-    _report_cmds,
-    _ops_cmds,
-    _train_cmds,
-)
-_MISSING = object()
-
-
-def _publish_command_modules() -> None:
-    """Copy command-module globals here so rebound commands resolve patches."""
-    facade = globals()
-    for module in _COMMAND_MODULES:
-        for key, value in vars(module).items():
-            if key.startswith("__"):
-                continue
-            current = facade.get(key, _MISSING)
-            if current is not _MISSING and current is not value:
-                raise RuntimeError(
-                    f"facade global conflict on {key!r} while publishing {module.__name__}"
-                )
-            facade[key] = value
-
-
-def _rebind_to_facade(fn: types.FunctionType) -> types.FunctionType:
-    rebound = types.FunctionType(
-        fn.__code__,
-        globals(),
-        fn.__name__,
-        fn.__defaults__,
-        fn.__closure__,
-    )
-    rebound.__kwdefaults__ = fn.__kwdefaults__
-    rebound.__annotations__ = dict(getattr(fn, "__annotations__", {}))
-    rebound.__dict__.update(fn.__dict__)
-    rebound.__module__ = __name__
-    rebound.__qualname__ = fn.__qualname__
-    return rebound
-
-
-def _rebind_command_functions() -> None:
-    facade = globals()
-    for module in _COMMAND_MODULES:
-        for key, value in list(vars(module).items()):
-            if isinstance(value, types.FunctionType) and value.__module__ == module.__name__:
-                facade[key] = _rebind_to_facade(value)
-    for cmd in app.registered_commands:
-        callback = cmd.callback
-        if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
-            cmd.callback = facade[callback.__name__]
-    for cmd in train_app.registered_commands:
-        callback = cmd.callback
-        if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
-            cmd.callback = facade[callback.__name__]
-    group_callback = train_app.registered_callback
-    if group_callback is not None:
-        callback = group_callback.callback
-        if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
-            group_callback.callback = facade[callback.__name__]
-
-
-_publish_command_modules()
-_rebind_command_functions()
 
 __all__ = [
     "format_data_label",
