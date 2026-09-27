@@ -147,8 +147,9 @@ class ProvenanceDB:
                     f"bundle {bundle.bundle_id} predecessor {bundle.prev_bundle_hash} "
                     f"does not match chain head {expected_prev}"
                 )
-            self._con.execute(  # nosec B608: module column tuple, bound values
-                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
+            # Column names come from fixed module tuples; values remain bound parameters.
+            self._con.execute(
+                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "  # nosec B608
                 f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
                 [
                     bundle.bundle_id,
@@ -180,8 +181,9 @@ class ProvenanceDB:
         stored row differs (raise ``ProvenanceError``) — tamper-evidence at
         the DB layer (DESIGN.md §9.1).
         """
-        existing = self._con.execute(  # nosec B608: module column tuple, bound trial_id
-            f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",
+        # Column names come from a fixed module tuple; trial_id remains bound.
+        existing = self._con.execute(
+            f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",  # nosec B608
             [row.trial_id],
         ).fetchone()
         values = self._trial_values(row)
@@ -195,8 +197,9 @@ class ProvenanceDB:
                 )
             return
         try:
-            self._con.execute(  # nosec B608: module column tuple, bound values
-                f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "
+            # Column names come from fixed module tuples; values remain bound parameters.
+            self._con.execute(
+                f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "  # nosec B608
                 f"VALUES ({', '.join('?' for _ in _TRIAL_COLUMNS)})",
                 values,
             )
