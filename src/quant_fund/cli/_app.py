@@ -8,8 +8,12 @@ import typer
 
 from quant_fund.config import dump_resolved, load_config
 from quant_fund.hmm.cli import hmm_app
+from quant_fund.leakage.cli import leakage_app
 from quant_fund.lightspeed.cli import ls_app
+from quant_fund.proof.cli import proof_app
+from quant_fund.proofcore.cli import proofcore_app
 from quant_fund.quant_models.cli import qm_app
+from quant_fund.reality.cli import reality_app
 from quant_fund.utils.logging import configure_logging
 
 
@@ -51,6 +55,13 @@ app.add_typer(train_app, name="train")
 app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
 app.add_typer(qm_app, name="qm")
+# PROOFCORE sub-typers (DESIGN.md §9.2). `pit` is mounted by W1 in the same
+# block; each PROOFCORE sub-typer module keeps its imports function-level
+# (lazy) so importing the CLI never eagerly pulls the new stack.
+app.add_typer(proof_app, name="proof")
+app.add_typer(leakage_app, name="leakage")
+app.add_typer(reality_app, name="reality")
+app.add_typer(proofcore_app, name="proofcore")
 
 
 def _cfg(config: Path):
@@ -58,16 +69,3 @@ def _cfg(config: Path):
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")
     return cfg
-
-
-def _collect_param_value(raw: str) -> object:
-    """Coerce a --param value to int/float when it cleanly parses, else str."""
-    text = raw.strip()
-    try:
-        return int(text)
-    except ValueError:
-        pass
-    try:
-        return float(text)
-    except ValueError:
-        return text
