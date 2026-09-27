@@ -365,6 +365,19 @@
   eigenvectors, row-normalise, k-means.
 - `cluster_validity.py`: silhouette s=(b-a)/max(a,b); Calinski-Harabasz
   (B/(k-1))/(W/(n-k)); Davies-Bouldin mean_i max_{j!=i}(s_i+s_j)/d_ij.
+## Wave 22 mathematical conventions
+
+- `scale_tests.py`: Bartlett B=((N-k)ln sp2 - sum(n_i-1)ln s_i^2)/C ~ chi2_{k-1};
+  Levene/Brown-Forsythe F on |x-center| (mean/median); Fligner-Killeen chi2 on
+  normal scores of ranked |x-median_i|.
+- `ledoit_wolf_sharpe.py`: SR_i=mu_i/sqrt(gamma_i-mu_i^2); delta-method gradient
+  wrt (mu1,mu2,gamma1,gamma2) with Newey-West HAC covariance of (r1,r2,r1^2,r2^2);
+  z=(SR1-SR2)/se.
+- `liquidity_extra.py`: Hui-Heubel LR=((Pmax-Pmin)/Pmin)/(dollar_vol/(shares*Pbar));
+  Ulcer Index = RMS percent drawdown from an initial wealth of 1; Martin ratio =
+  annualised excess return in percent / UI in percent.
+- `agreement.py`: kappa=(po-pe)/(1-pe); weighted kappa=1 - sum(w p)/sum(w
+  outer(row,col)), w linear |i-j|/(k-1) or quadratic ((i-j)/(k-1))^2.
 ## Wave 21 mathematical conventions
 
 - `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
