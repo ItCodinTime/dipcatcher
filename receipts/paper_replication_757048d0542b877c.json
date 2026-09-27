@@ -1,0 +1,432 @@
+{
+  "citations": [
+    "Baker, M., Bradley, B., & Wurgler, J. (2011). Benchmarks as limits to arbitrage: Understanding the low-volatility anomaly. Financial Analysts Journal, 67(1), 40-54. doi:10.2469/faj.v67.n1.4",
+    "Frazzini, A., & Pedersen, L. H. (2014). Betting against beta. Journal of Financial Economics, 111(1), 1-25. doi:10.1016/j.jfineco.2013.10.005",
+    "Jegadeesh, N. (1990). Evidence of predictable behavior of security returns. Journal of Finance, 45(3), 881-898. doi:10.1111/j.1540-6261.1990.tb05110.x",
+    "Lakonishok, J., & Smidt, S. (1988). Are seasonal anomalies real? A ninety-year perspective. Review of Financial Studies, 1(4), 403-425. doi:10.1093/rfs/1.4.403",
+    "Lehmann, B. N. (1990). Fads, martingales, and market efficiency. Quarterly Journal of Economics, 105(1), 1-28. doi:10.2307/2937816",
+    "Lou, D., Polk, C., & Skouras, S. (2019). A tug of war: Overnight versus intraday expected returns. Journal of Financial Economics, 134(1), 192-213. doi:10.1016/j.jfineco.2019.03.011",
+    "McConnell, J. J., & Xu, W. (2008). Equity returns at the turn of the month. Financial Analysts Journal, 64(2), 49-64. doi:10.2469/faj.v64.n2.8",
+    "Moskowitz, T. J., Ooi, Y. H., & Pedersen, L. H. (2012). Time series momentum. Journal of Financial Economics, 104(2), 228-250. doi:10.1016/j.jfineco.2011.11.003"
+  ],
+  "data": {
+    "assets": 35,
+    "end": "2019-12-06 16:00:00+00:00",
+    "kind": "lab_derived_synthetic_panel",
+    "note": "Lab-derived derived bars. Symbols S####/MKT + planted_signal column indicate the dataset is itself synthetic; all results are SYNTHETIC research evidence, not real-market evidence.",
+    "path": "/Users/vaithianathan/dipcatcher/data/silver/bars.parquet",
+    "rows": 17626,
+    "sha256": "d0690c48a1f66025863c4091a9311ca06c9ca1e93b3dee4c40d2450415f35f14",
+    "start": "2018-01-02 16:00:00+00:00"
+  },
+  "data_label": "SYNTHETIC",
+  "disclaimer": "Research replication of published equity anomalies on the labeled SYNTHETIC panel (or synthetic fixtures). Results are proper scores and rank-IC diagnostics only; descriptive stats are secondary and labeled. Not live performance, not investment advice, authorizes nothing.",
+  "generated_at": "2026-09-27T11:39:37.804596+00:00",
+  "git_revision": "46517ac92629c6da10f56f1de88b679c804cbdef",
+  "inputs_sha256": "19344e919f9ccef4dbc9f37bcf82354805e85f3c1d7ed734e84a56affc84c6e2",
+  "kind": "equity_anomaly_replication",
+  "limitations": [
+    "35 synthetic assets x ~504 daily bars: small cross-section and short history vs the original papers (CRSP decades).",
+    "No transaction costs, short constraints, or market impact modeled; decile spreads are descriptive only.",
+    "Synthetic DGP has planted_signal unrelated to these anomalies; null/contradicted verdicts are expected and reported honestly.",
+    "Multiple-testing: five strategies each report one primary statistic; treat borderline |t|~2 as weak evidence."
+  ],
+  "live_pnl_claim": false,
+  "receipt_sha256": "757048d0542b877c356f6ea1cdc235d279b1052506d6d9ca23fee0b33eb91150",
+  "research_only": true,
+  "schema": "paper_replication.v1",
+  "strategies": {
+    "bab_fp2014": {
+      "citation": "Frazzini, A., & Pedersen, L. H. (2014). Betting against beta. Journal of Financial Economics, 111(1), 1-25. doi:10.1016/j.jfineco.2013.10.005",
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": 0.0029642316329743013,
+        "descriptive_h1_bucket_spread_tstat": 1.213963549188294,
+        "descriptive_h1_spread_n_dates": 251.0,
+        "descriptive_h21_bucket_spread_mean": 0.04443673889903215,
+        "descriptive_h21_bucket_spread_tstat": 1.2026434515204036,
+        "descriptive_h21_spread_n_dates": 231.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-BAB: lower shrunk beta (0.6*beta_hat + 0.4) predicts higher next-month returns (Frazzini-Pedersen 2014).",
+      "known_limitations": [
+        "FP compute correlation on 1Y daily and vol on 5Y daily; the panel is short so both use the 252d window.",
+        "Market is the equal-weight universe mean (no market caps)."
+      ],
+      "outcome_column": "ret_cc",
+      "paper_key": "fp2014",
+      "params": {
+        "lookback": 252,
+        "shrink_target": 1.0,
+        "shrink_weight": 0.6
+      },
+      "primary_horizon": 21,
+      "scores": {
+        "direction_base_rate_up": 0.4787992057002687,
+        "direction_brier": 0.25015469624637954,
+        "direction_brier_climatology": 0.25004844728638725,
+        "direction_brier_skill_vs_climatology": -0.00010624895999228334,
+        "direction_ece": 0.027600319010063365,
+        "direction_log_loss": 0.6934702267908123,
+        "direction_log_loss_climatology": 0.6932463403477536,
+        "direction_n_eligible": 8736.0,
+        "direction_n_scored": 8561.0,
+        "h1_ic_nw_lags": 9.0,
+        "h1_ic_p_value_nw": 0.22443330318641463,
+        "h1_ic_positive_fraction": 0.47808764940239046,
+        "h1_ic_tstat_nw": -1.2178390579136689,
+        "h1_mean_ic": -0.017468602797873947,
+        "h1_n_dates": 251.0,
+        "h21_ic_nw_lags": 20.0,
+        "h21_ic_p_value_nw": 0.4517052540513922,
+        "h21_ic_positive_fraction": 0.36363636363636365,
+        "h21_ic_tstat_nw": -0.7538584930389864,
+        "h21_mean_ic": -0.03142314777150529,
+        "h21_n_dates": 231.0
+      },
+      "signal_definition": "-(0.6 * corr_i,M * sigma_i/sigma_M + 0.4), 252d daily",
+      "verdict": {
+        "direction_consistent_with_paper": false,
+        "primary_p_value": 0.4517052540513922,
+        "primary_statistic": "h21_ic_tstat_nw",
+        "primary_statistic_value": -0.7538584930389864,
+        "significant_at_5pct": false,
+        "verdict": "inconclusive"
+      }
+    },
+    "lowvol_bbw2011": {
+      "citation": "Baker, M., Bradley, B., & Wurgler, J. (2011). Benchmarks as limits to arbitrage: Understanding the low-volatility anomaly. Financial Analysts Journal, 67(1), 40-54. doi:10.2469/faj.v67.n1.4",
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": -0.0011191591349617174,
+        "descriptive_h1_bucket_spread_tstat": -0.36477761546663096,
+        "descriptive_h1_spread_n_dates": 251.0,
+        "descriptive_h21_bucket_spread_mean": -0.02280700761325575,
+        "descriptive_h21_bucket_spread_tstat": -0.6050338999249603,
+        "descriptive_h21_spread_n_dates": 231.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-LOWVOL: lower trailing-1Y daily-return volatility predicts higher next-month returns (BBW 2011 Table-style quintiles).",
+      "known_limitations": [],
+      "outcome_column": "ret_cc",
+      "paper_key": "bbw2011",
+      "params": {
+        "lookback": 252
+      },
+      "primary_horizon": 21,
+      "scores": {
+        "direction_base_rate_up": 0.4787992057002687,
+        "direction_brier": 0.2506077103342798,
+        "direction_brier_climatology": 0.25004844728638725,
+        "direction_brier_skill_vs_climatology": -0.0005592630478925553,
+        "direction_ece": 0.02757192065953041,
+        "direction_log_loss": 0.6943949754976297,
+        "direction_log_loss_climatology": 0.6932463403477536,
+        "direction_n_eligible": 8736.0,
+        "direction_n_scored": 8561.0,
+        "h1_ic_nw_lags": 9.0,
+        "h1_ic_p_value_nw": 0.9731421918373832,
+        "h1_ic_positive_fraction": 0.5099601593625498,
+        "h1_ic_tstat_nw": 0.033701352658960196,
+        "h1_mean_ic": 0.000636922643015916,
+        "h1_n_dates": 251.0,
+        "h21_ic_nw_lags": 20.0,
+        "h21_ic_p_value_nw": 0.9187726077852261,
+        "h21_ic_positive_fraction": 0.6060606060606061,
+        "h21_ic_tstat_nw": 0.10209199101903656,
+        "h21_mean_ic": 0.0047147233549066974,
+        "h21_n_dates": 231.0
+      },
+      "signal_definition": "-(rolling_std ret_cc, 252d)",
+      "verdict": {
+        "direction_consistent_with_paper": true,
+        "primary_p_value": 0.9187726077852261,
+        "primary_statistic": "h21_ic_tstat_nw",
+        "primary_statistic_value": 0.10209199101903656,
+        "significant_at_5pct": false,
+        "verdict": "inconclusive"
+      }
+    },
+    "overnight_lps2019": {
+      "citation": "Lou, D., Polk, C., & Skouras, S. (2019). A tug of war: Overnight versus intraday expected returns. Journal of Financial Economics, 134(1), 192-213. doi:10.1016/j.jfineco.2019.03.011",
+      "data_notes": [
+        "This panel has open == previous close for every bar, so the overnight leg is identically zero; the tug-of-war signal degenerates to -(cumulative intraday) ~ a 20d reversal signal."
+      ],
+      "descriptive": {},
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-ON-PERSIST: cumulative past-20d overnight return predicts the next-day OVERNIGHT return (LPS 2019 overnight persistence).",
+      "known_limitations": [],
+      "outcome_column": "ret_on",
+      "paper_key": "lps2019",
+      "params": {
+        "lookback": 20
+      },
+      "primary_horizon": 1,
+      "scores": {
+        "n_scored": 0.0
+      },
+      "signal_definition": "sum(log(1+ret_on), 20d)",
+      "verdict": {
+        "direction_consistent_with_paper": null,
+        "primary_p_value": null,
+        "primary_statistic": null,
+        "primary_statistic_value": null,
+        "significant_at_5pct": null,
+        "untestable_reason": "degenerate_signal: signal has zero variance on this panel (built from overnight_signal)",
+        "verdict": "untestable"
+      }
+    },
+    "str_jegadeesh1990": {
+      "citation": "Jegadeesh, N. (1990). Evidence of predictable behavior of security returns. Journal of Finance, 45(3), 881-898. doi:10.1111/j.1540-6261.1990.tb05110.x",
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": -0.015587229349861806,
+        "descriptive_h1_bucket_spread_tstat": -8.985324104432376,
+        "descriptive_h1_spread_n_dates": 482.0,
+        "descriptive_h21_bucket_spread_mean": -0.006028138896861483,
+        "descriptive_h21_bucket_spread_tstat": -0.26765202548206785,
+        "descriptive_h21_spread_n_dates": 462.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-STR-1M: negative past-1M return positively predicts next-month returns (Jegadeesh 1990 monthly contrarian).",
+      "known_limitations": [],
+      "outcome_column": "ret_cc",
+      "paper_key": "jegadeesh1990",
+      "params": {
+        "lookback": 21
+      },
+      "primary_horizon": 21,
+      "scores": {
+        "direction_base_rate_up": 0.481737354319356,
+        "direction_brier": 0.2476191685876217,
+        "direction_brier_climatology": 0.24995918849200985,
+        "direction_brier_skill_vs_climatology": 0.0023400199043881464,
+        "direction_ece": 0.007895326248211801,
+        "direction_log_loss": 0.6883752740022628,
+        "direction_log_loss_climatology": 0.6930658977202079,
+        "direction_n_eligible": 16821.0,
+        "direction_n_scored": 16646.0,
+        "h1_ic_nw_lags": 11.0,
+        "h1_ic_p_value_nw": 2.0013191908186121e-35,
+        "h1_ic_positive_fraction": 0.2012448132780083,
+        "h1_ic_tstat_nw": -13.495320906868505,
+        "h1_mean_ic": -0.13746120854980998,
+        "h1_n_dates": 482.0,
+        "h21_ic_nw_lags": 20.0,
+        "h21_ic_p_value_nw": 0.9614288100576358,
+        "h21_ic_positive_fraction": 0.5021645021645021,
+        "h21_ic_tstat_nw": -0.048386956120599484,
+        "h21_mean_ic": -0.0013220715283358518,
+        "h21_n_dates": 462.0
+      },
+      "signal_definition": "-(sum log ret_cc, 21d)",
+      "verdict": {
+        "direction_consistent_with_paper": false,
+        "primary_p_value": 0.9614288100576358,
+        "primary_statistic": "h21_ic_tstat_nw",
+        "primary_statistic_value": -0.048386956120599484,
+        "significant_at_5pct": false,
+        "verdict": "inconclusive"
+      }
+    },
+    "str_lehmann1990": {
+      "citation": "Lehmann, B. N. (1990). Fads, martingales, and market efficiency. Quarterly Journal of Economics, 105(1), 1-28. doi:10.2307/2937816",
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": -0.03161226725536238,
+        "descriptive_h1_bucket_spread_tstat": -20.32738215143587,
+        "descriptive_h1_spread_n_dates": 498.0,
+        "descriptive_h5_bucket_spread_mean": -0.08246796033238338,
+        "descriptive_h5_bucket_spread_tstat": -14.780444878646623,
+        "descriptive_h5_spread_n_dates": 494.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-STR-1W: negative past-1W return positively predicts next-week returns (Lehmann 1990 weekly reversal).",
+      "known_limitations": [],
+      "outcome_column": "ret_cc",
+      "paper_key": "lehmann1990",
+      "params": {
+        "lookback": 5
+      },
+      "primary_horizon": 5,
+      "scores": {
+        "direction_base_rate_up": 0.483726606997559,
+        "direction_brier": 0.23722991725253453,
+        "direction_brier_climatology": 0.24996658563999857,
+        "direction_brier_skill_vs_climatology": 0.01273666838746404,
+        "direction_ece": 0.009754456371751132,
+        "direction_log_loss": 0.6671613256271376,
+        "direction_log_loss_climatology": 0.6930805974523919,
+        "direction_n_eligible": 17381.0,
+        "direction_n_scored": 17206.0,
+        "h1_ic_nw_lags": 11.0,
+        "h1_ic_p_value_nw": 1.0694188618283502e-124,
+        "h1_ic_positive_fraction": 0.01606425702811245,
+        "h1_ic_tstat_nw": -32.417925428515815,
+        "h1_mean_ic": -0.31332971304622614,
+        "h1_n_dates": 498.0,
+        "h5_ic_nw_lags": 11.0,
+        "h5_ic_p_value_nw": 2.129646891502325e-53,
+        "h5_ic_positive_fraction": 0.06680161943319839,
+        "h5_ic_tstat_nw": -17.43818323069418,
+        "h5_mean_ic": -0.2286023058468879,
+        "h5_n_dates": 494.0
+      },
+      "signal_definition": "-(sum log ret_cc, 5d)",
+      "verdict": {
+        "direction_consistent_with_paper": false,
+        "primary_p_value": 2.129646891502325e-53,
+        "primary_statistic": "h5_ic_tstat_nw",
+        "primary_statistic_value": -17.43818323069418,
+        "significant_at_5pct": true,
+        "verdict": "contradicted"
+      }
+    },
+    "tom_mx2008": {
+      "citation": "McConnell, J. J., & Xu, W. (2008). Equity returns at the turn of the month. Financial Analysts Journal, 64(2), 49-64. doi:10.2469/faj.v64.n2.8",
+      "descriptive": {
+        "descriptive_in_minus_out": 0.0007008849904923295,
+        "descriptive_in_window_mean": -9.318026290647902e-05,
+        "descriptive_out_window_mean": -0.0007940652533988085,
+        "descriptive_welch_p": 0.6594525062950141,
+        "descriptive_welch_t": 0.44157087064280237
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-TOM: equal-weight market daily returns inside the -1..+3 turn-of-month window exceed outside-window returns (McConnell & Xu 2008; Lakonishok & Smidt 1988).",
+      "known_limitations": [
+        "Window is calendar-defined on the panel's own trading days; ~24 months of daily data makes this a small-sample test."
+      ],
+      "outcome_column": "ret_cc",
+      "paper_key": "mx2008",
+      "params": {},
+      "primary_horizon": 21,
+      "scores": {
+        "direction_base_rate_up": 0.46247464503042596,
+        "direction_brier": 0.2536003982560532,
+        "direction_brier_climatology": 0.25143037085547065,
+        "direction_brier_skill_vs_climatology": -0.0021700274005825304,
+        "direction_ece": 0.02706512585096941,
+        "direction_log_loss": 0.7008678082003272,
+        "direction_log_loss_climatology": 0.6960481650999116,
+        "direction_n_eligible": 502.0,
+        "direction_n_scored": 493.0,
+        "n_in_window": 94.0,
+        "n_obs": 503.0
+      },
+      "signal_definition": "1 on last trading day of month + first 3 of next, else 0",
+      "verdict": {
+        "direction_consistent_with_paper": true,
+        "primary_p_value": 0.6594525062950141,
+        "primary_statistic": "in_window_minus_out_window_mean",
+        "primary_statistic_value": 0.0007008849904923295,
+        "significant_at_5pct": false,
+        "verdict": "inconclusive"
+      }
+    },
+    "tsmom_mop2012": {
+      "citation": "Moskowitz, T. J., Ooi, Y. H., & Pedersen, L. H. (2012). Time series momentum. Journal of Financial Economics, 104(2), 228-250. doi:10.1016/j.jfineco.2011.11.003",
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": 0.003062438083558955,
+        "descriptive_h1_bucket_spread_tstat": 1.2623581063504101,
+        "descriptive_h1_spread_n_dates": 251.0,
+        "descriptive_h21_bucket_spread_mean": -0.012429795405656262,
+        "descriptive_h21_bucket_spread_tstat": -0.44852448102317355,
+        "descriptive_h21_spread_n_dates": 231.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-TSMOM: sign(past 12M return)/ex-ante-vol positively predicts next-month cross-sectional returns (MOP2012 Table 1-style).",
+      "known_limitations": [],
+      "outcome_column": "ret_cc",
+      "paper_key": "mop2012",
+      "params": {
+        "lookback": 252,
+        "vol_com": 60
+      },
+      "primary_horizon": 21,
+      "scores": {
+        "direction_base_rate_up": 0.4787992057002687,
+        "direction_brier": 0.25025483859286773,
+        "direction_brier_climatology": 0.25004844728638725,
+        "direction_brier_skill_vs_climatology": -0.0002063913064804801,
+        "direction_ece": 0.027535210072842913,
+        "direction_log_loss": 0.6936787557703236,
+        "direction_log_loss_climatology": 0.6932463403477536,
+        "direction_n_eligible": 8736.0,
+        "direction_n_scored": 8561.0,
+        "h1_ic_nw_lags": 9.0,
+        "h1_ic_p_value_nw": 0.04165656426874633,
+        "h1_ic_positive_fraction": 0.5577689243027888,
+        "h1_ic_tstat_nw": 2.047476289073863,
+        "h1_mean_ic": 0.0272736403507437,
+        "h1_n_dates": 251.0,
+        "h21_ic_nw_lags": 20.0,
+        "h21_ic_p_value_nw": 0.7299130487730487,
+        "h21_ic_positive_fraction": 0.44155844155844154,
+        "h21_ic_tstat_nw": -0.34566152607766726,
+        "h21_mean_ic": -0.011453286548779293,
+        "h21_n_dates": 231.0
+      },
+      "signal_definition": "sign(sum log ret_cc, 252d) / ewm_std(ret_cc, com=60)",
+      "verdict": {
+        "direction_consistent_with_paper": false,
+        "primary_p_value": 0.7299130487730487,
+        "primary_statistic": "h21_ic_tstat_nw",
+        "primary_statistic_value": -0.34566152607766726,
+        "significant_at_5pct": false,
+        "verdict": "inconclusive"
+      }
+    },
+    "tug_of_war_lps2019": {
+      "citation": "Lou, D., Polk, C., & Skouras, S. (2019). A tug of war: Overnight versus intraday expected returns. Journal of Financial Economics, 134(1), 192-213. doi:10.1016/j.jfineco.2019.03.011",
+      "data_notes": [
+        "This panel has open == previous close for every bar, so the overnight leg is identically zero; the tug-of-war signal degenerates to -(cumulative intraday) ~ a 20d reversal signal."
+      ],
+      "descriptive": {
+        "descriptive_h1_bucket_spread_mean": -0.015999160531309044,
+        "descriptive_h1_bucket_spread_tstat": -9.390572898366132,
+        "descriptive_h1_spread_n_dates": 483.0,
+        "descriptive_h21_bucket_spread_mean": -0.010805870102698591,
+        "descriptive_h21_bucket_spread_tstat": -0.46965260631550304,
+        "descriptive_h21_spread_n_dates": 463.0
+      },
+      "expected_ic_sign": 1.0,
+      "hypothesis": "H-TUG: past (overnight - intraday) return predicts next-day total return (LPS 2019 tug-of-war; paper finds net total effect is weak).",
+      "known_limitations": [],
+      "outcome_column": "ret_cc",
+      "paper_key": "lps2019",
+      "params": {
+        "lookback": 20
+      },
+      "primary_horizon": 1,
+      "scores": {
+        "direction_base_rate_up": 0.4819854924764702,
+        "direction_brier": 0.24731168846121485,
+        "direction_brier_climatology": 0.24994645719436376,
+        "direction_brier_skill_vs_climatology": 0.0026347687331489122,
+        "direction_ece": 0.008083939791208508,
+        "direction_log_loss": 0.6877523104962204,
+        "direction_log_loss_climatology": 0.6930403635149754,
+        "direction_n_eligible": 16856.0,
+        "direction_n_scored": 16681.0,
+        "h1_ic_nw_lags": 11.0,
+        "h1_ic_p_value_nw": 1.7409300873254906e-38,
+        "h1_ic_positive_fraction": 0.18012422360248448,
+        "h1_ic_tstat_nw": -14.200762860570553,
+        "h1_mean_ic": -0.14258420100583052,
+        "h1_n_dates": 483.0,
+        "h21_ic_nw_lags": 20.0,
+        "h21_ic_p_value_nw": 0.9115168560699429,
+        "h21_ic_positive_fraction": 0.49676025917926564,
+        "h21_ic_tstat_nw": -0.11118635717228825,
+        "h21_mean_ic": -0.002994388409202285,
+        "h21_n_dates": 463.0
+      },
+      "signal_definition": "sum(log(1+ret_on), 20d) - sum(log(1+ret_id), 20d)",
+      "verdict": {
+        "direction_consistent_with_paper": false,
+        "primary_p_value": 1.7409300873254906e-38,
+        "primary_statistic": "h1_ic_tstat_nw",
+        "primary_statistic_value": -14.200762860570553,
+        "significant_at_5pct": true,
+        "verdict": "contradicted"
+      }
+    }
+  },
+  "synthetic": true
+}
