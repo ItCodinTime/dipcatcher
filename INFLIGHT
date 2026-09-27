@@ -89,3 +89,20 @@ canon wave 4: 12 modules, 108 tests, all gates green; cumulative ~57 research mo
 canon wave 5: 13 modules, 82 tests, all gates green; cumulative ~70 research modules / ~695 canon tests on this checkout
 wave6-estimation-canon
 wave7-vol-credit-selection
+canon wave 8 (anytime-valid + calibration + multivariate scores, 2026-09-27):
+  swarm-grounded (7-agent recon + web research, plan in docs/SOTA_CANON_ROADMAP_2026_09.md).
+  - metrics/energy_score.py: energy_score / threshold_energy_score / energy_score_curve
+    (Székely 2003; Gneiting & Raftery 2007; Gneiting & Ranjan 2013).
+  - metrics/anytime_fdr.py: e_bh (Wang & Ramdas 2022), stopped_e_bh via e-lifting
+    adjusters (Wang, Dandapanthula & Ramdas 2025, arXiv:2502.08539), ELond online
+    e-FDR (Xu & Ramdas 2024). FDR<=alpha under arbitrary dependence / optional
+    stopping, Monte-Carlo-asserted.
+  - metrics/e_detectors.py: mixture-SR e-detectors (Shin, Ramdas & Rinaldo 2023) —
+    Gaussian/bounded/Bernoulli, time-uniform type-I <= alpha by Ville.
+  - models/posthoc_calibration.py: VarianceScalingGaussian/StudentT,
+    QuantiteMappingCalibrator, IsotonicQuantileCalibrator (Gneiting et al. 2007;
+    Thorarinsdottir & Gneiting 2010; Déqué 2007; Chernozhukov et al. 2010).
+  - models/agaci.py: AggregatedACI — FACI-EG expert aggregation over ACI learning
+    rates (Zaffran et al. 2022 ICML/NeurIPS).
+  108 tests green (7+12+40+27+22); ruff + ruff-format + mypy clean on all 10 files.
+  No commits. Research/infrastructure only — no live broker / vendor MD / live_pnl_claim.
