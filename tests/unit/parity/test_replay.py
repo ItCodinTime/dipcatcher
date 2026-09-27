@@ -7,9 +7,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+
 from quant_fund.config.models import AppConfig, FillConvention, RuntimeMode
 from quant_fund.execution.simulated_broker import SimulatedBroker
-
 from quant_fund.parity.checker import check_parity
 from quant_fund.parity.reference import run_backtest_session
 from quant_fund.parity.replay import ReplayOptions

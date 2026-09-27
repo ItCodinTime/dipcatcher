@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from quant_fund.config.models import AppConfig
-
 from quant_fund.parity.reference import run_backtest_session
 from quant_fund.parity.session import MarketSession
 from quant_fund.parity.shadow import run_shadow_session
