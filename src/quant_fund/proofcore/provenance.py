@@ -56,6 +56,11 @@ _TRIAL_COLUMNS: tuple[str, ...] = (
     "created_utc",
 )
 
+_BUNDLE_COLUMN_LIST = ", ".join(_BUNDLE_COLUMNS)
+_BUNDLE_PLACEHOLDERS = ", ".join("?" for _ in _BUNDLE_COLUMNS)
+_TRIAL_COLUMN_LIST = ", ".join(_TRIAL_COLUMNS)
+_TRIAL_PLACEHOLDERS = ", ".join("?" for _ in _TRIAL_COLUMNS)
+
 _DDL = """
 CREATE TABLE IF NOT EXISTS proof_bundles (
     bundle_id TEXT PRIMARY KEY,
@@ -148,8 +153,8 @@ class ProvenanceDB:
                     f"does not match chain head {expected_prev}"
                 )
             self._con.execute(
-                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
-                f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
+                f"INSERT INTO proof_bundles ({_BUNDLE_COLUMN_LIST}) "  # nosec B608
+                f"VALUES ({_BUNDLE_PLACEHOLDERS})",
                 [
                     bundle.bundle_id,
                     bundle.created_utc,
@@ -181,7 +186,7 @@ class ProvenanceDB:
         the DB layer (DESIGN.md §9.1).
         """
         existing = self._con.execute(
-            f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",
+            f"SELECT {_TRIAL_COLUMN_LIST} FROM trial_ledger WHERE trial_id = ?",  # nosec B608
             [row.trial_id],
         ).fetchone()
         values = self._trial_values(row)
@@ -196,8 +201,8 @@ class ProvenanceDB:
             return
         try:
             self._con.execute(
-                f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "
-                f"VALUES ({', '.join('?' for _ in _TRIAL_COLUMNS)})",
+                f"INSERT INTO trial_ledger ({_TRIAL_COLUMN_LIST}) "  # nosec B608
+                f"VALUES ({_TRIAL_PLACEHOLDERS})",
                 values,
             )
         except Exception as exc:
@@ -209,7 +214,7 @@ class ProvenanceDB:
 
     def trials(self, *, family: str | None = None) -> list[TrialLedgerRow]:
         """All trial rows (optionally one family), ordered by (created_utc, trial_id)."""
-        sql = f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger"
+        sql = f"SELECT {_TRIAL_COLUMN_LIST} FROM trial_ledger"  # nosec B608
         params: list[Any] = []
         if family is not None:
             sql += " WHERE family = ?"
@@ -237,7 +242,7 @@ class ProvenanceDB:
     def bundles(self) -> list[dict[str, Any]]:
         """All proof-bundle rows as plain dicts (audit/export path), chain order."""
         sql = (
-            f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles "
+            f"SELECT {_BUNDLE_COLUMN_LIST} FROM proof_bundles "  # nosec B608
             "ORDER BY created_utc, bundle_id"
         )
         rows = self._con.execute(sql).fetchall()

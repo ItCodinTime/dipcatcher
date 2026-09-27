@@ -133,7 +133,9 @@ def canonical_frame_fingerprint(frame: Any) -> str:
     on a particular dataframe implementation. Duplicate rows remain counted.
     """
     columns = sorted(str(column) for column in frame.columns)
-    selected = frame.select(columns)
+    # Getitem selects strictly by name; ``select`` treats names like "*" or
+    # digit strings as selector expressions and can emit duplicate outputs.
+    selected = frame[columns]
     records = [_canonicalize(row) for row in selected.to_dicts()]
     records.sort(key=canonical_json_bytes)
     schema = {

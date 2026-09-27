@@ -112,7 +112,9 @@ def test_frame_fingerprint_row_col_order_invariant(sids, n, perm) -> None:
     df = pl.DataFrame(data)
     h1 = canonical_frame_fingerprint(df)
     # permute columns
-    df2 = df.select(perm.draw(st.permutations(sids)))
+    # Getitem permutes strictly by name; ``select`` treats names like "*" as
+    # selector expressions and can raise or duplicate output columns.
+    df2 = df[perm.draw(st.permutations(sids))]
     # permute rows
     row_idx = perm.draw(st.permutations(list(range(n))))
     df3 = df[row_idx]
