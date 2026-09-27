@@ -139,9 +139,8 @@ proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/pr
 proof-integrity: ## Current proof signer/recorder integrity checks
 	uv run pytest tests/unit/proof/test_integrity.py -q
 
-proof-verify: ## Pending: full proof bundle replay verifier is not implemented yet
-	@echo "proof-verify unavailable: quant proof verify is not implemented" >&2
-	@exit 2
+proof-verify: ## Bundle hash, sidecar, signature, and metric verification tests; replay remains closed
+	uv run pytest tests/unit/test_proof_bundle.py tests/unit/test_proof_verify.py tests/property/test_backtest_receipt_identity.py -q
 
 leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
 	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"
