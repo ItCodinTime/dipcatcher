@@ -47,6 +47,8 @@ jobs:
         run: uv run ruff format --check src tests
       - name: Mypy
         run: uv run mypy src/quant_fund
+      - name: Mypy public API (strict)
+        run: uv run mypy --strict --follow-imports=silent src/quant_fund/__init__.py src/quant_fund/public.py
       - name: Static security analysis
         run: uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
 
@@ -494,6 +496,29 @@ jobs:
       - name: Market simulator smoke
         run: uv run pytest -q tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
 
+  parity-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Parity unit tests and SYNTHETIC smoke
+        run: make parity-smoke
+      - name: Upload parity smoke report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dipcatcher-parity-smoke
+          path: data/metadata/parity-smoke/
+          if-no-files-found: error
+
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -511,6 +536,28 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  audit-observability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Audit ledger and observability tests
+        run: uv run pytest tests/unit/audit tests/unit/observe -q
+      - name: Types for the new packages
+        run: uv run mypy src/quant_fund/audit src/quant_fund/observe
+      - name: Observability config parses
+        run: |
+          uv run python -c "import json, pathlib, yaml; root = pathlib.Path('deploy/observability'); yaml.safe_load((root / 'slo.yml').read_text()); yaml.safe_load((root / 'docker-compose.yml').read_text()); yaml.safe_load((root / 'otel-collector.yaml').read_text()); yaml.safe_load((root / 'prometheus.yml').read_text()); json.loads((root / 'grafana/dashboards/dipcatcher.json').read_text())"
+      - name: Compose config
+        run: docker compose -f deploy/observability/docker-compose.yml config
 
   diffbacktest:
     runs-on: ubuntu-latest

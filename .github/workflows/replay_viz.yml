@@ -1,0 +1,73 @@
+name: replay-viz
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "replay/**"
+      - "tests/unit/replay_viz/**"
+      - "docs/REPLAY_VIZ.md"
+      - ".github/workflows/replay_viz.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "replay/**"
+      - "tests/unit/replay_viz/**"
+      - "docs/REPLAY_VIZ.md"
+      - ".github/workflows/replay_viz.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  viewer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: replay
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: replay/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck + build
+        run: npm run typecheck && npm run build
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright tests
+        run: npx playwright test
+      - name: Upload viewer artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: replay-viz-artifacts
+          path: |
+            replay/test-results/
+            replay/playwright-report/
+          if-no-files-found: ignore
+
+  fixture-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Ruff
+        run: uvx ruff@0.16.8 check replay/scripts tests/unit/replay_viz
+      - name: Ruff format check
+        run: uvx ruff@0.16.8 format --check replay/scripts tests/unit/replay_viz
+      - name: Fixture generator unit tests
+        run: uvx --from pytest==9.1.1 pytest tests/unit/replay_viz -q

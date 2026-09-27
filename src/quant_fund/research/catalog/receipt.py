@@ -323,7 +323,7 @@ def northset_range_spread_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue  # JSON null = unavailable (NaN), never non-numeric
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -675,7 +675,7 @@ def northset_price_slope_tick_top_levels_honesty_errors(blob: object) -> list[st
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -695,7 +695,7 @@ def northset_price_slope_tick_top_levels_honesty_errors(blob: object) -> list[st
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1227,8 +1227,8 @@ def close_location_value_clv_alias_identity_honesty_errors(blob: object) -> list
             continue
         if not _finite_scalar(blob.get(long_k)) or not _finite_scalar(blob.get(short_k)):
             continue
-        a = float(blob[long_k])  # type: ignore[arg-type]
-        b = float(blob[short_k])  # type: ignore[arg-type]
+        a = float(blob[long_k])
+        b = float(blob[short_k])
         if not math.isclose(a, b, rel_tol=0.0, abs_tol=1e-12):
             errs.append(err_token)
     return errs
