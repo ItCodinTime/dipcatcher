@@ -1,4 +1,8 @@
-"""Stress-report CLI. Research simulation only; this command does not trade."""
+"""Stress-report CLI. Research simulation only; this command does not trade.
+
+Catalog and report imports stay inside the commands so mounting this typer
+from ``quant_fund.cli`` does not load numpy.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +10,6 @@ import json
 from pathlib import Path
 
 import typer
-
-from quant_fund.stress.catalog import CRISIS_CATALOG
-from quant_fund.stress.report import build_stress_report, render_html, render_markdown
-from quant_fund.stress.strategy import load_return_panel, load_strategy
 
 stress_app = typer.Typer(
     help="Research stress and scenario engine. Simulation only. Does not submit orders."
@@ -19,6 +19,8 @@ stress_app = typer.Typer(
 @stress_app.command("crises")
 def crises_cmd() -> None:
     """List catalog episodes and whether each one is historical."""
+    from quant_fund.stress.catalog import CRISIS_CATALOG
+
     for crisis in CRISIS_CATALOG:
         kind = "historical" if crisis.historical else "hypothetical"
         print(f"{crisis.crisis_id}\t{kind}\t{crisis.name}")
@@ -41,6 +43,9 @@ def report_cmd(
     n_boot: int = typer.Option(200, help="Bootstrap draws for VaR intervals."),
 ) -> None:
     """Write a stress report for one research strategy."""
+    from quant_fund.stress.report import build_stress_report, render_html, render_markdown
+    from quant_fund.stress.strategy import load_return_panel, load_strategy
+
     loaded = load_strategy(strategy)
     panel_path = returns
     if panel_path is None and loaded.returns_csv:
