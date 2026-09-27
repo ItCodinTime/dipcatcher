@@ -18,8 +18,10 @@
 # Not investment advice. No live-trading claim.
 # The example calls `verify_phase1_index` and `verify_phase1_run`, the same path as
 # `dipcatcher verify-research`. A runtime mismatch against the sealing interpreter
-# is reported and does not by itself fail the summary. Any other verifier error
-# fails the example. Passing verification does not authorize live trading.
+# is reported and does not by itself fail the summary. If every remaining seal
+# error is a missing gitignored source snapshot, the example skips and does not
+# claim the index was verified. Any other verifier error fails the example.
+# Passing verification does not authorize live trading.
 
 # %%
 from __future__ import annotations
@@ -46,6 +48,18 @@ def _load_object(path: Path) -> dict[str, object]:
             raise SystemExit(f"{path} has a non-string key")
         parsed[key] = value
     return parsed
+
+
+def _only_missing_snapshot(errors: list[str]) -> bool:
+    """True when every seal error is an absent derived source file."""
+    if not errors:
+        return False
+    for error in errors:
+        if "source dataset unreadable" not in error:
+            return False
+        if "No such file or directory" not in error and "FileNotFoundError" not in error:
+            return False
+    return True
 
 
 def _errors(result: dict[str, object]) -> list[str]:
@@ -155,6 +169,15 @@ def main() -> None:
     print(f"seal_errors={len(seal_errors)}")
     for error in seal_errors:
         print(f"seal_error={error}")
+    if index.get("kind") != "phase1_evidence_index":
+        raise SystemExit("evidence file is not a phase-1 index")
+    if _only_missing_snapshot(seal_errors):
+        print(
+            "SKIP: tracked real US snapshot absent "
+            "(gitignored derived bars; dataset bytes were not checked)"
+        )
+        print("index_verified=false")
+        return
     runs = index.get("runs")
     if not isinstance(runs, list) or not runs:
         raise SystemExit("evidence index has no runs")
@@ -164,8 +187,6 @@ def main() -> None:
         _summarize_run(INDEX_PATH.parent, entry, number)
     if seal_errors:
         raise SystemExit("phase-1 verification reported a non-runtime error")
-    if index.get("kind") != "phase1_evidence_index":
-        raise SystemExit("evidence file is not a phase-1 index")
 
 
 if __name__ == "__main__":

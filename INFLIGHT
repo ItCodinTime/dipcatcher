@@ -118,4 +118,10 @@ canon wave 9 (time-series conformal + distributional tree/boosting baselines, 20
     Simple-Jumper test martingales (Vovk et al. 2005/2021), Ville 1/alpha alarm,
     WatchMonitor reset-on-alarm (WATCH-style).
   36 tests green; ruff + ruff-format + mypy clean. SYNTHETIC-only assertions.
+  Review follow-up: EnbPI intervals are the paper's signed-residual
+  width-minimising band (not split-conformal absolute residuals). NGBoost
+  line search returns 0 when every positive step raises the loss, and
+  fit_info.searched_rounds counts the patience tail separately from the
+  kept learners. examples/05 skips, without claiming verification, when the
+  only seal errors are a missing gitignored US snapshot.
   No live broker / vendor MD / live_pnl_claim.
