@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 .DEFAULT_GOAL := help
 
@@ -39,6 +39,12 @@ doctor: ## Harness environment check
 	uv run dipcatcher doctor
 
 ci: lint typecheck coverage ## Local mirror of the CI gate
+
+examples: ## Offline examples gallery: ruff, mypy, subprocess runner
+	uv run ruff check examples tests/examples
+	uv run ruff format --check examples tests/examples
+	uv run mypy examples
+	uv run pytest tests/examples -q
 
 # --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
 fx1-test: ## fx-1 test suite
