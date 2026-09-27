@@ -22,7 +22,7 @@ synthetic fixture passes.
 | API security boundary | Implemented for local/service operation | API-key authentication, loopback fail-closed default, constant-time key comparison, secure response headers, artifact-root containment, 64 KiB streamed request-body cap, and strict request schemas |
 | Dependency and code security | Implemented as CI gates | Locked dependency `pip-audit` report, medium/high Bandit gate, and retained machine-readable audit artifact |
 | Container operations | CI-gated | Non-root runtime user, loopback default, healthcheck, immutable dependency sync, host-local optional MLflow binding; CI builds the image and waits for its healthcheck |
-| Vendor market data | Not implemented | Only synthetic and local CSV/Parquet adapters are available; no vendor entitlement is implied |
+| Vendor market data | Not implemented for prospective paper collection | A local retrospective Yahoo-labeled snapshot exists; there is no qualifying externally timestamped complete-universe next-open feed, validated release timing, or verified entitlement. The paired paper prototype fails closed when such evidence is unavailable. |
 | Live broker connectivity | Not implemented | No live orders, broker credentials, or live P&L claims are supported |
 | Live readiness | Blocked by missing external evidence | Requires authorized vendor data, broker adapter, operational controls, and independently verified holdout/forward evidence |
 
