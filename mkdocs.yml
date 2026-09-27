@@ -136,6 +136,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
+      - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
       - Backtest overfitting: BACKTEST_OVERFITTING.md
       - Mathematical specification: MATH_SPEC.md

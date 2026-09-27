@@ -336,3 +336,20 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  robustness-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Robustness tests
+        run: uv run pytest -q tests/unit/robustness tests/property/test_robustness_bounds.py
+      - name: Certifier smoke
+        run: uv run python -m quant_fund.robustness
