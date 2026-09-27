@@ -600,6 +600,7 @@ def raw_count_deflated(scored: list[ScoredCell], winner: ScoredCell) -> float:
 
 
 def _ledger_row(row: ScoredCell, *, bundle_hash: str, created_utc: str, periods: float) -> Any:
+    """Build a ``proofcore.contracts.TrialLedgerRow`` (lazy import per layering §1.3)."""
     from quant_fund.proofcore.contracts import TrialLedgerRow
 
     stats = row.by_window["validation"]
@@ -814,7 +815,6 @@ def run_sweep(
         DataAccessRecord,
         DataManifestSummary,
         merkle_root_hex,
-        sha256_hex_bytes,
     )
 
     manifest = DataManifestSummary(
@@ -898,6 +898,8 @@ def run_sweep(
     returns_frame = pl.DataFrame(return_rows)
     returns_file = returns_path or (_ROOT / "research" / "reality" / "returns.parquet")
     returns_frame.write_parquet(returns_file)
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+
     returns_sha = sha256_hex_bytes(returns_file.read_bytes())
 
     from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256

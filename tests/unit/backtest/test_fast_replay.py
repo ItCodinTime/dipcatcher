@@ -380,6 +380,93 @@ def test_public_dispatch_calls_fast_without_artifact(monkeypatch):
     _assert_identical(public, _run_backtest_event_loop(bars, weights, cfg))
 
 
+def test_fast_flag_true_uses_fast_path(monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.3, hi=0.3)
+    cfg = _cfg()
+    called = {"n": 0}
+    real = run_backtest_fast
+
+    def _wrap(*args, **kwargs):
+        called["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _wrap)
+    public = run_backtest(bars, weights, cfg, fast=True)
+    assert called["n"] == 1
+    _assert_identical(public, _run_backtest_event_loop(bars, weights, cfg))
+
+
+def test_fast_flag_false_forces_event_loop(monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.3, hi=0.3)
+    cfg = _cfg()
+
+    def _refuse(*_args, **_kwargs):
+        raise AssertionError("fast replay must not run when fast=False")
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _refuse)
+    public = run_backtest(bars, weights, cfg, fast=False)
+    _assert_identical(public, _run_backtest_event_loop(bars, weights, cfg))
+
+
+def test_fast_flag_true_refuses_close_auction():
+    rng = np.random.default_rng(3)
+    bars = _bars(["AAA"], 30, rng)
+    weights = _weights(["AAA"], 30, rng, lo=0.5, hi=0.5)
+    cfg = _cfg(fill=FillConvention.NEXT_OPEN, allow_close_auction=True)
+    with pytest.raises(ValueError, match="allow_close_auction"):
+        run_backtest(bars, weights, cfg, fast=True)
+
+
+def test_fast_flag_true_refuses_unsupported_panels():
+    """fast=True never silently degrades: unsupported panels fail closed."""
+    rng = np.random.default_rng(8)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.5, hi=0.5)
+    cfg = _cfg()
+    mixed = bars.with_columns(pl.col("event_time").cast(pl.Datetime("ns", "UTC")))
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest(mixed, weights, cfg, fast=True)
+    dup = pl.concat([bars, bars.head(1)])
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest(dup, weights, cfg, fast=True)
+    empty = pl.DataFrame(schema=bars.schema)
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest(empty, weights, cfg, fast=True)
+
+
+def test_run_backtest_fast_direct_refuses_unsupported_panels():
+    """Direct calls carry the same fail-closed guards as the dispatcher."""
+    rng = np.random.default_rng(8)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.5, hi=0.5)
+    cfg = _cfg()
+    mixed = bars.with_columns(pl.col("event_time").cast(pl.Datetime("ns", "UTC")))
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest_fast(mixed, weights, cfg)
+    dup = pl.concat([bars, bars.head(1)])
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest_fast(dup, weights, cfg)
+    empty = pl.DataFrame(schema=bars.schema)
+    with pytest.raises(ValueError, match="fast replay"):
+        run_backtest_fast(empty, weights, cfg)
+
+
+def test_fast_flag_true_refuses_garch_artifact(tmp_path):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA", "BBB"], 24, rng)
+    weights = _weights(["AAA", "BBB"], 24, rng, lo=0.2, hi=0.4)
+    root = tmp_path / "data"
+    (root / "metadata").mkdir(parents=True)
+    (root / "metadata" / "vol_garch.joblib").write_bytes(b"present")
+    cfg = _cfg().model_copy(update={"data": DataConfig(root=root)})
+    with pytest.raises(ValueError, match="market-risk-overlay"):
+        run_backtest(bars, weights, cfg, fast=True)
+
+
 def test_garch_artifact_does_not_dispatch(tmp_path, monkeypatch):
     rng = np.random.default_rng(4)
     bars = _bars(["AAA", "BBB"], 24, rng)

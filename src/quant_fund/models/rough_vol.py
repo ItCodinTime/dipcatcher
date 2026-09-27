@@ -76,10 +76,10 @@ def variance_curve_fit(log_vol: Array, lags: Array | None = None) -> dict[str, A
     if good.sum() < 5:
         raise ValueError("degenerate variance curve")
     lg = np.log(lv[good])
-    lv = np.log(var_d[good])
+    ly = np.log(var_d[good])
     # log var = log(2 nu^2) + 2H log D.
     A = np.column_stack([np.ones(good.sum()), 2.0 * lg])
-    beta, *_ = np.linalg.lstsq(A, lv, rcond=None)
+    beta, *_ = np.linalg.lstsq(A, ly, rcond=None)
     H = float(beta[1])
     nu = math.sqrt(max(math.exp(beta[0]) / 2.0, 1e-20))
     return {

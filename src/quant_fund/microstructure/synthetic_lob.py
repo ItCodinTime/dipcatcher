@@ -417,6 +417,11 @@ def synthesize_l2_from_bars(
                 **metrics,
             }
         )
+    if not rows:
+        raise ValueError(
+            "synthesize_l2_from_bars produced zero snapshots "
+            "(empty bars or no rows passed validity filters)"
+        )
     return ensure_book_panel_shape_columns(pl.DataFrame(rows).sort(["security_id", "event_time"]))
 
 

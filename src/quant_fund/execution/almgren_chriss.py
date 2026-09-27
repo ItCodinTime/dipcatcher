@@ -25,25 +25,41 @@ def almgren_chriss_trajectory(
     As risk_aversion increases, trajectory is more front-loaded.
     """
     x0 = float(quantity)
-    if n_slices < 1:
-        raise ValueError("n_slices >= 1")
+    if not np.isfinite(x0):
+        raise ValueError("quantity must be finite")
+    if isinstance(n_slices, bool) or int(n_slices) != n_slices or int(n_slices) < 1:
+        raise ValueError("n_slices must be an integer >= 1")
+    n_slices = int(n_slices)
     if not np.isfinite(tau) or tau <= 0:
         raise ValueError("tau must be finite and > 0")
+    if not all(np.isfinite(v) for v in (sigma, eta, gamma, risk_aversion)):
+        raise ValueError("sigma, eta, gamma, risk_aversion must be finite")
+    if eta <= 0 or sigma <= 0:
+        raise ValueError("eta and sigma must be > 0")
+    if risk_aversion < 0:
+        raise ValueError("risk_aversion must be >= 0")
     if x0 == 0:
         return np.zeros(n_slices + 1)
     t: Array = np.arange(n_slices + 1, dtype=np.float64) * tau
     t_end = float(t[-1])
-    if risk_aversion <= 0 or eta <= 0 or sigma <= 0:
-        # equal slices
+    if risk_aversion == 0:
+        # AC limit at zero risk aversion is exactly TWAP.
         return x0 * (1.0 - t / t_end)
-    kappa = np.sqrt(risk_aversion * sigma**2 / eta)
-    # x(t) = x0 * sinh(kappa (T-t)) / sinh(kappa T)
-    denom = np.sinh(kappa * t_end)
-    if denom == 0 or not np.isfinite(denom):
-        return x0 * (1.0 - t / t_end)
-    x = x0 * np.sinh(kappa * (t_end - t)) / denom
+    kappa = float(np.sqrt(risk_aversion * sigma**2 / eta))
+    # x(t) = x0 * sinh(kappa (T-t)) / sinh(kappa T), evaluated in the stable
+    # exponential form e^{-kt}(1 - e^{-2k(T-t)})/(1 - e^{-2kT}) so large kappa*T
+    # yields the true AC limit (immediate liquidation) instead of overflowing.
+    with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+        x = (
+            x0
+            * np.exp(-kappa * t)
+            * (-np.expm1(-2.0 * kappa * (t_end - t)))
+            / (-np.expm1(-2.0 * kappa * t_end))
+        )
     x[0] = x0
     x[-1] = 0.0
+    if not np.all(np.isfinite(x)):
+        raise ValueError("almgren_chriss trajectory produced non-finite holdings")
     return np.asarray(x, dtype=np.float64)
 
 

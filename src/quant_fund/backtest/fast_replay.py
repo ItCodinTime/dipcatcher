@@ -37,6 +37,8 @@ import polars as pl
 from quant_fund.backtest.engine import (
     BacktestResult,
     StaleValuationError,
+    _fast_replay_is_complete,
+    _fast_replay_panel_supported,
     _target_weight_map,
     run_backtest,
 )
@@ -860,11 +862,16 @@ def _replay_driver(
         }
         for j in range(n_fills)
     ]
+    # Sequential left fold, matching the reference's ``+=`` per fill —
+    # np.sum's pairwise reduction can differ at the last ulp.
+    turnover_sum = 0.0
+    for _v in f_bpt[:n_fills]:
+        turnover_sum += float(_v)
     cost_sum = {
         "commission": cost_comm,
         "spread": cost_spr,
         "impact": cost_imp,
-        "turnover": float(f_bpt[:n_fills].sum()) if n_fills else 0.0,
+        "turnover": turnover_sum,
     }
     return (
         navs,
@@ -885,12 +892,33 @@ def run_backtest_fast(
     initial_nav: float = 1_000_000.0,
     risk_overlay: Any = None,
 ) -> BacktestResult:
-    """Fast replay of ``run_backtest`` on the supported config class."""
+    """Fast replay of ``run_backtest`` on the supported config class.
+
+    Fails closed — ``ValueError`` — on any workload outside the class the
+    vectorized path reproduces bit-identically; it never approximates.
+    """
     if config.execution.allow_close_auction:
         raise ValueError("fast replay does not support allow_close_auction")
     if risk_overlay is not None:
         raise ValueError("fast replay does not support risk_overlay")
     _validate_panel_fast(weights)
+    # Panel-shape and completeness refusals mirror the dispatcher's, so a
+    # direct call is guarded exactly like run_backtest(fast=True). Without
+    # them the matrices would silently collapse duplicate bar keys, align
+    # mismatched datetime units to empty weight cells, or IndexError on an
+    # empty panel instead of producing the reference's answers/errors.
+    if not _fast_replay_panel_supported(bars, weights):
+        raise ValueError(
+            "fast replay requires a non-empty bars panel with unique "
+            "(event_time, security_id) keys and a Datetime event_time "
+            "matching the weights panel"
+        )
+    if not _fast_replay_is_complete(config, risk_overlay):
+        raise ValueError(
+            "fast replay does not run while a market-risk-overlay artifact "
+            "exists: garch_risk_overlay_dates counters are stamped by the "
+            "event loop"
+        )
 
     # Lineage detection: the newer engine signature carries ``risk_overlay``
     # and treats weight panels as a sparse rebalance grid — the last target

@@ -727,7 +727,15 @@ def run_paper_loop(  # noqa: C901 — main is 75; the repo ceiling stays 74
             abs(min(champ.shares.get(s, 0.0), 0.0)) * valuation_marks.get(s, 0.0)
             for s in champ.shares
         )
-        borrow = short_notional * (config.costs.borrow_bps_per_year / 1e4) / 252.0
+        # Accrue borrow over elapsed wall-clock time since the previous exec
+        # bar (matches net_replay / forward_shadow); a fixed /252 per bar
+        # overcharges ~6x on 4h grids and ~24x on 1h grids.
+        borrow_years = (
+            (exec_dt - last_exec).total_seconds() / (365.0 * 86400.0)
+            if last_exec is not None
+            else 0.0
+        )
+        borrow = short_notional * (config.costs.borrow_bps_per_year / 1e4) * borrow_years
         if not config.costs.frictionless:
             champ.cash -= borrow
             nav_close -= borrow

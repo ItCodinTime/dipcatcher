@@ -173,6 +173,10 @@ LH001_ALLOWLIST: frozenset[str] = frozenset(
         # microstructure/bench.py: forward candle-return benchmark target
         # (audit §2 clean-check).
         "src/quant_fund/microstructure/bench.py",
+        # microstructure/candle_book_features.py: forward_close_return_labels
+        # builds y_{t+1} as column fwd_ret_1 on the full bar panel. It is a
+        # label, not a feature.
+        "src/quant_fund/microstructure/candle_book_features.py",
     }
 )
 
