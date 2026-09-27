@@ -32,6 +32,7 @@ TARGETS: list[dict[str, object]] = [
         "tests": [
             "tests/property/test_adversarial_costs.py",
             "tests/unit/test_execution.py",
+            "tests/unit/test_cost_branch_killers.py",
         ],
     },
     {
@@ -41,6 +42,7 @@ TARGETS: list[dict[str, object]] = [
             "tests/property/test_drawdown.py",
             "tests/unit/test_returns_edges.py",
             "tests/unit/test_metrics.py",
+            "tests/unit/test_returns_branch_killers.py",
         ],
     },
     {
@@ -49,6 +51,7 @@ TARGETS: list[dict[str, object]] = [
             "tests/property/test_adversarial_receipts.py",
             "tests/property/test_utils_invariants_cov.py",
             "tests/regression/test_receipt_set_and_array_canonical.py",
+            "tests/unit/test_hashing_branch_killers.py",
         ],
     },
 ]
@@ -83,6 +86,44 @@ def _score(stats: dict[str, int]) -> float | None:
     return 100.0 * killed / tested
 
 
+def _dump_survivors(source: str, env: dict[str, str]) -> None:
+    """Optional: ``MUTMUT_SURVIVOR_DIR`` receives results and diffs before cleanup."""
+    raw = os.environ.get("MUTMUT_SURVIVOR_DIR")
+    if not raw:
+        return
+    dest = Path(raw)
+    dest.mkdir(parents=True, exist_ok=True)
+    listed = subprocess.run(
+        ["mutmut", "results"],
+        cwd=ROOT,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    slug = Path(source).stem
+    (dest / f"{slug}.results.txt").write_text(listed.stdout, encoding="utf-8")
+    names: list[str] = []
+    for line in listed.stdout.splitlines():
+        if ":" not in line:
+            continue
+        name, status = line.rsplit(":", 1)
+        if status.strip() == "survived":
+            names.append(name.strip())
+    chunks: list[str] = []
+    for name in names:
+        shown = subprocess.run(
+            ["mutmut", "show", name],
+            cwd=ROOT,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        chunks.append(shown.stdout)
+    (dest / f"{slug}.diffs.txt").write_text("\n".join(chunks), encoding="utf-8")
+
+
 def _run_one(target: dict[str, object]) -> dict[str, object]:
     source = str(target["path"])
     tests = [str(name) for name in target["tests"]]  # type: ignore[union-attr]
@@ -115,6 +156,7 @@ def _run_one(target: dict[str, object]) -> dict[str, object]:
         raise SystemExit(f"mutmut export-cicd-stats failed for {source}")
     stats_path = MUTANTS / "mutmut-cicd-stats.json"
     stats = json.loads(stats_path.read_text(encoding="utf-8"))
+    _dump_survivors(source, env)
     elapsed = time.perf_counter() - start
     version = subprocess.check_output(["mutmut", "--version"], cwd=ROOT, text=True).strip()
     return {

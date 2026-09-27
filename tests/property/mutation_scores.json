@@ -6,19 +6,21 @@
       "path": "src/quant_fund/execution/costs.py",
       "tests": [
         "tests/property/test_adversarial_costs.py",
-        "tests/unit/test_execution.py"
+        "tests/unit/test_execution.py",
+        "tests/unit/test_cost_branch_killers.py"
       ],
       "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 77.407,
-      "killed": 136,
-      "survived": 71,
+      "elapsed_sec": 48.77,
+      "killed": 207,
+      "survived": 0,
       "timeout": 0,
       "suspicious": 0,
       "skipped": 0,
       "no_tests": 0,
       "total": 207,
-      "score_percent": 65.70048309178743,
-      "score_formula": "(killed + timeout) / (total - skipped)"
+      "score_percent": 100.0,
+      "score_formula": "(killed + timeout) / (total - skipped)",
+      "equivalent_survivors": []
     },
     {
       "path": "src/quant_fund/metrics/returns.py",
@@ -26,38 +28,55 @@
         "tests/property/test_adversarial_returns_and_sizing.py",
         "tests/property/test_drawdown.py",
         "tests/unit/test_returns_edges.py",
-        "tests/unit/test_metrics.py"
+        "tests/unit/test_metrics.py",
+        "tests/unit/test_returns_branch_killers.py"
       ],
       "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 60.806,
-      "killed": 246,
-      "survived": 118,
+      "elapsed_sec": 58.758,
+      "killed": 325,
+      "survived": 39,
       "timeout": 0,
       "suspicious": 0,
       "skipped": 0,
       "no_tests": 0,
       "total": 364,
-      "score_percent": 67.58241758241758,
-      "score_formula": "(killed + timeout) / (total - skipped)"
+      "score_percent": 89.28571428571429,
+      "score_formula": "(killed + timeout) / (total - skipped)",
+      "equivalent_survivors": [
+        "float('nan') and float('NAN') are the same value (15 mutants).",
+        "numpy reshape(-2) matches reshape(-1) (7 mutants).",
+        "reshape(None) is flattened by the following cumprod, std, or mean, so the returned number matches reshape(-1) (5 mutants: wealth, vol, sharpe, sortino, calmar).",
+        "np.asarray([], dtype=None) is still float64 (4 mutants).",
+        "cagr's years <= 0 versus years < 0: years is size/periods after a positive-period check, so it is never zero (1 mutant).",
+        "drawdown errstate invalid/divide set to None or omitted: values unchanged, and numpy 2.5.3 raised no RuntimeWarning on a NaN wealth path (4 mutants).",
+        "replacing `or` with `and` on the non-finite guards in sharpe, sortino, and calmar still returns NaN via the later checks (3 mutants)."
+      ]
     },
     {
       "path": "src/quant_fund/utils/hashing.py",
       "tests": [
         "tests/property/test_adversarial_receipts.py",
         "tests/property/test_utils_invariants_cov.py",
-        "tests/regression/test_receipt_set_and_array_canonical.py"
+        "tests/regression/test_receipt_set_and_array_canonical.py",
+        "tests/unit/test_hashing_branch_killers.py"
       ],
       "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 45.206,
-      "killed": 101,
-      "survived": 84,
+      "elapsed_sec": 55.332,
+      "killed": 160,
+      "survived": 25,
       "timeout": 2,
       "suspicious": 0,
       "skipped": 0,
       "no_tests": 0,
       "total": 187,
-      "score_percent": 55.080213903743314,
-      "score_formula": "(killed + timeout) / (total - skipped)"
+      "score_percent": 86.63101604278074,
+      "score_formula": "(killed + timeout) / (total - skipped)",
+      "equivalent_survivors": [
+        "hash_file chunk sizes read(None), 2<<20, and 1<<21 still hash the whole file (3 mutants).",
+        "getattr(..., 'item' or 'tolist',) with a trailing comma is the same call (3 mutants).",
+        "sort-key json.dumps sort_keys/separators/ensure_ascii=None/allow_nan mutants: set elements are hashable and do not become dicts, so sort_keys does not change order; a 1485-pair probe of lists and strings found no separator order flip; ensure_ascii=None matches False; allow_nan=None matches False; allow_nan=True is unreachable in _json_sort_key because non-finite floats are already None (19 mutants)."
+      ]
     }
-  ]
+  ],
+  "numpy": "2.5.3"
 }
