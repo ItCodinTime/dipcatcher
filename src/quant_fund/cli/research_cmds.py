@@ -365,3 +365,56 @@ def lab(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         typer.echo("SYNTHETIC")
     typer.echo(nb.disclaimer)
     typer.echo(nb.artifacts.get("json"))
+
+
+@app.command()
+def fleet(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None, help="Comma-separated head names (default: full fleet registry)."
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all synthetic shards)."
+    ),
+    n_train: int = typer.Option(512, help="Leading fit rows per shard."),
+    n_eval: int = typer.Option(256, help="Trailing scored rows per shard."),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Run the SYNTHETIC distribution-challenger fleet and write a receipt.
+
+    Proper scores only (pinball/CRPS/PIT-KS/coverage) on labeled synthetic
+    shards — correctness evidence, never market or live-P&L claims.
+    """
+    from quant_fund.research.fleet_eval import (
+        fleet_head_factories,
+        resolve_shard_generators,
+        run_distribution_fleet,
+        write_fleet_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        factories = fleet_head_factories(
+            cfg.quantiles.levels,
+            base_seed,
+            None if models is None else models.split(","),
+        )
+        resolved_shards = resolve_shard_generators(None if shards is None else shards.split(","))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    frame, receipt = run_distribution_fleet(
+        factories,
+        resolved_shards,
+        n_train=n_train,
+        n_eval=n_eval,
+        seed=base_seed,
+        taus=cfg.quantiles.levels,
+    )
+    path = write_fleet_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(frame)
+    typer.echo(f"receipt={path}")

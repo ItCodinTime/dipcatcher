@@ -503,6 +503,8 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
     parents = _build_parent_map(tree)
     out: list[_Finding] = []
     for node in ast.walk(tree):
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
         module: str | None = None
         if isinstance(node, ast.ImportFrom) and node.module:
             module = node.module
@@ -511,6 +513,8 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
                 if alias.name.startswith("quant_fund."):
                     module = alias.name
         if module is None or not module.startswith("quant_fund."):
+            continue
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
             continue
         sub = module.split(".")[1]
         if sub == package:
