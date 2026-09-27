@@ -131,6 +131,8 @@ fx1-gate: fx1-lint ## Full fx-1 CI gate locally: lint + types + tests + honesty 
 
 PROOFCORE_LEDGER ?= data/metadata/proofcore-trials.jsonl
 PROOFCORE_DB ?= data/metadata/proofcore.duckdb
+DEFAULT_PROOFCORE_DB := data/metadata/proofcore.duckdb
+COMMITTED_TRIAL_LEDGER ?= research/reality/trials.jsonl
 
 proofcore-test: ## PROOFCORE W5 tests: contracts, provenance DB, CI helpers, layering gate
 	uv run pytest tests/unit/test_proofcore_*.py tests/end_to_end/test_proofcore_smoke.py -q
@@ -163,6 +165,14 @@ leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory o
 	fi
 
 reality-gate: ## Reality-filter gate: score trials; absent DB or empty export skips
+	if [ ! -f "$(PROOFCORE_DB)" ] && [ "$(PROOFCORE_DB)" = "$(DEFAULT_PROOFCORE_DB)" ] && [ -s "$(COMMITTED_TRIAL_LEDGER)" ]; then \
+	  uv run quant reality preflight --ledger $(COMMITTED_TRIAL_LEDGER); code=$$?; \
+	  if [ $$code -eq 3 ]; then exit 0; fi; \
+	  if [ $$code -ne 0 ]; then exit $$code; fi; \
+	  uv run quant reality trial-report --ledger $(COMMITTED_TRIAL_LEDGER); \
+	  uv run quant reality ledger-gate --ledger $(COMMITTED_TRIAL_LEDGER); \
+	  exit $$?; \
+	fi; \
 	uv run quant reality preflight --db $(PROOFCORE_DB); code=$$?; \
 	if [ $$code -eq 3 ]; then exit 0; fi; \
 	if [ $$code -ne 0 ]; then exit $$code; fi; \
