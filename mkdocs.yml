@@ -149,6 +149,7 @@ nav:
       - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
+      - Stress and scenarios: STRESS.md
       - Northset: NORTHSET.md
       - Candle and order book: CANDLE_ORDER_BOOK.md
       - Real-data benchmark: REAL_DATA_BENCHMARK.md

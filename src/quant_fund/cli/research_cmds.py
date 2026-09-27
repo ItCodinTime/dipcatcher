@@ -1,4 +1,7 @@
-"""Research-lane commands: validate/forecast/backtest/research/verify."""
+"""Research command.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
@@ -6,151 +9,8 @@ from pathlib import Path
 
 import typer
 
-from ._app import (
-    _cfg,
-    app,
-    format_data_label,
-    format_fdr_families,
-)
-
-
-@app.command()
-def validate(
-    model_id: str,
-    config: Path = typer.Option(Path("configs/research.yaml")),
-    metrics: Path | None = typer.Option(
-        None, help="Optional JSON metrics blob (mean_ic, net_spread, turnover, ...)."
-    ),
-    claim_live: bool = typer.Option(
-        False, help="Set when asserting a live/production claim (fails closed on SYNTHETIC)."
-    ),
-    # Fail closed: assert the leakage suite passed explicitly (--leakage-ok)
-    # rather than defaulting the promotion gate to "passed".
-    leakage_ok: bool = typer.Option(False, help="Whether the leakage suite passed."),
-) -> None:
-    """Fail-closed research / promotion gates (see docs/VALIDATION.md)."""
-    import json
-
-    from quant_fund.validation.gates import validate_candidate
-
-    cfg = _cfg(config)
-    result = validate_candidate(
-        model_id,
-        cfg,
-        metrics_path=metrics,
-        claim_live=claim_live,
-        leakage_ok=leakage_ok,
-    )
-    typer.echo(json.dumps(result, indent=2, default=str))
-    if result.get("data_label") == "SYNTHETIC":
-        typer.echo("DATA_LABEL=SYNTHETIC")
-    raise typer.Exit(code=0 if result.get("ok") else 1)
-
-
-@app.command()
-def forecast(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    from datetime import datetime
-
-    from quant_fund.pipeline.forecast import forecast_asof
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    state = forecast_asof(cfg, asof)
-    if "SYNTHETIC" in state.notes:
-        typer.echo("SYNTHETIC")
-    for f in state.forecasts[:15]:
-        hz = next(iter(f.interval_lo), "5d")
-        lo = f.interval_lo.get(hz)
-        hi = f.interval_hi.get(hz)
-        extra = ""
-        if lo is not None and hi is not None:
-            extra = (
-                f" interval[{hz}]=[{lo:+.4%},{hi:+.4%}] "
-                f"interval_alpha={f.interval_alpha} {f.interval_method}"
-            )
-        typer.echo(
-            f"{f.symbol:8} alpha={f.alpha.get('5d', 0):+.4%} rank={f.rank_percentile.get('5d', 0):.2f} "
-            f"vol={f.volatility.get('5d', 0):.3f}{extra}"
-        )
-
-
-@app.command("kronos-forecast")
-def kronos_forecast(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    """Research-only Kronos candle-path forecasts (requires train.kronos.enabled).
-
-    Loads strictly local, pre-downloaded artifacts — never the network or live
-    execution paths. Quantile bands are the predicted candle envelope, not a
-    calibrated predictive interval.
-    """
-    from datetime import datetime
-
-    from quant_fund.pipeline.kronos import forecast_kronos_frame
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    try:
-        state = forecast_kronos_frame(cfg, asof=asof)
-    except ValueError as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    if "SYNTHETIC" in state.notes:
-        typer.echo("SYNTHETIC")
-    typer.echo("kronos.adapter.v1 — research-only candle-path forecast")
-    for f in state.forecasts[:15]:
-        hz = next(iter(f.expected_returns), "5d")
-        q = f.quantiles.get(hz, {})
-        typer.echo(
-            f"{f.symbol:8} expected={f.expected_returns.get(hz, 0):+.4%} "
-            f"q05={q.get(0.05, 0):+.4%} q50={q.get(0.5, 0):+.4%} q95={q.get(0.95, 0):+.4%} "
-            f"p_up={f.probability_positive.get(hz, 0):.2f} vol={f.volatility.get(hz, 0):.3f}"
-        )
-
-
-@app.command()
-def optimize(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    from datetime import datetime
-
-    from quant_fund.pipeline.forecast import optimize_asof
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    w = optimize_asof(cfg, asof)
-    typer.echo(w.head(20))
-
-
-@app.command()
-def backtest(
-    config: Path = typer.Option(Path("configs/backtest.yaml")),
-    engine: str = typer.Option(
-        "ref", "--engine", help="ref (event loop) or fast (bit-identical vectorized replay)"
-    ),
-) -> None:
-    from quant_fund.backtest.engine import run_backtest
-    from quant_fund.backtest.fast_replay import run_backtest_fast
-    from quant_fund.pipeline.dataset import ensure_silver
-    from quant_fund.pipeline.forecast import build_causal_weight_panel
-
-    if engine not in ("ref", "fast"):
-        raise typer.BadParameter("--engine must be 'ref' or 'fast'")
-    cfg = _cfg(config)
-    bars = ensure_silver(cfg)
-    # features for adv/vol
-    from quant_fund.features.engine import build_features
-
-    feat = build_features(bars, cfg)
-    dates = feat["event_time"].unique().sort().to_list()
-    # Causal: optimize_asof(asof=d) per date — no end-of-sample weight broadcast
-    weights = build_causal_weight_panel(cfg, dates)
-    run = run_backtest_fast if engine == "fast" else run_backtest
-    result = run(feat, weights, cfg)
-    if result.source_note == "SYNTHETIC":
-        typer.echo("SYNTHETIC")
-    typer.echo(result.metrics)
+from .app import app
+from .support import _cfg, format_data_label, format_fdr_families
 
 
 @app.command()
@@ -290,54 +150,6 @@ def research(config: Path = typer.Option(Path("configs/research.yaml"))) -> None
     typer.echo(f"markdown={nb.artifacts.get('markdown')}")
 
 
-@app.command("verify-research")
-def verify_research(
-    path: Path = typer.Argument(Path("data/metadata/research/latest.json")),
-) -> None:
-    """Verify a notebook, completed Phase-1 run directory, or evidence index.
-
-    Soft-verify includes ``northset_session_means_honesty_errors`` (dispatcher
-    over session mean helpers). Research diagnostic only; never live Sharpe.
-    """
-    import json
-
-    if path.is_dir():
-        try:
-            directory_manifest = json.loads((path / "manifest.json").read_text())
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            directory_manifest = None
-        if (
-            isinstance(directory_manifest, dict)
-            and directory_manifest.get("kind") == "forward_shadow_manifest"
-        ):
-            from quant_fund.paper.forward_shadow import verify
-
-            result = verify(path)
-        else:
-            from quant_fund.research.phase1_verify import verify_phase1_run
-
-            result = verify_phase1_run(path)
-    elif path.is_file() and path.name.endswith(".json"):
-        try:
-            payload = json.loads(path.read_text())
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            payload = None
-        if isinstance(payload, dict) and payload.get("kind") == "phase1_evidence_index":
-            from quant_fund.research.phase1_verify import verify_phase1_index
-
-            result = verify_phase1_index(path)
-        else:
-            from quant_fund.research.verify import verify_research_artifact
-
-            result = verify_research_artifact(path)
-    else:
-        from quant_fund.research.verify import verify_research_artifact
-
-        result = verify_research_artifact(path)
-    typer.echo(json.dumps(result, indent=2))
-    raise typer.Exit(code=0 if result["valid"] else 1)
-
-
 @app.command("execution-sensitivity")
 def execution_sensitivity_cmd(
     config: Path = typer.Option(Path("configs/backtest.yaml")),
@@ -446,19 +258,6 @@ def verify_identities(
     raise typer.Exit(code=0 if receipt["all_passed"] else 1)
 
 
-@app.command(hidden=True)
-def lab(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
-    """Legacy compatibility alias for `dipcatcher research`."""
-    from quant_fund.research.agent import run_research
-
-    cfg = _cfg(config)
-    nb = run_research(cfg)
-    if nb.synthetic:
-        typer.echo("SYNTHETIC")
-    typer.echo(nb.disclaimer)
-    typer.echo(nb.artifacts.get("json"))
-
-
 @app.command()
 def fleet(
     config: Path = typer.Option(Path("configs/research.yaml")),
@@ -510,3 +309,11 @@ def fleet(
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
+
+
+__all__ = [
+    "execution_sensitivity_cmd",
+    "fleet",
+    "research",
+    "verify_identities",
+]

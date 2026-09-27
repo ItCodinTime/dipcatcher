@@ -1,7 +1,10 @@
 """Reality Filter (PROOFCORE W4) — statistically honest multi-trial inference.
 
-Research diagnostics only. Public names resolve on first use so mounting the
-``quant reality`` CLI does not load numerical libraries during CLI startup.
+Unit-safe PSR/MinTRL, Deflated Sharpe with effective-trials clustering,
+CSCV/PBO, SPA / White reality check, and BH-FDR over the trial ledger.
+Research diagnostics only — proper scores remain the headline (AGENTS.md).
+
+Estimators load on first use so ``reality.cli`` does not import numpy.
 """
 
 from __future__ import annotations

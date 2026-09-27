@@ -13,7 +13,6 @@ from pathlib import Path
 import typer
 
 from quant_fund.cli._app import app
-from quant_fund.schemas.errors import DataContractError
 
 lineage_app = typer.Typer(help="Lineage DAG for derived datasets.")
 lake_app = typer.Typer(help="Content-addressed market-data lake. Research storage only.")
@@ -28,6 +27,7 @@ def lineage_show(
 ) -> None:
     """Print the lineage DAG for a derived dataset."""
     from quant_fund.data.lakehouse.lineage import format_dag
+    from quant_fund.schemas.errors import DataContractError
 
     try:
         text = format_dag(root, dataset)
