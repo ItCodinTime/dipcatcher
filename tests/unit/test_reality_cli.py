@@ -66,7 +66,9 @@ def test_ledger_gate_exit_codes(tmp_path: Path) -> None:
     assert "verdict=pass" in res.output
 
     weak = tmp_path / "weak.jsonl"
-    _write_ledger(weak, [_row(i, sr=float(s)) for i, s in enumerate(np.linspace(-0.02, 0.03, 12), start=1)])
+    _write_ledger(
+        weak, [_row(i, sr=float(s)) for i, s in enumerate(np.linspace(-0.02, 0.03, 12), start=1)]
+    )
     res = runner.invoke(reality_app, ["ledger-gate", "--ledger", str(weak)])
     assert res.exit_code == 1
     assert "verdict=deflated" in res.output
