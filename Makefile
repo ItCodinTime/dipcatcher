@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +28,9 @@ fmt: ## Auto-fix lint + format
 
 typecheck: ## mypy on the harness
 	uv run mypy src/quant_fund
+
+diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
+	JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
 
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
@@ -86,3 +89,48 @@ fx1-gate: fx1-lint ## Full fx-1 CI gate locally: lint + types + tests + honesty 
 	PYTHONPATH=src uv run pytest tests/fx1 -q
 	PYTHONPATH=src uv run pytest tests/fx1 -q -k honesty
 	uv run fx1 corpus build --receipts-dir receipts --out data/fx1/corpus_ci_smoke.jsonl
+
+# --- PROOFCORE gates (DESIGN.md §9.3; additive — no existing target changed) -
+# Merge order: W5 lands last; the W1-W4 CLIs below exist once those waves merge.
+
+PROOFCORE_LEDGER ?= data/metadata/proofcore-trials.jsonl
+PROOFCORE_DB ?= data/metadata/proofcore.duckdb
+
+proofcore-test: ## PROOFCORE W5 tests: contracts, provenance DB, CI helpers, layering gate
+	uv run pytest tests/unit/test_proofcore_*.py tests/end_to_end/test_proofcore_smoke.py -q
+
+proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/proofcore 90, leakage 85
+	# Subset run over the PROOFCORE test lanes; the global 80% floor still
+	# applies to the full `make coverage` lane and is NOT re-asserted here
+	# --cov-fail-under=0 defers to the per-package gates below, which read
+	# [tool.proofcore.coverage-floors] from pyproject.toml).
+	uv run pytest -m "not network" -q \
+		-k "pit or proof or leakage or reality or proofcore" \
+		--cov --cov-report= --cov-fail-under=0
+	uv run python -m quant_fund.proofcore.ci coverage-gate
+
+proof-integrity: ## Current proof signer/recorder integrity checks
+	uv run pytest tests/unit/proof/test_integrity.py -q
+
+proof-verify: ## Pending: full proof bundle replay verifier is not implemented yet
+	@echo "proof-verify unavailable: quant proof verify is not implemented" >&2
+	@exit 2
+
+leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
+	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"
+	@echo "flips to --fail-on error in the migration wave (DESIGN.md §13 phase 3)."
+	uv run quant leakage scan --paths src/quant_fund --format json > leakage-report.json || \
+		echo "::warning::leakage scan failed or is not yet merged (advisory this wave)"
+	@if [ -d tests/leakage_fixtures ]; then \
+		uv run pytest tests/unit -q -k "leakage"; \
+	else \
+		echo "tests/leakage_fixtures not present yet (W3 lands separately); skipped"; \
+	fi
+
+reality-gate: ## Reality-filter gate: export trial ledger from provenance DB + ledger-gate
+	uv run quant proofcore export --db $(PROOFCORE_DB) --out $(PROOFCORE_LEDGER)
+	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER)
+	uv run quant reality ledger-gate --ledger $(PROOFCORE_LEDGER)
+
+receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending
+	uv run python -m quant_fund.proofcore.ci receipts-reverify receipts
