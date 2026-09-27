@@ -154,6 +154,9 @@ nav:
       - Evaluation report: EVAL_REPORT_SOTA.md
       - Prospective journal: PROSPECTIVE_SOTA.md
       - SOTA canon roadmap: SOTA_CANON_ROADMAP_2026_09.md
+      - Statistical-core audit: AUDIT_P62_STATS.md
+      - Forward shadow record: FORWARD_SHADOW_RECORD.md
+      - Ranker probability experiment: RANKER_PROBABILITY_EXPERIMENT.md
       - Performance: PERF.md
       - Causal capacity: CAUSAL_CAPACITY.md
       - Forward shadow power: FORWARD_SHADOW_POWER.md
