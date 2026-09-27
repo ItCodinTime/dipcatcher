@@ -18,18 +18,6 @@ TAIL_VAR_BATTERY_REQUIRED_WHEN_KUPIEC = (
     "christoffersen_ind_p",
     "christoffersen_ind_lr",
 )
-REQUIRED_CHRISTOFFERSEN_CC_KEYS = frozenset(
-    {
-        "christoffersen_cc_p",
-        "christoffersen_cc_lr",
-    }
-)
-PREFERRED_CHRISTOFFERSEN_IND_KEYS = frozenset(
-    {
-        "christoffersen_ind_p",
-        "christoffersen_ind_lr",
-    }
-)
 
 
 def tail_var_battery_missing_keys(payload: object) -> list[str]:
@@ -157,8 +145,6 @@ __all__ = [
     "DM_CRPS_SCALED_MARKER_KEY",
     "ES_MARKER_KEYS",
     "KUPIEC_MARKER_KEYS",
-    "PREFERRED_CHRISTOFFERSEN_IND_KEYS",
-    "REQUIRED_CHRISTOFFERSEN_CC_KEYS",
     "TAIL_ES_BATTERY_REQUIRED_WHEN_ES_MARKERS",
     "TAIL_VAR_BATTERY_REQUIRED_WHEN_KUPIEC",
     "dist_crps_eprocess_keys_present",
