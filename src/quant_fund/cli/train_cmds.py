@@ -1,17 +1,17 @@
-"""``train`` sub-app commands (one per forecast family)."""
+"""Train command group.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
 
-from quant_fund.pipeline.train import train_family
-
-from ._app import (
-    _cfg,
-    train_app,
-)
+from .app import train_app
+from .support import _cfg
 
 
 @train_app.callback(invoke_without_command=True)
@@ -25,6 +25,16 @@ def train_callback(
     typer.echo(
         "Specify a family: ranking, reinforcement, calibration, distribution, volatility, alpha, regime, tail, covariance, liquidity"
     )
+
+
+def train_family(cfg: Any, family: str, model: str | None) -> Any:
+    """Resolve the trainer on first call so ``--help`` does not import it.
+
+    Tests patch this module attribute; the import stays inside the function.
+    """
+    from quant_fund.pipeline.train import train_family as _train_family
+
+    return _train_family(cfg, family, model)
 
 
 def _train(family: str, config: Path, model: str | None) -> None:
@@ -117,3 +127,18 @@ def train_reinforcement(
 @train_app.command("liquidity")
 def train_liquidity(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     _train("liquidity", config, None)
+
+
+__all__ = [
+    "train_alpha",
+    "train_calibration",
+    "train_callback",
+    "train_covariance",
+    "train_distribution",
+    "train_liquidity",
+    "train_ranking",
+    "train_regime",
+    "train_reinforcement",
+    "train_tail",
+    "train_volatility",
+]

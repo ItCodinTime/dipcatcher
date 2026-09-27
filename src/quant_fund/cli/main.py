@@ -1,139 +1,188 @@
 """quant CLI."""
 
+# Command modules register Typer callbacks at import time. Keep this order.
+# ruff: noqa: I001
+
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
+import typer
+
 from quant_fund.cli._app import (
+    hmm_app as hmm_app,
+    ls_app as ls_app,
+    qm_app as qm_app,
+)
+from quant_fund.cli.app import app, train_app
+from quant_fund.cli.support import (
     _cfg as _cfg,
-)
-from quant_fund.cli._app import (
     _collect_param_value as _collect_param_value,
-)
-from quant_fund.cli._app import (
-    app as app,
-)
-from quant_fund.cli._app import (
-    format_data_label as format_data_label,
-)
-from quant_fund.cli._app import (
-    format_fdr_families as format_fdr_families,
-)
-from quant_fund.cli._app import (
-    train_app as train_app,
-)
-from quant_fund.cli.book_cmds import (
-    book_panel_cmd as book_panel_cmd,
-)
-from quant_fund.cli.book_cmds import (
-    candle_book as candle_book,
-)
-from quant_fund.cli.book_cmds import (
-    kyle_ofi as kyle_ofi,
-)
-from quant_fund.cli.book_cmds import (
-    northset as northset,
-)
-from quant_fund.cli.book_cmds import (
-    session_book_cmd as session_book_cmd,
-)
-from quant_fund.cli.book_cmds import (
-    vendor_book_map_cmd as vendor_book_map_cmd,
+    format_data_label,
+    format_fdr_families,
 )
 from quant_fund.cli.data_cmds import (
-    build_features_cmd as build_features_cmd,
+    doctor,
+    ingest,
+    collect,
+    build_features_cmd,
+    build_labels_cmd,
 )
-from quant_fund.cli.data_cmds import (
-    build_labels_cmd as build_labels_cmd,
+from quant_fund.cli.forecast_cmds import (
+    validate,
+    forecast,
+    kronos_forecast,
+    optimize,
+    backtest,
 )
-from quant_fund.cli.data_cmds import (
-    collect as collect,
+from quant_fund.cli.micro_cmds import (
+    candle_book,
+    kyle_ofi,
 )
-from quant_fund.cli.data_cmds import (
-    doctor as doctor,
+from quant_fund.cli.research_cmds import (
+    research,
+    execution_sensitivity_cmd,
+    verify_identities,
+    fleet,
 )
-from quant_fund.cli.data_cmds import (
-    ingest as ingest,
+from quant_fund.cli.book_cmds import (
+    session_book_cmd,
+    vendor_book_map_cmd,
+    book_panel_cmd,
+    northset,
+)
+from quant_fund.cli.report_cmds import (
+    verify_research,
+    lab,
+    report,
+    tearsheet_cmd,
+)
+from quant_fund.cli.lake_cmds import (
+    lake_import,
+    lake_quality,
+    lineage_show,
+    lineage_verify,
 )
 from quant_fund.cli.ops_cmds import (
-    api as api,
-)
-from quant_fund.cli.ops_cmds import (
-    monitor as monitor,
-)
-from quant_fund.cli.ops_cmds import (
-    paper as paper,
-)
-from quant_fund.cli.ops_cmds import (
-    report as report,
-)
-from quant_fund.cli.ops_cmds import (
-    sim_live as sim_live,
-)
-from quant_fund.cli.ops_cmds import (
-    tearsheet_cmd as tearsheet_cmd,
-)
-from quant_fund.cli.research_cmds import (
-    backtest as backtest,
-)
-from quant_fund.cli.research_cmds import (
-    fleet as fleet,
-)
-from quant_fund.cli.research_cmds import (
-    forecast as forecast,
-)
-from quant_fund.cli.research_cmds import (
-    kronos_forecast as kronos_forecast,
-)
-from quant_fund.cli.research_cmds import (
-    lab as lab,
-)
-from quant_fund.cli.research_cmds import (
-    optimize as optimize,
-)
-from quant_fund.cli.research_cmds import (
-    research as research,
-)
-from quant_fund.cli.research_cmds import (
-    validate as validate,
-)
-from quant_fund.cli.research_cmds import (
-    verify_research as verify_research,
+    api,
+    paper,
+    monitor,
+    sim_live,
 )
 from quant_fund.cli.train_cmds import (
     _train as _train,
+    train_callback,
+    train_family,
+    train_ranking,
+    train_distribution,
+    train_calibration,
+    train_volatility,
+    train_alpha,
+    train_covariance,
+    train_regime,
+    train_tail,
+    train_reinforcement,
+    train_liquidity,
 )
-from quant_fund.cli.train_cmds import (
-    train_alpha as train_alpha,
-)
-from quant_fund.cli.train_cmds import (
-    train_calibration as train_calibration,
-)
-from quant_fund.cli.train_cmds import (
-    train_callback as train_callback,
-)
-from quant_fund.cli.train_cmds import (
-    train_covariance as train_covariance,
-)
-from quant_fund.cli.train_cmds import (
-    train_distribution as train_distribution,
-)
-from quant_fund.cli.train_cmds import (
-    train_liquidity as train_liquidity,
-)
-from quant_fund.cli.train_cmds import (
-    train_ranking as train_ranking,
-)
-from quant_fund.cli.train_cmds import (
-    train_regime as train_regime,
-)
-from quant_fund.cli.train_cmds import (
-    train_reinforcement as train_reinforcement,
-)
-from quant_fund.cli.train_cmds import (
-    train_tail as train_tail,
-)
-from quant_fund.cli.train_cmds import (
-    train_volatility as train_volatility,
-)
+
+
+def dump_resolved(*args: Any, **kwargs: Any) -> Any:
+    """Lazy re-export. Importing the CLI must not load config."""
+    from quant_fund.config import dump_resolved as _dump_resolved
+
+    return _dump_resolved(*args, **kwargs)
+
+
+def load_config(*args: Any, **kwargs: Any) -> Any:
+    """Lazy re-export. Importing the CLI must not load config."""
+    from quant_fund.config import load_config as _load_config
+
+    return _load_config(*args, **kwargs)
+
+
+def configure_logging(*args: Any, **kwargs: Any) -> Any:
+    """Lazy re-export. Importing the CLI must not load logging backends."""
+    from quant_fund.utils.logging import configure_logging as _configure_logging
+
+    return _configure_logging(*args, **kwargs)
+
+
+def get_logger(*args: Any, **kwargs: Any) -> Any:
+    """Lazy re-export. Tests patch ``quant_fund.cli.data_cmds.get_logger``."""
+    from quant_fund.utils.logging import get_logger as _get_logger
+
+    return _get_logger(*args, **kwargs)
+
+
+def run_doctor(*args: Any, **kwargs: Any) -> Any:
+    """Lazy re-export. Importing the CLI must not load the doctor pipeline."""
+    from quant_fund.pipeline.doctor import doctor as _doctor
+
+    return _doctor(*args, **kwargs)
+
+
+__all__ = [
+    "format_data_label",
+    "format_fdr_families",
+    "app",
+    "train_app",
+    "doctor",
+    "ingest",
+    "collect",
+    "build_features_cmd",
+    "build_labels_cmd",
+    "train_callback",
+    "train_ranking",
+    "train_distribution",
+    "train_calibration",
+    "train_volatility",
+    "train_alpha",
+    "train_covariance",
+    "train_regime",
+    "train_tail",
+    "train_reinforcement",
+    "train_liquidity",
+    "validate",
+    "forecast",
+    "kronos_forecast",
+    "optimize",
+    "backtest",
+    "candle_book",
+    "kyle_ofi",
+    "research",
+    "execution_sensitivity_cmd",
+    "verify_identities",
+    "fleet",
+    "session_book_cmd",
+    "vendor_book_map_cmd",
+    "book_panel_cmd",
+    "northset",
+    "verify_research",
+    "lab",
+    "report",
+    "tearsheet_cmd",
+    "lake_import",
+    "lake_quality",
+    "lineage_show",
+    "lineage_verify",
+    "api",
+    "paper",
+    "monitor",
+    "sim_live",
+    "Path",
+    "typer",
+    "dump_resolved",
+    "load_config",
+    "hmm_app",
+    "ls_app",
+    "run_doctor",
+    "train_family",
+    "qm_app",
+    "configure_logging",
+    "get_logger",
+]
+
 
 if __name__ == "__main__":
     app()

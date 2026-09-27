@@ -35,7 +35,7 @@ import hmac
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -344,10 +344,10 @@ def _contained(root: Path, candidate: Path) -> Path:
 
 
 class _JsonDocCache:
-    """mtime+size-keyed cache over immutable-ish JSON evidence files."""
+    """Content-keyed parse cache; always hash the current evidence bytes."""
 
     def __init__(self) -> None:
-        self._cache: dict[Path, tuple[int, int, str, dict[str, Any] | None, str | None]] = {}
+        self._cache: dict[Path, tuple[str, dict[str, Any] | None, str | None]] = {}
 
     def read(self, path: Path) -> tuple[str, dict[str, Any] | None, str | None]:
         """Return ``(sha256, payload, parse_error)`` for a JSON file.
@@ -355,13 +355,11 @@ class _JsonDocCache:
         ``payload`` is ``None`` and ``parse_error`` set when the bytes are not
         a JSON object; the sha256 is over raw bytes either way.
         """
-        stat = path.stat()
-        key = (stat.st_mtime_ns, stat.st_size)
-        cached = self._cache.get(path)
-        if cached is not None and cached[0] == key[0] and cached[1] == key[1]:
-            return cached[2], cached[3], cached[4]
         raw = path.read_bytes()
         digest = _sha256_bytes(raw)
+        cached = self._cache.get(path)
+        if cached is not None and cached[0] == digest:
+            return cached
         payload: dict[str, Any] | None
         error: str | None
         try:
@@ -373,7 +371,9 @@ class _JsonDocCache:
                 payload, error = parsed, None
             else:
                 payload, error = None, "json_not_object"
-        self._cache[path] = (stat.st_mtime_ns, stat.st_size, digest, payload, error)
+        if len(self._cache) >= 1024:
+            self._cache.clear()
+        self._cache[path] = (digest, payload, error)
         return digest, payload, error
 
 
@@ -396,8 +396,14 @@ def _int_or_none(value: object) -> int | None:
 
 def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
     cfg = settings or ResearchApiSettings.from_env()
+    cfg = replace(
+        cfg,
+        data_root=cfg.data_root.resolve(),
+        receipts_dir=cfg.receipts_dir.resolve(),
+        verifier_dir=cfg.verifier_dir.resolve(),
+        artifacts_dir=cfg.artifacts_dir.resolve(),
+    )
     docs = _JsonDocCache()
-    verify_cache: dict[str, VerificationResult] = {}
 
     app = FastAPI(
         title="dipcatcher research API",
@@ -445,7 +451,7 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
     # -- evidence readers ----------------------------------------------------
 
     def _runs_dir() -> Path:
-        return cfg.runs_dir
+        return _contained(cfg.data_root, cfg.runs_dir)
 
     def _run_path(run_id: str) -> Path:
         if not _RUN_ID_RE.fullmatch(run_id):
@@ -509,16 +515,18 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
         root = cfg.receipts_dir
         if not root.is_dir():
             return []
-        return sorted(p for p in root.glob("*.json") if p.is_file())
+        return sorted(_contained(root, p) for p in root.glob("*.json") if p.is_file())
 
     def _iter_result_dirs() -> list[tuple[str, str, Path]]:
-        metadata = cfg.metadata_dir
+        metadata = _contained(cfg.data_root, cfg.metadata_dir)
         found: list[tuple[str, str, Path]] = []
         if not metadata.is_dir():
             return found
         for kind_dir in sorted(p for p in metadata.iterdir() if p.is_dir()):
+            kind_dir = _contained(metadata, kind_dir)
             for run_dir in sorted(p for p in kind_dir.iterdir() if p.is_dir()):
-                if (run_dir / "manifest.json").is_file():
+                run_dir = _contained(metadata, run_dir)
+                if _contained(run_dir, run_dir / "manifest.json").is_file():
                     found.append((kind_dir.name, run_dir.name, run_dir))
         return found
 
@@ -527,15 +535,16 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
             raise HTTPException(400, "invalid result kind")
         if not _RESULT_COMPONENT_RE.fullmatch(name):
             raise HTTPException(400, "invalid result name")
-        metadata = cfg.metadata_dir
+        metadata = _contained(cfg.data_root, cfg.metadata_dir)
         path = _contained(metadata, metadata / kind / name)
-        if not path.is_dir() or not (path / "manifest.json").is_file():
+        if not path.is_dir() or not _contained(path, path / "manifest.json").is_file():
             raise HTTPException(404, f"result not found: {kind}/{name}")
         return path
 
     def _result_files(run_dir: Path) -> list[ResultFile]:
         files: list[ResultFile] = []
         for path in sorted(p for p in run_dir.iterdir() if p.is_file()):
+            path = _contained(run_dir, path)
             files.append(
                 ResultFile(
                     name=path.name,
@@ -615,21 +624,32 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
         import tempfile
 
         path = _run_path(run_id)
-        digest = _sha256_file(path)
-        cached = verify_cache.get(digest)
-        if cached is not None:
-            return cached
+        raw = path.read_bytes()
+        digest = _sha256_bytes(raw)
         from quant_fund.research.verify import verify_research_artifact
 
         with tempfile.TemporaryDirectory(prefix="research_api_verify_") as tmp:
             stage = Path(tmp)
             staged_runs = stage / "runs"
             staged_runs.mkdir()
-            shutil.copyfile(path, staged_runs / f"{run_id}.json")
-            markdown = path.with_suffix(".md")
+            (staged_runs / f"{run_id}.json").write_bytes(raw)
+            markdown = _contained(_runs_dir(), path.with_suffix(".md"))
             if markdown.is_file():
                 shutil.copyfile(markdown, staged_runs / f"{run_id}.md")
-            shutil.copyfile(path, stage / "latest.json")
+            (stage / "latest.json").write_bytes(raw)
+            # Reject pointers before the canonical verifier can read them.
+            # Verification is deliberately uncached: the markdown twin can
+            # change independently of the JSON receipt.
+            try:
+                payload = json.loads(raw)
+            except (ValueError, UnicodeDecodeError):
+                payload = None
+            artifacts = payload.get("artifacts") if isinstance(payload, dict) else None
+            if isinstance(artifacts, dict):
+                for key in ("immutable_json", "immutable_markdown"):
+                    pointer = artifacts.get(key)
+                    if isinstance(pointer, str):
+                        _contained(stage, stage / pointer)
             result = verify_research_artifact(stage / "latest.json")
         outcome = VerificationResult(
             subject=run_id,
@@ -642,8 +662,6 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
             scorecard_families=_int_or_none(result.get("scorecard_families")),
             context="staged_declared_layout",
         )
-        if len(verify_cache) < 1024:
-            verify_cache[digest] = outcome
         return outcome
 
     def _verify_receipt(receipt_id: str) -> VerificationResult:
@@ -679,6 +697,7 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
         run_dir = _result_path(kind, name)
         from quant_fund.research.phase1_verify import verify_phase1_run
 
+        _result_files(run_dir)  # reject escaping symlink files before verification
         result = verify_phase1_run(run_dir)
         manifest_sha: str | None = None
         manifest = run_dir / "manifest.json"
@@ -711,7 +730,11 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
         offset: int = Query(default=0, ge=0),
     ) -> RunListResponse:
         root = _runs_dir()
-        files = sorted(p for p in root.glob("*.json") if p.is_file()) if root.is_dir() else []
+        files = (
+            sorted(_contained(root, p) for p in root.glob("*.json") if p.is_file())
+            if root.is_dir()
+            else []
+        )
         summaries = [_run_summary(path) for path in files]
         summaries.sort(key=lambda s: (s.generated_at or "", s.run_id), reverse=True)
         window = summaries[offset : offset + limit]
@@ -719,7 +742,7 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
 
     @app.get("/runs/latest", response_model=RunDetail)
     def latest_run() -> RunDetail:
-        path = cfg.data_root / "metadata" / "research" / "latest.json"
+        path = _contained(cfg.data_root, cfg.data_root / "metadata" / "research" / "latest.json")
         if not path.is_file():
             raise HTTPException(404, "no latest research receipt at metadata/research/latest.json")
         digest, payload, error = docs.read(path)
@@ -854,7 +877,7 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
             for version_dir in sorted(p for p in root.iterdir() if p.is_dir()):
                 if not _VERIFIER_VERSION_RE.fullmatch(version_dir.name):
                     continue
-                acceptance = version_dir / "acceptance.md"
+                acceptance = _contained(root, version_dir / "acceptance.md")
                 if not acceptance.is_file():
                     continue
                 raw = acceptance.read_bytes()
@@ -885,7 +908,9 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
     def list_verifier_runs() -> VerifierRunListResponse:
         root = cfg.verifier_dir / "runs"
         items = [
-            _verifier_run_summary(path) for path in sorted(root.glob("*.md")) if path.is_file()
+            _verifier_run_summary(_contained(cfg.verifier_dir, path))
+            for path in sorted(root.glob("*.md"))
+            if path.is_file()
         ]
         return VerifierRunListResponse(items=items, total=len(items))
 
@@ -911,7 +936,7 @@ def create_app(settings: ResearchApiSettings | None = None) -> FastAPI:
             for path in sorted(root.rglob("*.json")):
                 if not path.is_file():
                     continue
-                items.append(_artifact_summary(root, path))
+                items.append(_artifact_summary(root, _contained(root, path)))
         return ArtifactListResponse(items=items, total=len(items))
 
     @app.get("/artifacts/{artifact_id:path}", response_model=ArtifactDetail)

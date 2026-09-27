@@ -42,6 +42,7 @@ from quant_fund.research.catalog import (
     REQUIRED_BENCHMARK_FAMILIES,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
 )
+from quant_fund.research.receipt_schema import unavailable_overfitting_block
 from quant_fund.research.verify import _receipt_digest
 from quant_fund.utils.hashing import hash_file
 
@@ -121,6 +122,7 @@ def _notebook_payload(research_root: Path, run_id: str) -> dict:
             for name in REQUIRED_BENCHMARK_FAMILIES
         },
         "families": {name: {"executed": True} for name in REQUIRED_BENCHMARK_FAMILIES},
+        "backtest_overfitting": unavailable_overfitting_block(),
         "artifacts": {
             "json": "latest.json",
             "markdown": "latest.md",
@@ -506,3 +508,75 @@ def test_arbitrary_receipt_ids_never_500(client: TestClient) -> None:
             assert resp.status_code != 500, (url, resp.status_code)
 
     check()
+
+
+def test_receipt_change_with_preserved_stat_is_not_cached(
+    client: TestClient, settings: ResearchApiSettings
+) -> None:
+    import os
+
+    path = settings.receipts_dir / "clean_bench.json"
+    original = path.read_bytes()
+    stat = path.stat()
+    first = client.get("/receipts/clean_bench").json()
+    changed = original.replace(b"0.1", b"0.9")
+    assert changed != original and len(changed) == len(original)
+    path.write_bytes(changed)
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    second = client.get("/receipts/clean_bench").json()
+    assert second["sha256"] != first["sha256"]
+    assert second["receipt"]["metrics"]["brier"] == 0.9
+
+
+def test_run_verification_rechecks_markdown_twin(
+    client: TestClient, settings: ResearchApiSettings
+) -> None:
+    route = f"/runs/{_RUN_ID}/verification"
+    assert client.get(route).json()["valid"] is True
+    markdown = settings.runs_dir / f"{_RUN_ID}.md"
+    markdown.write_text("# changed evidence\n")
+    response = client.get(route).json()
+    assert response["valid"] is False
+    assert "immutable_markdown_hash_mismatch" in response["errors"]
+    markdown.unlink()
+    assert client.get(route).json()["valid"] is False
+
+
+@pytest.mark.parametrize(
+    ("root_name", "relative", "route"),
+    [
+        ("receipts_dir", "escaped.json", "/receipts"),
+        ("artifacts_dir", "escaped.json", "/artifacts"),
+        ("data_root", "metadata/research/latest.json", "/runs/latest"),
+        ("data_root", f"metadata/research/runs/{'c' * 64}.json", "/runs"),
+        ("verifier_dir", "v3/acceptance.md", "/verifier/versions"),
+        ("verifier_dir", "runs/escape.md", "/verifier/runs"),
+        ("data_root", "metadata/real_benchmark/synthetic_run/manifest.json", "/results"),
+        (
+            "data_root",
+            "metadata/real_benchmark/synthetic_run/extra.json",
+            "/results/real_benchmark/synthetic_run",
+        ),
+        ("data_root", f"metadata/research/runs/{_RUN_ID}.md", f"/runs/{_RUN_ID}/verification"),
+    ],
+)
+def test_enumeration_and_verification_reject_escaping_symlinks(
+    client: TestClient,
+    settings: ResearchApiSettings,
+    tmp_path: Path,
+    root_name: str,
+    relative: str,
+    route: str,
+) -> None:
+    outside = tmp_path / "outside.json"
+    outside.write_text('{"private": "unrelated data"}')
+    target = getattr(settings, root_name) / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.unlink(missing_ok=True)
+    try:
+        target.symlink_to(outside)
+    except OSError:
+        pytest.skip("filesystem does not permit symbolic links")
+    response = client.get(route)
+    assert response.status_code == 400
+    assert "unrelated data" not in response.text

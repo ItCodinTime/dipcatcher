@@ -1,4 +1,7 @@
-"""Research-lane commands: validate/forecast/backtest/research/verify."""
+"""Research command.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
@@ -6,151 +9,8 @@ from pathlib import Path
 
 import typer
 
-from ._app import (
-    _cfg,
-    app,
-    format_data_label,
-    format_fdr_families,
-)
-
-
-@app.command()
-def validate(
-    model_id: str,
-    config: Path = typer.Option(Path("configs/research.yaml")),
-    metrics: Path | None = typer.Option(
-        None, help="Optional JSON metrics blob (mean_ic, net_spread, turnover, ...)."
-    ),
-    claim_live: bool = typer.Option(
-        False, help="Set when asserting a live/production claim (fails closed on SYNTHETIC)."
-    ),
-    # Fail closed: assert the leakage suite passed explicitly (--leakage-ok)
-    # rather than defaulting the promotion gate to "passed".
-    leakage_ok: bool = typer.Option(False, help="Whether the leakage suite passed."),
-) -> None:
-    """Fail-closed research / promotion gates (see docs/VALIDATION.md)."""
-    import json
-
-    from quant_fund.validation.gates import validate_candidate
-
-    cfg = _cfg(config)
-    result = validate_candidate(
-        model_id,
-        cfg,
-        metrics_path=metrics,
-        claim_live=claim_live,
-        leakage_ok=leakage_ok,
-    )
-    typer.echo(json.dumps(result, indent=2, default=str))
-    if result.get("data_label") == "SYNTHETIC":
-        typer.echo("DATA_LABEL=SYNTHETIC")
-    raise typer.Exit(code=0 if result.get("ok") else 1)
-
-
-@app.command()
-def forecast(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    from datetime import datetime
-
-    from quant_fund.pipeline.forecast import forecast_asof
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    state = forecast_asof(cfg, asof)
-    if "SYNTHETIC" in state.notes:
-        typer.echo("SYNTHETIC")
-    for f in state.forecasts[:15]:
-        hz = next(iter(f.interval_lo), "5d")
-        lo = f.interval_lo.get(hz)
-        hi = f.interval_hi.get(hz)
-        extra = ""
-        if lo is not None and hi is not None:
-            extra = (
-                f" interval[{hz}]=[{lo:+.4%},{hi:+.4%}] "
-                f"interval_alpha={f.interval_alpha} {f.interval_method}"
-            )
-        typer.echo(
-            f"{f.symbol:8} alpha={f.alpha.get('5d', 0):+.4%} rank={f.rank_percentile.get('5d', 0):.2f} "
-            f"vol={f.volatility.get('5d', 0):.3f}{extra}"
-        )
-
-
-@app.command("kronos-forecast")
-def kronos_forecast(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    """Research-only Kronos candle-path forecasts (requires train.kronos.enabled).
-
-    Loads strictly local, pre-downloaded artifacts — never the network or live
-    execution paths. Quantile bands are the predicted candle envelope, not a
-    calibrated predictive interval.
-    """
-    from datetime import datetime
-
-    from quant_fund.pipeline.kronos import forecast_kronos_frame
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    try:
-        state = forecast_kronos_frame(cfg, asof=asof)
-    except ValueError as exc:
-        raise typer.BadParameter(str(exc)) from exc
-    if "SYNTHETIC" in state.notes:
-        typer.echo("SYNTHETIC")
-    typer.echo("kronos.adapter.v1 — research-only candle-path forecast")
-    for f in state.forecasts[:15]:
-        hz = next(iter(f.expected_returns), "5d")
-        q = f.quantiles.get(hz, {})
-        typer.echo(
-            f"{f.symbol:8} expected={f.expected_returns.get(hz, 0):+.4%} "
-            f"q05={q.get(0.05, 0):+.4%} q50={q.get(0.5, 0):+.4%} q95={q.get(0.95, 0):+.4%} "
-            f"p_up={f.probability_positive.get(hz, 0):.2f} vol={f.volatility.get(hz, 0):.3f}"
-        )
-
-
-@app.command()
-def optimize(
-    config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
-) -> None:
-    from datetime import datetime
-
-    from quant_fund.pipeline.forecast import optimize_asof
-
-    cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
-    w = optimize_asof(cfg, asof)
-    typer.echo(w.head(20))
-
-
-@app.command()
-def backtest(
-    config: Path = typer.Option(Path("configs/backtest.yaml")),
-    engine: str = typer.Option(
-        "ref", "--engine", help="ref (event loop) or fast (bit-identical vectorized replay)"
-    ),
-) -> None:
-    from quant_fund.backtest.engine import run_backtest
-    from quant_fund.backtest.fast_replay import run_backtest_fast
-    from quant_fund.pipeline.dataset import ensure_silver
-    from quant_fund.pipeline.forecast import build_causal_weight_panel
-
-    if engine not in ("ref", "fast"):
-        raise typer.BadParameter("--engine must be 'ref' or 'fast'")
-    cfg = _cfg(config)
-    bars = ensure_silver(cfg)
-    # features for adv/vol
-    from quant_fund.features.engine import build_features
-
-    feat = build_features(bars, cfg)
-    dates = feat["event_time"].unique().sort().to_list()
-    # Causal: optimize_asof(asof=d) per date — no end-of-sample weight broadcast
-    weights = build_causal_weight_panel(cfg, dates)
-    run = run_backtest_fast if engine == "fast" else run_backtest
-    result = run(feat, weights, cfg)
-    if result.source_note == "SYNTHETIC":
-        typer.echo("SYNTHETIC")
-    typer.echo(result.metrics)
+from .app import app
+from .support import _cfg, format_data_label, format_fdr_families
 
 
 @app.command()
@@ -290,53 +150,112 @@ def research(config: Path = typer.Option(Path("configs/research.yaml"))) -> None
     typer.echo(f"markdown={nb.artifacts.get('markdown')}")
 
 
-@app.command("verify-research")
-def verify_research(
-    path: Path = typer.Argument(Path("data/metadata/research/latest.json")),
+@app.command("execution-sensitivity")
+def execution_sensitivity_cmd(
+    config: Path = typer.Option(Path("configs/backtest.yaml")),
+    max_dates: int | None = typer.Option(
+        None,
+        help=(
+            "Use only the first N decision dates present on both the feature "
+            "panel and the causal gold panel."
+        ),
+    ),
+    signal_latencies: str = typer.Option(
+        "0,1", help="Comma-separated signal-to-order delays in bars."
+    ),
+    exchange_latencies: str = typer.Option(
+        "0,1", help="Comma-separated order-to-exchange delays in bars."
+    ),
+    impact: str = typer.Option("1,2", help="Comma-separated square-root impact multipliers."),
+    seed: int = typer.Option(0, help="Deterministic simulator seed."),
+    initial_nav: float = typer.Option(1_000_000.0),
 ) -> None:
-    """Verify a notebook, completed Phase-1 run directory, or evidence index.
+    """Latency/impact grid for one strategy. Execution diagnostic, not a live P&L claim."""
+    import polars as pl
 
-    Soft-verify includes ``northset_session_means_honesty_errors`` (dispatcher
-    over session mean helpers). Research diagnostic only; never live Sharpe.
-    """
-    import json
+    from quant_fund.backtest.event_sim import execution_sensitivity, format_sensitivity_table
+    from quant_fund.features.engine import build_features
+    from quant_fund.pipeline.dataset import ensure_silver
+    from quant_fund.pipeline.dataset import panel as decision_panel
+    from quant_fund.pipeline.forecast import build_causal_weight_panel
 
-    if path.is_dir():
-        from quant_fund.research.phase1_verify import verify_phase1_run
+    def _ints(raw: str) -> tuple[int, ...]:
+        parts = tuple(int(piece.strip()) for piece in raw.split(",") if piece.strip())
+        if not parts:
+            raise typer.BadParameter("expected a comma-separated list of bar counts")
+        return parts
 
-        result = verify_phase1_run(path)
-    elif path.is_file() and path.name.endswith(".json"):
-        try:
-            payload = json.loads(path.read_text())
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            payload = None
-        if isinstance(payload, dict) and payload.get("kind") == "phase1_evidence_index":
-            from quant_fund.research.phase1_verify import verify_phase1_index
-
-            result = verify_phase1_index(path)
-        else:
-            from quant_fund.research.verify import verify_research_artifact
-
-            result = verify_research_artifact(path)
-    else:
-        from quant_fund.research.verify import verify_research_artifact
-
-        result = verify_research_artifact(path)
-    typer.echo(json.dumps(result, indent=2))
-    raise typer.Exit(code=0 if result["valid"] else 1)
-
-
-@app.command(hidden=True)
-def lab(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
-    """Legacy compatibility alias for `dipcatcher research`."""
-    from quant_fund.research.agent import run_research
+    def _floats(raw: str) -> tuple[float, ...]:
+        parts = tuple(float(piece.strip()) for piece in raw.split(",") if piece.strip())
+        if not parts:
+            raise typer.BadParameter("expected a comma-separated list of multipliers")
+        return parts
 
     cfg = _cfg(config)
-    nb = run_research(cfg)
-    if nb.synthetic:
+    bars = ensure_silver(cfg)
+    feat = build_features(bars, cfg)
+    dates = feat["event_time"].unique().sort().to_list()
+    # Gold drops warmup bars (history / label horizon). optimize_asof refuses
+    # a decision date with no panel row, so the grid uses the overlap only.
+    on_panel = set(decision_panel(cfg)["event_time"].unique().to_list())
+    dates = [day for day in dates if day in on_panel]
+    if len(dates) < 2:
+        raise typer.BadParameter(
+            "need at least 2 decision dates on both the feature panel and the causal gold panel"
+        )
+    if max_dates is not None:
+        if max_dates < 2:
+            raise typer.BadParameter("--max-dates must be at least 2")
+        dates = dates[:max_dates]
+    feat = feat.filter(pl.col("event_time").is_in(dates))
+    weights = build_causal_weight_panel(cfg, dates)
+    report = execution_sensitivity(
+        feat,
+        weights,
+        cfg,
+        signal_latencies=_ints(signal_latencies),
+        exchange_latencies=_ints(exchange_latencies),
+        impact_multipliers=_floats(impact),
+        initial_nav=initial_nav,
+        seed=seed,
+    )
+    rows = report.get("rows")
+    source = cfg.data.source
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        source = str(rows[0].get("source", source))
+    synthetic = source.upper() == "SYNTHETIC" or "synthetic" in source.lower()
+    typer.echo(format_data_label(synthetic=synthetic, data_source=source))
+    if synthetic:
         typer.echo("SYNTHETIC")
-    typer.echo(nb.disclaimer)
-    typer.echo(nb.artifacts.get("json"))
+    typer.echo(format_sensitivity_table(report))
+
+
+@app.command("verify-identities")
+def verify_identities(
+    out: Path = typer.Option(
+        Path("data/metadata/research/identity_sweep.json"), "--out", help="Receipt JSON path."
+    ),
+    trials: int = typer.Option(8, "--trials", help="Seeded SYNTHETIC draws per identity."),
+    seed: int = typer.Option(7, "--seed", help="Base seed for the synthetic generators."),
+) -> None:
+    """Prove catalog/northset microstructure identities on SYNTHETIC draws.
+
+    Prints the identity/residual table and writes an immutable receipt.
+    Exits non-zero when any identity's max-abs residual exceeds its
+    tolerance — fail-closed, CI gate candidate.
+    """
+    from quant_fund.research.identity_sweep import (
+        format_identity_table,
+        run_identity_sweep,
+        write_identity_receipt,
+    )
+
+    receipt = run_identity_sweep(n_trials=int(trials), seed=int(seed))
+    write_identity_receipt(out, receipt)
+    typer.echo("SYNTHETIC")
+    typer.echo(format_identity_table(receipt))
+    typer.echo(f"receipt={out}")
+    raise typer.Exit(code=0 if receipt["all_passed"] else 1)
 
 
 @app.command()
@@ -390,3 +309,11 @@ def fleet(
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
+
+
+__all__ = [
+    "execution_sensitivity_cmd",
+    "fleet",
+    "research",
+    "verify_identities",
+]

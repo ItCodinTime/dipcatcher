@@ -6,10 +6,11 @@
 #
 #   docker build -f docker/research-api.Dockerfile -t dipcatcher-research-api .
 #   docker run --rm -p 127.0.0.1:8010:8010 \
+#     -e RESEARCH_API_KEY \
 #     -v /path/to/data:/app/data:ro dipcatcher-research-api
 #
-# Loopback-only by default. To expose beyond the host, set RESEARCH_API_KEY
-# and override the CMD host — never without the key. The service has no
+# Export RESEARCH_API_KEY before launching; the container requires it.
+# The published host port is loopback-only in the example. The service has no
 # trading, order, broker, or execution endpoints.
 
 # --- Builder: resolve/sync the locked venv, then install the project ---
@@ -31,6 +32,7 @@ FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
+    RESEARCH_API_HOST=0.0.0.0 \
     RESEARCH_API_DATA_ROOT=/app/data \
     RESEARCH_API_RECEIPTS_DIR=/app/receipts \
     RESEARCH_API_VERIFIER_DIR=/app/verifier \
@@ -46,7 +48,7 @@ COPY --chown=dipcatcher:dipcatcher artifacts ./artifacts
 RUN mkdir -p /app/data && chown dipcatcher:dipcatcher /app/data
 USER dipcatcher
 EXPOSE 8010
-# Bind loopback by default. For 0.0.0.0, set RESEARCH_API_KEY and override CMD host.
+# Container networking requires a non-loopback bind and the guarded entry point.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import os, urllib.request; urllib.request.urlopen(f\"http://{os.environ.get('HOST', '127.0.0.1')}:{os.environ.get('PORT', '8010')}/health\", timeout=3)"
-CMD ["python", "-m", "uvicorn", "quant_fund.api.research_api:app", "--host", "127.0.0.1", "--port", "8010"]
+CMD ["python", "-m", "quant_fund.api.research_api"]

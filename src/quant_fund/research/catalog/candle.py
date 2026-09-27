@@ -1,15 +1,19 @@
-"""Candle/window honesty checkers (``candle_*_honesty_errors``)."""
+"""candle_order_book receipt honesty checks.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
 import math
 
-from ._helpers import (
-    _CANDLE_FEATURE_IC_METHOD_ALLOWED,
-    _candle_has_feature_ic_marker,
-)
-from .session import (
+from .primitives import _finite_pair, _ic_pack_honesty_errors
+from .receipt import (
+    _NORTHSET_SPREAD_ABS_TOL,
+    _NORTHSET_SPREAD_REL_TOL,
     mean_microprice_minus_mid_honesty_errors,
+    northset_half_spread_honesty_errors,
+    northset_spread_bps_honesty_errors,
 )
 
 
@@ -102,6 +106,27 @@ def candle_log_tick_spacing_finite_honesty_errors(blob: object) -> list[str]:
         if abs(x) == float("inf"):
             errs.append(f"{key}_non_finite")
     return errs
+
+
+def mean_candle_dir_x_imbalance_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``mean_candle_dir_x_imbalance`` ∈ [-1, 1] when finite.
+
+    FEATURE_COLS interaction of ternary direction and imbalance — mean must lie
+    in signed unit. NaN/absent skip; ±inf fail-closed. Research diagnostic only.
+    """
+    if not isinstance(blob, dict):
+        return []
+    if "mean_candle_dir_x_imbalance" not in blob:
+        return []
+    try:
+        x = float(blob.get("mean_candle_dir_x_imbalance"))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ["mean_candle_dir_x_imbalance_non_numeric"]
+    if x != x:
+        return []
+    if abs(x) == float("inf") or not (-1.0 <= x <= 1.0):
+        return ["mean_candle_dir_x_imbalance_out_of_signed_unit"]
+    return []
 
 
 def candle_structure_ic_implies_mean_honesty_errors(blob: object) -> list[str]:
@@ -380,6 +405,20 @@ def candle_join_coverage_and_chain_honesty_errors(blob: object) -> list[str]:
     return errs
 
 
+def northset_candle_body_ret_ic_pack_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify candle_body_ret_* IC pack on northset."""
+    if not isinstance(blob, dict):
+        return []
+    return _ic_pack_honesty_errors(
+        blob,
+        mean_ic_key="candle_body_ret_mean_ic",
+        rank_ic_key="candle_body_ret_mean_rank_ic",
+        t_key="candle_body_ret_t_ic",
+        p_key="candle_body_ret_p_ic",
+        n_key="candle_body_ret_n_dates",
+    )
+
+
 def candle_feature_cols_ic_implies_mean_honesty_errors(blob: object) -> list[str]:
     """Soft-verify: every scored FEATURE_COLS IC has a mean_* companion when family is candle.
 
@@ -605,6 +644,67 @@ def candle_spread_over_mid_ic_implies_mean_honesty_errors(blob: object) -> list[
     return []
 
 
+def candle_spread_alias_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify candle spread alias identities + nonneg when stamped.
+
+    - each of quoted / effective / half / spread_bps / half_bps ≥ 0 when finite
+    - ``mean_quoted_spread ≈ mean_effective_spread`` when both finite
+    - ``mean_half_spread ≈ 0.5 * mean_quoted_spread``
+    - ``mean_spread_bps ≈ 2 * mean_half_spread_bps``
+    - ``mean_spread_bps ≈ 1e4 * mean_spread_over_mid`` when both finite
+      (book_metrics: spread_bps = 1e4 * spread/mid; spread_over_mid = spread/mid)
+    Never invent missing keys. Research diagnostic only; never live Sharpe.
+    Off kyle invent / IC↔gap mesh.
+    """
+    if not isinstance(blob, dict):
+        return []
+    if blob.get("family") != "candle_order_book":
+        return []
+    errs: list[str] = []
+    for key in (
+        "mean_quoted_spread",
+        "mean_effective_spread",
+        "mean_half_spread",
+        "mean_half_spread_bps",
+        "mean_spread_bps",
+    ):
+        if key not in blob:
+            continue
+        try:
+            x = float(blob.get(key))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errs.append(f"{key}_non_numeric")
+            continue
+        if x != x:
+            continue
+        if abs(x) == float("inf") or x < 0.0:
+            errs.append(f"{key}_negative_or_non_finite")
+    qe = _finite_pair(blob, "mean_quoted_spread", "mean_effective_spread")
+    if qe is not None:
+        quoted, effective = qe
+        if not math.isclose(
+            quoted,
+            effective,
+            rel_tol=_NORTHSET_SPREAD_REL_TOL,
+            abs_tol=_NORTHSET_SPREAD_ABS_TOL,
+        ):
+            errs.append("mean_quoted_spread_not_equal_mean_effective_spread")
+    errs.extend(northset_half_spread_honesty_errors(blob))
+    errs.extend(northset_spread_bps_honesty_errors(blob))
+    # spread_bps = 1e4 * spread_over_mid by construction (same mid)
+    pair_bps_mid = _finite_pair(blob, "mean_spread_bps", "mean_spread_over_mid")
+    if pair_bps_mid is not None:
+        spread_bps, over_mid = pair_bps_mid
+        if not math.isclose(
+            spread_bps,
+            1e4 * over_mid,
+            rel_tol=_NORTHSET_SPREAD_REL_TOL,
+            abs_tol=max(_NORTHSET_SPREAD_ABS_TOL, 1e-6),
+        ):
+            errs.append("mean_spread_bps_not_1e4_times_mean_spread_over_mid")
+    return errs
+
+
 def candle_spread_bps_ic_matches_spread_over_mid_ic_honesty_errors(blob: object) -> list[str]:
     """Soft-verify candle ``ic_spread_bps`` ≈ ``ic_spread_over_mid`` when both finite.
 
@@ -778,6 +878,66 @@ def candle_signed_vol_x_imbalance_mean_honesty_errors(blob: object) -> list[str]
         else {"family": blob.get("family")}
     )
     return candle_wick_skew_and_body_ret_means_honesty_errors(slim)
+
+
+def northset_structure_finite_rate_distinct_from_candle_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify northset ``structure_finite_rate`` is distinct from candle companions.
+
+    Northset aggregates concentration_top / queue_priority / side_notional /
+    tob_size_share finite rates — never candle ``finite_rate_*`` keys
+    (microprice_minus_mid / size concentration). When any northset companion
+    rate is present with ``structure_finite_rate``:
+
+    - candle ``finite_rate_*`` keys must be absent (family mix = dishonest)
+    - if all four companions + aggregate are finite, aggregate ≈ nanmean(companions)
+
+    NaN/absent skip. Research diagnostic only; never live Sharpe. Off kyle / METRICS_*.
+    """
+    if not isinstance(blob, dict):
+        return []
+    northset_companions = (
+        "concentration_top_finite_rate",
+        "queue_priority_finite_rate",
+        "side_notional_finite_rate",
+        "tob_size_share_finite_rate",
+    )
+    candle_companions = (
+        "finite_rate_microprice_minus_mid",
+        "finite_rate_bid_size_concentration_top",
+        "finite_rate_ask_size_concentration_top",
+    )
+    has_northset = any(k in blob for k in northset_companions)
+    if not has_northset or "structure_finite_rate" not in blob:
+        return []
+    errs: list[str] = []
+    for key in candle_companions:
+        if key in blob:
+            errs.append("northset_structure_finite_rate_mixed_with_candle_finite_rate_companions")
+            break
+    vals: list[float] = []
+    for key in northset_companions:
+        if key not in blob:
+            continue
+        try:
+            x = float(blob.get(key))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x != x or abs(x) == float("inf"):
+            continue
+        vals.append(x)
+    try:
+        agg = float(blob.get("structure_finite_rate"))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return errs
+    if agg != agg or abs(agg) == float("inf"):
+        return errs
+    if len(vals) == 4:
+        import math
+
+        expected = sum(vals) / 4.0
+        if not math.isclose(agg, expected, rel_tol=1e-9, abs_tol=1e-12):
+            errs.append("northset_structure_finite_rate_not_nanmean_of_companion_rates")
+    return errs
 
 
 def candle_structure_finite_rate_covers_companions_honesty_errors(blob: object) -> list[str]:
@@ -1065,6 +1225,22 @@ def candle_feature_cols_ic_honesty_errors(blob: object) -> list[str]:
     return errs
 
 
+_CANDLE_FEATURE_IC_METHOD_ALLOWED = frozenset({"date_level_spearman_hac"})
+
+
+def _candle_has_feature_ic_marker(blob: dict) -> bool:
+    """True if any FEATURE_COLS-style ic_<col> spearman (not meta suffix) is present."""
+    for key in blob:
+        if not isinstance(key, str) or not key.startswith("ic_"):
+            continue
+        if key == "ic_method":
+            continue
+        if key.endswith(("_t", "_p", "_n_dates", "_pearson")):
+            continue
+        return True
+    return False
+
+
 def candle_order_book_dgp_data_source_honesty_errors(blob: object) -> list[str]:
     """Soft-verify candle_order_book ``dgp`` / ``book_dgp`` ↔ ``data_source``.
 
@@ -1300,3 +1476,44 @@ def candle_order_book_ic_method_honesty_errors(blob: object) -> list[str]:
         if nd != nd or nd < 1.0:
             errors.append(f"{nd_key}_lt_1")
     return errors
+
+
+__all__ = [
+    "candle_all_finite_rate_prefix_honesty_errors",
+    "candle_all_ic_n_dates_nonneg_honesty_errors",
+    "candle_all_ic_p_unit_honesty_errors",
+    "candle_all_ic_pearson_unit_honesty_errors",
+    "candle_all_ic_t_finite_honesty_errors",
+    "candle_depth_imbalance_ic_implies_mean_honesty_errors",
+    "candle_direction_mean_honesty_errors",
+    "candle_feature_cols_ic_completeness_honesty_errors",
+    "candle_feature_cols_ic_honesty_errors",
+    "candle_feature_cols_ic_implies_mean_honesty_errors",
+    "candle_feature_ofi_finite_honesty_errors",
+    "candle_frac_and_spread_x_honesty_errors",
+    "candle_join_coverage_and_chain_honesty_errors",
+    "candle_log_slopes_finite_honesty_errors",
+    "candle_log_tick_spacing_finite_honesty_errors",
+    "candle_microprice_minus_mid_finite_pack_honesty_errors",
+    "candle_microprice_weight_balance_ic_honesty_errors",
+    "candle_mwb_scored_implies_mean_unit_honesty_errors",
+    "candle_notional_imbalance_ic_implies_mean_honesty_errors",
+    "candle_ofi_and_queue_imbalance_means_honesty_errors",
+    "candle_ofi_qp_slope_ic_implies_mean_honesty_errors",
+    "candle_order_book_claim_honesty_errors",
+    "candle_order_book_dgp_data_source_honesty_errors",
+    "candle_order_book_family_provenance_honesty_errors",
+    "candle_order_book_ic_method_honesty_errors",
+    "candle_order_book_sizing_honesty_errors",
+    "candle_signed_vol_x_imbalance_mean_honesty_errors",
+    "candle_spread_alias_honesty_errors",
+    "candle_spread_bps_ic_matches_spread_over_mid_ic_honesty_errors",
+    "candle_spread_bps_nonneg_honesty_errors",
+    "candle_spread_over_mid_ic_implies_mean_honesty_errors",
+    "candle_structure_finite_rate_covers_companions_honesty_errors",
+    "candle_structure_ic_implies_mean_honesty_errors",
+    "candle_wick_skew_and_body_ret_means_honesty_errors",
+    "mean_candle_dir_x_imbalance_honesty_errors",
+    "northset_candle_body_ret_ic_pack_honesty_errors",
+    "northset_structure_finite_rate_distinct_from_candle_honesty_errors",
+]

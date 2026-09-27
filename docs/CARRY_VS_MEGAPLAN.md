@@ -51,7 +51,7 @@ are different engines, universes, and protocols. This doc reconciles them.
 
 1. **Universe width is the dominant term.** The megaplan universe is 89
    symbols; the expansion book dilutes squeeze risk across 283 dev-eligible
-   names — `docs/carry_expansion_2026_09.md` shows the same config is
+   names — [carry_expansion_2026_09.md](carry_expansion_2026_09.md) shows the same config is
    liquidated to ruin at `nw ≥ 0.15` on the wide book but safe at
    `nw ≤ 0.12` / `mx ≈ 50–60`. Concentrated books show both higher dev
    Sharpe and fatter liquidation tails.
@@ -70,7 +70,7 @@ are different engines, universes, and protocols. This doc reconciles them.
   DD −1.62% / 0 liquidations) are real, committed receipts — on the
   **dev and full windows**.
 - `PROOF.md ## Strategy performance` stays `NOT PROVEN` because the
-  megaplan gate (`docs/MEGAPLAN_SHARPE5.md` Phase E) requires a
+  megaplan gate ([MEGAPLAN_SHARPE5.md](MEGAPLAN_SHARPE5.md) Phase E) requires a
   **frozen-config holdout** clearing Sharpe > 5 / DD < 5 %. No lane has
   produced that receipt: carry holdout is 1.68, arb holdout is 4.78.
 - The honest gap to close: a frozen config whose 2025–26 holdout clears

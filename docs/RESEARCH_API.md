@@ -85,8 +85,11 @@ Environment variables:
   main API). When set, non-`/health` routes require `X-API-Key`.
 - **Never expose this service with trading credentials** — it has none and
   cannot reach any — and never bind it non-loopback without `RESEARCH_API_KEY`.
-- All file access is regex-validated and containment-checked against the
-  configured evidence roots (no path traversal, no symlinks outside roots).
+- Evidence paths are containment-checked, including enumerated files and
+  Markdown twins. Escaping symlinks are rejected. Keep mounted evidence roots
+  read-only; this service is not a sandbox for concurrently hostile writers.
+- JSON parse caches use current content hashes. Run verification rechecks both
+  the JSON receipt and Markdown twin on each request.
 - Security headers: `nosniff`, `no-store`, `no-referrer`.
 
 ## Docker
@@ -94,13 +97,15 @@ Environment variables:
 ```bash
 docker build -f docker/research-api.Dockerfile -t dipcatcher-research-api .
 docker run --rm -p 127.0.0.1:8010:8010 \
+  -e RESEARCH_API_KEY \
   -v /path/to/data:/app/data:ro dipcatcher-research-api
 ```
 
 Committed evidence (`receipts/`, `verifier/`, `artifacts/`) is baked into the
 image; `data/metadata` is dockerignored, so mount a data root read-only as
-above. The container runs as a non-root user and binds loopback inside the
-container.
+above. Export `RESEARCH_API_KEY` in the launching shell first. The container
+runs as a non-root user and binds all container interfaces so the loopback
+host port mapping works. Its entry point refuses to start without the key.
 
 ## TypeScript client
 

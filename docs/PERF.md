@@ -16,10 +16,11 @@ They measure infrastructure throughput, not live trading edge.
 ## Optimizations landed
 
 1. **Process-local gold panel cache** (`dataset._PANEL_CACHE` / `clear_panel_cache`).
-   Keys are bound to canonical content digests plus relevant source metadata
-   (path, size, and mtime); a matching metadata guard is required before reusing a
-   digest. This avoids stale reuse when a file is rewritten while preserving fast
-   hot reads. PIT validation still runs on cache miss.
+   Keys are canonical content digests. Stat metadata plus a bounded head/tail
+   sample (the whole file when it is at most 64KiB) decides when that digest is
+   recomputed, so a same-size rewrite that leaves `st_mtime_ns` unchanged still
+   misses when the sampled bytes change. Unchanged artifacts stay off the
+   full-file hash. PIT validation still runs on cache miss.
 2. **Ranker joblib cache** (`forecast._RANKER_CACHE`) — avoid re-loading on every asof.
    Stale feature-count mismatch falls back to transparent momentum scores (no crash).
 3. **Causal panel reuses one shared frame** — `build_causal_weight_panel` loads panel + ranker once and passes `frame=` into each `optimize_asof`.
