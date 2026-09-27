@@ -189,7 +189,7 @@ jobs:
           fi
           uv run pytest "${args[@]}"
       - name: Stage coverage data
-        if: matrix.python == '3.12'
+        if: matrix.python == '3.12' && !cancelled()
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -201,7 +201,7 @@ jobs:
           fi
           cp "${files[@]}" coverage.xml coverage-upload/
       - name: Upload coverage shard
-        if: matrix.python == '3.12'
+        if: matrix.python == '3.12' && !cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: dipcatcher-coverage-3.12-${{ matrix.shard }}
@@ -210,6 +210,7 @@ jobs:
 
   coverage:
     needs: [test]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -295,6 +296,7 @@ jobs:
 
   smoke:
     needs: [test, lint]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -433,7 +435,7 @@ jobs:
       - name: Build extension
         run: uv run maturin develop --release --manifest-path rust/quant_core/Cargo.toml
       - name: Parity tests
-        run: uv run pytest -q tests/property/test_native_kernels.py tests/unit/test_native_dispatch.py tests/native/test_native_bench.py
+        run: uv run pytest -q -m native tests/property tests/unit tests/native
 
   examples:
     runs-on: ubuntu-latest
