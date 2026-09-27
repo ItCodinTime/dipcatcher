@@ -8,14 +8,44 @@ metrics (AGENTS.md honesty contract; DESIGN.md §13).
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
 import typer
 
+from quant_fund.proofcore.contracts import TrialLedgerRow
+
 proofcore_app = typer.Typer(
     help="PROOFCORE provenance ledger (duckdb): log bundles, query, export.",
 )
+
+_TRIAL_CSV_FIELDS: tuple[str, ...] = (
+    "trial_id",
+    "bundle_hash",
+    "family",
+    "strategy",
+    "cluster_id",
+    "n_obs",
+    "periods_per_year",
+    "sharpe_periodic",
+    "skew",
+    "kurtosis_raw",
+    "returns_sha256",
+    "created_utc",
+)
+
+
+def write_trial_csv(rows: list[TrialLedgerRow], path: Path) -> None:
+    """Write trial rows as CSV. Same columns the JSONL export carries."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=_TRIAL_CSV_FIELDS, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            payload = row.model_dump(mode="json")
+            writer.writerow({name: payload[name] for name in _TRIAL_CSV_FIELDS})
+
 
 _DB_OPTION = typer.Option(
     Path("data/metadata/proofcore.duckdb"),
@@ -78,6 +108,9 @@ def export(
     bundles_out: Path | None = typer.Option(
         None, "--bundles-out", help="Optional JSONL export path for the proof_bundles table."
     ),
+    csv_out: Path | None = typer.Option(
+        None, "--csv", help="Optional CSV of the same trial rows (compact committed ledger)."
+    ),
 ) -> None:
     """Export the trial ledger (and optionally bundles) as JSONL (DESIGN.md §14.4)."""
     from quant_fund.proofcore.provenance import ProvenanceDB
@@ -90,6 +123,9 @@ def export(
         for row in trials:
             fh.write(json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n")
     typer.echo(f"exported {len(trials)} trial rows -> {out}")
+    if csv_out is not None:
+        write_trial_csv(trials, csv_out)
+        typer.echo(f"exported {len(trials)} trial rows -> {csv_out}")
     if bundles_out is not None:
         bundles_out.parent.mkdir(parents=True, exist_ok=True)
         with bundles_out.open("w", encoding="utf-8") as fh:

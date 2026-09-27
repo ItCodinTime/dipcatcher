@@ -138,7 +138,7 @@ def banded_targets(targets: pl.DataFrame, band: float) -> pl.DataFrame:
     if band == 0:
         return targets.sort(keys)
     previous: dict[str, float] = {}
-    rows: list[dict] = []
+    rows: list[dict[str, object]] = []
     for row in targets.sort(keys).iter_rows(named=True):
         sid = str(row["security_id"])
         requested = float(row["target_weight"])

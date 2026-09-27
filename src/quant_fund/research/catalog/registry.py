@@ -55,6 +55,17 @@ OPTIONAL_BENCHMARK_FAMILIES = frozenset(
         "complexity",
         "roughness",
         "serial_randomness",
+        # SOTA canon waves 8-10 batteries (see research/benches_w810.py):
+        # anytime-valid inference, multivariate proper scores, TS conformal,
+        # regime-conditional evaluation, the SYNTHETIC leaky-oracle red
+        # team, and distributional-ML baselines. All seeded SYNTHETIC
+        # streams; correctness diagnostics only, never promotion gates.
+        "anytime_valid",
+        "energy_score",
+        "ts_conformal",
+        "regime_eval",
+        "leakage_redteam",
+        "distributional_ml",
     }
 )
 BENCHMARK_FAMILY_ORDER = (

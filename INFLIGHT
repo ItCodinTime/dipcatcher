@@ -134,3 +134,92 @@ canon wave 9 WATCH extension (2026-09-27):
   - The practical frozen calibration bag and estimated density ratios make
     post-adaptation alarms diagnostic; no claimed anytime-valid guarantee.
   16 focused WATCH tests green. SYNTHETIC-only assertions; research-only.
+
+engineering lane part 2 (CI determinism + provenance attestation, 2026-09-27):
+  - tests/conftest.py: registered Hypothesis 'ci' profile (derandomize=True,
+    deadline=None), loaded via HYPOTHESIS_PROFILE env; default local behavior
+    unchanged. ci.yml test job sets HYPOTHESIS_PROFILE=ci -> seed-stable
+    generation: a falsifying example found once re-runs identically on every
+    machine (the v8 date-label bug class). Verified: tests/property (full),
+    all 6 unit @given files, tests/fx1/test_properties.py all green under the
+    derandomized profile; ruff clean.
+  - ci.yml package job: actions/attest-build-provenance@v2 (SLSA build
+    provenance) on dist/*.whl + sdist, gated to push events (fork PRs cannot
+    mint id-tokens); job permissions id-token:write + attestations:write.
+    Closes the unsigned-wheel gap on top of fx1 sbom.
+  Deferred with reason: CI perf-gate wiring for scripts/perf_baseline.py —
+  needs baseline artifacts recorded on CI runners (local timings are not
+  comparable across machines); recommend a scheduled record job + PR compare
+  against the main-branch artifact as the follow-up.
+  No commits.
+canon wave 9 (distributional ML + TS conformal + regime eval, 2026-09-27):
+  65 tests green.
+  - models/ngboost_lite.py: NGBoostLite — natural-gradient boosting for
+    Normal/Student-t (fixed df) at CRPS/MLE, closed-form Gaussian CRPS
+    gradients (Duan et al. 2020; Gneiting et al. 2005). MLE log-sigma sign
+    fix + inference log_sigma clip during build.
+  - models/quantile_forest.py: QuantileRegressionForest — Meinshausen 2006,
+    sklearn RF + co-leaf weighted conditional CDF, non-crossing.
+  - models/enbpi.py: EnbPI — Xu & Xie 2021/2023 block-bootstrap ensemble
+    conformal with adaptive width correction (phi_t; documented deviation:
+    papers define no phi recursion — transplanted from ACI) + frozen ablation.
+  - validation/regime_eval.py: regime_conditional_summary (stationary-block
+    bootstrap CIs), regime_stratified_evalue (per-regime + pooled e-processes),
+    regime_eval_gate (fail-closed share/CV/contradiction). ruff+mypy clean.
+canon wave 10 (exchangeability monitoring + leaky-oracle red team, 2026-09-27):
+  27 tests green.
+  - models/watch.py: WatchMartingale — weighted-conformal test martingales
+    (Prinster, Han & Saria 2025, arXiv:2505.04608; recon report's author
+    list was wrong — corrected in citation), power + gamma-mix betting,
+    time-uniform FPR <= alpha by Ville.
+  - validation/leakage_redteam.py: SYNTHETIC leaky-oracle battery encoding
+    Gençay (2026, arXiv:2608.27734) — half-normal future-information leak
+    (literal eps_{t+1} form has zero mean; blind-spot contrast impossible),
+    leaky DSR promotion ~1.0 vs control ~0.0 regression-locked; plus
+    structural_lookahead_audit + trial_count_deflation. All artifacts
+    stamped SYNTHETIC / research_only.
+engineering lane part 1 (chaos tests + perf gate + ingest hardening, 2026-09-27):
+  - tests/unit/data/test_ingest_fault_injection.py: 17 hypothesis-driven
+    fault classes (strict SourceError assertions; +1 magnitude-cap test).
+    normalize.py: _MAX_OHLCV_MAGNITUDE=1e12 cap + explicit SourceError on
+    empty payloads (both normalizers). tests/unit/data green (187 tests).
+  - scripts/perf_baseline.py + tests/unit/core/test_perf_baseline.py:
+    pybroker-style 1.25x benchmark regression harness over six hot paths;
+    record/compare CLI with git_revision provenance; 14 tests.
+fx-1 capability lane wave 1 (capability evals, 2026-09-27):
+  22 tests green.
+  - src/fx1/eval/ts_reasoning.py: 4 seeded SYNTHETIC families (process id,
+    pinball arithmetic, coverage, honesty-bait refusals); oracle >= 0.95.
+  - src/fx1/eval/calibration_eval.py: closed-form probability bank; ECE +
+    Spiegelhalter Z via quant_fund.metrics.calibration_tests. Flagged math
+    deviation: miscalibrated oracle caps ECE ~0.05 -> default
+    ece_threshold=0.05 cannot fail it; lower to ~0.02 for a harder gate.
+fx-1 capability lane wave 2 (tool-use + retrieval evals, 2026-09-27):
+  26 tests green.
+  - src/fx1/eval/tooluse_eval.py: 12 SYNTHETIC tasks (3 bait), live
+    HARNESS_REGISTRY reuse, strict JSON tool-call protocol, LCS plan-match,
+    hallucination counting with per-message honesty validation.
+  - src/fx1/eval/retrieval_eval.py: ACME_SYNTHETIC corpus, strict retrieve
+    protocol, [doc_id] citation grading, multi-hop provenance gap asserted.
+  Evals not wired into suite/cli — owner call. No commits.
+PURGE INCIDENT 2026-09-27: parallel lane chore/purge-derived-history hard-reset
+main to a rewritten origin/main; all wave 9+/eng/fx-1 files were untracked and
+briefly vanished, then restored byte-identical (stash-pop). Wave 8 (committed)
+was carried into the rewritten history. INFLIGHT/reference entries re-appended.
+Commit promptly — untracked files remain at risk.
+integration lane (waves 8-10 wired into research battery, 2026-09-27):
+  - src/quant_fund/research/benches_w810.py: six seeded SYNTHETIC bench
+    batteries — anytime_valid (e-BH/stopped e-BH/e-LOND + mixture-SR detector
+    with MC FDR/FA control), energy_score (propriety gap), ts_conformal
+    (EnbPI coverage + WATCH alarm), regime_eval (gate directions),
+    leakage_redteam (audit + blind-spot contrast), distributional_ml
+    (NGBoost CRPS improvement + QRF median tracking).
+  - research/agent.py families dict += the six; catalog/constants.py
+    OPTIONAL_BENCHMARK_FAMILIES += the six (REQUIRED unchanged;
+    BENCHMARK_FAMILY_ORDER untouched per the docs-consistency contract).
+  - tests/unit/research/test_benches_w810.py: 9 tests (registration, clean
+    finite forbidden-absent blobs, science assertions, determinism).
+  Bench fix during wiring: one-shot e-BH needs planted signals floored at
+  1e6 (harness anytime_fdr test convention) — weak gaussian signals reject 0.
+  verify-research end-to-end: scorecard_families=32, errors=[]; research
+  verify suite (188 tests) green; ruff/mypy clean. No commits.

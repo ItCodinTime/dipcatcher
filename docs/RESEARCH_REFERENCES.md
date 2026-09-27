@@ -551,3 +551,18 @@ Pairs selection - quant_fund.models.pairs:
 - Meinshausen (2006), *JMLR* 7 — quantile regression forests (leaf-weight conditional CDF). `models/qrf.py`.
 - Duan et al. (2020), ICML — NGBoost: natural gradient boosting for probabilistic prediction (arXiv:1910.03225); Amari (1998) — natural gradient. `models/ngboost_lite.py`.
 - Vovk, Gammerman & Shafer (2005), *Algorithmic Learning in a Random World* — conformal test martingales; Vovk et al. (2021), COPA — Simple Jumper / retrain-on-alarm (arXiv:2012.14246); Fedorova et al. (2012), ICML — plug-in martingales; Ville (1939) — 1/α anytime alarm. `metrics/conformal_martingale.py`.
+### SOTA canon wave 10 — sequential exchangeability monitoring, leaky-oracle red team (2026-09-27)
+- Prinster, Han & Saria (2025), arXiv:2505.04608 — weighted-conformal test martingales (WCTM) for adaptive monitoring. `models/watch.py`.
+- Vovk, Gammerman & Shafer (2005), Springer — conformal p-values; Tibshirani et al. (2019), arXiv:1904.06001 — weighted conformal; Vovk & Wang (2022), arXiv:2202.13095 — conformal testing; Volkhonskiy et al. (2017), arXiv:1706.02244 — power martingales; Shafer (2021), JRSS-A — testing by betting; Grünwald, de Heide & Koolen (2019), arXiv:1906.07801 — safe testing; Ville (1939).
+- Gençay (2026), arXiv:2608.27734 — leakage-safe, search-aware evaluation: leaky oracles survive DSR/PBO; structural look-ahead exclusion + search-trial-count deflation as fixes. `validation/leakage_redteam.py`.
+- Bailey & López de Prado (2012), J. Investment Management — PSR; Bailey & López de Prado (2014), J. Portfolio Management 40(5) — DSR; López de Prado & Bailey (2014), J. Portfolio Management 40(4), arXiv:1405.3421 — PBO/CSCV; Bonferroni (1935; 1936) — log-count correction.
+
+### SOTA canon wave 9 — distributional ML baselines, TS conformal, regime-conditional eval (2026-09-27)
+- Duan, Avati, Ding, Thai, Basu, Ng & Schuler (2020), ICML, PMLR 119 — NGBoost natural-gradient boosting. `models/ngboost_lite.py`.
+- Gneiting, Raftery, Westveld & Goldman (2005), *MWR* 133 — closed-form Gaussian CRPS; Jordan, Krüger & Lerch (2019), *JSS* 90 — Student-t CRPS; Lange, Little & Taylor (1989), *JASA* 84 — t Fisher information; Amari (1998) — natural gradient.
+- Meinshausen (2006), *JMLR* 7:983–999 — quantile regression forests. `models/quantile_forest.py`.
+- Xu & Xie (2021), ICML; (2023), *IEEE TPAMI* 45 — EnbPI ensemble batch prediction intervals (arXiv:2010.09107). `models/enbpi.py`.
+- Gibbs & Candès (2021), NeurIPS 34 — ACI miscoverage recursion (transplanted onto the width scale, documented deviation); Angelopoulos et al. (2023), arXiv:2310.16828 — conformal PID.
+- Politis & Romano (1994), *JASA* 89; Politis & White (2004), *Economet. Reviews* 23 — stationary/adaptive block bootstrap.
+- Howard, Ramdas, McAuliffe & Sekhon (2021), *Ann. Statist.* 49 — time-uniform inference; Ramdas, Ruf, Larsson & Koolen (2022); Waudby-Smith & Ramdas (2024) — e-processes.
+- Nystrup, Madsen & Lindström (2018), *J. Forecasting* 37 — regime-dependent density forecasting (regime-stratified OOS practice). `validation/regime_eval.py`.
