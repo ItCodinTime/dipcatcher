@@ -352,7 +352,16 @@ def test_no_forbidden_metric_keys(tmp_path: Any) -> None:
 
 def test_fleet_registry_covers_default_heads() -> None:
     factories = fleet_head_factories(TAUS, 0)
-    assert set(factories) == {"empirical", "gaussian", "skew_t", "gmm", "isotonic", "stack"}
+    assert set(factories) == {
+        "empirical",
+        "gaussian",
+        "skew_t",
+        "gmm",
+        "isotonic",
+        "stack",
+        "nbeats",
+        "nhits",
+    }
     for factory in factories.values():
         assert factory().metadata().family == "distribution"
     with pytest.raises(ValueError, match="unknown fleet head"):

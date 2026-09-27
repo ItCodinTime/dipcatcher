@@ -214,7 +214,9 @@ SHARD_GENERATORS: dict[str, ShardGenerator] = {
 
 # Head-name registry for the `fleet` CLI --models flag. Constructors take the
 # scoring tau grid and a seed; only unconditional heads from
-# models/distribution.py are registered (no cross-PR head dependencies).
+# models/distribution.py plus the torch-optional neural heads (imported lazily
+# inside the factory so this module never requires the ``nn`` extra) are
+# registered (no cross-PR head dependencies).
 FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "empirical": lambda taus, seed: EmpiricalDistribution(list(taus)),
     "gaussian": lambda taus, seed: GaussianDistribution(list(taus)),
@@ -222,7 +224,21 @@ FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "gmm": lambda taus, seed: GMMDistribution(list(taus), seed=int(seed)),
     "isotonic": lambda taus, seed: IsotonicPitDistribution(list(taus)),
     "stack": lambda taus, seed: StackedDistribution(list(taus), seed=int(seed)),
+    "nbeats": lambda taus, seed: _nbeats(taus, seed),
+    "nhits": lambda taus, seed: _nhits(taus, seed),
 }
+
+
+def _nbeats(taus: Sequence[float], seed: int) -> Any:
+    from quant_fund.models.nbeats import NBeatsDistribution
+
+    return NBeatsDistribution(list(taus), seed=int(seed))
+
+
+def _nhits(taus: Sequence[float], seed: int) -> Any:
+    from quant_fund.models.nbeats import NHiTsDistribution
+
+    return NHiTsDistribution(list(taus), seed=int(seed))
 
 
 def resolve_shard_generators(names: Iterable[str] | None = None) -> dict[str, ShardGenerator]:
