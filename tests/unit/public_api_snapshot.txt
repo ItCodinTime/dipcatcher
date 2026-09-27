@@ -1,0 +1,200 @@
+# dipcatcher public API snapshot
+# Intentional changes update this file in the same commit.
+
+[quant_fund.__all__]
+__firm__
+__version__
+AppConfig
+BacktestMetrics
+BacktestRun
+BookRiskOverlay
+HypothesisResult
+IngestPaths
+JsonValue
+ResearchReceipt
+ResearchRun
+ResearchVerification
+StaleValuationError
+ingest
+load_config
+read_research_receipt
+run_backtest
+run_research
+verify_research
+
+[quant_fund.public.__all__]
+AppConfig
+BacktestMetrics
+BacktestRun
+BookRiskOverlay
+HypothesisResult
+IngestPaths
+JsonValue
+ResearchReceipt
+ResearchRun
+ResearchVerification
+StaleValuationError
+ingest
+load_config
+read_research_receipt
+run_backtest
+run_research
+verify_research
+
+[AppConfig]
+class AppConfig
+  runtime
+  universe
+  calendar
+  horizons
+  quantiles
+  costs
+  perp
+  execution
+  constraints
+  optimizer
+  validation
+  features
+  missing
+  data
+  train
+  risk_gate
+  promotion
+  fusion
+  monitoring
+  kill_switch
+  paper
+  northset
+  robinhood_plus
+  inherit
+
+[BacktestMetrics]
+class BacktestMetrics
+  total_return: float
+  sharpe: float
+  n: int
+  risk_gate_rejects: int
+  cash_rejects: int
+  kill_switch_halts: int
+  implementation_shortfall: dict[str, object]
+  research_only: bool
+  live_pnl_claim: bool
+  data_source: str
+  garch_risk_overlay_dates: int
+  realized_garch_risk_overlay_dates: int
+  max_drawdown: NotRequired[float]
+  mean_turnover: NotRequired[float]
+  commission: NotRequired[float]
+  spread: NotRequired[float]
+  impact: NotRequired[float]
+  flag_high_sharpe: NotRequired[bool]
+  analytics: NotRequired[dict[str, object]]
+  analytics_export: NotRequired[dict[str, object]]
+  label: NotRequired[str]
+  book_risk_overlay: NotRequired[dict[str, object]]
+
+[BacktestRun]
+class BacktestRun
+  equity: pl.DataFrame
+  fills: pl.DataFrame
+  metrics: BacktestMetrics
+  frictionless: bool
+  source_note: str
+
+[BookRiskOverlay]
+class BookRiskOverlay
+BookRiskOverlay.__init__(*, vol_target: float = 0.025, dd_limit: float = 0.05, es_limit: float = 0.006, tail_p: float = 0.01, lookback: int = 63, periods_per_year: float = 252.0, kelly_fraction: float = 0.25, kelly_lookback: int = 63, crc_alpha: float = 0.05, crc_lookback: int = 63) -> None
+
+[HypothesisResult]
+class HypothesisResult
+  id: str
+  statement: str
+  test: str
+  statistic: float
+  p_value: float
+  reject_raw: bool
+  reject_fdr: bool
+  decision: str
+  family: str
+  meets_floor: bool | None
+
+[IngestPaths]
+class IngestPaths
+  bars: Path
+  actions: Path
+  master: Path
+  silver: Path
+  universe: Path
+  manifest: Path
+
+[JsonValue]
+type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
+
+[ResearchReceipt]
+class ResearchReceipt
+  schema_version: int
+  firm: str
+  product: str
+  version: str
+  generated_at: str
+  data_source: str
+  synthetic: bool
+  disclaimer: str
+  ranking_target: str
+  claim: str
+  families: dict[str, JsonValue]
+  rankers: list[dict[str, JsonValue]]
+  hypotheses: list[dict[str, JsonValue]]
+  scorecard: dict[str, dict[str, JsonValue]]
+  provenance: dict[str, JsonValue]
+  artifacts: dict[str, str]
+
+[ResearchRun]
+class ResearchRun
+  schema_version: int
+  firm: str
+  product: str
+  version: str
+  generated_at: str
+  data_source: str
+  synthetic: bool
+  disclaimer: str
+  ranking_target: str
+  claim: str
+  families: dict[str, JsonValue]
+  rankers: tuple[dict[str, JsonValue], ...]
+  hypotheses: tuple[HypothesisResult, ...]
+  scorecard: dict[str, dict[str, JsonValue]]
+  provenance: dict[str, JsonValue]
+  artifacts: dict[str, str]
+  to_receipt() -> ResearchReceipt
+
+[ResearchVerification]
+class ResearchVerification
+  valid: bool
+  path: str
+  errors: list[str]
+  run_id: NotRequired[object]
+  scorecard_families: NotRequired[int]
+  claim: NotRequired[str]
+
+[StaleValuationError]
+class StaleValuationError(RuntimeError)
+
+[ingest]
+ingest(config: AppConfig) -> IngestPaths
+
+[load_config]
+load_config(path: str | Path) -> AppConfig
+
+[read_research_receipt]
+read_research_receipt(path: str | Path) -> ResearchReceipt
+
+[run_backtest]
+run_backtest(bars: pl.DataFrame, weights: pl.DataFrame, config: AppConfig, *, initial_nav: float = 1000000.0, risk_overlay: BookRiskOverlay | None = None) -> BacktestRun
+
+[run_research]
+run_research(config: AppConfig) -> ResearchRun
+
+[verify_research]
+verify_research(path: str | Path) -> ResearchVerification

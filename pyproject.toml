@@ -81,6 +81,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fx1", "src/quant_fund"]
 
+# py.typed is the PEP 561 marker (contents: "partial"). Force it into the
+# wheel so a hatch default change cannot drop the public typing signal.
+[tool.hatch.build.targets.wheel.force-include]
+"src/quant_fund/py.typed" = "quant_fund/py.typed"
+
 # Default sdist = every VCS-tracked file (data/, notebooks, host symlinks —
 # 37k files). The distributable source is the buildable package + tests.
 [tool.hatch.build.targets.sdist]
@@ -117,18 +122,60 @@ ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 [tool.mypy]
 python_version = "3.12"
 strict = false
+# Strictness ratchet. Do not loosen a module once it is listed, and do not
+# silence a module with ignore_errors or a blanket disable_error_code.
+#
+# Tier strict — the library surface. These modules pass mypy --strict.
+# The override below spells out the --strict flags (a `strict = true`
+# override is applied to the whole run by this mypy, so it is not used).
+# CI and `make typecheck` also run
+# `mypy --strict --follow-imports=silent` on the two files:
+#   quant_fund            package root, lazy re-exports
+#   quant_fund.public     load_config, ingest, run_backtest, run_research,
+#                         read_research_receipt, verify_research
+# Promote another module by copying that flag block onto its name only
+# after `mypy --strict --follow-imports=silent` is clean for that file,
+# with no new ignore comments. Do not add quant_fund.* — internal engines
+# stay on the gradual tier.
+#
+# Tier checked — every other quant_fund module, via the global flags:
+# check_untyped_defs and warn_return_any. disallow_untyped_defs stays off
+# until a module is promoted. py.typed is marked partial for this reason.
+#
 # Ratcheted 2026-09-16: checks untyped bodies (verified 0 errors at 133 files).
 # 2026-09-17: warn_return_any + warn_unused_ignores enforced per-module.
 # 2026-09-25: warn_return_any is GLOBAL and clean — the 66-module debt list
 # was fixed in one sweep (np.asarray/float/cast wraps, behavior-preserving).
 # warn_unused_ignores remains enforced only on the originally-ratcheted
-# modules below. Do not loosen ratcheted modules.
+# modules below.
 check_untyped_defs = true
 warn_return_any = true
 disallow_untyped_defs = false
 packages = ["fx1", "quant_fund"]
 ignore_missing_imports = true
 warn_unused_ignores = false
+
+# Public library surface. These are the per-module flags that make up
+# `mypy --strict` (mypy applies a literal `strict = true` override to the
+# whole run, so the flags are spelled out here). CI also runs
+# `mypy --strict --follow-imports=silent` on these two files.
+[[tool.mypy.overrides]]
+module = ["quant_fund", "quant_fund.public"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+# warn_redundant_casts is part of --strict but this mypy rejects it in a
+# per-module section. The CI `mypy --strict --follow-imports=silent` run
+# covers it for these two files.
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
 
 # Public-source adapters intentionally expose explicit per-source fetch kwargs
 # (series_id, cik, path, ...) instead of an untyped **kwargs signature, so the

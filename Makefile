@@ -25,8 +25,9 @@ fmt: ## Auto-fix lint + format
 	uv run ruff check --fix src tests
 	uv run ruff format src tests
 
-typecheck: ## mypy on the harness
+typecheck: ## mypy on the harness (public modules are strict; see pyproject)
 	uv run mypy src/quant_fund
+	uv run mypy --strict --follow-imports=silent src/quant_fund/__init__.py src/quant_fund/public.py
 
 diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
 	JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
