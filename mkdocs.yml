@@ -143,6 +143,7 @@ nav:
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
       - Labels: DATA_SOURCE_LABELS.md
+      - Data lake: DATA_LAKE.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
@@ -172,8 +173,10 @@ nav:
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Backtest-to-live parity: BACKTEST_LIVE_PARITY.md
   - fx-1:
       - Overview: FX1.md
+      - Forecast harness: fx1_harness.md
       - Architecture: FX1_ARCHITECTURE.md
       - Training: FX1_TRAINING.md
       - Data: FX1_DATA.md
