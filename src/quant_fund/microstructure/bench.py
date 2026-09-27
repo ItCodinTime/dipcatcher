@@ -16,7 +16,10 @@ import polars as pl
 
 from quant_fund.metrics.cross_section import date_ic_series
 from quant_fund.microstructure.book_metrics import DEPTH_SHAPE_FIELDS, depth_shape_finite_rate
-from quant_fund.microstructure.candle_book_features import attach_candle_book_features
+from quant_fund.microstructure.candle_book_features import (
+    attach_candle_book_features,
+    forward_close_return_labels,
+)
 
 
 def _structure_finite_rate_from_companions(*rates: float) -> float:
@@ -109,10 +112,10 @@ def bench_candle_order_book(
     if bars.height == 0:
         raise ValueError("bars must be non-empty")
     fused = attach_candle_book_features(bars, book=book, depth=depth, seed=seed)
-    fused = fused.sort(["security_id", "event_time"]).with_columns(
-        (pl.col("candle_close").shift(-1).over("security_id") / pl.col("candle_close") - 1.0).alias(
-            "fwd_ret_1"
-        )
+    fused = fused.sort(["security_id", "event_time"]).join(
+        forward_close_return_labels(bars, price_col="close"),
+        on=["security_id", "event_time"],
+        how="left",
     )
     sample = fused.drop_nulls(["fwd_ret_1"])
     book_source = (

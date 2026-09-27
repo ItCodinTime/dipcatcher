@@ -10,6 +10,7 @@ from quant_fund.microstructure.book_panel import (
 )
 from quant_fund.microstructure.synthetic_lob import synthesize_l2_from_bars
 from quant_fund.northset.candles import candle_geometry
+from quant_fund.northset.estimators import order_flow_imbalance
 
 
 def candle_features_from_bars(bars: pl.DataFrame) -> pl.DataFrame:
@@ -52,6 +53,28 @@ def candle_features_from_bars(bars: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def forward_close_return_labels(frame: pl.DataFrame, *, price_col: str = "close") -> pl.DataFrame:
+    """Next-bar close return labels y_{t+1} = P_{t+1}/P_t − 1 per security.
+
+    Must be computed on the FULL bar panel, never on a book-filtered fused
+    frame: a fused frame's next row is the next book-matched row, so deriving
+    labels post-join silently mints multi-day spans as "1-bar" returns.
+    """
+    required = ("security_id", "event_time", price_col)
+    missing = [c for c in required if c not in frame.columns]
+    if missing:
+        raise ValueError(f"bars missing columns for fwd labels: {missing}")
+    return (
+        frame.sort(["security_id", "event_time"])
+        .with_columns(
+            (pl.col(price_col).shift(-1).over("security_id") / pl.col(price_col) - 1.0).alias(
+                "fwd_ret_1"
+            )
+        )
+        .select("security_id", "event_time", "fwd_ret_1")
+    )
+
+
 def attach_candle_book_features(
     bars: pl.DataFrame,
     *,
@@ -75,6 +98,11 @@ def attach_candle_book_features(
     synthesized = book is None
     book_df = book if book is not None else synthesize_l2_from_bars(bars, depth=depth, seed=seed)
     book_df = validate_book_panel(book_df)
+    if "ofi" not in book_df.columns:
+        # Top-of-book panels omit OFI; compute the real CKS estimator on the
+        # book's own event-time chronology before the as-of join so the fused
+        # ``ofi`` column matches order_flow_imbalance() semantics everywhere.
+        book_df = order_flow_imbalance(book_df)
     join_keys = ["security_id", "event_time"]
     for key in join_keys:
         if key not in book_df.columns:
@@ -158,21 +186,9 @@ def attach_candle_book_features(
         raise ValueError(
             f"book age exceeds max_book_age_seconds={max_book_age_seconds} on {n_stale} fused rows"
         )
-    # Top-of-book vendor panels often lack OFI/queue columns — derive research proxies.
-    extras: list[pl.Expr] = []
-    if "ofi" not in fused.columns and {"top_bid_size", "top_ask_size"} <= set(fused.columns):
-        bid = pl.col("top_bid_size")
-        ask = pl.col("top_ask_size")
-        extras.append(
-            (
-                bid.cast(pl.Float64).diff().over("security_id").fill_null(0.0)
-                - ask.cast(pl.Float64).diff().over("security_id").fill_null(0.0)
-            ).alias("ofi")
-        )
+    # Vendor panels without queue_imbalance alias imbalance_top (same formula).
     if "queue_imbalance" not in fused.columns and "imbalance_top" in fused.columns:
-        extras.append(pl.col("imbalance_top").alias("queue_imbalance"))
-    if extras:
-        fused = fused.with_columns(extras)
+        fused = fused.with_columns(pl.col("imbalance_top").alias("queue_imbalance"))
     # Normalize honesty columns (overwrite any joined source with canonical stamps).
     # Preserve book microprice_weight_balance (top-bid share) — never invent/overwrite.
     if "source" in fused.columns:
