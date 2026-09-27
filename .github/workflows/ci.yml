@@ -114,6 +114,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    env:
+      HYPOTHESIS_PROFILE: ci
     strategy:
       fail-fast: false
       matrix:
@@ -336,3 +338,35 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  diffbacktest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync JAX extra
+        run: uv sync --frozen --group dev --extra jax
+      - name: CPU differentiable backtest
+        run: JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
+
+  robustness-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Robustness tests
+        run: uv run pytest -q tests/unit/robustness tests/property/test_robustness_bounds.py
+      - name: Certifier smoke
+        run: uv run python -m quant_fund.robustness
