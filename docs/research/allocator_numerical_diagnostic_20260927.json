@@ -1,0 +1,218 @@
+{
+  "kind": "allocator_numerical_diagnostic",
+  "sealed": false,
+  "retrospective": true,
+  "promote": false,
+  "live_pnl_claim": false,
+  "phase": "validation",
+  "code_commit": "9893635bf2de08ed31e501866d8ae0b7e4eeedd3",
+  "allocator_source_sha256": "058afffc7e6943c74710fedad694db383560331bb174387b0e6e1e551aa3a186",
+  "dataset_sha256": "e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117",
+  "benchmark_config_sha256": "2eb3a9e979121b6c749612278269386fb5a82cfc8a3fba3b839110361bb736b5",
+  "tournament_config_sha256": "4538d4a67d5dbca91b14d98b41e0450b7a9e7a307d2708d67f2da9b7e5741c52",
+  "sealed_validation_receipt_sha256": "972af75021460e68c463f6d02fbdd879a0f053a4beb15ff800569e1fda35cc71",
+  "runtime": {
+    "python": "3.12.14",
+    "cvxpy": "1.9.3",
+    "clarabel": "0.11.1",
+    "numpy": "2.5.3"
+  },
+  "solver_rules": {
+    "accepted_status": "optimal",
+    "max_original_constraint_violation": 1e-07,
+    "max_solver_objective_gap": 1e-07,
+    "clarabel_gap_and_feasibility_tolerances": 1e-08
+  },
+  "scenarios": {
+    "configured": {
+      "sealed_controls": {
+        "equal_weight": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": 0.02216660701224038,
+          "mean_daily_net_return": 0.00012029304544322847,
+          "liquidation_complete": true
+        },
+        "momentum_20": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": -0.022558444727763027,
+          "mean_daily_net_return": 4.8337031266227856e-05,
+          "liquidation_complete": true
+        },
+        "reversal_1": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": -0.2886898757053019,
+          "mean_daily_net_return": -0.000571439619487412,
+          "liquidation_complete": true
+        }
+      },
+      "repaired_allocators": {
+        "momentum_20_cost_aware": {
+          "status": "completed",
+          "n_sessions": 495,
+          "n_allocations": 494,
+          "accepted_statuses": [
+            "optimal"
+          ],
+          "accepted_formulations": {
+            "original": 450,
+            "bounded_capacity": 44
+          },
+          "attempt_status_counts": {
+            "optimal": 494,
+            "optimal_inaccurate": 44
+          },
+          "max_original_constraint_violation": 5.491385746125843e-08,
+          "max_solver_objective_gap": 2.7106411236692968e-09,
+          "liquidation_complete": true,
+          "matched_rank_control": "momentum_20",
+          "diagnostics": {
+            "total_simulated_net_price_return": 0.07903855898296697,
+            "mean_daily_net_difference_vs_rank_control": 0.00012111523356428602,
+            "modeled_costs": {
+              "commission": 559.9235702124261,
+              "spread": 2799.617851062129,
+              "impact": 26.963102850904285,
+              "borrow": 0.0,
+              "financing": 0.0
+            }
+          }
+        },
+        "reversal_1_cost_aware": {
+          "status": "completed",
+          "n_sessions": 495,
+          "n_allocations": 494,
+          "accepted_statuses": [
+            "optimal"
+          ],
+          "accepted_formulations": {
+            "original": 384,
+            "bounded_capacity": 96,
+            "factored_risk": 12,
+            "scaled_cost": 2
+          },
+          "attempt_status_counts": {
+            "optimal": 494,
+            "optimal_inaccurate": 126
+          },
+          "max_original_constraint_violation": 5.593700636019605e-08,
+          "max_solver_objective_gap": 4.116853767610618e-09,
+          "liquidation_complete": true,
+          "matched_rank_control": "reversal_1",
+          "diagnostics": {
+            "total_simulated_net_price_return": -0.06521425884385157,
+            "mean_daily_net_difference_vs_rank_control": 0.00046161639984665696,
+            "modeled_costs": {
+              "commission": 982.523125857169,
+              "spread": 4912.615629285848,
+              "impact": 67.18586021925051,
+              "borrow": 0.0,
+              "financing": 0.0
+            }
+          }
+        }
+      }
+    },
+    "double_impact": {
+      "sealed_controls": {
+        "equal_weight": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": 0.022114647860794756,
+          "mean_daily_net_return": 0.00012019031689354545,
+          "liquidation_complete": true
+        },
+        "momentum_20": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": -0.02321380237336579,
+          "mean_daily_net_return": 4.698246964462007e-05,
+          "liquidation_complete": true
+        },
+        "reversal_1": {
+          "status": "completed",
+          "n_sessions": 495,
+          "total_return": -0.2906796444103349,
+          "mean_daily_net_return": -0.0005770995942829885,
+          "liquidation_complete": true
+        }
+      },
+      "repaired_allocators": {
+        "momentum_20_cost_aware": {
+          "status": "completed",
+          "n_sessions": 495,
+          "n_allocations": 494,
+          "accepted_statuses": [
+            "optimal"
+          ],
+          "accepted_formulations": {
+            "original": 434,
+            "bounded_capacity": 60
+          },
+          "attempt_status_counts": {
+            "optimal": 494,
+            "optimal_inaccurate": 59,
+            "independent_check_failed": 1
+          },
+          "max_original_constraint_violation": 9.350776997152366e-08,
+          "max_solver_objective_gap": 2.685319493676841e-09,
+          "liquidation_complete": true,
+          "matched_rank_control": "momentum_20",
+          "diagnostics": {
+            "total_simulated_net_price_return": 0.07875586328643447,
+            "mean_daily_net_difference_vs_rank_control": 0.00012194041881821632,
+            "modeled_costs": {
+              "commission": 559.8512678512548,
+              "spread": 2799.2563392562733,
+              "impact": 53.91552683271761,
+              "borrow": 0.0,
+              "financing": 0.0
+            }
+          }
+        },
+        "reversal_1_cost_aware": {
+          "status": "completed",
+          "n_sessions": 495,
+          "n_allocations": 494,
+          "accepted_statuses": [
+            "optimal"
+          ],
+          "accepted_formulations": {
+            "original": 380,
+            "bounded_capacity": 105,
+            "factored_risk": 8,
+            "scaled_cost": 1
+          },
+          "attempt_status_counts": {
+            "optimal": 494,
+            "optimal_inaccurate": 123,
+            "solver_error": 1
+          },
+          "max_original_constraint_violation": 3.75051556478212e-08,
+          "max_solver_objective_gap": 3.1339644976369208e-09,
+          "liquidation_complete": true,
+          "matched_rank_control": "reversal_1",
+          "diagnostics": {
+            "total_simulated_net_price_return": -0.06591884981517371,
+            "mean_daily_net_difference_vs_rank_control": 0.00046575307394857774,
+            "modeled_costs": {
+              "commission": 982.1397335090865,
+              "spread": 4910.698667545435,
+              "impact": 134.29721217866432,
+              "borrow": 0.0,
+              "financing": 0.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Previously inspected, survivor-selected vendor snapshot with unverified adjustments and availability.",
+    "This diagnostic is not a sealed tournament run and does not perform full-slate inference or validation selection.",
+    "Return figures below are simulated price-return diagnostics, not live or independent forward performance.",
+    "No held-out test data were read for this diagnostic."
+  ]
+}
