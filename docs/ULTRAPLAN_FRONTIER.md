@@ -250,8 +250,16 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P3.3 Second domain: Stooq US equity dailies (remote `data/file_us`
       tapes) OR Binance non-USDT quotes — requires same bar-integrity
       hashing + availability-time discipline.
-- [ ] P3.4 Cross-sectional lane: rank-IC eval vs targets on the panel
+- [x] P3.4 Cross-sectional lane: rank-IC eval vs targets on the panel
       (existing ranking bench + northset) — a different claim axis.
+      Harness landed: `research/cross_sectional.py` + `dipcatcher rankic` —
+      5 seeded planted-signal panels (linear, rank-preserving cubic,
+      pure-noise null, mid-sample regime flip, weak edge) x 5 challenger
+      transforms (identity / noisy / lagged / shuffled / inverted), Spearman
+      rank-IC per date + Newey-West mean-IC t-stat per horizon (1/5/20),
+      sealed receipt `receipts/rankic_eval_*.json`. Property tests:
+      asset-permutation invariance, inversion sign-flip, ~nominal null
+      rejection on the shuffled challenger.
 - [ ] P3.5 Volatility-forecast cell: QLIKE on next-bar/h-step realized vol —
       `dip_garch_t` already near-top CRPS; formal vol bench vs published
       vol baselines (HAR, realized-GARCH).
