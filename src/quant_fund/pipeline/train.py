@@ -2211,5 +2211,5 @@ def train_family(config: AppConfig, family: str, model_name: str | None = None) 
             "git_worktree_sha256": git_worktree_sha256(),
         },
     )
-    result["evidence_report"] = {key: str(path) for key, path in report_paths.items()}
+    result["evidence_report"] = {key: path.as_posix() for key, path in report_paths.items()}
     return result

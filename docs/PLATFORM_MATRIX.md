@@ -64,8 +64,9 @@ uv run pytest -q -m "not network" $(tr '\n' ' ' < /tmp/shard.txt)
   `NamedTemporaryFile(delete=False)` + `os.replace`, which is the correct
   Windows-safe pattern (no reopen-by-name while open, replace over existing).
 - `git` subprocess usage (`utils/reproducibility.py`, reproducibility tests)
-  works on Windows runners — Git for Windows is preinstalled and
-  `actions/checkout` leaves `core.autocrlf` disabled, so checkouts are LF.
+  works on Windows runners. `.gitattributes` forces LF checkout for tracked
+  text while retaining the LFS binary rules, so sealed config byte hashes
+  match the Git blobs on every runner.
 
 ## Out of scope / risks seen
 
