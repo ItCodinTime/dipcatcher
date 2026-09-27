@@ -18,6 +18,7 @@ from cvxpy.expressions.variable import Variable as Variable
 from cvxpy.problems.objective import Maximize as Maximize
 from cvxpy.problems.objective import Minimize as Minimize
 from cvxpy.problems.problem import Problem as _Problem
+from cvxpy.atoms.sum_squares import sum_squares as sum_squares
 from cvxpy.settings import (
     INFEASIBLE as INFEASIBLE,
 )
@@ -29,6 +30,9 @@ from cvxpy.settings import (
 )
 from cvxpy.settings import (
     OPTIMAL_INACCURATE as OPTIMAL_INACCURATE,
+)
+from cvxpy.settings import (
+    UNBOUNDED as UNBOUNDED,
 )
 
 def sum(
