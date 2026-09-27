@@ -1,11 +1,14 @@
 # fx-1 Training Plan — compute, ladder, and gates
 
+This page is the plan. No trained checkpoint is in this repository, and no
+training run has been launched from it.
+
 ## Hardware reality (K3 base)
 
 | Fact | Consequence for fx-1 |
 |---|---|
 | K3 checkpoint ≈ 1.4TB MXFP4 (≈5.6TB dequantized BF16) | No local training; all runs on rental clusters |
-| Serving needs ≈64 accelerators; smallest community 1-bit quant ≈610GB RAM+VRAM | Production fx-1 is a **distilled student**, not raw K3-LoRA |
+| Serving needs ≈64 accelerators; smallest community 1-bit quant ≈610GB RAM+VRAM | The planned production shape is a distilled student sized for a single node |
 | 104B active parameters per token | Even LoRA touches multi-node memory; FINAL_K3 runs need ≥2 nodes (enforced in `TrainConfig`) |
 | Kimi Delta Attention + native MXFP4 QAT | Use only frameworks with confirmed K3 support (check vLLM/SGLang/Unsloth status at run time); keep QAT formats intact |
 | Preserved-thinking-history training | Corpus must keep `reasoning_content` + `tool_calls` (enforced in `TrainConfig`) |
@@ -31,8 +34,9 @@
 4. Train on cluster; log checkpoints as `fx-1.vX.Y` with a model card:
    base checkpoint hash, corpus receipt range, domain/general eval deltas,
    license tier.
-5. Ship gate: fx-1 beats the K3 base on domain tasks, does not regress on
-   general tasks, and passes all honesty tasks natively.
+5. Planned ship gate: a candidate must beat the K3 base on domain tasks,
+   keep general-task scores at or above the base, and pass every honesty
+   task natively.
 
 ## Corpus status
 
