@@ -1,0 +1,107 @@
+name: Platform Matrix
+
+# Additive cross-platform lane: the locked dependency set must stay green on
+# Linux, macOS, and Windows across the supported Python band. Kept in a
+# separate workflow so it never gates (or is gated by) ci.yml jobs.
+#
+# Python band: pyproject.toml has requires-python = ">=3.12", so the floor is
+# 3.12 (3.11 cannot even `uv sync --frozen` — the resolver rejects it). The
+# ceiling is 3.14, the newest stable CPython; wheel coverage for locked deps on
+# cp314 is verified here rather than assumed.
+#
+# Sharding: pytest-xdist is not in the lockfile, so each (os, python) combo is
+# split into NUM_SHARDS jobs. A shard job re-runs `pytest --collect-only -q`
+# (which prints "<path>: <count>" per file) and greedy-assigns files to shards
+# by test count — deterministic because the inventory is LC_ALL=C sorted. This
+# is ~5.9k tests over ~680 files, balanced by count rather than directory so
+# the flat 270-file tests/unit/microstructure spreads evenly.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Windows runners default to cp1252 locale encoding; every text artifact
+  # this repo reads/writes is UTF-8, and POSIX runners already default to it.
+  # PYTHONUTF8 pins PEP 540 UTF-8 mode on every interpreter in the matrix
+  # (becomes the default in CPython 3.15 per PEP 686). PYTHONIOENCODING keeps
+  # console I/O UTF-8 under Windows code pages.
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+  NUM_SHARDS: "4"
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }} / shard${{ matrix.shard }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.12", "3.13", "3.14"]
+        shard: ["0", "1", "2", "3"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync locked environment
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Select balanced test-file shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          inventory="$RUNNER_TEMP/matrix-inventory.txt"
+          uv run pytest --collect-only -q -m "not network" 2>/dev/null \
+            | grep -E '^tests/.*: [0-9]+$' \
+            | LC_ALL=C sort -t: -k2 -nr > "$inventory"
+          files=$(wc -l < "$inventory" | tr -d ' ')
+          tests=$(awk -F': ' '{s += $NF} END {print s}' "$inventory")
+          echo "inventory: $files files, $tests tests"
+          if [ "$files" -lt 10 ]; then
+            echo "::error::pytest collect inventory too small ($files files); output format may have changed"
+            exit 1
+          fi
+          # Greedy list-scheduling over count-descending inventory: each file
+          # goes to the currently lightest shard. Assignment is a pure
+          # function of the sorted inventory, so all 4 shard jobs of a combo
+          # agree on the partition.
+          shard_file="$RUNNER_TEMP/matrix-shard.txt"
+          awk -F': ' -v k="$NUM_SHARDS" -v want="${{ matrix.shard }}" -v out="$shard_file" '
+            {
+              min = 0
+              for (i = 1; i < k; i++) if (sum[i] < sum[min]) min = i
+              sum[min] += $NF
+              if (min == want) print $1 >> out
+            }
+            END {
+              for (i = 0; i < k; i++) printf "  shard%d -> %d tests\n", i, sum[i]
+            }' "$inventory"
+          n=$(wc -l < "$shard_file" | tr -d ' ')
+          if [ "$n" -eq 0 ]; then
+            echo "::error::shard ${{ matrix.shard }} selected no test files"
+            exit 1
+          fi
+          echo "shard ${{ matrix.shard }}: $n test files"
+      - name: Pytest shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          shard_file="$RUNNER_TEMP/matrix-shard.txt"
+          # Repo paths contain no spaces; word-splitting is intentional and
+          # keeps argv well under the Windows 32k command-line limit
+          # (~170 files * ~50 chars).
+          uv run pytest -q -m "not network" $(tr '\n' ' ' < "$shard_file")
