@@ -33,23 +33,15 @@ def _hac_cov(v: Array, lag: int) -> Array:
     return np.asarray(omega, dtype=float)
 
 
-def sharpe_difference_test(
-    r1: Array, r2: Array, lag: int | None = None
-) -> dict[str, float]:
+def sharpe_difference_test(r1: Array, r2: Array, lag: int | None = None) -> dict[str, float]:
     """Ledoit-Wolf HAC test of ``H0: SR1 = SR2`` for paired return series."""
     a = np.asarray(r1, dtype=float).ravel()
     b = np.asarray(r2, dtype=float).ravel()
-    if (
-        a.size != b.size
-        or a.size < 30
-        or not (np.isfinite(a).all() and np.isfinite(b).all())
-    ):
+    if a.size != b.size or a.size < 30 or not (np.isfinite(a).all() and np.isfinite(b).all()):
         raise ValueError("r1 and r2 must be finite, aligned, length >= 30")
     t = a.size
     if lag is not None and (
-        isinstance(lag, bool)
-        or not isinstance(lag, (int, np.integer))
-        or not 0 <= lag < t
+        isinstance(lag, bool) or not isinstance(lag, (int, np.integer)) or not 0 <= lag < t
     ):
         raise ValueError("lag must be an integer from 0 to n-1")
     mu1, mu2 = float(a.mean()), float(b.mean())
