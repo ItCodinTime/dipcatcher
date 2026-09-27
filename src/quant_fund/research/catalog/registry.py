@@ -12,6 +12,9 @@ BENCHMARK_CATALOG_VERSION = 2
 # Schema 1 receipts remain valid: they predate the block and are not rewritten.
 RESEARCH_RECEIPT_SCHEMA_VERSION = 2
 RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED = frozenset({1, 2})
+# Kept for the pre-split catalog API. These are diagnostic key groups.
+REQUIRED_CHRISTOFFERSEN_CC_KEYS = frozenset({"christoffersen_cc_p", "christoffersen_cc_lr"})
+PREFERRED_CHRISTOFFERSEN_IND_KEYS = frozenset({"christoffersen_ind_p", "christoffersen_ind_lr"})
 REQUIRED_BENCHMARK_FAMILIES = frozenset(
     {
         "ranking",
@@ -182,6 +185,8 @@ __all__ = [
     "FORBIDDEN_RESEARCH_METRIC_KEYS",
     "OPTIONAL_BENCHMARK_FAMILIES",
     "REQUIRED_BENCHMARK_FAMILIES",
+    "PREFERRED_CHRISTOFFERSEN_IND_KEYS",
+    "REQUIRED_CHRISTOFFERSEN_CC_KEYS",
     "RESEARCH_RECEIPT_SCHEMA_VERSION",
     "RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED",
     "family_blob_executed",

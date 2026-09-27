@@ -4,20 +4,13 @@ from __future__ import annotations
 
 import importlib
 
-REMOVED = {
-    "quant_fund.research.catalog": frozenset(
-        {
-            "PREFERRED_CHRISTOFFERSEN_IND_KEYS",
-            "REQUIRED_CHRISTOFFERSEN_CC_KEYS",
-        }
-    ),
-}
-
 # Defined names plus module-level imports from the modules before the split.
 LEGACY_NAMES: dict[str, tuple[str, ...]] = {
     "quant_fund.research.catalog": (
         "BENCHMARK_CATALOG_VERSION",
         "RESEARCH_RECEIPT_SCHEMA_VERSION",
+        "PREFERRED_CHRISTOFFERSEN_IND_KEYS",
+        "REQUIRED_CHRISTOFFERSEN_CC_KEYS",
         "REQUIRED_BENCHMARK_FAMILIES",
         "OPTIONAL_BENCHMARK_FAMILIES",
         "BENCHMARK_FAMILY_ORDER",
@@ -774,6 +767,10 @@ LEGACY_NAMES: dict[str, tuple[str, ...]] = {
         "GaussianDistribution",
         "LinearQuantileDistribution",
         "TreeQuantileDistribution",
+        "ConformalTDistribution",
+        "FhsSkewDistribution",
+        "LGBMQ2Distribution",
+        "RegimeDistribution",
         "QuantileThompson",
         "CompositeRanker",
         "ElasticNetRanker",
@@ -1036,5 +1033,10 @@ def test_legacy_import_paths_resolve() -> None:
         module = importlib.import_module(module_name)
         missing = [name for name in names if not hasattr(module, name)]
         assert missing == [], f"{module_name} missing {missing}"
-        for name in REMOVED.get(module_name, ()):
-            assert not hasattr(module, name), name
+
+
+def test_legacy_catalog_submodule_paths_resolve() -> None:
+    for name in ("_helpers", "consistency", "families", "northset", "predicates"):
+        module = importlib.import_module(f"quant_fund.research.catalog.{name}")
+        missing = [symbol for symbol in module.__all__ if not hasattr(module, symbol)]
+        assert not missing, f"{name} missing {missing}"

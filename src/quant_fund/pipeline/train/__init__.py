@@ -39,6 +39,7 @@ from quant_fund.models.base import (
     save_joblib_artifact,
 )
 from quant_fund.models.calibration import ProbabilityCalibrator
+from quant_fund.models.conformal_dist import ConformalTDistribution
 from quant_fund.models.cs_papers import (
     DATED_FIT_RANKERS,
     DATED_PREDICT_RANKERS,
@@ -83,6 +84,8 @@ from quant_fund.models.distribution import (
     StackedDistribution,
     TreeQuantileDistribution,
 )
+from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
 from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.ranking import (
     CompositeRanker,
@@ -101,6 +104,7 @@ from quant_fund.models.realized_garch import (
     parkinson_daily_variance,
 )
 from quant_fund.models.regime import GaussianHMMRegime, SingleStateRegime, VolThresholdRegime
+from quant_fund.models.regime_dist import RegimeDistribution
 from quant_fund.models.rl import (
     LinearThompsonRanker,
     LinUCBRanker,
@@ -435,4 +439,8 @@ __all__ = [
     "train_volatility_auto",
     "walk_forward",
     "write_evidence_report",
+    "ConformalTDistribution",
+    "FhsSkewDistribution",
+    "LGBMQ2Distribution",
+    "RegimeDistribution",
 ]
