@@ -224,6 +224,7 @@ nav:
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
   - API reference:
+      - Research evidence service: RESEARCH_API.md
       - api/index.md
       - Data: api/data.md
       - Microstructure: api/microstructure.md
