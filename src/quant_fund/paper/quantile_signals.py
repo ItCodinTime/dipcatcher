@@ -758,18 +758,21 @@ def load_deep_bars(
     ragged file boundaries are a data artifact, not a trading signal).
     Mid-series gaps are NOT repaired and still fail closed downstream.
     """
-    frames = []
-    for sym in symbols:
+    from quant_fund.data.concurrent_io import map_ordered
+
+    def _read_symbol(sym: str) -> pl.DataFrame:
         sym_l = sym.lower()
         for suffix in (f"{sym_l}_{interval}_deep.parquet", f"{sym_l}_{interval}.parquet"):
             path = bars_root / suffix
             if path.is_file():
-                df = pl.read_parquet(path)
-                df = df.with_columns(pl.lit(sym.upper()).alias("security_id"))
-                frames.append(df)
-                break
-        else:
-            raise FileNotFoundError(f"{sym}: no {interval} bars under {bars_root}")
+                return pl.read_parquet(path).with_columns(pl.lit(sym.upper()).alias("security_id"))
+        raise FileNotFoundError(f"{sym}: no {interval} bars under {bars_root}")
+
+    frames = map_ordered(
+        _read_symbol,
+        symbols,
+        max_workers=min(8, max(1, len(symbols))),
+    )
     panel = pl.concat(frames, how="diagonal_relaxed").sort(["security_id", "event_time"])
     if shared_calendar:
         bounds = panel.group_by("security_id").agg(

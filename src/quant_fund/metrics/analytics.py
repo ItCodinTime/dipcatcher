@@ -24,7 +24,7 @@ from quant_fund.metrics.returns import annualized_vol, calmar_ratio, max_drawdow
 from quant_fund.metrics.risk import historical_es, historical_var, losses_from_returns
 from quant_fund.metrics.scoring import mean_fissler_ziegel
 from quant_fund.portfolio.attribution import factor_selection_timing
-from quant_fund.utils.hashing import hash_bytes
+from quant_fund.utils.hashing import hash_bytes, receipt_tree
 
 Array = NDArray[np.float64]
 
@@ -681,8 +681,9 @@ ANALYTICS_SCHEMA_KEYS: tuple[str, ...] = (
 
 def analytics_export_digest(blob: dict[str, Any]) -> str:
     """Return a canonical self-excluding digest for an analytics export."""
-    normalized = dict(blob)
-    normalized.pop("analytics_export_sha256", None)
+    normalized = receipt_tree(dict(blob))
+    if isinstance(normalized, dict):
+        normalized.pop("analytics_export_sha256", None)
     return hash_bytes(
         json.dumps(
             normalized, sort_keys=True, separators=(",", ":"), allow_nan=True, default=str
