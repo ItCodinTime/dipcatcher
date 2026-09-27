@@ -803,6 +803,288 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.00012397308872545248
   - 0.00011681797278370385
 
+### `receipts/capacity_eval_cd0854242ed8a9ec.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/capacity_eval_cd0854242ed8a9ec.json | e0a6c8250891cd5065edfc3bb385e6fdd640e5ca376cac496420815ab16881ed | cd0854242ed8a9ece6aecdec90a25bef0f2331d283c3b6fc470e13be1a8f8480 | not_checked | fde9836ee258c7fd18902effa36ca3989a0c8783 | inputs_sha256=b454d4edbced6bf853aba0e3e90106fd84519b827ddc8ad650b886f0b6871523 | unspecified | absent | absent | false |
+
+- `books`:
+  - [0]
+    - `adv_sha256`: d3ba5c3524df6cf082f621b18051821600242b00c3c32ec7102d261b14e7085c
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: uniform
+    - `weights_sha256`: 15ca7ae9fa7ba7052e4e43ee70bd77f7c6cfce78797a73140ad59c30fadb0c59
+  - [1]
+    - `adv_sha256`: aaa2bdc80b92557c6b121b0ffe56a84312bc53ad66c3c54d6f3a66fef8b49e45
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: concentrated
+    - `weights_sha256`: 764f4c4c1dac6fe9bb51ab5b25ab4e4da7287a53e3a38d31cdde17b667e10910
+  - [2]
+    - `adv_sha256`: 595fc068925e51ea9a64f91036d53cdde4463f2dd04ba66e2db995944ba221dd
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: thin_adv
+    - `weights_sha256`: 15ca7ae9fa7ba7052e4e43ee70bd77f7c6cfce78797a73140ad59c30fadb0c59
+  - [3]
+    - `adv_sha256`: f5abc6f022532fad8047de3d304e2cad74d53b047d9985c35ba25a09b179de9a
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: rotating
+    - `weights_sha256`: d35e8fa9b36610b22ce3701ea3022fe3b15e623115c72a5bc9eb7d3f943c4d38
+- `data_label`: SYNTHETIC
+- `dev_only`: true
+- `generated_at`: 2026-09-27T21:25:11.550539+00:00
+- `git_revision`: fde9836ee258c7fd18902effa36ca3989a0c8783
+- `kind`: capacity_overlay_eval
+- `n_rows`: 24
+- `receipt_sha256`: cd0854242ed8a9ece6aecdec90a25bef0f2331d283c3b6fc470e13be1a8f8480
+- `results`:
+  - [0]
+    - `aum`: 1000000.0
+    - `book`: uniform
+    - `days_to_trade`: 0.08484897373472415
+    - `feasible`: 1
+    - `impact_bps`: 29.68063276259238
+    - `max_participation`: 0.008484897373472414
+    - `mean_participation`: 0.0010973422150479632
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [1]
+    - `aum`: 10000000.0
+    - `book`: uniform
+    - `days_to_trade`: 0.8484897373472415
+    - `feasible`: 1
+    - `impact_bps`: 93.85840192480758
+    - `max_participation`: 0.08484897373472415
+    - `mean_participation`: 0.010973422150479636
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [2]
+    - `aum`: 50000000.0
+    - `book`: uniform
+    - `days_to_trade`: 4.242448686736207
+    - `feasible`: 0
+    - `impact_bps`: 209.87376696336685
+    - `max_participation`: 0.42424486867362077
+    - `mean_participation`: 0.05486711075239817
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [3]
+    - `aum`: 100000000.0
+    - `book`: uniform
+    - `days_to_trade`: 8.484897373472414
+    - `feasible`: 0
+    - `impact_bps`: 296.8063276259238
+    - `max_participation`: 0.8484897373472415
+    - `mean_participation`: 0.10973422150479634
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [4]
+    - `aum`: 500000000.0
+    - `book`: uniform
+    - `days_to_trade`: 42.42448686736208
+    - `feasible`: 0
+    - `impact_bps`: 663.6791247236393
+    - `max_participation`: 4.242448686736207
+    - `mean_participation`: 0.5486711075239817
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [5]
+    - `aum`: 1000000000.0
+    - `book`: uniform
+    - `days_to_trade`: 84.84897373472415
+    - `feasible`: 0
+    - `impact_bps`: 938.5840192480757
+    - `max_participation`: 8.484897373472414
+    - `mean_participation`: 1.0973422150479635
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [6]
+    - `aum`: 1000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 0.26838779989462447
+    - `feasible`: 1
+    - `impact_bps`: 13.233841690342366
+    - `max_participation`: 0.02683877998946245
+    - `mean_participation`: 0.0009220370056364176
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [7]
+    - `aum`: 10000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 2.6838779989462447
+    - `feasible`: 0
+    - `impact_bps`: 41.8490819355746
+    - `max_participation`: 0.26838779989462447
+    - `mean_participation`: 0.009220370056364174
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [8]
+    - `aum`: 50000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 13.419389994731224
+    - `feasible`: 0
+    - `impact_bps`: 93.57739200390328
+    - `max_participation`: 1.3419389994731223
+    - `mean_participation`: 0.04610185028182088
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [9]
+    - `aum`: 100000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 26.83877998946245
+    - `feasible`: 0
+    - `impact_bps`: 132.33841690342368
+    - `max_participation`: 2.6838779989462447
+    - `mean_participation`: 0.09220370056364176
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [10]
+    - `aum`: 500000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 134.19389994731225
+    - `feasible`: 0
+    - `impact_bps`: 295.91769623076254
+    - `max_participation`: 13.419389994731224
+    - `mean_participation`: 0.4610185028182087
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [11]
+    - `aum`: 1000000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 268.3877998946245
+    - `feasible`: 0
+    - `impact_bps`: 418.49081935574605
+    - `max_participation`: 26.83877998946245
+    - `mean_participation`: 0.9220370056364174
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [12]
+    - `aum`: 1000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 0.30684803840414193
+    - `feasible`: 1
+    - `impact_bps`: 27.78548698526049
+    - `max_participation`: 0.03068480384041419
+    - `mean_participation`: 0.0016413597917615478
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [13]
+    - `aum`: 10000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 3.068480384041419
+    - `feasible`: 0
+    - `impact_bps`: 87.8654247703885
+    - `max_participation`: 0.30684803840414193
+    - `mean_participation`: 0.016413597917615482
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [14]
+    - `aum`: 50000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 15.342401920207095
+    - `feasible`: 0
+    - `impact_bps`: 196.47306265848255
+    - `max_participation`: 1.5342401920207096
+    - `mean_participation`: 0.0820679895880774
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [15]
+    - `aum`: 100000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 30.68480384041419
+    - `feasible`: 0
+    - `impact_bps`: 277.8548698526049
+    - `max_participation`: 3.068480384041419
+    - `mean_participation`: 0.1641359791761548
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [16]
+    - `aum`: 500000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 153.42401920207095
+    - `feasible`: 0
+    - `impact_bps`: 621.3023768697815
+    - `max_participation`: 15.342401920207095
+    - `mean_participation`: 0.820679895880774
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [17]
+    - `aum`: 1000000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 306.8480384041419
+    - `feasible`: 0
+    - `impact_bps`: 878.654247703885
+    - `max_participation`: 30.68480384041419
+    - `mean_participation`: 1.641359791761548
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [18]
+    - `aum`: 1000000.0
+    - `book`: rotating
+    - `days_to_trade`: 0.25861813041419357
+    - `feasible`: 1
+    - `impact_bps`: 37.23666990267047
+    - `max_participation`: 0.02586181304141936
+    - `mean_participation`: 0.0017168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [19]
+    - `aum`: 10000000.0
+    - `book`: rotating
+    - `days_to_trade`: 2.5861813041419355
+    - `feasible`: 0
+    - `impact_bps`: 117.75268937227911
+    - `max_participation`: 0.25861813041419357
+    - `mean_participation`: 0.017168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [20]
+    - `aum`: 50000000.0
+    - `book`: rotating
+    - `days_to_trade`: 12.930906520709678
+    - `feasible`: 0
+    - `impact_bps`: 263.30301796983315
+    - `max_participation`: 1.293090652070968
+    - `mean_participation`: 0.08584392159484353
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [21]
+    - `aum`: 100000000.0
+    - `book`: rotating
+    - `days_to_trade`: 25.861813041419357
+    - `feasible`: 0
+    - `impact_bps`: 372.36669902670474
+    - `max_participation`: 2.586181304141936
+    - `mean_participation`: 0.17168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [22]
+    - `aum`: 500000000.0
+    - `book`: rotating
+    - `days_to_trade`: 129.30906520709678
+    - `feasible`: 0
+    - `impact_bps`: 832.6372515809167
+    - `max_participation`: 12.930906520709678
+    - `mean_participation`: 0.8584392159484352
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [23]
+    - `aum`: 1000000000.0
+    - `book`: rotating
+    - `days_to_trade`: 258.61813041419356
+    - `feasible`: 0
+    - `impact_bps`: 1177.526893722791
+    - `max_participation`: 25.861813041419357
+    - `mean_participation`: 1.7168784318968704
+    - `participation_cap`: 0.1
+    - `status`: ok
+- `schema`: capacity_overlay.v1
+- `seed`: 11
+
 ### `receipts/fast_replay_p42_conformance_20260927.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |

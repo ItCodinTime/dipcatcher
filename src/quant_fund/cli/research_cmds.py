@@ -459,7 +459,62 @@ def rankic(
     typer.echo(f"receipt={path}")
 
 
+@app.command()
+def capacity(
+    books: str | None = typer.Option(
+        None, help="Comma-separated synthetic book names (default: all)."
+    ),
+    n_dates: int = typer.Option(126, help="Dates per synthetic book."),
+    n_names: int = typer.Option(32, help="Names per synthetic book."),
+    seed: int = typer.Option(11, help="Base seed."),
+    aum_grid: str = typer.Option(
+        "1e6,1e7,5e7,1e8,5e8,1e9", help="Comma-separated AUM levels in dollars."
+    ),
+    participation_cap: float = typer.Option(
+        0.10, help="Max share of dollar ADV a rebalance may consume per name-day."
+    ),
+    impact_coeff: float = typer.Option(0.1, help="Square-root impact coefficient."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """P5.6 participation-capacity bench on SYNTHETIC books (dev-only).
+
+    Feasibility fractions, days-to-trade, and sqrt-impact cost in bps per
+    book x AUM cell. Sealed `capacity_overlay_eval` receipt. Size bounds
+    only — never a market or live-P&L claim.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "capacity is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.capacity_overlay import (
+        format_capacity_table,
+        resolve_books,
+        run_capacity_bench,
+        write_capacity_receipt,
+    )
+
+    try:
+        grid = tuple(float(x) for x in aum_grid.split(","))
+        resolved = resolve_books(None if books is None else books.split(","))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    book_objs = [gen(n_dates, n_names, seed + i) for i, gen in enumerate(resolved.values())]
+    frame, receipt = run_capacity_bench(
+        book_objs,
+        seed=seed,
+        aum_grid=grid,
+        participation_cap=participation_cap,
+        impact_coeff=impact_coeff,
+    )
+    path = write_capacity_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_capacity_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
+    "capacity",
     "execution_sensitivity_cmd",
     "fleet",
     "rankic",
