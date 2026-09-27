@@ -72,51 +72,59 @@ def session_close(day: date, suffix: str) -> datetime:
 
 def parse_stooq_csv(text: str, *, security_id: str, stooq_symbol: str) -> pl.DataFrame:
     """Parse Stooq ``Date,Open,High,Low,Close,Volume`` into PIT bars."""
-    reader = csv.DictReader(io.StringIO(text))
+    # newline="" so the csv module handles \r\n / bare \r itself; a raw CR in
+    # an unquoted field otherwise raises _csv.Error mid-iteration. Rows parsed
+    # before a malformed tail stay usable — the tolerant tape contract.
+    reader = csv.DictReader(io.StringIO(text, newline=""))
     ingested = datetime.now(tz=UTC)
     rows: list[dict[str, object]] = []
-    for raw in reader:
-        date_s = (raw.get("Date") or "").strip()
-        if not date_s:
-            continue
-        try:
-            day = datetime.strptime(date_s, "%Y-%m-%d").date()
-        except ValueError:
-            continue
-        try:
-            opn = float(raw["Open"])
-            high = float(raw["High"])
-            low = float(raw["Low"])
-            close = float(raw["Close"])
-            volume = float(raw.get("Volume") or 0.0)
-        except (KeyError, TypeError, ValueError):
-            continue
-        if not all(np_finite(v) and v > 0 for v in (opn, high, low, close)):
-            continue
-        if volume < 0 or not np_finite(volume):
-            continue
-        # Envelope repair: Stooq prints occasionally invert on adjusted days.
-        lo = min(opn, high, low, close)
-        hi = max(opn, high, low, close)
-        ts = session_close(day, stooq_symbol)
-        rows.append(
-            {
-                "security_id": security_id,
-                "symbol": security_id,
-                "event_time": ts,
-                "available_time": ts,
-                "ingested_time": ingested,
-                "source": SOURCE,
-                "revision_id": REVISION,
-                "open": float(opn),
-                "high": float(hi),
-                "low": float(lo),
-                "close": float(close),
-                "volume": float(volume),
-                "currency": "GBP" if stooq_symbol.endswith(".uk") else "USD",
-                "session": "rth",
-            }
-        )
+    try:
+        for raw in reader:
+            date_s = (raw.get("Date") or "").strip()
+            if not date_s:
+                continue
+            try:
+                day = datetime.strptime(date_s, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            try:
+                opn = float(raw["Open"])
+                high = float(raw["High"])
+                low = float(raw["Low"])
+                close = float(raw["Close"])
+                volume = float(raw.get("Volume") or 0.0)
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not all(np_finite(v) and v > 0 for v in (opn, high, low, close)):
+                continue
+            if volume < 0 or not np_finite(volume):
+                continue
+            # Envelope repair: Stooq prints occasionally invert on adjusted days.
+            lo = min(opn, high, low, close)
+            hi = max(opn, high, low, close)
+            ts = session_close(day, stooq_symbol)
+            rows.append(
+                {
+                    "security_id": security_id,
+                    "symbol": security_id,
+                    "event_time": ts,
+                    "available_time": ts,
+                    "ingested_time": ingested,
+                    "source": SOURCE,
+                    "revision_id": REVISION,
+                    "open": float(opn),
+                    "high": float(hi),
+                    "low": float(lo),
+                    "close": float(close),
+                    "volume": float(volume),
+                    "currency": "GBP" if stooq_symbol.endswith(".uk") else "USD",
+                    "session": "rth",
+                }
+            )
+    except csv.Error:
+        # Malformed tail (oversized field, NUL byte, ...): keep the rows
+        # parsed so far — the tape contract is tolerate-and-skip, not fatal.
+        pass
     if not rows:
         return pl.DataFrame()
     return pl.DataFrame(rows)

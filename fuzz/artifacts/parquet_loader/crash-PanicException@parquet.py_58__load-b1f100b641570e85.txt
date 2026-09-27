@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_parquet_loader.py", line 54, in test_one_input
+    ParquetMarketProvider(root).get_bars()
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/adapters/parquet.py", line 69, in get_bars
+    df = self._load("bars")
+         ^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/adapters/parquet.py", line 58, in _load
+    return pl.read_parquet(pq)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 132, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 132, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/io/parquet/functions.py", line 303, in read_parquet
+    ret = lf._collect_eager()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py", line 2240, in _collect_eager
+    return _eager_engine().collect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/engine.py", line 443, in collect
+    return wrap_df(ldf.collect(self.name, callback))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pyo3_runtime.PanicException: called `Result::unwrap()` on an `Err` value: JoinError::Panic(Id(113), "assertion `left == right` failed\n  left: 0\n right: 1", ...)
+
+---
+target=parquet_loader dedup=PanicException@parquet.py:58:_load run_index=70 sha256=b1f100b641570e85

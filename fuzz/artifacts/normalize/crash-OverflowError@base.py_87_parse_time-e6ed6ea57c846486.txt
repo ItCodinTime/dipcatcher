@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_normalize.py", line 65, in test_one_input
+    parse_time(payload)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/sources/base.py", line 87, in parse_time
+    return datetime.fromtimestamp(number, tz=UTC)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OverflowError: timestamp out of range for platform time_t
+
+---
+target=normalize dedup=OverflowError@base.py:87:parse_time run_index=241 sha256=e6ed6ea57c846486

@@ -1,0 +1,1 @@
+{"securities":[{"security_id":"SPY","ticker":"SPY","valid_from":"2020-01-01T00:00:00Z","release_ts":"2024-01-02T00:00:00Z","ingest_ts":"2024-01-02T00:00:01Z","name":"SPDR","exchange":"XNAS","currency":"USD","sector":"ETF","industry":"ETF","security_type":"etf"}]}

@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_stooq_csv.py", line 25, in test_one_input
+    parse_stooq_csv(text, security_id="SPY", stooq_symbol="spy.us")
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/adapters/stooq.py", line 78, in parse_stooq_csv
+    for raw in reader:
+               ^^^^^^
+  File "/Users/vaithianathan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/csv.py", line 116, in __next__
+    row = next(self.reader)
+          ^^^^^^^^^^^^^^^^^
+_csv.Error: new-line character seen in unquoted field - do you need to open the file with newline=''?
+
+---
+target=stooq_csv dedup=Error@stooq.py:78:parse_stooq_csv run_index=7 sha256=a851828f27d3a945

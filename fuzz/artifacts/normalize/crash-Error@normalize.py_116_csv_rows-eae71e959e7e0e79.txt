@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_normalize.py", line 46, in test_one_input
+    csv_rows(text)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/sources/normalize.py", line 116, in csv_rows
+    return [dict(row) for row in reader]
+                                 ^^^^^^
+  File "/Users/vaithianathan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/csv.py", line 116, in __next__
+    row = next(self.reader)
+          ^^^^^^^^^^^^^^^^^
+_csv.Error: new-line character seen in unquoted field - do you need to open the file with newline=''?
+
+---
+target=normalize dedup=Error@normalize.py:116:csv_rows run_index=2640 sha256=eae71e959e7e0e79

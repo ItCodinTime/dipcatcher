@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_normalize.py", line 65, in test_one_input
+    parse_time(payload)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/sources/base.py", line 87, in parse_time
+    return datetime.fromtimestamp(number, tz=UTC)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 84] Value too large to be stored in data type
+
+---
+target=normalize dedup=OSError@base.py:87:parse_time run_index=230 sha256=c944a355e4888345

@@ -1,0 +1,5 @@
+data:
+  source: synthetic
+  root: data
+runtime:
+  mode: research

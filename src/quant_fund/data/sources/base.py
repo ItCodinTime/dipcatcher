@@ -79,16 +79,25 @@ def utc_now() -> datetime:
 
 
 def parse_time(value: Any) -> datetime:
-    """Parse common vendor timestamps and return an aware UTC datetime."""
-    if isinstance(value, (int, float)):
-        number = float(value)
-        if number > 10_000_000_000:
-            number /= 1000.0
-        return datetime.fromtimestamp(number, tz=UTC)
-    text = str(value).strip()
-    if text.endswith("Z"):
-        text = text[:-1] + "+00:00"
-    parsed = datetime.fromisoformat(text)
+    """Parse common vendor timestamps and return an aware UTC datetime.
+
+    Raises ``SourceError`` on unparseable or out-of-range input so source
+    adapters get one documented failure channel (``ValueError``,
+    ``OverflowError``, ``OSError`` and ``TypeError`` from the datetime layer
+    are wrapped here rather than leaking into normalizers).
+    """
+    try:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            number = float(value)
+            if number > 10_000_000_000:
+                number /= 1000.0
+            return datetime.fromtimestamp(number, tz=UTC)
+        text = str(value).strip()
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(text)
+    except (TypeError, ValueError, OverflowError, OSError) as exc:
+        raise SourceError(f"unparseable timestamp: {value!r}") from exc
     return (parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed).astimezone(UTC)
 
 

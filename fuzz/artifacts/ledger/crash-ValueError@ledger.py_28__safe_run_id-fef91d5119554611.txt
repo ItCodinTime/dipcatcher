@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_ledger.py", line 69, in test_one_input
+    latest_run_id(data_root)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/paper/ledger.py", line 349, in latest_run_id
+    return _safe_run_id(blob["run_id"]) if blob["run_id"] else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/paper/ledger.py", line 28, in _safe_run_id
+    raise ValueError("paper run_id must be a non-empty path-safe identifier")
+ValueError: paper run_id must be a non-empty path-safe identifier
+
+---
+target=ledger dedup=ValueError@ledger.py:28:_safe_run_id run_index=2388 sha256=fef91d5119554611

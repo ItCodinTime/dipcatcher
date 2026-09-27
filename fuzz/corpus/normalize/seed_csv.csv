@@ -1,0 +1,2 @@
+security_id,event_time,open,high,low,close,volume,available_time
+SPY,2024-01-02T21:00:00Z,100.5,101.2,99.8,100.9,1234567,2024-01-02T21:00:00Z

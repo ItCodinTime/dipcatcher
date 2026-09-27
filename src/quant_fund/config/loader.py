@@ -48,6 +48,10 @@ def load_config(
     data = _read_yaml(path)
     inherit = data.pop("inherit", None)
     if inherit:
+        if not isinstance(inherit, str):
+            raise ValueError(
+                f"Config {path} inherit must be a path string, got {type(inherit).__name__}"
+            )
         parent_path = (path.parent / inherit).resolve()
         parent = load_config(parent_path, _seen=seen | {path}, _root=root)
         merged = deep_merge(parent.model_dump(mode="python"), data)

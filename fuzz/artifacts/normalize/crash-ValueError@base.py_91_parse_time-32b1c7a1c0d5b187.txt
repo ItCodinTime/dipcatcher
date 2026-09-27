@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_normalize.py", line 58, in test_one_input
+    normalize_ohlcv(rows, source="fuzz", revision_id="FUZZ")
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/sources/normalize.py", line 43, in normalize_ohlcv
+    event = parse_time(event_value)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/sources/base.py", line 91, in parse_time
+    parsed = datetime.fromisoformat(text)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Invalid isoformat string: '2024-01-02T21:00>00+00:00'
+
+---
+target=normalize dedup=ValueError@base.py:91:parse_time run_index=12 sha256=32b1c7a1c0d5b187

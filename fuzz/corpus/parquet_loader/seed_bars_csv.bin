@@ -1,0 +1,2 @@
+security_id,symbol,event_time,available_time,ingested_time,source,revision_id,open,high,low,close,volume,currency,session
+SPY,SPY,2024-01-02,2024-01-02,2024-01-02,fuzz,F,100.5,101.0,99.5,100.9,1000000,USD,rth

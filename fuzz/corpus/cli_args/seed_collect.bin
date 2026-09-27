@@ -1,0 +1,1 @@
+collect --source stooq --param a=b --param k=1

@@ -1123,10 +1123,16 @@ def _ensure_month(
     return path
 
 
+# Corrupt parquet surfaces as PolarsError or PanicException — the latter is a
+# BaseException (Rust panic) invisible to ``except Exception``, so it is named
+# explicitly everywhere a vendor month file is decoded.
+_PARQUET_ERRORS = (OSError, pl.exceptions.PolarsError, pl.exceptions.PanicException)
+
+
 def _require_vendor_parquet(path: Path) -> None:
     try:
         schema = pl.scan_parquet(path).collect_schema()
-    except (OSError, pl.exceptions.PolarsError) as exc:
+    except _PARQUET_ERRORS as exc:
         raise OhlcvQualityError(
             f"cached parquet is unreadable ({path}). Delete it and collect again; it was not repaired."
         ) from exc
@@ -1155,4 +1161,10 @@ def _scan_vendor(
         lazy = lazy.filter(pl.col("timestamp") >= (start - timedelta(minutes=1)))
     if end is not None:
         lazy = lazy.filter(pl.col("timestamp") <= (end - timedelta(minutes=1)))
-    return lazy.collect()
+    try:
+        return lazy.collect()
+    except _PARQUET_ERRORS as exc:
+        raise OhlcvQualityError(
+            f"vendor parquet decode failed mid-scan ({type(exc).__name__}); "
+            "delete the cached month and collect again"
+        ) from exc

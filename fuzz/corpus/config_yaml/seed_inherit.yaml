@@ -1,0 +1,3 @@
+inherit: parent.yaml
+data:
+  source: synthetic

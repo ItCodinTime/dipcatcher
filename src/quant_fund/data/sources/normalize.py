@@ -67,9 +67,12 @@ def normalize_ohlcv(
                 "available_time": raw.get("available_time"),
             }
         )
-    return pit_frame(normalized, source=source, revision_id=revision_id).sort(
-        ["security_id", "event_time"]
-    )
+    frame = pit_frame(normalized, source=source, revision_id=revision_id)
+    # An empty frame carries no columns; sorting it raises ColumnNotFoundError
+    # instead of returning the documented empty result.
+    if frame.is_empty():
+        return frame
+    return frame.sort(["security_id", "event_time"])
 
 
 def normalize_observations(
@@ -103,14 +106,21 @@ def normalize_observations(
             if key in raw:
                 row[key] = raw[key]
         normalized.append(row)
-    return pit_frame(normalized, source=source, revision_id=revision_id).sort(
-        ["security_id", "event_time"]
-    )
+    frame = pit_frame(normalized, source=source, revision_id=revision_id)
+    if frame.is_empty():
+        return frame
+    return frame.sort(["security_id", "event_time"])
 
 
 def csv_rows(text: str) -> list[dict[str, str]]:
     """Read a CSV payload without assuming a vendor-specific dataframe library."""
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
-        raise SourceError("CSV response has no header")
-    return [dict(row) for row in reader]
+    # newline="" puts \r\n / bare \r handling inside the csv module (a raw CR
+    # in an unquoted field otherwise escapes as _csv.Error); any residual
+    # csv.Error surfaces through the documented SourceError channel.
+    try:
+        reader = csv.DictReader(io.StringIO(text, newline=""))
+        if not reader.fieldnames:
+            raise SourceError("CSV response has no header")
+        return [dict(row) for row in reader]
+    except csv.Error as exc:
+        raise SourceError(f"CSV payload is malformed: {exc}") from exc

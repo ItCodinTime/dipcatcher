@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_ledger.py", line 67, in test_one_input
+    validate_ledger_schema(run_dir)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/paper/ledger.py", line 820, in validate_ledger_schema
+    cash = pl.read_parquet(cash_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 132, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 132, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/io/parquet/functions.py", line 303, in read_parquet
+    ret = lf._collect_eager()
+          ^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py", line 2240, in _collect_eager
+    return _eager_engine().collect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/engine.py", line 443, in collect
+    return wrap_df(ldf.collect(self.name, callback))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pyo3_runtime.PanicException: called `Result::unwrap()` on an `Err` value: JoinError::Panic(Id(1143), "called `Result::unwrap()` on an `Err` value: JoinError::Panic(Id(1142), \"called `Result::unwrap()` on an `Err` value: JoinError::Panic(Id(1144), \\\"Invalid argument (os error 22)\\\", ...)\", ...)", ...)
+
+---
+target=ledger dedup=PanicException@ledger.py:820:validate_ledger_schema run_index=2304 sha256=fd6f27c5a86e2d46

@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_ledger.py", line 67, in test_one_input
+    validate_ledger_schema(run_dir)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/paper/ledger.py", line 645, in validate_ledger_schema
+    meta = json.loads(meta_path.read_text())
+                      ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "<frozen codecs>", line 322, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xf4 in position 1: invalid continuation byte
+
+---
+target=ledger dedup=UnicodeDecodeError@ledger.py:645:validate_ledger_schema run_index=67 sha256=89727734dd693e70

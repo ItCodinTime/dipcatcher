@@ -60,6 +60,11 @@ dev = [
     "pre-commit>=4.0",
     "types-pyyaml>=6.0",
     "httpx>=0.27",
+    # Coverage-guided fuzzing (libFuzzer harnesses under fuzz/). Wheels exist
+    # only for Linux x86_64; the macOS sdist needs a non-Apple Clang build, so
+    # the dep is Linux-only and harnesses fall back to a bounded random-corpus
+    # runner elsewhere (see docs/FUZZING.md).
+    "atheris>=3.1.0; sys_platform == 'linux'",
 ]
 
 [build-system]

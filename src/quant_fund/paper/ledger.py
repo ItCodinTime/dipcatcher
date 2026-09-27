@@ -346,7 +346,12 @@ def latest_run_id(data_root: Path | str, subdir: str = "paper") -> str | None:
         return None
     if not isinstance(blob, dict) or not isinstance(blob.get("run_id"), str):
         return None
-    return _safe_run_id(blob["run_id"]) if blob["run_id"] else None
+    try:
+        return _safe_run_id(blob["run_id"]) if blob["run_id"] else None
+    except ValueError:
+        # A hostile/corrupt pointer file must not crash the reader — the
+        # contract is "latest run id or None".
+        return None
 
 
 def promotion_dry_run(
@@ -505,6 +510,17 @@ PROMOTION_DRY_RUN_REQUIRED = (
     "research_only",
 )
 
+# JSON artifact reads inside the validator: undecodable bytes are corruption
+# evidence, not a crash — read_text raises UnicodeDecodeError (a ValueError,
+# not JSONDecodeError) on bad UTF-8.
+_LEDGER_JSON_ERRORS = (OSError, UnicodeDecodeError, json.JSONDecodeError)
+
+# Parquet reads: polars surfaces corrupt metadata as PanicException, which is
+# a BaseException — NOT covered by ``except Exception`` — and can hard-abort
+# (Rust OOM) below this layer regardless. Catch it so the validator keeps its
+# "report, never raise" contract for Python-observable failures.
+_LEDGER_READ_ERRORS = (Exception, pl.exceptions.PanicException)
+
 
 def validate_promotion_dry_run_receipt(promo: dict[str, Any]) -> list[str]:
     """Fail-closed checks for a promotion_dry_run JSON / receipt dict.
@@ -643,7 +659,7 @@ def validate_ledger_schema(
     if meta_path.is_file():
         try:
             meta = json.loads(meta_path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
+        except _LEDGER_JSON_ERRORS as exc:
             errors.append(f"meta.json_invalid_json:{exc}")
         else:
             if not isinstance(meta, dict):
@@ -676,7 +692,7 @@ def validate_ledger_schema(
     if state_path.is_file():
         try:
             state = json.loads(state_path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
+        except _LEDGER_JSON_ERRORS as exc:
             errors.append(f"broker_state_invalid_json:{exc}")
         else:
             if not isinstance(state, dict):
@@ -759,7 +775,7 @@ def validate_ledger_schema(
             if "asof" not in cols and "event_time" not in cols:
                 errors.append("equity_missing:asof_or_event_time")
             row_counts["equity"] = eq.height
-        except Exception as exc:  # noqa: BLE001 — report, don't crash validator
+        except _LEDGER_READ_ERRORS as exc:  # noqa: BLE001 — report, don't crash
             errors.append(f"equity_unreadable:{type(exc).__name__}:{exc}")
 
     shadow_path = root / "shadow_equity.parquet"
@@ -771,7 +787,7 @@ def validate_ledger_schema(
             for key in ("event_time", "nav", "gross", "net", "cash", "slot"):
                 if key not in shadow.columns:
                     errors.append(f"shadow_equity_missing:{key}")
-        except Exception as exc:  # noqa: BLE001
+        except _LEDGER_READ_ERRORS as exc:  # noqa: BLE001
             errors.append(f"shadow_equity_unreadable:{type(exc).__name__}:{exc}")
 
     positions_path = root / "positions.parquet"
@@ -780,7 +796,7 @@ def validate_ledger_schema(
         try:
             positions = pl.read_parquet(positions_path)
             row_counts["positions"] = positions.height
-        except Exception as exc:  # noqa: BLE001
+        except _LEDGER_READ_ERRORS as exc:  # noqa: BLE001
             errors.append(f"positions_unreadable:{type(exc).__name__}:{exc}")
 
     # Positive broker cursors must have matching durable champion equity rows.
@@ -808,7 +824,7 @@ def validate_ledger_schema(
                 if key not in cols:
                     errors.append(f"orders_missing:{key}")
             row_counts["orders"] = od.height
-        except Exception as exc:  # noqa: BLE001
+        except _LEDGER_READ_ERRORS as exc:  # noqa: BLE001
             errors.append(f"orders_unreadable:{type(exc).__name__}:{exc}")
     else:
         warnings.append("orders.parquet_missing")
@@ -830,7 +846,7 @@ def validate_ledger_schema(
             ):
                 errors.append("cash_ledger_cash_delta_nonfinite")
             row_counts["cash_ledger"] = cash.height
-        except Exception as exc:  # noqa: BLE001
+        except _LEDGER_READ_ERRORS as exc:  # noqa: BLE001
             errors.append(f"cash_ledger_unreadable:{type(exc).__name__}:{exc}")
 
     promo_path = root / "promotion_dry_run.json"
@@ -838,11 +854,15 @@ def validate_ledger_schema(
     if promo_path.is_file():
         try:
             promo = json.loads(promo_path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
+        except _LEDGER_JSON_ERRORS as exc:
             errors.append(f"promotion_dry_run_invalid_json:{exc}")
         else:
             promo_errors = validate_promotion_dry_run_receipt(promo)
-            if "run_id" in promo and promo.get("run_id") != meta.get("run_id"):
+            if (
+                isinstance(promo, dict)
+                and "run_id" in promo
+                and promo.get("run_id") != meta.get("run_id")
+            ):
                 errors.append("promotion_run_id_mismatch")
             errors.extend(promo_errors)
 
@@ -868,7 +888,7 @@ def validate_ledger_schema(
     if analytics_path.is_file():
         try:
             analytics = json.loads(analytics_path.read_text())
-        except (OSError, json.JSONDecodeError) as exc:
+        except _LEDGER_JSON_ERRORS as exc:
             errors.append(f"analytics_export_invalid_json:{exc}")
         else:
             analytics_report = validate_analytics_export(analytics)

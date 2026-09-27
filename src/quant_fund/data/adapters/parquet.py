@@ -46,6 +46,11 @@ _ALLOWED_ACTION_TYPES = frozenset(
 )
 _DIVIDEND_ACTION_TYPES = frozenset({"cash_dividend", "special_dividend"})
 
+# Decode failures the file adapter must contain. ``pl.exceptions.PanicException``
+# is a BaseException (Rust panic on corrupt metadata) — not an Exception — so
+# it must be named explicitly to keep the provider's PointInTimeError contract.
+_DECODE_ERRORS = (OSError, pl.exceptions.PolarsError, pl.exceptions.PanicException)
+
 
 class ParquetMarketProvider:
     def __init__(self, root: Path) -> None:
@@ -54,10 +59,13 @@ class ParquetMarketProvider:
     def _load(self, name: str) -> pl.DataFrame:
         pq = self.root / f"{name}.parquet"
         csv = self.root / f"{name}.csv"
-        if pq.exists():
-            return pl.read_parquet(pq)
-        if csv.exists():
-            return pl.read_csv(csv, try_parse_dates=True)
+        try:
+            if pq.exists():
+                return pl.read_parquet(pq)
+            if csv.exists():
+                return pl.read_csv(csv, try_parse_dates=True)
+        except _DECODE_ERRORS as exc:
+            raise PointInTimeError(f"{name} file under {self.root} is unreadable") from exc
         return pl.DataFrame()
 
     def get_bars(

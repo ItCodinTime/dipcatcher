@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_config_yaml.py", line 41, in test_one_input
+    load_config(target)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/config/loader.py", line 51, in load_config
+    parent_path = (path.parent / inherit).resolve()
+                   ~~~~~~~~~~~~^~~~~~~~~
+TypeError: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+
+---
+target=config_yaml dedup=TypeError@loader.py:51:load_config run_index=5969 sha256=4f15cdcd5429de1d

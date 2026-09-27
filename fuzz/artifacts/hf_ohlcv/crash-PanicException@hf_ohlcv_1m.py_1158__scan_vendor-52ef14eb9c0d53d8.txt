@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 270, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_hf_ohlcv.py", line 72, in test_one_input
+    read_ohlcv_1m(
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/adapters/hf_ohlcv_1m.py", line 447, in read_ohlcv_1m
+    vendor = _scan_vendor(paths, tickers, start=start_utc, end=end_utc)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/data/adapters/hf_ohlcv_1m.py", line 1158, in _scan_vendor
+    return lazy.collect()
+           ^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 97, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/opt_flags.py", line 361, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py", line 2591, in collect
+    return engine_.collect(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/.venv/lib/python3.12/site-packages/polars/lazyframe/engine.py", line 443, in collect
+    return wrap_df(ldf.collect(self.name, callback))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pyo3_runtime.PanicException: called `Result::unwrap()` on an `Err` value: JoinError::Panic(Id(15), "assertion `left == right` failed\n  left: 0\n right: 2", ...)
+
+---
+target=hf_ohlcv dedup=PanicException@hf_ohlcv_1m.py:1158:_scan_vendor run_index=18 sha256=52ef14eb9c0d53d8

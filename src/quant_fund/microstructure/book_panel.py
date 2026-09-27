@@ -156,11 +156,18 @@ def load_book_panel(path: Path | str) -> pl.DataFrame:
 
     Missing paths fail closed with ``FileNotFoundError`` (clearer than a raw
     parquet I/O error) so CLI / Northset / providers share one contract.
+    Corrupt bytes surface as ``ValueError`` — polars raises ``PolarsError`` or
+    ``PanicException`` (a BaseException Rust panic, invisible to
+    ``except Exception``) on malformed metadata; both are contained here.
     """
     target = Path(path)
     if not target.is_file():
         raise FileNotFoundError(f"order-book panel parquet not found: {target}")
-    return validate_book_panel(pl.read_parquet(target))
+    try:
+        frame = pl.read_parquet(target)
+    except (OSError, pl.exceptions.PolarsError, pl.exceptions.PanicException) as exc:
+        raise ValueError(f"order-book panel parquet is unreadable: {target}") from exc
+    return validate_book_panel(frame)
 
 
 def validate_book_panel_depth_honesty(frame: pl.DataFrame) -> pl.DataFrame:

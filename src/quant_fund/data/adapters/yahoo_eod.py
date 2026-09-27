@@ -87,14 +87,25 @@ def parse_yahoo_chart(payload: dict, *, security_id: str, yahoo_symbol: str) -> 
     block = result[0]
     if not isinstance(block, dict):
         return pl.DataFrame()
-    stamps = block.get("timestamp") or []
-    indicators = block.get("indicators") or {}
-    quotes = (indicators.get("quote") or [{}])[0]
-    opens = quotes.get("open") or []
-    highs = quotes.get("high") or []
-    lows = quotes.get("low") or []
-    closes = quotes.get("close") or []
-    volumes = quotes.get("volume") or []
+    # Tolerant shape guards: every member must be the expected JSON container
+    # before indexing, or a hostile payload escapes as TypeError/KeyError
+    # instead of producing an empty/skip result.
+    stamps_raw = block.get("timestamp")
+    stamps = stamps_raw if isinstance(stamps_raw, list) else []
+    indicators = block.get("indicators")
+    quote_list = indicators.get("quote") if isinstance(indicators, dict) else None
+    first = quote_list[0] if isinstance(quote_list, list) and quote_list else None
+    quotes = first if isinstance(first, dict) else {}
+
+    def _series(name: str) -> list[object]:
+        value = quotes.get(name)
+        return value if isinstance(value, list) else []
+
+    opens = _series("open")
+    highs = _series("high")
+    lows = _series("low")
+    closes = _series("close")
+    volumes = _series("volume")
     ingested = datetime.now(tz=UTC)
     suffix = ".uk" if yahoo_symbol.endswith(".L") else ".us"
     rows: list[dict[str, object]] = []
@@ -106,7 +117,8 @@ def parse_yahoo_chart(payload: dict, *, security_id: str, yahoo_symbol: str) -> 
             low = float(lows[i])
             close = float(closes[i])
             volume = float(volumes[i] or 0.0)
-        except (TypeError, ValueError):
+            day = datetime.fromtimestamp(int(stamps[i]), tz=UTC).date()
+        except (TypeError, ValueError, KeyError, IndexError, OverflowError, OSError):
             continue
         if not all(np_finite(v) and v > 0 for v in (opn, high, low, close)):
             continue
@@ -114,7 +126,6 @@ def parse_yahoo_chart(payload: dict, *, security_id: str, yahoo_symbol: str) -> 
             continue
         lo = min(opn, high, low, close)
         hi = max(opn, high, low, close)
-        day = datetime.fromtimestamp(int(stamps[i]), tz=UTC).date()
         ts = session_close(day, suffix)
         rows.append(
             {

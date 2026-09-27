@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_common.py", line 376, in run
+    test_one_input(data)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/fuzz/fuzz_receipt.py", line 42, in test_one_input
+    verify_research_artifact(path)
+  File "/Users/vaithianathan/dipcatcher/.worktrees/fuzzing/src/quant_fund/research/verify.py", line 206, in verify_research_artifact
+    notebook = json.loads(path.read_text())
+                          ^^^^^^^^^^^^^^^^
+  File "/Users/vaithianathan/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py", line 1028, in read_text
+    return f.read()
+           ^^^^^^^^
+  File "<frozen codecs>", line 322, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x9a in position 41: invalid start byte
+
+---
+target=receipt dedup=UnicodeDecodeError@verify.py:206:verify_research_artifact run_index=1 sha256=7020f6c924144805
