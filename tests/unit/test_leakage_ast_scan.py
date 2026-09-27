@@ -217,6 +217,40 @@ def test_lh012_parse_failure_is_warning_not_crash(tmp_path: Path) -> None:
     assert len(findings) == 1 and findings[0].severity == "warning"
 
 
+def test_lh012_respects_rule_filter(tmp_path: Path) -> None:
+    path = tmp_path / "broken.py"
+    path.write_text(LH012_POSITIVE, encoding="utf-8")
+    assert scan_paths([path], rules={"LH001"}).findings == []
+
+
+def test_lh001_detects_direct_subscript_shift(tmp_path: Path) -> None:
+    report = _scan(tmp_path, 'def f(frame):\n    return frame["close"].shift(-1)\n')
+    assert "LH001" in _rule_ids(report, "error")
+
+
+@pytest.mark.parametrize("headline", ["Sharpe:2.1", "P&L=$4,200"])
+def test_lh008_detects_compact_headline(tmp_path: Path, headline: str) -> None:
+    report = _scan(tmp_path, f"title = {headline!r}\n")
+    assert "LH008" in _rule_ids(report, "error")
+
+
+def test_lh008_allowlist_does_not_exempt_new_literal(tmp_path: Path) -> None:
+    path = tmp_path / "src/quant_fund/risk/gates.py"
+    path.parent.mkdir(parents=True)
+    path.write_text('note = "Sharpe 3.1 is a headline"\n', encoding="utf-8")
+    report = scan_paths([path], rules={"LH008"})
+    assert "LH008" in _rule_ids(report, "error")
+
+
+def test_scan_paths_rejects_invalid_target(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="scan target"):
+        scan_paths([tmp_path / "missing.py"])
+    text_file = tmp_path / "notes.txt"
+    text_file.write_text("hello", encoding="utf-8")
+    with pytest.raises(ValueError, match="scan target"):
+        scan_paths([text_file])
+
+
 def test_lh011_layering_violation(tmp_path: Path) -> None:
     pkg = tmp_path / "src" / "quant_fund" / "leakage"
     pkg.mkdir(parents=True)
@@ -250,6 +284,24 @@ def test_lh011_rejects_non_whitelisted_lazy(tmp_path: Path) -> None:
     (pkg / "evil_lazy.py").write_text(
         "def f():\n    from quant_fund.backtest import engine\n    return engine\n",
         encoding="utf-8",
+    )
+    report = scan_paths([pkg], rules={"LH011"})
+    assert "LH011" in _rule_ids(report, "error")
+
+
+def test_lh011_rejects_relative_import_into_unlisted_package(tmp_path: Path) -> None:
+    pkg = tmp_path / "src" / "quant_fund" / "leakage"
+    pkg.mkdir(parents=True)
+    (pkg / "evil_relative.py").write_text("from ..backtest import engine\n", encoding="utf-8")
+    report = scan_paths([pkg], rules={"LH011"})
+    assert "LH011" in _rule_ids(report, "error")
+
+
+def test_lh011_checks_every_absolute_import(tmp_path: Path) -> None:
+    pkg = tmp_path / "src" / "quant_fund" / "leakage"
+    pkg.mkdir(parents=True)
+    (pkg / "evil_multi.py").write_text(
+        "import quant_fund.backtest, quant_fund.proofcore\n", encoding="utf-8"
     )
     report = scan_paths([pkg], rules={"LH011"})
     assert "LH011" in _rule_ids(report, "error")

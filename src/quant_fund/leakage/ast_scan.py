@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import hashlib
 import re
 from pathlib import Path
 
 from quant_fund.leakage.rules import (
+    LH008_LITERAL_ALLOWLIST,
     LH009_EXEMPT_GLOBS,
     LH011_LAZY_WHITELIST,
     LH011_PACKAGES,
@@ -60,6 +62,13 @@ def _receiver_price_like(receiver: ast.AST) -> bool:
         return name.lower() in _PRICE_EXACT_NAMES or bool(_PRICE_NAME_RE.search(name))
     if isinstance(receiver, ast.Attribute):
         return bool(_PRICE_NAME_RE.search(receiver.attr))
+    if isinstance(receiver, ast.Subscript):
+        key = receiver.slice
+        return (
+            isinstance(key, ast.Constant)
+            and isinstance(key.value, str)
+            and bool(_PRICE_NAME_RE.search(key.value))
+        )
     if isinstance(receiver, ast.Call):
         # pl.col("close").shift(-1) — inspect the column-name literal.
         func = receiver.func
@@ -417,12 +426,17 @@ def _check_lh008(tree: ast.AST, path_str: str) -> list[_Finding]:
             and isinstance(node.value, str)
             and id(node) not in docstrings
             and len(node.value) > 0
-            # Identifier-like literals (dict keys, column names such as
-            # "corr_spike_1sigma_pnl") are never prose headlines.
-            and any(ch.isspace() for ch in node.value)
+            # Skip identifier-like keys while checking compact output labels
+            # such as "Sharpe:2.1" and "P&L=$4,200".
+            and (not node.value.isidentifier())
         ):
             tokens = find_forbidden_headline(node.value)
-            if tokens:
+            digest = hashlib.sha256(node.value.encode("utf-8")).hexdigest()
+            allowed = any(
+                (path_str == path or path_str.endswith(f"/{path}")) and digest in digests
+                for path, digests in LH008_LITERAL_ALLOWLIST.items()
+            )
+            if tokens and not allowed:
                 out.append(
                     _Finding(
                         "LH008",
@@ -503,18 +517,23 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
     parents = _build_parent_map(tree)
     out: list[_Finding] = []
     for node in ast.walk(tree):
-        module: str | None = None
-        if isinstance(node, ast.ImportFrom) and node.module:
-            module = node.module
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.startswith("quant_fund."):
-                    module = alias.name
-        if module is None or not module.startswith("quant_fund."):
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
             continue
-        sub = module.split(".")[1]
-        if sub == package:
-            continue  # intra-package imports are always fine
+        modules: list[str] = []
+        if isinstance(node, ast.ImportFrom):
+            if node.level:
+                parts = Path(path_str).parts
+                quant_index = parts.index("quant_fund")
+                package_parts = list(parts[quant_index:-1])
+                if node.level > len(package_parts):
+                    modules = ["quant_fund.__invalid_relative_import__"]
+                else:
+                    base = package_parts[: len(package_parts) - node.level + 1]
+                    modules = [".".join([*base, *([node.module] if node.module else [])])]
+            elif node.module:
+                modules = [node.module]
+        elif isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
         # Function-level (lazy) imports may use the lazy whitelist.
         cur = parents.get(id(node))
         nested = False
@@ -524,16 +543,22 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
                 break
             cur = parents.get(id(cur))
         allowed = whitelist | (lazy_whitelist if nested else frozenset())
-        if sub not in allowed:
-            out.append(
-                _Finding(
-                    "LH011",
-                    node.lineno,
-                    node.col_offset,
-                    f"quant_fund.{package} imports non-whitelisted quant_fund.{sub} "
-                    f"({'lazy ' if nested else ''}import; whitelist: {sorted(allowed) or 'none'})",
+        for module in modules:
+            if not module.startswith("quant_fund."):
+                continue
+            sub = module.split(".")[1]
+            if sub == package:
+                continue  # intra-package imports are always fine
+            if sub not in allowed:
+                out.append(
+                    _Finding(
+                        "LH011",
+                        node.lineno,
+                        node.col_offset,
+                        f"quant_fund.{package} imports non-whitelisted quant_fund.{sub} "
+                        f"({'lazy ' if nested else ''}import; whitelist: {sorted(allowed) or 'none'})",
+                    )
                 )
-            )
     return out
 
 
@@ -555,12 +580,14 @@ _CHECKERS = {
 def scan_file(path: Path, *, rules: set[str] | None = None) -> list[_Finding]:
     """Scan one .py file; never raises on parse errors (LH012 instead)."""
     path_str = path.as_posix()
-    enabled = rules if rules is not None else set(_CHECKERS)
+    enabled = rules if rules is not None else set(_CHECKERS) | {"LH012"}
     findings: list[_Finding] = []
     try:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
     except (SyntaxError, ValueError, UnicodeDecodeError) as exc:
+        if "LH012" not in enabled:
+            return []
         line = getattr(exc, "lineno", None) or 1
         return [
             _Finding("LH012", int(line), 0, f"unparseable file: {exc.__class__.__name__}: {exc}")
@@ -582,6 +609,8 @@ def collect_py_files(paths: list[Path]) -> list[Path]:
             files.append(p)
         elif p.is_dir():
             files.extend(sorted(p.rglob("*.py")))
+        else:
+            raise ValueError(f"scan target is missing or is not a Python file/directory: {p}")
     # de-duplicate, stable order
     seen: set[str] = set()
     out: list[Path] = []

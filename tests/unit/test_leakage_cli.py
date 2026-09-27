@@ -69,3 +69,9 @@ def test_scan_unknown_rule_exit_2() -> None:
 def test_scan_bad_format_exit_2() -> None:
     result = runner.invoke(leakage_app, ["scan", "--paths", str(FIXTURE_DIR), "--format", "yaml"])
     assert result.exit_code == 2
+
+
+def test_scan_missing_target_exit_2(tmp_path: Path) -> None:
+    result = runner.invoke(leakage_app, ["scan", "--paths", str(tmp_path / "missing.py")])
+    assert result.exit_code == 2
+    assert "scan target" in result.output
