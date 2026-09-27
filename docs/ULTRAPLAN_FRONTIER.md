@@ -242,8 +242,10 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 - [ ] P5.1 Multi-sleeve dev study: carry + time-series momentum + x-sectional
       reversal (Kakushadze-style BTC-factor residual mean-reversion);
       sleeve-level risk-parity / vol-target overlay.
-- [ ] P5.2 Vol-targeting overlay on carry book (target σ, realized-vol
-      scaling, cap); dev only.
+- [x] P5.2 Vol-targeting overlay (`research/capacity_overlay.py::
+      vol_target_scales`): delay-1 trailing/EWMA σ estimate -> clip(
+      target/σ, 0, max_leverage); warmup neutral, unmeasurable vol
+      flattens. Dev-only evidence via `dipcatcher capacity --dev`.
 - [ ] P5.3 Quarterly-futures cash-and-carry lane: collect Binance delivery
       futures (`collect_perp_universe.py` extension); settlement-anchored
       basis capture — the one structural edge with positive published OOS.
@@ -252,8 +254,11 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
       hysteresis parameter robustness surface (not retuned on holdout).
 - [ ] P5.5 Cross-venue funding/basis: gated on second-venue data
       availability; otherwise documented out-of-scope.
-- [ ] P5.6 Capacity analysis: participation-capped fills × ADV → report max
-      deployable AUM per sleeve (a real hedge-fund bar item).
+- [x] P5.6 Capacity analysis (`research/capacity_overlay.py::
+      run_capacity_bench` + `dipcatcher capacity --dev`): 4 seeded
+      SYNTHETIC books × AUM grid -> feasible-date share, days-to-trade,
+      sqrt-impact bps under participation cap; sealed
+      `capacity_overlay_eval` receipt (dev-only, SYNTHETIC).
 
 ### P6 — Full code audit ("every file can be made better" — verify or fix)
 
