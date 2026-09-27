@@ -358,3 +358,35 @@ jobs:
           uv run python -c "import json, pathlib, yaml; root = pathlib.Path('deploy/observability'); yaml.safe_load((root / 'slo.yml').read_text()); yaml.safe_load((root / 'docker-compose.yml').read_text()); yaml.safe_load((root / 'otel-collector.yaml').read_text()); yaml.safe_load((root / 'prometheus.yml').read_text()); json.loads((root / 'grafana/dashboards/dipcatcher.json').read_text())"
       - name: Compose config
         run: docker compose -f deploy/observability/docker-compose.yml config
+
+  diffbacktest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync JAX extra
+        run: uv sync --frozen --group dev --extra jax
+      - name: CPU differentiable backtest
+        run: JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
+
+  robustness-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Robustness tests
+        run: uv run pytest -q tests/unit/robustness tests/property/test_robustness_bounds.py
+      - name: Certifier smoke
+        run: uv run python -m quant_fund.robustness
