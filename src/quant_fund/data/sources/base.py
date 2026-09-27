@@ -7,7 +7,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 import polars as pl
@@ -15,6 +15,51 @@ import polars as pl
 
 class SourceError(RuntimeError):
     """Raised when a source cannot be fetched or normalized safely."""
+
+
+# Query-parameter names that carry credentials or tokens. Error messages embed
+# request URLs (which sources need for debugging a failed series), so these
+# values must never reach a log line — e.g. FRED ``api_key`` / BEA ``UserID``.
+SENSITIVE_QUERY_PARAMS = frozenset(
+    {
+        "api_key",
+        "apikey",
+        "access_token",
+        "auth",
+        "auth_token",
+        "bearer",
+        "client_secret",
+        "key",
+        "password",
+        "passwd",
+        "secret",
+        "signature",
+        "token",
+        "user_id",
+        "userid",
+    }
+)
+
+
+def redact_url(url: str) -> str:
+    """Return ``url`` with sensitive query-parameter values replaced by ``***``.
+
+    Best-effort: a URL that cannot be parsed collapses to its scheme+netloc+path
+    so a malformed URL can never smuggle a credential into an error message.
+    """
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return "<unparseable url>"
+    if parts.scheme.lower() not in {"http", "https"}:
+        # Never echo non-HTTP URLs (e.g. file:// paths) verbatim.
+        return f"{parts.scheme}://<redacted>" if parts.scheme else "<redacted>"
+    pairs = parse_qsl(parts.query, keep_blank_values=True)
+    redacted = [
+        (name, "***" if name.strip().lower() in SENSITIVE_QUERY_PARAMS else value)
+        for name, value in pairs
+    ]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(redacted), ""))
 
 
 class HttpClient:
@@ -37,17 +82,21 @@ class HttpClient:
 
     def _request(self, url: str, *, headers: dict[str, str] | None = None) -> bytes:
         if urlsplit(url).scheme.lower() not in {"http", "https"}:
-            raise SourceError(f"unsupported URL scheme: {url}")
+            raise SourceError(f"unsupported URL scheme: {redact_url(url)}")
         request_headers = {"User-Agent": self.user_agent, "Accept": "*/*"}
         request_headers.update(headers or {})
         request = Request(url, headers=request_headers, method="GET")
+        # Error strings embed the URL for operator debugging; redact it so
+        # credential query params (e.g. FRED api_key, BEA UserID) cannot leak
+        # into stderr/logs.
+        safe_url = redact_url(url)
         last_error: Exception | None = None
         for attempt in range(self.retries + 1):
             try:
                 with urlopen(request, timeout=self.timeout) as response:  # noqa: S310  # nosec B310
                     body = bytes(response.read(self.max_bytes + 1))
                 if len(body) > self.max_bytes:
-                    raise SourceError(f"response exceeded {self.max_bytes} bytes: {url}")
+                    raise SourceError(f"response exceeded {self.max_bytes} bytes: {safe_url}")
                 return body
             except HTTPError as exc:
                 last_error = exc
@@ -57,7 +106,7 @@ class HttpClient:
                 last_error = exc
             if attempt < self.retries:
                 time.sleep(min(2.0**attempt, 4.0))
-        raise SourceError(f"GET failed after retries: {url}") from last_error
+        raise SourceError(f"GET failed after retries: {safe_url}") from last_error
 
     def get_json(self, url: str, *, headers: dict[str, str] | None = None) -> Any:
         try:
@@ -65,7 +114,7 @@ class HttpClient:
                 self._request(url, headers={"Accept": "application/json", **(headers or {})})
             )
         except json.JSONDecodeError as exc:
-            raise SourceError(f"invalid JSON response: {url}") from exc
+            raise SourceError(f"invalid JSON response: {redact_url(url)}") from exc
 
     def get_text(self, url: str, *, headers: dict[str, str] | None = None) -> str:
         return self._request(url, headers=headers).decode("utf-8-sig", errors="replace")

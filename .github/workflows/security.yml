@@ -1,0 +1,93 @@
+name: Security
+
+# Baseline-diffed security gates. ci.yml already fails on *any* bandit
+# medium+/pip-audit finding; this workflow widens coverage (secrets scan over
+# the whole tracked tree, bandit at every severity over src + scripts) and
+# diffs reports against checked-in baselines under security/baselines/ so only
+# NEW findings fail. See docs/SECURITY_REVIEW.md for triage instructions.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekly: new advisories are published for already-locked versions even when
+  # the code has not changed.
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      # The staged-diff pre-commit hook cannot see committed history; in CI
+      # the same patterns must hold over every tracked file (zero findings).
+      - name: Scan tracked files for credentials
+        run: uv run --no-project python scripts/secret_scan.py --all
+
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Bandit scan (all severities, JSON)
+        # bandit exits non-zero whenever findings exist — the baseline differ
+        # decides what is new, so tolerate the scanner exit code.
+        run: |
+          uvx --from bandit==1.9.4 bandit -q -r src scripts -f json -o bandit-report.json || true
+      - name: Diff against baseline
+        run: |
+          uv run --no-project python scripts/security_baseline_diff.py \
+            --tool bandit --report bandit-report.json \
+            --baseline security/baselines/bandit.json
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-bandit-report
+          path: bandit-report.json
+          if-no-files-found: error
+
+  deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Locked-deps vulnerability audit (JSON)
+        run: |
+          set -o pipefail
+          uv export --format requirements.txt --no-hashes --no-emit-project \
+            --all-extras --all-groups \
+            | uvx --from pip-audit==2.10.1 pip-audit --format json -r /dev/stdin \
+            -o pip-audit-report.json || true
+      - name: Diff against baseline
+        run: |
+          uv run --no-project python scripts/security_baseline_diff.py \
+            --tool pip-audit --report pip-audit-report.json \
+            --baseline security/baselines/pip-audit.json
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-pip-audit-report
+          path: pip-audit-report.json
+          if-no-files-found: error

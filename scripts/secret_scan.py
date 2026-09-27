@@ -75,31 +75,72 @@ def _staged_added_lines() -> list[tuple[str, int, str]]:
     return hits
 
 
-def scan() -> list[str]:
+def _scan_line(path: str, lineno: int, content: str, findings: list[str]) -> None:
+    if PLACEHOLDER_HINTS.search(content):
+        return
+    for name, pat in PROVIDER_PATTERNS:
+        if pat.search(content):
+            findings.append(f"{path}:{lineno}: {name}")
+            return
+    m = ASSIGNMENT.search(content)
+    if m and not PLACEHOLDER_HINTS.search(m.group(2)):
+        findings.append(f"{path}:{lineno}: credential_assignment({m.group(1)})")
+
+
+def _skipped(path: str) -> bool:
+    if path.endswith((".png", ".jpg", ".parquet", ".npz", ".zip", ".bin")):
+        return True
+    return path.endswith(".secrets.baseline") or path.endswith("secret_scan.py")
+
+
+def _tracked_lines() -> list[tuple[str, int, str]]:
+    """(path, lineno, line) for every tracked text file — the CI surface."""
+    proc = subprocess.run(
+        ["git", "ls-files", "-z"],
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    lines: list[tuple[str, int, str]] = []
+    for raw_path in proc.stdout.split(b"\0"):
+        if not raw_path:
+            continue
+        path = raw_path.decode("utf-8", errors="replace")
+        if _skipped(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for lineno, content in enumerate(fh, 1):
+                    lines.append((path, lineno, content))
+        except (OSError, UnicodeDecodeError):
+            continue
+    return lines
+
+
+def scan(*, tracked: bool = False) -> list[str]:
     findings: list[str] = []
-    for path, lineno, content in _staged_added_lines():
-        if path.endswith((".png", ".jpg", ".parquet", ".npz", ".zip", ".bin")):
-            continue
-        if path.endswith(".secrets.baseline") or path.endswith("secret_scan.py"):
-            continue
-        if PLACEHOLDER_HINTS.search(content):
-            continue
-        for name, pat in PROVIDER_PATTERNS:
-            if pat.search(content):
-                findings.append(f"{path}:{lineno}: {name}")
-                break
-        else:
-            m = ASSIGNMENT.search(content)
-            if m and not PLACEHOLDER_HINTS.search(m.group(2)):
-                findings.append(f"{path}:{lineno}: credential_assignment({m.group(1)})")
+    if tracked:
+        candidates = _tracked_lines()
+    else:
+        candidates = [
+            (path, lineno, content)
+            for path, lineno, content in _staged_added_lines()
+            if not _skipped(path)
+        ]
+    for path, lineno, content in candidates:
+        _scan_line(path, lineno, content, findings)
     return findings
 
 
-def main() -> int:
-    findings = scan()
+def main(argv: list[str] | None = None) -> int:
+    args = argv if argv is not None else sys.argv[1:]
+    tracked = "--all" in args or "--tracked" in args
+    findings = scan(tracked=tracked)
     if not findings:
         return 0
-    print("secret-scan: refusing commit — likely credentials in staged diff:")
+    scope = "tracked files" if tracked else "staged diff"
+    print(f"secret-scan: refusing — likely credentials in {scope}:")
     for f in findings:
         print("  " + f)
     print(

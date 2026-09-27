@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "schema": "security-baseline.v1",
+  "tool": "pip-audit"
+}

@@ -69,8 +69,22 @@ def sign_release(checkpoint_dir: str | Path) -> Path:
     return sig_path
 
 
+def _artifact_paths(root: Path) -> set[str]:
+    """The file set a manifest covers — every file except the control pair."""
+    return {
+        str(path.relative_to(root))
+        for path in root.rglob("*")
+        if path.is_file() and path.name not in {SIGNATURE_FILENAME, MANIFEST_FILENAME}
+    }
+
+
 def verify_release(checkpoint_dir: str | Path) -> bool:
-    """Fail-closed verification: manifest intact, signature valid, hashes match."""
+    """Fail-closed verification: manifest intact, signature valid, hashes match.
+
+    The on-disk file set must equal the signed manifest exactly: artifacts
+    *added* after signing (a dropped weight file, a ``.pth``/``sitecustomize``
+    shim, a config override) are as much a release violation as modified ones.
+    """
     root = Path(checkpoint_dir)
     manifest_path = root / MANIFEST_FILENAME
     sig_path = root / SIGNATURE_FILENAME
@@ -85,4 +99,4 @@ def verify_release(checkpoint_dir: str | Path) -> bool:
         path = root / rel
         if not path.exists() or _hash_file(path) != digest:
             return False
-    return True
+    return _artifact_paths(root) == set(manifest.artifacts)

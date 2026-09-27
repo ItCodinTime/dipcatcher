@@ -974,9 +974,9 @@ def _paper_challenger_stamp(
     ids: NDArray[np.float64] | None = None,
 ) -> tuple[str, dict[str, float | str]]:
     """List fitted paper rankers. Spearman vs ridge only. Never blended into alpha."""
-    import joblib
     from scipy.stats import spearmanr
 
+    from quant_fund.models.base import load_joblib_artifact
     from quant_fund.pipeline.train import _predict_ranker
 
     present: list[str] = []
@@ -987,7 +987,9 @@ def _paper_challenger_stamp(
         if not path.is_file():
             continue
         try:
-            model = joblib.load(path)
+            # load_joblib_artifact enforces the checksum sidecar + manifest
+            # when present; raw joblib.load skipped that integrity boundary.
+            model = load_joblib_artifact(path)
             pred = np.asarray(_predict_ranker(model, name, x, dates, ids), dtype=float)
         except (TypeError, ValueError, OSError, AttributeError):
             continue
