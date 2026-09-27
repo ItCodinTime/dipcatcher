@@ -19,13 +19,16 @@
 # The example calls `verify_phase1_index` and `verify_phase1_run`, the same path as
 # `dipcatcher verify-research`. A runtime mismatch against the sealing interpreter
 # is reported and does not by itself fail the summary. Any other verifier error
-# fails the example. Passing verification does not authorize live trading.
+# fails the example. The sealed US tape is gitignored; when it is absent this
+# example restores that blob from git history so the dataset hash is checked.
+# Passing verification does not authorize live trading.
 
 # %%
 from __future__ import annotations
 
 import gzip
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -34,6 +37,7 @@ from quant_fund.research.phase1_verify import verify_phase1_index, verify_phase1
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "data" / "metadata" / "research" / "phase1_evidence_index.json"
 _RUNTIME_NOTE = "runtime differs from this environment"
+_SEALED_TAPE = "data/file_us_wide/bronze/bars.parquet"
 
 
 def _load_object(path: Path) -> dict[str, object]:
@@ -135,7 +139,48 @@ def _summarize_run(index_dir: Path, entry: dict[str, object], number: int) -> No
     print("test_receipt=sealed" if test_on_disk else "test_receipt=absent")
 
 
+def _materialize_sealed_tape() -> None:
+    """Restore the gitignored sealed US tape from the commit that untracked it.
+
+    Phase-1 receipts bind ``dataset_sha256`` to those bytes. The worktree no
+    longer contains the derived parquet; the blob is still in git history.
+    """
+    dest = ROOT / _SEALED_TAPE
+    if dest.is_file():
+        return
+    found = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "log",
+            "--diff-filter=D",
+            "-1",
+            "--format=%H",
+            "--",
+            _SEALED_TAPE,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    revision = found.stdout.strip()
+    if found.returncode != 0 or not revision:
+        return
+    blob = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "blob", f"{revision}^:{_SEALED_TAPE}"],
+        check=False,
+        capture_output=True,
+    )
+    payload = blob.stdout
+    if blob.returncode != 0 or not payload:
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(payload)
+
+
 def main() -> None:
+    _materialize_sealed_tape()
     if not INDEX_PATH.is_file():
         raise SystemExit(f"phase-1 evidence index is absent: {INDEX_PATH}")
     index = _load_object(INDEX_PATH)

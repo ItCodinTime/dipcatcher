@@ -19,7 +19,7 @@ make examples   # ruff, mypy, and the offline pytest runner
 
 ## Labels
 
-SYNTHETIC output is an engine check, not market evidence. The US snapshot scores are proper scores on a survivorship-biased vendor file whose availability timestamps were reconstructed; the example prints those disclosures from the benchmark config. Phase-1 verification can report `runtime differs from this environment` when this interpreter's patch version is not the one that sealed the receipts. That note is not a broken seal. Any other verifier error fails `05_phase1_evidence.py`. A verified receipt does not authorize live trading.
+SYNTHETIC output is an engine check, not market evidence. The US snapshot scores are proper scores on a survivorship-biased vendor file whose availability timestamps were reconstructed; the example prints those disclosures from the benchmark config. Phase-1 verification can report `runtime differs from this environment` when this interpreter's patch version is not the one that sealed the receipts. That note is not a broken seal. Any other verifier error fails `05_phase1_evidence.py`. The sealed US tape is gitignored; the example restores `data/file_us_wide/bronze/bars.parquet` from git history when the worktree does not have it, then checks the sealed SHA-256. A verified receipt does not authorize live trading.
 
 ## Hugging Face OHLCV-1m
 
