@@ -6,10 +6,22 @@ calls. Data enters only through the PIT vault ``asof()`` choke point; every
 read is recorded into an ``InMemoryRecorder`` and lands in the bundle's
 ``data_manifest``.
 
-Determinism note (A3 #6): the panel reads use ``ASOF_SENTINEL`` ("latest
-known"), never wall-clock time, so the recorded ``asof_utc`` and the Merkle
-root are stable across identical re-runs. Fine-grained per-decision asof
-discipline is the vault/watchdog layer's job (W1/W3).
+Decision-clock note (ADVERSARIAL §1b-W1 fix): the runner derives the decision
+clock FROM THE DATA — the distinct ``known_at`` times of the decision grid
+(``gold/weights``) — and steps through it, reading each panel ``asof(t)`` per
+decision time ``t`` inside a ``run_context.decision_window(t)``. The watchdog
+therefore compares every read's ``max_known_at`` against the DECISION time,
+not against the read's own asof argument (the old wiring passed the asof as
+decision_time, making the leak check tautological; compounded by the old
+``ASOF_SENTINEL`` panel reads). The sentinel is retained only for the single
+grid-discovery weights probe. Determinism (A3 #6) is preserved: every
+recorded ``asof_utc`` is a data-derived decision time, never wall clock.
+
+The monolithic engine consumes one frame pair per run; it is fed the PIT
+state knowable at the LAST decision time (the final per-decision reads).
+Per-decision engine stepping requires an engine API change and is tracked as
+residual work — the watchdog decision-window wiring is what protects strategy
+code that reads the vault directly mid-run.
 
 Test seam: ``vault``/``recorder`` keyword-only parameters let tests inject an
 in-memory fake implementing the §4.3 ``PitVault.asof`` API while W1 lands in
@@ -28,6 +40,7 @@ from quant_fund.config.models import AppConfig
 from quant_fund.proof.bundle import build_bundle
 from quant_fund.proof.recorder import InMemoryRecorder
 from quant_fund.proof.sign import Signer
+from quant_fund.proofcore import run_context
 from quant_fund.proofcore.contracts import ProofBundleV1, ProofError
 
 __all__ = [
@@ -43,8 +56,33 @@ __all__ = [
 BARS_DATASET = "silver/bars"
 WEIGHTS_DATASET = "gold/weights"
 
-#: Deterministic "latest known" as-of for panel reads (never wall clock).
+#: Deterministic "latest known" as-of for the single decision-grid discovery
+#: probe (never wall clock). All other reads use data-derived decision times.
 ASOF_SENTINEL = datetime(9999, 12, 31, 23, 59, 59, tzinfo=UTC)
+
+
+def _decision_clock(weights: pl.DataFrame) -> list[datetime]:
+    """The run's decision clock: distinct sorted ``known_at`` times of the
+    decision grid (ADVERSARIAL §1b-W1).
+
+    Decision times are keyed on ``known_at`` (when the grid row became
+    observable), not ``event_time``: a decision for grid row ``d`` cannot be
+    made before its weights were published, so ``known_at(d)`` is the
+    earliest honest decision time and ``asof(known_at(d))`` is exactly the
+    PIT state the decision may consume.
+    """
+    if "known_at" not in weights.columns:
+        raise ProofError("decision grid (gold/weights) lacks a known_at column")
+    times = (
+        weights.select(pl.col("known_at").unique().sort())
+        .get_column("known_at")
+        .to_list()
+    )
+    clock = [t for t in times if t is not None]
+    for t in clock:
+        if not isinstance(t, datetime) or t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+            raise ProofError(f"decision clock entry is not a tz-aware datetime: {t!r}")
+    return clock
 
 
 class PitFrameLike(Protocol):
@@ -158,7 +196,10 @@ def run_backtest_proven(
 
     1. set_global_seed(seed)  (utils/seeds.py)
     2. open PitVault(pit_root, recorder=InMemoryRecorder(), watchdog=LeakageWatchdog())
-    3. run backtest/engine.py run_backtest via the existing API on vault frames
+    3. derive the decision clock from the weights grid's known_at times and
+       read both panels asof(t) per decision time t inside decision_window(t)
+       (ADVERSARIAL §1b-W1); then run backtest/engine.py run_backtest via the
+       existing API on the last decision's PIT frames
     4. recompute headline metrics from the trade log (metrics/returns.py)
     5. build ProofBundleV1, chain to the prev bundle head in bundle_dir
     6. sign (HMAC) if signer given, else scheme='none'
@@ -180,11 +221,31 @@ def run_backtest_proven(
     recorder = recorder if recorder is not None else InMemoryRecorder()
     if vault is None:
         vault = _open_vault(Path(pit_root), recorder)
+    watchdog = getattr(vault, "watchdog", None)
 
-    bars_read = vault.asof(BARS_DATASET, ASOF_SENTINEL)
-    weights_read = vault.asof(WEIGHTS_DATASET, ASOF_SENTINEL)
+    # Decision-grid discovery probe: the ONLY sentinel read. The weights
+    # panel carries the strategy's decision schedule; its known_at grid is
+    # the decision clock.
+    grid_read = vault.asof(WEIGHTS_DATASET, ASOF_SENTINEL)
+    clock = _decision_clock(grid_read.frame)
+    if not clock:
+        raise ProofError(
+            "decision clock is empty: gold/weights has no known_at rows — "
+            "refusing to prove a run with no decisions"
+        )
 
-    result = _engine_fn(replay_engine)(bars_read.frame, weights_read.frame, config)
+    bars_read: PitFrameLike | None = None
+    weights_read: PitFrameLike | None = None
+    # ADVERSARIAL §1b-W1/W2: the proven-run context auto-attaches any OTHER
+    # vault strategy code may construct mid-run, and decision_window(t) makes
+    # the watchdog assert max_known_at <= t (the DECISION time) per read.
+    with run_context.proven_run(recorder, watchdog):
+        for decision_time in clock:
+            with run_context.decision_window(decision_time):
+                bars_read = vault.asof(BARS_DATASET, decision_time)
+                weights_read = vault.asof(WEIGHTS_DATASET, decision_time)
+        assert bars_read is not None and weights_read is not None  # clock non-empty
+        result = _engine_fn(replay_engine)(bars_read.frame, weights_read.frame, config)
 
     return build_bundle(
         run_kind="backtest",

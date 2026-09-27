@@ -9,6 +9,7 @@ the vault before any caller code sees the frame (DESIGN.md §4).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -33,6 +34,7 @@ from quant_fund.pit.corrections import (
     select_asof,
 )
 from quant_fund.pit.frame import PitFrame, VaultUnavailableError
+from quant_fund.proofcore import run_context
 from quant_fund.proofcore.contracts import (
     GENESIS_HASH,
     DataAccessRecord,
@@ -54,6 +56,9 @@ class WatchdogProtocol(Protocol):
     """Watchdog hook (W3 ``leakage/watchdog.py`` implements this structurally)."""
 
     def observe(self, read: DataAccessRecord, decision_time: datetime) -> None: ...
+
+
+_LOG = logging.getLogger(__name__)
 
 
 def _require_aware(t: datetime, *, what: str) -> None:
@@ -90,6 +95,21 @@ class PitVault:
         self.root = Path(root)
         self.recorder = recorder
         self.watchdog = watchdog
+        self._warned_auto_attach = False
+        # ADVERSARIAL §1b-W2: a rogue ``PitVault(root)`` constructed while a
+        # proven run is active must not read the store unobserved — attach the
+        # run's recorder/watchdog immediately (and warn), and re-resolve at
+        # read time in ``_observe`` for vaults built before the run started.
+        if self.recorder is None and run_context.active_recorder() is not None:
+            self.recorder = run_context.active_recorder()
+            if self.watchdog is None:
+                self.watchdog = run_context.active_watchdog()
+            _LOG.warning(
+                "PitVault(%s) created without a recorder during an active proven run; "
+                "auto-attached to the run's recorder/watchdog so its reads are proven",
+                self.root,
+            )
+            self._warned_auto_attach = True
 
     # -- dataset management -------------------------------------------------
 
@@ -110,24 +130,42 @@ class PitVault:
             raise VaultError(f"dataset path escapes vault root: {name!r}")
         return directory
 
-    def _security_level(self, name: str) -> bool:
+    def _dataset_meta(self, name: str) -> dict[str, object]:
         directory = self._dataset_dir(name)
         meta_path = directory / manifest_mod.DATASET_META_NAME
         if not manifest_mod.manifest_path(self.root, name).exists() or not meta_path.exists():
             raise VaultError(f"unknown dataset: {name!r}")
         try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            return json.loads(meta_path.read_text(encoding="utf-8"))
         except ValueError as exc:
             raise VaultError(f"{name}: dataset.json malformed: {exc}") from exc
-        return bool(meta.get("security_level", True))
 
-    def create_dataset(self, name: str, *, security_level: bool = True) -> None:
-        """Create an empty dataset (revision 0 manifest chained to GENESIS)."""
+    def _security_level(self, name: str) -> bool:
+        return bool(self._dataset_meta(name).get("security_level", True))
+
+    def create_dataset(
+        self,
+        name: str,
+        *,
+        security_level: bool = True,
+        monotonic_known_at: bool = False,
+    ) -> None:
+        """Create an empty dataset (revision 0 manifest chained to GENESIS).
+
+        ``monotonic_known_at`` (ADVERSARIAL §1b-W4, opt-in): enforce that each
+        append's min known_at is >= the dataset's existing max known_at, so
+        writers cannot launder future rows behind backdated knowledge times.
+        Default False = warn-only (a backdated append logs a warning).
+        """
         directory = self._dataset_dir(name)
         if manifest_mod.manifest_path(self.root, name).exists():
             raise VaultError(f"dataset already exists: {name!r}")
         (directory / manifest_mod.PARTS_DIR).mkdir(parents=True, exist_ok=True)
-        meta = {"dataset": name, "security_level": bool(security_level)}
+        meta = {
+            "dataset": name,
+            "security_level": bool(security_level),
+            "monotonic_known_at": bool(monotonic_known_at),
+        }
         manifest_mod._atomic_write(
             directory / manifest_mod.DATASET_META_NAME,
             json.dumps(meta, sort_keys=True).encode("utf-8"),
@@ -154,8 +192,16 @@ class PitVault:
     # -- writes ---------------------------------------------------------------
 
     def append(self, name: str, frame: pl.DataFrame) -> PitManifest:
-        """Validate PIT cols, write r{rev}.parquet, update manifest chain."""
-        security_level = self._security_level(name)
+        """Validate PIT cols, write r{rev}.parquet, update manifest chain.
+
+        Backdated-known_at policy (ADVERSARIAL §1b-W4): if the frame's minimum
+        ``known_at`` predates the dataset's existing maximum ``known_at``, the
+        append is backdating knowledge. Datasets created with
+        ``monotonic_known_at=True`` reject it (VaultError); otherwise it is
+        logged as a warning (default warn-only posture).
+        """
+        meta = self._dataset_meta(name)
+        security_level = bool(meta.get("security_level", True))
         require_pit_frame(frame, security_level=security_level)
         frame = normalize_pit_frame(frame)
         directory = self._dataset_dir(name)
@@ -163,6 +209,19 @@ class PitVault:
             for stale in (directory / manifest_mod.PARTS_DIR).glob(".r*.tmp"):
                 stale.unlink()
             current = manifest_mod.read_manifest(self.root, name)
+            if current.files:
+                # ADVERSARIAL §1b-W4: monotonic known_at watermark check.
+                append_min_ka = frame_span(frame)[0]
+                existing_max_ka = max(f.max_known_at for f in current.files)
+                if append_min_ka < existing_max_ka:
+                    message = (
+                        f"{name}: backdated append — min known_at {append_min_ka} < "
+                        f"existing max known_at {existing_max_ka} (writer-stamped "
+                        "known_at can launder future rows into PIT reads)"
+                    )
+                    if bool(meta.get("monotonic_known_at", False)):
+                        raise VaultError(message)
+                    _LOG.warning("%s (warn-only; set monotonic_known_at=True to reject)", message)
             current_bytes = manifest_mod.manifest_path(self.root, name).read_bytes()
             current_sha = sha256_hex_bytes(current_bytes)
             revision = current.revision + 1
@@ -272,12 +331,21 @@ class PitVault:
         *,
         columns: list[str] | None = None,
         policy: RestatementPolicy = RestatementPolicy.LATEST_KNOWN,
+        decision_time: datetime | None = None,
     ) -> PitFrame:
         """THE ONLY READ PATH. Fails closed:
 
         - VaultUnavailableError if no version with known_at <= t exists
         - VaultError if t naive, dataset missing, or manifest corrupt
         - records the read into recorder + watchdog if attached
+
+        ``t`` is the READ WATERMARK (only rows with known_at <= t are
+        returned). ``decision_time`` is the time the strategy is deciding at;
+        the watchdog asserts max(known_at of returned rows) <= decision_time.
+        If omitted, the active proven-run decision window supplies it
+        (proofcore.run_context); if neither exists the decision time falls
+        back to ``t`` itself (legacy watermark-only behavior outside proven
+        runs — inside proven runs the runner always sets a decision time).
         """
         _require_aware(t, what="asof timestamp")
         t = t.astimezone(UTC)
@@ -301,7 +369,7 @@ class PitVault:
             )
         pit_frame = PitFrame.build(frame, dataset=name, asof=t)
         pit_frame.validate(t)  # defense in depth: re-check before caller sees rows
-        self._observe(pit_frame, t, columns=columns, policy=policy)
+        self._observe(pit_frame, t, columns=columns, policy=policy, decision_time=decision_time)
         return pit_frame
 
     def _observe(
@@ -311,8 +379,30 @@ class PitVault:
         *,
         columns: list[str] | None,
         policy: RestatementPolicy,
+        decision_time: datetime | None,
     ) -> None:
-        if self.recorder is None and self.watchdog is None:
+        recorder = self.recorder
+        watchdog = self.watchdog
+        attached = False
+        # ADVERSARIAL §1b-W2: re-resolve against the active proven-run context
+        # so vaults created before the runner entered its run context are
+        # still recorded.
+        if recorder is None:
+            recorder = run_context.active_recorder()
+            attached = recorder is not None
+        if watchdog is None:
+            context_watchdog = run_context.active_watchdog()
+            if context_watchdog is not None:
+                watchdog = context_watchdog
+                attached = True
+        if attached and not self._warned_auto_attach:
+            self._warned_auto_attach = True
+            _LOG.warning(
+                "PitVault(%s) has no recorder/watchdog of its own; auto-attached to "
+                "the active proven run's hooks so this read is proven",
+                self.root,
+            )
+        if recorder is None and watchdog is None:
             return
         params = {"policy": policy.value}
         if columns is not None:
@@ -328,10 +418,15 @@ class PitVault:
             content_sha256=pit_frame.content_sha256,
         )
         # The proof commits to exactly the bytes the strategy consumed (§5.1).
-        if self.recorder is not None:
-            self.recorder.record(read)
-        if self.watchdog is not None:
-            self.watchdog.observe(read, t)
+        if recorder is not None:
+            recorder.record(read)
+        if watchdog is not None:
+            # ADVERSARIAL §1b-W1 fix: the watchdog compares against the
+            # DECISION time (explicit argument, else the active decision
+            # window), never blindly against the read watermark — passing the
+            # asof argument as the decision time made the check tautological.
+            effective_decision = decision_time or run_context.current_decision_time() or t
+            watchdog.observe(read, effective_decision)
 
     # -- audit ------------------------------------------------------------------
 

@@ -6,6 +6,8 @@ tests skip cleanly in minimal environments; CI runs the full env.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 pytest.importorskip("mlflow")
@@ -22,14 +24,21 @@ from quant_fund.proof.runner import (
 from quant_fund.proof.sign import HmacSha256Signer
 from quant_fund.proof.verify import verify_bundle
 from quant_fund.proofcore.contracts import ProofError
-from tests.unit.proof_fake_vault import make_fake_vault, mint_proven_run
+from tests.unit.proof_fake_vault import T0, make_fake_vault, mint_proven_run
+
+N_DAYS = 30  # mint_proven_run default
 
 
 def test_runner_records_every_vault_read(tmp_path) -> None:
     bundle, bundle_dir = mint_proven_run(tmp_path)
-    assert bundle.data_manifest.n_reads == 2
+    # ADVERSARIAL §1b-W1: 1 grid-discovery probe at the sentinel + 2 reads per
+    # decision time (bars + weights) on the data-derived decision clock.
+    assert bundle.data_manifest.n_reads == 1 + 2 * N_DAYS
     assert {r.dataset for r in bundle.data_manifest.reads} == {BARS_DATASET, WEIGHTS_DATASET}
-    assert all(r.asof_utc == ASOF_SENTINEL.isoformat() for r in bundle.data_manifest.reads)
+    asofs = [r.asof_utc for r in bundle.data_manifest.reads]
+    assert asofs[0] == ASOF_SENTINEL.isoformat()  # grid discovery probe only
+    clock = [(T0 + timedelta(days=i, hours=16)).isoformat() for i in range(N_DAYS)]
+    assert sorted(asofs[1:]) == sorted([t for t in clock for _ in (BARS_DATASET, WEIGHTS_DATASET)])
     assert all(r.rows > 0 for r in bundle.data_manifest.reads)
     result = verify_bundle(
         bundle_dir / "bundles" / f"{bundle.bundle_id}.json",
@@ -85,23 +94,24 @@ def test_runner_fast_engine_parity_path(tmp_path) -> None:
         vault=vault,
         recorder=recorder,
     )
-    assert bundle.data_manifest.n_reads == 2
+    assert bundle.data_manifest.n_reads == 1 + 2 * N_DAYS
 
 
 def test_runner_against_real_pit_vault(tmp_path) -> None:
-    """W1 integration: real PitVault on disk, recorder wired by the runner.
+    """W1 integration: real PitVault on disk, recorder + W3 watchdog wired.
 
-    The vault is passed explicitly WITHOUT a watchdog: as landed, W1's
-    ``PitVault._observe`` does not emit ``params["max_known_at"]`` while W3's
-    strict ``LeakageWatchdog`` requires it (cross-workstream contract conflict
-    reported to the lead). The watchdog path is covered by fake-vault tests.
+    The W1<->W3 seam is adjudicated and wired: the vault emits
+    ``params["max_known_at"]`` on every read and the strict
+    ``LeakageWatchdog`` observes each per-decision read against the decision
+    clock (ADVERSARIAL §1b-W1). Honest per-decision reads pass.
     """
+    from quant_fund.leakage import LeakageWatchdog
     from quant_fund.pit import PitVault
     from tests.unit.proof_fake_vault import synthetic_bars, synthetic_weights
 
     recorder = InMemoryRecorder()
     pit_root = tmp_path / "pit"
-    vault = PitVault(pit_root, recorder=recorder)
+    vault = PitVault(pit_root, recorder=recorder, watchdog=LeakageWatchdog())
     vault.create_dataset(BARS_DATASET)
     vault.append(BARS_DATASET, synthetic_bars(["AAA", "BBB", "CCC"], 30))
     vault.create_dataset(WEIGHTS_DATASET)
@@ -116,7 +126,7 @@ def test_runner_against_real_pit_vault(tmp_path) -> None:
         vault=vault,
         recorder=recorder,
     )
-    assert bundle.data_manifest.n_reads == 2
+    assert bundle.data_manifest.n_reads == 1 + 2 * N_DAYS
     assert {r.dataset for r in bundle.data_manifest.reads} == {BARS_DATASET, WEIGHTS_DATASET}
     result = verify_bundle(
         bundle_dir / "bundles" / f"{bundle.bundle_id}.json",
