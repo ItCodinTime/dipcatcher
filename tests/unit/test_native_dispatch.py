@@ -12,6 +12,8 @@ import pytest
 from quant_fund import native
 from quant_fund.native.reference import rolling_mean as rolling_mean_ref
 
+pytestmark = pytest.mark.native
+
 
 def test_loaded_backend_matches_extension() -> None:
     installed = importlib.util.find_spec("quant_core") is not None

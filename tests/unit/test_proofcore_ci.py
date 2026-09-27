@@ -231,10 +231,16 @@ def test_workflow_warn_and_advisory_modes_as_adjudicated(workflow: dict) -> None
     leakage_runs = "\n".join(step.get("run", "") for step in jobs["leakage-scan"]["steps"])
     assert "--fail-on error" not in leakage_runs
     assert "warn" in yaml.safe_dump(jobs["leakage-scan"]).lower()
-    # §9.3: reality-filter advisory at first (phase 4), then blocking.
-    assert jobs["reality-filter"].get("continue-on-error") is True
-    # The rest of the matrix is blocking (no continue-on-error).
-    for name in ("proof-integrity", "layering", "coverage-floors"):
+    # Empty provenance exports skip with a notice. The job itself is blocking:
+    # a scored ledger that is not 'pass' fails the build. continue-on-error
+    # used to hide the empty-ledger exit 2.
+    reality = jobs["reality-filter"]
+    assert not reality.get("continue-on-error", False)
+    reality_run = "\n".join(step.get("run", "") for step in reality["steps"])
+    assert "make reality-gate" in reality_run
+    assert "REALITY_FILTER_SKIP:" in reality_run
+    assert "::notice title=reality-filter::" in reality_run
+    for name in ("proof-integrity", "layering", "coverage-floors", "reality-filter"):
         assert not jobs[name].get("continue-on-error", False), name
 
 

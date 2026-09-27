@@ -24,6 +24,8 @@ from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
 
+from quant_fund.proofcore.contracts import ProofError
+
 _active_recorder: ContextVar[Any | None] = ContextVar("proofcore_active_recorder", default=None)
 _active_watchdog: ContextVar[Any | None] = ContextVar("proofcore_active_watchdog", default=None)
 _active_decision_time: ContextVar[datetime | None] = ContextVar(
@@ -50,10 +52,13 @@ def current_decision_time() -> datetime | None:
 def proven_run(recorder: Any, watchdog: Any | None = None) -> Iterator[None]:
     """Mark the current context as an active proven run.
 
-    Vaults that read while this context is active and carry no recorder of
-    their own auto-attach to ``recorder``/``watchdog`` (with a warning) so
-    their reads are recorded.
+    The active hooks take precedence over private vault hooks. A decision
+    window is mandatory for each read; this context does not implement the
+    still-unavailable proven backtest orchestrator.
     """
+    if recorder is None or watchdog is None:
+        raise ProofError("proven context requires both recorder and watchdog")
+    token_clock = _active_decision_time.set(None)
     token_recorder = _active_recorder.set(recorder)
     token_watchdog = _active_watchdog.set(watchdog)
     try:
@@ -61,6 +66,7 @@ def proven_run(recorder: Any, watchdog: Any | None = None) -> Iterator[None]:
     finally:
         _active_watchdog.reset(token_watchdog)
         _active_recorder.reset(token_recorder)
+        _active_decision_time.reset(token_clock)
 
 
 @contextmanager
@@ -70,6 +76,8 @@ def decision_window(decision_time: datetime) -> Iterator[None]:
     Vault reads inside the window are checked by the watchdog against this
     decision time, not against the read's ``asof`` watermark.
     """
+    if decision_time.tzinfo is None or decision_time.utcoffset() is None:
+        raise ProofError("decision time must be timezone-aware")
     token = _active_decision_time.set(decision_time)
     try:
         yield

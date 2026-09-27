@@ -58,11 +58,10 @@ def test_self_hash_and_signing_payload(tmp_path) -> None:
     # any committed field IS identity:
     mutated = dict(payload, seed=payload["seed"] + 1)
     assert compute_bundle_id(mutated) != bundle.bundle_id
-    # signing payload drops the signature field AND created_utc (ADVERSARIAL
-    # §2-R: created_utc is wall-clock evidence, not signed identity)
+    # signing payload preserves the existing signature contract including created_utc
     unsigned = json.loads(signing_payload_bytes(payload))
     assert "signature" not in unsigned
-    assert "created_utc" not in unsigned
+    assert "created_utc" in unsigned
     assert unsigned["bundle_id"] == bundle.bundle_id
 
 
@@ -90,15 +89,13 @@ def test_hmac_signed_bundle(tmp_path) -> None:
     assert signer.verify(signing_payload_bytes(payload), bundle.signature.value)
 
 
-def test_signature_excludes_created_utc(tmp_path) -> None:
-    """ADVERSARIAL §2-R: mutating created_utc must NOT break the signature
-    (replay re-mints with a fresh wall clock), while mutating any attested
-    field still fails the HMAC check."""
+def test_signature_attests_created_utc(tmp_path) -> None:
+    """Keep existing signed receipts valid and detect timestamp tampering."""
     signer = HmacSha256Signer(b"ci-key")
     bundle, bundle_dir = mint_synthetic_bundle(tmp_path, signer=signer)
     payload = json.loads((bundle_dir / "bundles" / f"{bundle.bundle_id}.json").read_bytes())
     mutated_clock = dict(payload, created_utc="1999-01-01T00:00:00+00:00")
-    assert signer.verify(signing_payload_bytes(mutated_clock), bundle.signature.value)
+    assert not signer.verify(signing_payload_bytes(mutated_clock), bundle.signature.value)
     tampered = dict(payload, seed=payload["seed"] + 1)
     assert not signer.verify(signing_payload_bytes(tampered), bundle.signature.value)
 

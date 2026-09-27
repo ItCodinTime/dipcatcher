@@ -18,7 +18,7 @@ import typer
 __all__ = ["proof_app"]
 
 proof_app = typer.Typer(
-    help="Proof-carrying backtester: mint and verify signed, hash-chained proof bundles."
+    help="Verify existing proof bundles; historical proven runs are unavailable."
 )
 
 
@@ -32,39 +32,12 @@ def run_cmd(
         "reference", "--replay-engine", help="reference | fast (engine parity contract)"
     ),
 ) -> None:
-    """Run one proven backtest and write its signed proof bundle."""
-    from quant_fund.config import load_config
-    from quant_fund.proof.runner import run_backtest_proven
-    from quant_fund.proof.sign import HmacSha256Signer
-    from quant_fund.proofcore.contracts import SignatureUnavailableError
-
-    cfg = load_config(config)
-    try:
-        signer = HmacSha256Signer.from_env()
-    except SignatureUnavailableError:
-        signer = None  # local dev: scheme 'none', verifier reports it honestly
-    bundle = run_backtest_proven(
-        cfg,
-        seed=seed,
-        pit_root=pit_root,
-        bundle_dir=bundle_dir,
-        replay_engine=replay_engine,  # type: ignore[arg-type]
-        signer=signer,
-    )
+    """Reject runs until a decision schedule drives point-in-time vault reads."""
     typer.echo(
-        json.dumps(
-            {
-                "bundle_id": bundle.bundle_id,
-                "prev_bundle_hash": bundle.prev_bundle_hash,
-                "signature_scheme": bundle.signature.scheme,
-                "signature_key_id": bundle.signature.key_id,
-                "n_reads": bundle.data_manifest.n_reads,
-                "merkle_root": bundle.data_manifest.merkle_root,
-                "bundle_file": str(bundle_dir / "bundles" / f"{bundle.bundle_id}.json"),
-            },
-            indent=2,
-        )
+        "proof run unavailable: explicit per-decision as-of vault reads are not implemented",
+        err=True,
     )
+    raise typer.Exit(code=2)
 
 
 @proof_app.command("verify")

@@ -1,0 +1,39 @@
+{
+ "data_source": "binance_usdtm_perp",
+ "equity_file": null,
+ "extras": {
+  "full_path_costs": {
+   "commission": 10707.819063275427,
+   "impact": 2931.9030167522837,
+   "spread": 53539.095316377076
+  },
+  "full_path_liquidations": 0,
+  "full_path_risk_gate_rejects": 68
+ },
+ "id": "amix_adaptive",
+ "kind": "receipt_stats",
+ "live_pnl_claim": false,
+ "name": "Adaptive mix replay \u2014 adaptive allocator",
+ "provenance": {
+  "note": "Segment stats recorded in sealed receipt adaptive_mix_20asset_1d_20260922.json; no equity series exported.",
+  "pointer": "results.adaptive",
+  "receipt": "receipts/adaptive_mix_20asset_1d_20260922.json"
+ },
+ "research_only": true,
+ "segments": {
+  "development": {
+   "cagr": -0.009123090410010026,
+   "max_drawdown": -0.08711026995149562,
+   "n": 2055,
+   "net_return": -0.050257767747253546,
+   "sharpe": -0.14833687102450108
+  },
+  "historical_tail_exploratory": {
+   "cagr": 0.018202461927767866,
+   "max_drawdown": -0.029565209645673107,
+   "n": 514,
+   "net_return": 0.02571011661273359,
+   "sharpe": 0.536087287324297
+  }
+ }
+}

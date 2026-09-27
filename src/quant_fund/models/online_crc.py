@@ -1,6 +1,6 @@
 """Online conformal risk control: Gibbs–Candès update on the CRC threshold.
 
-Batch CRC (Angelopoulos, Bates, Malik, Jordan 2022) picks one λ on a
+Batch CRC (Angelopoulos, Bates, Fisch, Lei, Schuster 2022) picks one λ on a
 calibration window. Adaptive conformal inference (Gibbs & Candès 2021)
 tracks coverage, not a monotone tail loss. This wrapper initializes λ with
 CRC, then applies the dual ACI integrator once per timestamp

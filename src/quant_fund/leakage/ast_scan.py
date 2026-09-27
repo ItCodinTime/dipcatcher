@@ -279,9 +279,7 @@ def _check_lh002(tree: ast.AST, path_str: str) -> list[_Finding]:
     return out
 
 
-def _fit_consumes_fold_param(
-    node: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
-) -> bool:
+def _fit_consumes_fold_param(node: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """True if the fit's first argument references one of *func*'s parameters
     (i.e. the caller sliced the fold; ADVERSARIAL §1a-E7 — a function merely
     NAMED `*fold*` that fits a global/frame attribute is not a fold scope).
@@ -381,7 +379,9 @@ def _check_lh005(tree: ast.AST, path_str: str) -> list[_Finding]:
         if not (isinstance(value, (ast.List, ast.Tuple)) and len(value.elts) >= 5):
             continue
         if all(
-            isinstance(e, ast.Constant) and isinstance(e.value, str) and _TICKER_CI_RE.match(e.value)
+            isinstance(e, ast.Constant)
+            and isinstance(e.value, str)
+            and _TICKER_CI_RE.match(e.value)
             for e in value.elts
         ):
             out.append(
@@ -553,7 +553,7 @@ def _check_lh008(tree: ast.AST, path_str: str) -> list[_Finding]:
             folded = _fold_str(node)
             if folded and not folded.isidentifier():
                 value = folded
-        if value is None:
+        if value is None or not isinstance(node, ast.expr):
             continue
         tokens = find_forbidden_headline(value)
         if tokens and not _lh008_allowed(path_str, value):

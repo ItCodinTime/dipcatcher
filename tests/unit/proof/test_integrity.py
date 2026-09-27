@@ -38,20 +38,6 @@ HEX = "ab" * 32
 BAD = "g" * 64
 UPPER = "AB" * 32
 
-# The proof surface these names belong to SHIPPED in the proofcore wave
-# (runner/bundle/replay/verify). The pre-ship version of this module asserted
-# they were unimplemented; the stale assertions are inverted below.
-_IMPLEMENTED = (
-    "ASOF_SENTINEL",
-    "VerificationResult",
-    "build_bundle",
-    "chain_head",
-    "recompute_headline_metrics",
-    "replay_bundle",
-    "run_backtest_proven",
-    "verify_bundle",
-)
-
 
 def _leaf(digest: str) -> str:
     return hashlib.sha256(b"PC:leaf:" + bytes.fromhex(digest)).hexdigest()
@@ -407,27 +393,24 @@ def test_null_signer_is_unsigned() -> None:
     assert signer.sign(b"anything") == ""
 
 
-def test_proof_star_import_only_loads_implemented_surface() -> None:
+def test_proof_star_import_loads_bundle_and_verifier_surface() -> None:
     proof = importlib.import_module("quant_fund.proof")
     namespace: dict[str, object] = {}
     exec("from quant_fund.proof import *", namespace, namespace)
-    exported = set(proof.__all__)
-    # the implemented runner/bundle/replay/verify surface IS exported
-    assert set(_IMPLEMENTED) <= exported
     for name in proof.__all__:
         assert getattr(proof, name) is namespace[name]
+    assert {"build_bundle", "verify_bundle", "run_backtest_proven"} <= set(proof.__all__)
+    assert "ASOF_SENTINEL" not in proof.__all__
 
 
-def test_proof_cli_exposes_implemented_commands() -> None:
+def test_proof_cli_exposes_verifier_and_closed_runner() -> None:
     names = {command.name for command in proof_app.registered_commands}
     assert {"run", "verify", "chain-head"} <= names
     runner = CliRunner()
     help_result = runner.invoke(proof_app, ["--help"])
     assert help_result.exit_code == 0
     assert help_result.exception is None
-    for name in ("run", "verify", "chain-head"):
+    for name in names:
         result = runner.invoke(proof_app, [name, "--help"])
-        assert result.exit_code == 0, result.output
-        assert not isinstance(result.exception, ModuleNotFoundError)
-        combined = f"{result.output}{result.exc_info}"
-        assert "ModuleNotFoundError" not in combined
+        assert result.exit_code == 0
+        assert "ModuleNotFoundError" not in f"{result.output}{result.exc_info}"
