@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -25,3 +27,23 @@ _SEALED_SHA256 = {
 def test_original_phase1_receipt_bytes_are_unchanged(relative: str, expected: str) -> None:
     digest = hashlib.sha256((_ROOT / relative).read_bytes()).hexdigest()
     assert digest == expected, f"sealed receipt bytes changed: {relative}"
+
+
+def test_forward_shadow_still_pins_the_original_index_receipt() -> None:
+    expected = "0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204"
+    source = (_ROOT / "src/quant_fund/paper/forward_shadow.py").read_text(encoding="utf-8")
+    pinned = [
+        statement.value.value
+        for statement in ast.parse(source).body
+        if isinstance(statement, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "_PUBLISHED_INDEX_SHA256"
+            for target in statement.targets
+        )
+        and isinstance(statement.value, ast.Constant)
+    ]
+    index = json.loads(
+        (_ROOT / "data/metadata/research/phase1_evidence_index.json").read_text(encoding="utf-8")
+    )
+    assert pinned == [expected]
+    assert index["receipt_sha256"] == expected
