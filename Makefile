@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate diffbacktest
 
 .DEFAULT_GOAL := help
 
@@ -27,6 +27,9 @@ fmt: ## Auto-fix lint + format
 
 typecheck: ## mypy on the harness
 	uv run mypy src/quant_fund
+
+diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
+	JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
 
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium

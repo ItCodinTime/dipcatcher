@@ -337,6 +337,21 @@ jobs:
       - name: Examples gallery
         run: make examples
 
+  diffbacktest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync JAX extra
+        run: uv sync --frozen --group dev --extra jax
+      - name: CPU differentiable backtest
+        run: JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
+
   robustness-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
