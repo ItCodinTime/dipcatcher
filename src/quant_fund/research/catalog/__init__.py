@@ -16,6 +16,7 @@ Dual honesty catalogs (research scorecard vs paper analytics export)
 from __future__ import annotations
 
 import math
+import types
 
 from .batteries import (
     DIST_CRPS_EPROCESS_REQUIRED_WHEN_DM,
@@ -955,3 +956,29 @@ __all__ = [
     "weighted_conformal_has_finite_kupiec_p",
     "wick_skew_p_ic_vs_gap_finite_never_equate_honesty_errors",
 ]
+
+
+def _rebind_honesty_dispatchers() -> None:
+    """Read helper tuples from this module at call time, as the old module did."""
+    facade = globals()
+    for name in (
+        "northset_receipt_honesty_errors",
+        "northset_session_means_honesty_errors",
+    ):
+        fn = facade[name]
+        rebound = types.FunctionType(
+            fn.__code__,
+            facade,
+            fn.__name__,
+            fn.__defaults__,
+            fn.__closure__,
+        )
+        rebound.__kwdefaults__ = fn.__kwdefaults__
+        rebound.__annotations__ = dict(getattr(fn, "__annotations__", {}))
+        rebound.__dict__.update(fn.__dict__)
+        rebound.__module__ = __name__
+        rebound.__qualname__ = fn.__qualname__
+        facade[name] = rebound
+
+
+_rebind_honesty_dispatchers()
