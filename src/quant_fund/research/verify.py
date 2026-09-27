@@ -15,7 +15,7 @@ from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     OPTIONAL_BENCHMARK_FAMILIES,
     REQUIRED_BENCHMARK_FAMILIES,
-    RESEARCH_RECEIPT_SCHEMA_VERSION,
+    RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED,
     book_age_seconds_honesty_errors,
     candle_all_finite_rate_prefix_honesty_errors,
     candle_all_ic_n_dates_nonneg_honesty_errors,
@@ -110,6 +110,7 @@ from quant_fund.research.catalog import (
     tail_var_battery_keys_present,
     tail_var_battery_missing_keys,
 )
+from quant_fund.research.receipt_schema import overfitting_block_errors
 from quant_fund.robustness.schema import robustness_extension_errors
 from quant_fund.utils.hashing import hash_bytes, hash_file
 
@@ -218,8 +219,15 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
             errors.append(f"invalid_notebook_{key}")
     schema_version = notebook.get("schema_version")
     # Bools are ints in Python; reject them explicitly so True cannot pass as 1.
-    if isinstance(schema_version, bool) or schema_version != RESEARCH_RECEIPT_SCHEMA_VERSION:
+    # Schema 1 receipts predate the overfitting block and stay valid.
+    # Schema 2 is the current writer and must carry the block.
+    if (
+        isinstance(schema_version, bool)
+        or schema_version not in RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED
+    ):
         errors.append("invalid_research_receipt_schema_version")
+    else:
+        errors.extend(overfitting_block_errors(notebook))
     # Optional robustness extension. Absence is valid on every parent schema
     # this verifier accepts. A present block must match its own schema.
     errors.extend(robustness_extension_errors(notebook))
@@ -327,6 +335,11 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
         value = provenance.get(key)
         if not _is_sha256(value):
             errors.append(f"invalid_{key}")
+    # Optional. Existing receipts omit it. When a lake snapshot is cited, the
+    # id must be the content hash of that immutable manifest.
+    snapshot_id = provenance.get("data_snapshot_id")
+    if snapshot_id is not None and not _is_sha256(snapshot_id):
+        errors.append("invalid_data_snapshot_id")
     for key in ("row_count", "column_count"):
         value = provenance.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:

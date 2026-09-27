@@ -82,7 +82,7 @@ Boundary cases are in the docstring of `gelbrich_worst_case_ratio`. When the dis
 
 ## Receipt extension
 
-Parent `schema_version` stays 1. Notebooks that omit `robustness` and `extensions_schema_version` still verify. A stamped notebook sets `extensions_schema_version` to 1 and adds a `robustness` object with the same schema version, `claim: robustness_diagnostic_only`, `research_only: true`, and `live_trading_claim: false`.
+The stamp does not change the parent `schema_version`. Schema 1 and schema 2 notebooks that omit `robustness` and `extensions_schema_version` still verify. A stamped notebook sets `extensions_schema_version` to 1 and adds a `robustness` object with the same schema version, `claim: robustness_diagnostic_only`, `research_only: true`, and `live_trading_claim: false`.
 
 `migrate_robustness_view` returns a copy. If the extension is absent it attaches `metrics_status: legacy_uncomputed` and does not recompute anything. Parent schema version is unchanged, including a parent schema of 2, so this stamp composes with an overfitting block that uses parent schema 2. Sealed inputs are not mutated. `write_stamped_notebook` refuses any path under a `receipts` directory.
 

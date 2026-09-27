@@ -143,7 +143,7 @@ def _assert_identical(ref, fast) -> None:
     assert ref.fills.height == fast.fills.height
     if ref.fills.height:
         assert ref.fills["security_id"].to_list() == fast.fills["security_id"].to_list()
-        for col in ("quantity", "price", "fee", "spread_cost", "impact_cost"):
+        for col in ("quantity", "price", "fee", "spread_cost", "impact_cost", "turnover_cost"):
             a = np.asarray(ref.fills[col].to_list(), dtype=float)
             b = np.asarray(fast.fills[col].to_list(), dtype=float)
             assert np.array_equal(a, b), f"fill {col} mismatch"
