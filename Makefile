@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke
 
 .DEFAULT_GOAL := help
 
@@ -42,6 +42,11 @@ evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py
 
 ci: lint typecheck coverage ## Local mirror of the CI gate
+
+mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
+	uv run pytest tests/unit/mc_engine -q -m "not slow"
+	uv run python -m quant_fund.mc_engine run --paths 1500 --steps 8 --workers 1 \
+		--backend serial --chunk-size 500 --seed 1 --no-progress
 
 examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff check examples tests/examples
