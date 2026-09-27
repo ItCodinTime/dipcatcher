@@ -47,7 +47,8 @@ def test_future_stamps_continues_last_delta() -> None:
     assert (fut[1] - fut[0]) == timedelta(minutes=5)
     # Single/empty history falls back to 1-day spacing.
     assert (tb._future_stamps([t0], 2)[0] - t0) == timedelta(days=1)
-    assert tb._future_stamps([], 1)[0] == datetime(2020, 1, 3)
+    # Empty history falls back to a tz-aware UTC anchor (never naive).
+    assert tb._future_stamps([], 1)[0] == datetime(2020, 1, 3, tzinfo=UTC)
 
 
 def _panel(names: list[str], n_per: dict[str, int]) -> pl.DataFrame:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -284,13 +284,28 @@ def _require_model(name: str, catalog: set[str], family: str) -> str:
     return name
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalize a datetime for comparison; naive values are treated as UTC.
+
+    Aware values convert to UTC (offset applied); naive values are stamped
+    UTC directly — the repo convention (validation/walk_forward) is that
+    naive timestamps are UTC wall-clock, never local-time guesses.
+    """
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _stamp_naive(value: datetime) -> bool:
+    """True when ``value`` carries no usable offset (naive or dead tzinfo)."""
+    return value.tzinfo is None or value.utcoffset() is None
+
+
 def _stamp_strictly_before(stamp: object, asof: object) -> bool:
     """Compare panel timestamps to asof without mixing naive/aware datetimes."""
     if isinstance(stamp, datetime) and isinstance(asof, datetime):
-        if stamp.tzinfo is None and asof.tzinfo is not None:
-            return stamp.replace(tzinfo=asof.tzinfo) < asof
-        if stamp.tzinfo is not None and asof.tzinfo is None:
-            return stamp.replace(tzinfo=None) < asof
+        if _stamp_naive(stamp) != _stamp_naive(asof):
+            return _as_utc(stamp) < _as_utc(asof)
         return stamp < asof
     return bool(stamp < asof)  # type: ignore[operator]
 
@@ -298,10 +313,8 @@ def _stamp_strictly_before(stamp: object, asof: object) -> bool:
 def _stamp_at_or_before(stamp: object, asof: object) -> bool:
     """True when ``stamp`` is observable at the decision origin."""
     if isinstance(stamp, datetime) and isinstance(asof, datetime):
-        if stamp.tzinfo is None and asof.tzinfo is not None:
-            return stamp.replace(tzinfo=asof.tzinfo) <= asof
-        if stamp.tzinfo is not None and asof.tzinfo is None:
-            return stamp.replace(tzinfo=None) <= asof
+        if _stamp_naive(stamp) != _stamp_naive(asof):
+            return _as_utc(stamp) <= _as_utc(asof)
         return stamp <= asof
     return bool(stamp <= asof)  # type: ignore[operator]
 

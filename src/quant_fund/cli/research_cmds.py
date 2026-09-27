@@ -14,6 +14,21 @@ from ._app import (
 )
 
 
+def _parse_asof(date: str | None) -> "datetime | None":
+    """Parse the --date option; naive ISO dates are interpreted as UTC.
+
+    Panel ``event_time`` columns are tz-aware UTC, so a naive ``asof`` would
+    compare against them in wall-clock terms (or fail). Localizing at the CLI
+    boundary keeps downstream comparisons in absolute time.
+    """
+    from datetime import UTC, datetime
+
+    if not date:
+        return None
+    parsed = datetime.fromisoformat(date)
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
+
+
 @app.command()
 def validate(
     model_id: str,
@@ -51,12 +66,10 @@ def validate(
 def forecast(
     config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
 ) -> None:
-    from datetime import datetime
-
     from quant_fund.pipeline.forecast import forecast_asof
 
     cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
+    asof = _parse_asof(date)
     state = forecast_asof(cfg, asof)
     if "SYNTHETIC" in state.notes:
         typer.echo("SYNTHETIC")
@@ -86,12 +99,10 @@ def kronos_forecast(
     execution paths. Quantile bands are the predicted candle envelope, not a
     calibrated predictive interval.
     """
-    from datetime import datetime
-
     from quant_fund.pipeline.kronos import forecast_kronos_frame
 
     cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
+    asof = _parse_asof(date)
     try:
         state = forecast_kronos_frame(cfg, asof=asof)
     except ValueError as exc:
@@ -113,12 +124,10 @@ def kronos_forecast(
 def optimize(
     config: Path = typer.Option(Path("configs/research.yaml")), date: str | None = None
 ) -> None:
-    from datetime import datetime
-
     from quant_fund.pipeline.forecast import optimize_asof
 
     cfg = _cfg(config)
-    asof = datetime.fromisoformat(date) if date else None
+    asof = _parse_asof(date)
     w = optimize_asof(cfg, asof)
     typer.echo(w.head(20))
 

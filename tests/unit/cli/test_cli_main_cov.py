@@ -284,7 +284,8 @@ def test_forecast_passes_date_and_skips_banner(
     )
     assert result.exit_code == 0, result.output
     assert "SYNTHETIC" not in result.output
-    assert seen["asof"] == datetime(2026, 1, 5)
+    # Naive --date input is localized to UTC at the CLI boundary.
+    assert seen["asof"] == datetime(2026, 1, 5, tzinfo=UTC)
 
 
 def test_kronos_forecast_echoes_quantiles(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -351,7 +352,8 @@ def test_optimize_echoes_weights_head(tmp_path: Path, monkeypatch: pytest.Monkey
     )
     assert result.exit_code == 0, result.output
     assert "weights-head" in result.output
-    assert seen["asof"] == datetime(2026, 1, 5)
+    # Naive --date input is localized to UTC at the CLI boundary.
+    assert seen["asof"] == datetime(2026, 1, 5, tzinfo=UTC)
 
 
 # --- backtest -------------------------------------------------------------

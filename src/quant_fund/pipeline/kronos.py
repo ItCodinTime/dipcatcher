@@ -10,7 +10,7 @@ implementing the ``KronosPredictor`` protocol.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import pandas as pd
@@ -58,14 +58,25 @@ def _resolve_predictor(config: AppConfig) -> KronosPredictor:
 
 
 def _resolve_asof(frame: pl.DataFrame, asof: Any) -> datetime:
+    """Resolve the decision timestamp; naive values are interpreted as UTC.
+
+    Panel ``event_time``/``available_time`` columns are tz-aware UTC and
+    ``_validate_timestamps`` localizes naive ``asof`` to UTC — keep
+    ``MarketState.asof`` on the same clock so it cannot drift from the
+    per-asset forecast stamps.
+    """
     if asof is None:
         from quant_fund.pipeline.forecast import latest_decision
 
         return latest_decision(frame)
     if isinstance(asof, datetime):
-        return asof
-    timestamp = pd.Timestamp(asof)
-    return cast(datetime, timestamp.to_pydatetime())
+        resolved = asof
+    else:
+        timestamp = pd.Timestamp(asof)
+        resolved = cast(datetime, timestamp.to_pydatetime())
+    if resolved.tzinfo is None or resolved.utcoffset() is None:
+        return resolved.replace(tzinfo=UTC)
+    return resolved.astimezone(UTC)
 
 
 def forecast_kronos_frame(

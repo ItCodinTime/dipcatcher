@@ -8,7 +8,7 @@ loads local directories. This module never silently falls back to numpy.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -178,7 +178,7 @@ def _future_stamps(times: list[datetime], pred_len: int) -> list[datetime]:
             delta = timedelta(days=1)
     else:
         delta = timedelta(days=1)
-    last = times[-1] if times else datetime(2020, 1, 2)
+    last = times[-1] if times else datetime(2020, 1, 2, tzinfo=UTC)
     return [last + delta * (i + 1) for i in range(pred_len)]
 
 

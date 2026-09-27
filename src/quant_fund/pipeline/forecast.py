@@ -6,7 +6,7 @@ import hashlib
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -381,6 +381,17 @@ def latest_decision(frame: pl.DataFrame) -> datetime:
     if not isinstance(value, datetime):
         raise TypeError("event_time max is not a datetime")
     return value
+
+
+def _stamp_utc_date(value: datetime) -> date:
+    """UTC calendar date of ``value``; naive datetimes are treated as UTC.
+
+    Taking ``.date()`` on an offset-aware value yields the date in its own
+    offset, which can be a day ahead/behind the UTC date the panel uses.
+    """
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.date()
+    return value.astimezone(UTC).date()
 
 
 # Wave 10: documented sort contract for order-preserving history_upto wiring.
@@ -959,8 +970,9 @@ def _load_probability_calibrator(
             fit_end = datetime.fromisoformat(str(calibrator.fit_end).replace("Z", "+00:00"))
         except ValueError as exc:
             raise ValueError("probability calibrator fit_end is not parseable") from exc
-        left = fit_end.date()
-        right = asof.date()
+        # Compare on UTC dates: an offset-naive `.date()` can differ by a day.
+        left = _stamp_utc_date(fit_end)
+        right = _stamp_utc_date(asof)
         if (right - left).days < 0 or (right - left).days > max_age:
             raise ValueError("probability calibrator is stale for forecast asof")
     return calibrator
