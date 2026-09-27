@@ -75,6 +75,9 @@ from quant_fund.cli.research_cmds import (
     backtest as backtest,
 )
 from quant_fund.cli.research_cmds import (
+    fleet as fleet,
+)
+from quant_fund.cli.research_cmds import (
     forecast as forecast,
 )
 from quant_fund.cli.research_cmds import (
