@@ -64,9 +64,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          collect_out="$RUNNER_TEMP/matrix-collect.txt"
+          collect_err="$RUNNER_TEMP/matrix-collect.err"
+          set +e
+          uv run pytest --collect-only -q -m "not network" >"$collect_out" 2>"$collect_err"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::pytest --collect-only exited $rc"
+            echo "----- collect stderr (tail) -----"
+            tail -60 "$collect_err" || true
+            echo "----- collect stdout (tail) -----"
+            tail -30 "$collect_out" || true
+            exit "$rc"
+          fi
           inventory="$RUNNER_TEMP/matrix-inventory.txt"
-          uv run pytest --collect-only -q -m "not network" 2>/dev/null \
-            | grep -E '^tests/.*: [0-9]+$' \
+          grep -E '^tests/.*: [0-9]+$' "$collect_out" \
             | LC_ALL=C sort -t: -k2 -nr > "$inventory"
           files=$(wc -l < "$inventory" | tr -d ' ')
           tests=$(awk -F': ' '{s += $NF} END {print s}' "$inventory")
