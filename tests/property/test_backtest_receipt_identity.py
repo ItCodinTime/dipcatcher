@@ -87,7 +87,13 @@ def test_tamper_evasion_fails(tmp_path) -> None:
     bundle_path = bundle_dir / "bundles" / f"{bundle.bundle_id}.json"
     trades_path = sidecar_paths(bundle_dir, bundle.bundle_id)["trade_log"]
     frame = pl.read_parquet(trades_path)
-    tampered = frame.with_columns(pl.col("nav") * 1.5)
+    # flip ONE fill's nav mark (a global scale would be pct_change-invariant)
+    tampered = frame.with_columns(
+        pl.when(pl.int_range(pl.len()) == 0)
+        .then(pl.col("nav") * 1.5)
+        .otherwise(pl.col("nav"))
+        .alias("nav")
+    )
     tampered.write_parquet(trades_path)
 
     result = verify_bundle(bundle_path, bundle_dir=bundle_dir, strict_signature=False)

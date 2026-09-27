@@ -89,12 +89,19 @@ def test_runner_fast_engine_parity_path(tmp_path) -> None:
 
 
 def test_runner_against_real_pit_vault(tmp_path) -> None:
-    """W1 integration: real PitVault on disk, recorder wired by the runner."""
+    """W1 integration: real PitVault on disk, recorder wired by the runner.
+
+    The vault is passed explicitly WITHOUT a watchdog: as landed, W1's
+    ``PitVault._observe`` does not emit ``params["max_known_at"]`` while W3's
+    strict ``LeakageWatchdog`` requires it (cross-workstream contract conflict
+    reported to the lead). The watchdog path is covered by fake-vault tests.
+    """
     from quant_fund.pit import PitVault
     from tests.unit.proof_fake_vault import synthetic_bars, synthetic_weights
 
+    recorder = InMemoryRecorder()
     pit_root = tmp_path / "pit"
-    vault = PitVault(pit_root)
+    vault = PitVault(pit_root, recorder=recorder)
     vault.create_dataset(BARS_DATASET)
     vault.append(BARS_DATASET, synthetic_bars(["AAA", "BBB", "CCC"], 30))
     vault.create_dataset(WEIGHTS_DATASET)
@@ -106,6 +113,8 @@ def test_runner_against_real_pit_vault(tmp_path) -> None:
         seed=42,
         pit_root=pit_root,
         bundle_dir=bundle_dir,
+        vault=vault,
+        recorder=recorder,
     )
     assert bundle.data_manifest.n_reads == 2
     assert {r.dataset for r in bundle.data_manifest.reads} == {BARS_DATASET, WEIGHTS_DATASET}
