@@ -196,7 +196,9 @@ string — no existing score is modified.
   `research_only=True`/`live_pnl_claim=False`; `export_analytics_dict` forces
   both on every export regardless of input; `validate_analytics_export`
   fail-closes incl. sha256 digest verification.
-- research/catalog.py — CLEAN: 10.7k-line verification/receipt layer. Zero
+- research/catalog/ — CLEAN: 10.7k-line verification/receipt layer, now a
+  package split by theme (constants, predicates, per-surface honesty checkers,
+  consistency) with `__init__.py` re-exports. Zero
   pickle/eval/exec/network/RNG sites. Enforces the dual-catalog honesty split
   (research blobs forbid pnl/nav/sharpe keys outright; paper exports carry
   them only under live_pnl_claim=false).
