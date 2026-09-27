@@ -41,7 +41,7 @@ model:
   name: fx-1
   entrypoint: your_package.module:YourFx1Model
   checkpoint_path: /secure/local/fx1.pt
-  checkpoint_format: auto   # pickle | joblib | torch | onnx | json | auto
+  checkpoint_format: auto   # torch loads weights only by default
   version: null             # optional override; artifact version wins when present
 ```
 
@@ -49,11 +49,19 @@ model:
 unless `model.entrypoint` is `module:attr` and that object is an `Fx1Model`.
 There is no in-repo fallback that pretends to be the model.
 
-`load` may call `fx1.forecast.load_artifact`. Backends are import-guarded:
-pickle, joblib, torch, onnx, and json load only when requested, so a missing
-optional dependency does not break the test suite. Torch and pickle execute
-the checkpoint bytes; point them only at a local file you trust. The loader
-does not download anything.
+`load` may call `fx1.forecast.load_artifact`. Backends are import-guarded, so
+missing optional dependencies do not break import. JSON and ONNX load normally;
+torch defaults to `weights_only=True`. Pickle, joblib, and full-module torch
+can execute code and are disabled unless the operator sets both
+`allow_unsafe_deserialization: true` and `trusted_checkpoint_sha256` to a digest
+obtained from a trusted source. The helper checks the digest before loading and
+deserializes those same bytes. A digest proves byte identity, not safety of an
+unknown source. The loader never downloads a checkpoint.
+
+An external `model.entrypoint` is itself executable Python supplied by the
+operator. Custom `load` implementations must enforce their own trust policy;
+the harness checks the configured digest before calling them and rejects a
+checkpoint that changes during loading.
 
 Every loaded artifact is stamped with:
 
@@ -169,12 +177,18 @@ model:
   entrypoint: your_package.module:YourFx1Model
   checkpoint_path: /secure/local/fx1.pt
   checkpoint_format: torch
+  # Use these only for a trusted full-module checkpoint. Omit them for a
+  # weights-only torch checkpoint.
+  allow_unsafe_deserialization: true
+  trusted_checkpoint_sha256: <64-character lowercase SHA-256 from a trusted source>
 ```
 
 ## Metrics
 
-Forecast scores are reported per `horizon_bars` on test-fold rows that have a
-realized return:
+Forecast diagnostics are reported per `horizon_bars` on test-fold rows that
+have a realized return. These point diagnostics are not a proper-score
+promotion receipt for fx-1; a real research comparison needs its declared
+target and a proper scoring contract:
 
 | Field | Definition |
 |---|---|
@@ -198,17 +212,12 @@ It is not a strategy and it does not submit orders.
 | `rank` | Cross-sectional average rank at `t`, scaled to `[-1, 1]`. One name maps to 0 |
 
 Weights at each test timestamp are the signals divided by the sum of absolute
-signals (0 when every signal is 0). The diagnostic holding-period return is
-`sum(weight * realized) - (cost_bps / 1e4) * turnover`, with turnover from
-`quant_fund.metrics.returns.turnover` against the previous selected weight
-(starting from flat). `cost_bps` is a flat one-way cost. When `horizon_bars > 1`,
-returns are sampled every `horizon_bars` test timestamps so consecutive
-holding periods do not overlap.
-
-`signal_diagnostics` then calls `wealth_index`, `max_drawdown`, and
-`sharpe_ratio` from `quant_fund.metrics.returns`. Those fields are research
-diagnostics of the placeholder map. They are not a live performance claim,
-not a promotion gate, and not evidence of an edge. The report sets
+signals (0 when every signal is 0). `signal_diagnostics` reports turnover
+against the previous selected weight (starting from flat) and the assumed
+one-way cost drag in basis points (`cost_bps * mean_turnover`). When
+`horizon_bars > 1`, the diagnostic samples every `horizon_bars` test timestamps.
+It reports no Sharpe, drawdown, NAV, or P&L. This is not a promotion gate or
+evidence of an edge. The report sets
 `research_only: true`, `live_pnl_claim: false`, and `orders_submitted: false`.
 `data_label` is `SYNTHETIC` when the bar source is synthetic.
 

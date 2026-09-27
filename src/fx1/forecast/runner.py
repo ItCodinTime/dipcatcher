@@ -18,7 +18,7 @@ from typing import Any, cast
 import polars as pl
 import pyarrow.parquet as pq
 
-from fx1.forecast.artifacts import probe_artifact
+from fx1.forecast.artifacts import UntrustedArtifactError, probe_artifact
 from fx1.forecast.config import Fx1HarnessConfig
 from fx1.forecast.evaluate import evaluate_forecasts, json_ready
 from fx1.forecast.features import (
@@ -279,16 +279,28 @@ def run_inference(
     provider = provider if provider is not None else resolve_provider(config)
     bars = load_bars(provider, config)
     pipeline = resolve_pipeline(config)
-    bound = (
-        model
-        if model is not None
-        else create_model(config.model.name, entrypoint=config.model.entrypoint)
-    )
     checkpoint = config.model.checkpoint_path
     stamp = (
         probe_artifact(checkpoint, config.model.checkpoint_format)
         if checkpoint is not None
         else None
+    )
+    if stamp is not None:
+        expected = config.model.trusted_checkpoint_sha256
+        if expected is not None and stamp["sha256"] != expected:
+            raise UntrustedArtifactError("checkpoint SHA-256 does not match the trusted digest")
+        if (
+            stamp["format"] in {"pickle", "joblib"}
+            and not config.model.allow_unsafe_deserialization
+        ):
+            raise UntrustedArtifactError(
+                "pickle and joblib require allow_unsafe_deserialization=true "
+                "and trusted_checkpoint_sha256"
+            )
+    bound = (
+        model
+        if model is not None
+        else create_model(config.model.name, entrypoint=config.model.entrypoint)
     )
     bound.load(
         checkpoint,
@@ -296,9 +308,17 @@ def run_inference(
             "horizon_bars": config.features.horizon_bars,
             "version": config.model.version,
             "checkpoint_format": config.model.checkpoint_format,
+            "trusted_checkpoint_sha256": config.model.trusted_checkpoint_sha256,
+            "allow_unsafe_deserialization": config.model.allow_unsafe_deserialization,
             "name": config.model.name,
         },
     )
+    if checkpoint is not None and stamp is not None:
+        # An external loader can receive a path instead of the helper above.
+        # Refuse to stamp a checkpoint that changed while it was loaded.
+        after = probe_artifact(checkpoint, config.model.checkpoint_format)
+        if after["sha256"] != stamp["sha256"]:
+            raise UntrustedArtifactError("checkpoint changed while the model was loading")
     decisions = _decision_times(bars, config)
     if config.inference.mode == "walk_forward":
         forecasts = _predict_walk_forward(bars, pipeline, bound, decisions, config)

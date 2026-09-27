@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 from fx1.cli import app
 from fx1.forecast.artifacts import (
     ArtifactBackendUnavailable,
+    UntrustedArtifactError,
     load_artifact,
     probe_artifact,
 )
@@ -128,7 +129,7 @@ def _harness_config(tmp_path: Path, **overrides: object) -> Fx1HarnessConfig:
             "output_parquet": str(tmp_path / "forecasts.parquet"),
             "output_meta": str(tmp_path / "forecasts.meta.json"),
         },
-        "signal": {"mapping": "sign", "threshold": 0.0, "cost_bps": 5.0, "periods_per_year": 252},
+        "signal": {"mapping": "sign", "threshold": 0.0, "cost_bps": 5.0},
         "walk_forward": {
             "scheme": "expanding",
             "train_bars": 8,
@@ -188,17 +189,99 @@ def test_checkpoint_hash_and_version_stamp(tmp_path: Path):
     path = tmp_path / "reference.pkl"
     with path.open("wb") as handle:
         pickle.dump({"version": "from-payload", "weights": [1.0, 0.0]}, handle)
-    loaded = load_artifact(path)
+    with pytest.raises(UntrustedArtifactError, match="allow_unsafe_deserialization"):
+        load_artifact(path)
+    trusted_digest = hash_file(path)
+    with pytest.raises(UntrustedArtifactError, match="does not match"):
+        load_artifact(
+            path,
+            allow_unsafe_deserialization=True,
+            trusted_checkpoint_sha256="0" * 64,
+        )
+    loaded = load_artifact(
+        path,
+        allow_unsafe_deserialization=True,
+        trusted_checkpoint_sha256=trusted_digest,
+    )
     assert loaded.format == "pickle"
     assert loaded.sha256 == hash_file(path)
     assert loaded.version == "from-payload"
     sidecar = Path(str(path) + ".version")
     sidecar.write_text("from-sidecar\n", encoding="utf-8")
-    stamped = load_artifact(path)
+    stamped = load_artifact(
+        path,
+        allow_unsafe_deserialization=True,
+        trusted_checkpoint_sha256=trusted_digest,
+    )
     assert stamped.version == "from-sidecar"
     probed = probe_artifact(path)
     assert probed["sha256"] == loaded.sha256
     assert probed["version"] == "from-sidecar"
+
+
+def test_checkpoint_trust_policy_prevents_unapproved_deserialization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "candidate.pkl"
+    path.write_bytes(b"arbitrary checkpoint bytes")
+
+    def _must_not_run(_raw: bytes) -> object:
+        raise AssertionError("unsafe loader ran without a trusted digest")
+
+    monkeypatch.setattr("fx1.forecast.artifacts._load_pickle", _must_not_run)
+    with pytest.raises(UntrustedArtifactError, match="allow_unsafe_deserialization"):
+        load_artifact(path)
+    with pytest.raises(UntrustedArtifactError, match="does not match"):
+        load_artifact(
+            path,
+            allow_unsafe_deserialization=True,
+            trusted_checkpoint_sha256="0" * 64,
+        )
+
+
+def test_harness_rejects_untrusted_pickle_before_model_load(tmp_path: Path) -> None:
+    path = tmp_path / "candidate.pkl"
+    path.write_bytes(b"not a trusted checkpoint")
+    with pytest.raises(ValueError, match="trusted_checkpoint_sha256"):
+        _harness_config(tmp_path, model={"allow_unsafe_deserialization": True})
+
+    config = _harness_config(
+        tmp_path,
+        model={"checkpoint_path": str(path), "checkpoint_format": "pickle"},
+    )
+
+    class _NoLoad(SpyModel):
+        def load(self, checkpoint_path=None, config=None) -> None:
+            raise AssertionError("model.load must not see an untrusted checkpoint")
+
+    with pytest.raises(UntrustedArtifactError, match="allow_unsafe_deserialization"):
+        run_inference(config, model=_NoLoad(), provider=_MemoryProvider(_panel(20)))
+
+
+def test_torch_checkpoint_uses_weights_only_without_trust_opt_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "candidate.pt"
+    path.write_bytes(b"torch checkpoint stub")
+    calls: list[tuple[bool, bool]] = []
+
+    class _TorchStub:
+        def load(self, source: object, *, map_location: str, weights_only: bool) -> object:
+            assert map_location == "cpu"
+            calls.append((weights_only, isinstance(source, Path)))
+            return {"version": "test"}
+
+    monkeypatch.setattr("fx1.forecast.artifacts.import_optional", lambda _module: _TorchStub())
+    assert load_artifact(path).version == "test"
+    assert (
+        load_artifact(
+            path,
+            allow_unsafe_deserialization=True,
+            trusted_checkpoint_sha256=hash_file(path),
+        ).version
+        == "test"
+    )
+    assert calls == [(True, True), (False, False)]
 
 
 def test_missing_backend_does_not_import_at_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -466,6 +549,7 @@ def test_end_to_end_reference_model_is_not_fx1(tmp_path: Path):
     report = run_signal_evaluation(config, forecasts=inferred.forecasts)
     assert report["research_only"] is True
     assert report["live_pnl_claim"] is False
+    assert report["promotion_eligible"] is False
     assert report["orders_submitted"] is False
     assert report["mapping_role"] == PLACEHOLDER_NOT_A_STRATEGY
     assert report["data_label"] == "SYNTHETIC"
@@ -476,7 +560,10 @@ def test_end_to_end_reference_model_is_not_fx1(tmp_path: Path):
     diagnostics = report["signal_diagnostics"]
     assert diagnostics["orders_submitted"] is False
     assert diagnostics["placeholder_mapping"] == PLACEHOLDER_NOT_A_STRATEGY
-    assert "sharpe_ratio" in diagnostics
+    assert not {"sharpe_ratio", "total_return", "max_drawdown"} & diagnostics.keys()
+    assert diagnostics["mean_one_way_cost_drag_bps"] == pytest.approx(
+        diagnostics["cost_bps"] * diagnostics["mean_turnover"]
+    )
     assert diagnostics["n_periods"] > 0
 
 
@@ -502,10 +589,8 @@ def test_zero_baseline_signal_diagnostic_is_flat(tmp_path: Path):
     inferred = run_inference(config)
     report = run_signal_evaluation(config, forecasts=inferred.forecasts)
     diagnostics = report["signal_diagnostics"]
-    assert diagnostics["total_return"] == pytest.approx(0.0)
     assert diagnostics["mean_turnover"] == pytest.approx(0.0)
-    assert diagnostics["max_drawdown"] == pytest.approx(0.0)
-    assert diagnostics["sharpe_ratio"]["sharpe"] is None
+    assert diagnostics["mean_one_way_cost_drag_bps"] == pytest.approx(0.0)
     assert report["forecast_metrics"]["by_horizon"]["1"]["ic"] is None
 
 
@@ -525,7 +610,7 @@ def test_cli_infer_and_backtest(tmp_path: Path):
             "output_parquet": str(tmp_path / "forecasts.parquet"),
             "output_meta": str(tmp_path / "forecasts.meta.json"),
         },
-        "signal": {"mapping": "rank", "threshold": 0.0, "cost_bps": 1.0, "periods_per_year": 252},
+        "signal": {"mapping": "rank", "threshold": 0.0, "cost_bps": 1.0},
         "walk_forward": {
             "scheme": "rolling",
             "train_bars": 10,

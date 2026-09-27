@@ -12,6 +12,7 @@ runs. They are not fx-1.
 from fx1.forecast.artifacts import (
     ArtifactBackendUnavailable,
     LoadedArtifact,
+    UntrustedArtifactError,
     load_artifact,
     probe_artifact,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "Fx1HarnessConfig",
     "Fx1Model",
     "LoadedArtifact",
+    "UntrustedArtifactError",
     "ModelNotRegistered",
     "MomentumForecastModel",
     "OhlcvFeaturePipeline",

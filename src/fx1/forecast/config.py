@@ -61,7 +61,15 @@ class ModelSection(_Strict):
     entrypoint: str | None = None
     checkpoint_path: Path | None = None
     checkpoint_format: Literal["auto", "pickle", "joblib", "torch", "onnx", "json"] = "auto"
+    trusted_checkpoint_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    allow_unsafe_deserialization: bool = False
     version: str | None = None
+
+    @model_validator(mode="after")
+    def _unsafe_checkpoint(self) -> ModelSection:
+        if self.allow_unsafe_deserialization and self.trusted_checkpoint_sha256 is None:
+            raise ValueError("allow_unsafe_deserialization requires trusted_checkpoint_sha256")
+        return self
 
 
 class InferenceSection(_Strict):
@@ -76,12 +84,11 @@ class SignalSection(_Strict):
     mapping: Literal["sign", "rank", "threshold"] = "sign"
     threshold: float = 0.0
     cost_bps: float = 0.0
-    periods_per_year: float = 252.0
 
     @model_validator(mode="after")
     def _costs(self) -> SignalSection:
-        if self.threshold < 0 or self.cost_bps < 0 or self.periods_per_year <= 0:
-            raise ValueError("threshold and cost_bps must be >= 0; periods_per_year must be > 0")
+        if self.threshold < 0 or self.cost_bps < 0:
+            raise ValueError("threshold and cost_bps must be >= 0")
         return self
 
 

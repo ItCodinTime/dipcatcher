@@ -65,7 +65,12 @@ class _ReferenceModel(ForecastModel):
             self.version = str(cfg["version"])
         if checkpoint_path is None:
             return
-        artifact = load_artifact(checkpoint_path, fmt=cfg.get("checkpoint_format"))
+        artifact = load_artifact(
+            checkpoint_path,
+            fmt=cfg.get("checkpoint_format"),
+            allow_unsafe_deserialization=bool(cfg.get("allow_unsafe_deserialization", False)),
+            trusted_checkpoint_sha256=cfg.get("trusted_checkpoint_sha256"),
+        )
         self.artifact_sha256 = artifact.sha256
         self.artifact_format = artifact.format
         if artifact.version:

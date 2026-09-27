@@ -5,11 +5,9 @@ Forecast metrics reuse :func:`quant_fund.metrics.scoring.pearson_ic`,
 enough, :func:`quant_fund.metrics.direction.pesaran_timmermann`. Fold
 stability reuses :func:`quant_fund.validation.walk_forward.fold_ic_stability`.
 
-Signal diagnostics reuse :func:`quant_fund.metrics.returns.sharpe_ratio`,
-:func:`quant_fund.metrics.returns.max_drawdown`,
-:func:`quant_fund.metrics.returns.turnover`, and
-:func:`quant_fund.metrics.returns.wealth_index`. They describe a placeholder
-mapping. This module does not submit orders.
+The placeholder signal mapping reports turnover and an assumed one-way cost
+drag only. It does not report Sharpe, P&L, NAV, or drawdown as research scores.
+This module does not submit orders.
 """
 
 from __future__ import annotations
@@ -27,7 +25,7 @@ from fx1.forecast.schema import SchemaError, validate_forecast_schema
 from fx1.forecast.signals import PLACEHOLDER_NOT_A_STRATEGY, map_signals
 from quant_fund.config.models import ValidationConfig
 from quant_fund.metrics.direction import pesaran_timmermann
-from quant_fund.metrics.returns import max_drawdown, sharpe_ratio, turnover, wealth_index
+from quant_fund.metrics.returns import turnover
 from quant_fund.metrics.scoring import pearson_ic, rank_ic
 from quant_fund.validation.walk_forward import (
     assert_no_label_overlap,
@@ -187,7 +185,6 @@ def _signal_diagnostics(
     frame: pl.DataFrame,
     *,
     cost_bps: float,
-    periods_per_year: float,
     stride: int,
 ) -> dict[str, Any]:
     times = _decision_times(frame)
@@ -196,48 +193,37 @@ def _signal_diagnostics(
     ids = sorted(str(value) for value in frame["security_id"].unique().to_list())
     index = {sid: i for i, sid in enumerate(ids)}
     prev = np.zeros(len(ids), dtype=float)
-    returns: list[float] = []
     turns: list[float] = []
-    one_way = cost_bps / 1e4
     for stamp in times:
         day = frame.filter(pl.col("event_time") == stamp)
         weights = np.zeros(len(ids), dtype=float)
-        realized = np.zeros(len(ids), dtype=float)
         for row in day.iter_rows(named=True):
             slot = index[str(row["security_id"])]
             signal = row["signal"]
-            outcome = row["realized_return"]
-            if signal is None or outcome is None:
+            if signal is None:
                 continue
-            if not math.isfinite(float(signal)) or not math.isfinite(float(outcome)):
+            if not math.isfinite(float(signal)):
                 continue
             weights[slot] = float(signal)
-            realized[slot] = float(outcome)
         gross = float(np.sum(np.abs(weights)))
         if gross > 0.0:
             weights = weights / gross
         traded = turnover(weights, prev)
-        returns.append(float(np.sum(weights * realized) - one_way * traded))
         turns.append(traded)
         prev = weights
-    series = np.asarray(returns, dtype=float)
-    wealth = wealth_index(series)
-    total = float(wealth[-1] - 1.0) if wealth.size else float("nan")
+    mean_turnover = float(np.mean(turns)) if turns else float("nan")
     return {
-        "total_return": total,
-        "max_drawdown": max_drawdown(series),
-        "mean_turnover": float(np.mean(turns)) if turns else float("nan"),
+        "mean_turnover": mean_turnover,
         "cost_bps": float(cost_bps),
-        "periods_per_year": float(periods_per_year),
-        "n_periods": len(returns),
+        "mean_one_way_cost_drag_bps": float(cost_bps * mean_turnover),
+        "n_periods": len(times),
         "return_stride_bars": int(stride),
-        "sharpe_ratio": sharpe_ratio(series, periods_per_year=periods_per_year),
         "research_diagnostic_only": True,
         "placeholder_mapping": PLACEHOLDER_NOT_A_STRATEGY,
         "orders_submitted": False,
         "note": (
-            "Research diagnostic of a placeholder score-to-signal map. "
-            "Not a strategy, not an order, and not a live performance claim."
+            "Turnover and assumed cost of a placeholder score-to-signal map. "
+            "No performance or live-trading claim."
         ),
     }
 
@@ -301,7 +287,6 @@ def evaluate_forecasts(
     diagnostics = _signal_diagnostics(
         mapped,
         cost_bps=config.signal.cost_bps,
-        periods_per_year=config.signal.periods_per_year,
         stride=horizon,
     )
     return cast(
@@ -310,6 +295,7 @@ def evaluate_forecasts(
             {
                 "schema": "fx1.harness.eval/v1",
                 "research_only": True,
+                "promotion_eligible": False,
                 "live_pnl_claim": False,
                 "placeholder_signal_mapping": True,
                 "signal_mapping": config.signal.mapping,

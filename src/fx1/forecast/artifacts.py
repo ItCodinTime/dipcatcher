@@ -1,20 +1,23 @@
 """Format-agnostic local checkpoint loader.
 
-Backends (pickle, joblib, torch, onnx, json) are imported only when that
-format is requested, so a missing optional dependency does not break import
-or tests. The loader never fetches a remote path. Pickle and torch loads
-execute operator-supplied bytes; point them only at checkpoints you trust.
+Backends are imported only when requested. JSON, ONNX, and weights-only torch
+loading are the defaults. Pickle, joblib, and full-module torch loading can
+execute code; they require an explicit opt-in and a trusted SHA-256 digest.
+The unsafe loaders consume the exact bytes whose digest was checked.
 """
 
 from __future__ import annotations
 
 import importlib
+import io
 import json
+import re
 from dataclasses import dataclass
+from hmac import compare_digest
 from pathlib import Path
 from typing import Any
 
-from quant_fund.utils.hashing import hash_file
+from quant_fund.utils.hashing import hash_bytes, hash_file
 
 _FORMAT_BY_SUFFIX: dict[str, str] = {
     ".pkl": "pickle",
@@ -36,6 +39,10 @@ class ArtifactBackendUnavailable(ImportError):
             "the harness stays importable without this optional dependency"
         )
         self.backend = backend
+
+
+class UntrustedArtifactError(ValueError):
+    """A checkpoint did not satisfy the explicit trusted-input policy."""
 
 
 @dataclass(frozen=True)
@@ -102,23 +109,36 @@ def probe_artifact(path: str | Path, fmt: str | None = None) -> dict[str, str | 
     }
 
 
-def _load_pickle(path: Path) -> object:
+def _trusted_bytes(path: Path, expected_sha256: str | None, allowed: bool) -> tuple[bytes, str]:
+    if not allowed or expected_sha256 is None:
+        raise UntrustedArtifactError(
+            "pickle, joblib, and full-module torch require "
+            "allow_unsafe_deserialization=true and trusted_checkpoint_sha256"
+        )
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise UntrustedArtifactError("trusted_checkpoint_sha256 must be 64 lowercase hex digits")
+    raw = path.read_bytes()
+    actual = hash_bytes(raw)
+    if not compare_digest(actual, expected_sha256):
+        raise UntrustedArtifactError("checkpoint SHA-256 does not match the trusted digest")
+    return raw, actual
+
+
+def _load_pickle(raw: bytes) -> object:
     pickle = import_optional("pickle")
-    with path.open("rb") as handle:
-        return pickle.load(handle)  # noqa: S301  # trusted local checkpoint
+    # The caller explicitly opted in and pinned these exact bytes. Pickle is
+    # intentionally unavailable through the default loading path.
+    return pickle.loads(raw)  # noqa: S301  # nosec B301
 
 
-def _load_joblib(path: Path) -> object:
+def _load_joblib(raw: bytes) -> object:
     joblib = import_optional("joblib")
-    return joblib.load(path)
+    return joblib.load(io.BytesIO(raw))
 
 
-def _load_torch(path: Path) -> object:
+def _load_torch(path: Path | io.BytesIO, *, weights_only: bool) -> object:
     torch = import_optional("torch")
-    # Operator-local checkpoint. weights_only=False because an external fx-1
-    # artifact may be a full module, not a tensor dict. Do not point this at
-    # untrusted bytes.
-    return torch.load(path, map_location="cpu", weights_only=False)
+    return torch.load(path, map_location="cpu", weights_only=weights_only)
 
 
 def _load_onnx(path: Path) -> object:
@@ -131,29 +151,56 @@ def _load_json(path: Path) -> object:
 
 
 _BACKENDS = {
-    "pickle": _load_pickle,
-    "joblib": _load_joblib,
-    "torch": _load_torch,
     "onnx": _load_onnx,
     "json": _load_json,
 }
 
 
-def load_artifact(path: str | Path, fmt: str | None = None) -> LoadedArtifact:
-    """Load a local checkpoint and stamp its sha256 and version."""
+def load_artifact(
+    path: str | Path,
+    fmt: str | None = None,
+    *,
+    allow_unsafe_deserialization: bool = False,
+    trusted_checkpoint_sha256: str | None = None,
+) -> LoadedArtifact:
+    """Load a checkpoint and stamp the bytes used.
+
+    Pickle and joblib are disabled by default. Torch defaults to
+    ``weights_only=True``. Unsafe formats require both an explicit opt-in and
+    a trusted SHA-256 digest; the checked bytes are the bytes deserialized.
+    """
     file_path = Path(path)
     if not file_path.is_file():
         raise FileNotFoundError(f"checkpoint not found: {file_path}")
     resolved = resolve_format(file_path, fmt)
-    backend = _BACKENDS.get(resolved)
-    if backend is None:
-        raise ValueError(f"unsupported checkpoint format {resolved!r}")
-    payload = backend(file_path)
+    if resolved in {"pickle", "joblib"} or (resolved == "torch" and allow_unsafe_deserialization):
+        raw, digest = _trusted_bytes(
+            file_path, trusted_checkpoint_sha256, allow_unsafe_deserialization
+        )
+        if resolved == "pickle":
+            payload = _load_pickle(raw)
+        elif resolved == "joblib":
+            payload = _load_joblib(raw)
+        else:
+            payload = _load_torch(io.BytesIO(raw), weights_only=False)
+    elif resolved == "torch":
+        payload = _load_torch(file_path, weights_only=True)
+        digest = hash_file(file_path)
+    else:
+        backend = _BACKENDS.get(resolved)
+        if backend is None:
+            raise ValueError(f"unsupported checkpoint format {resolved!r}")
+        payload = backend(file_path)
+        digest = hash_file(file_path)
+    if trusted_checkpoint_sha256 is not None and not compare_digest(
+        digest, trusted_checkpoint_sha256
+    ):
+        raise UntrustedArtifactError("checkpoint SHA-256 does not match the trusted digest")
     version = _sidecar_version(file_path) or _payload_version(payload)
     return LoadedArtifact(
         path=str(file_path),
         format=resolved,
-        sha256=hash_file(file_path),
+        sha256=digest,
         version=version,
         payload=payload,
     )
