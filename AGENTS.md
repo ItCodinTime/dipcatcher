@@ -24,7 +24,7 @@ make sync          # uv sync --frozen --all-groups --all-extras (uv.lock is
 |---|---|
 | Lint | `make lint` (ruff check + format --check on `src`/`tests`) |
 | Types | `make typecheck` (mypy `src/quant_fund`); fx1: `uv run mypy src/fx1` |
-| Lab tests | `make test` (pytest: `tests/{unit,property,regression,end_to_end}`) |
+| Lab tests | `make test` (PR gate: not network, not slow, xdist). `make test-full` includes slow. |
 | fx1 suite | `make fx1-test` — separate lane, ~200 tests |
 | fx1 full gate | `make fx1-gate` — lint + types + tests + honesty + corpus smoke |
 | CI parity | `.github/workflows/ci.yml` + `fx1.yml` use `uv sync --frozen` |

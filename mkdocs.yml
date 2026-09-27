@@ -138,16 +138,18 @@ nav:
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
+      - Formal verification: FORMAL_VERIFICATION.md
       - Backtest overfitting: BACKTEST_OVERFITTING.md
       - Mathematical specification: MATH_SPEC.md
       - Research references: RESEARCH_REFERENCES.md
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
       - Labels: DATA_SOURCE_LABELS.md
-      - Data lake: DATA_LAKE.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
+      - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
+      - Stress and scenarios: STRESS.md
       - Northset: NORTHSET.md
       - Candle and order book: CANDLE_ORDER_BOOK.md
       - Real-data benchmark: REAL_DATA_BENCHMARK.md
@@ -164,25 +166,23 @@ nav:
       - Performance: PERF.md
       - Causal capacity: CAUSAL_CAPACITY.md
       - Forward shadow power: FORWARD_SHADOW_POWER.md
-      - Forward shadow record: FORWARD_SHADOW_RECORD.md
-      - Prospective forecast journal: PROSPECTIVE_SOTA.md
-      - Ranker probability experiment: RANKER_PROBABILITY_EXPERIMENT.md
-      - SOTA canon roadmap: SOTA_CANON_ROADMAP_2026_09.md
-      - Statistical-core audit: AUDIT_P62_STATS.md
       - Model cards: MODEL_CARDS.md
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
+      - Scenario Monte Carlo: MC_ENGINE.md
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Deterministic simulation: DETERMINISTIC_SIMULATION.md
+      - Pre-trade risk: PRETRADE_RISK.md
   - fx-1:
       - Overview: FX1.md
+      - Forecast harness: fx1_harness.md
       - Architecture: FX1_ARCHITECTURE.md
       - Training: FX1_TRAINING.md
       - Data: FX1_DATA.md
       - Datasources: FX1_DATASOURCES.md
       - API stability: FX1_API_STABILITY.md
-      - Forecast harness: fx1_harness.md
   - Decisions:
       - decisions/index.md
       - "ADR-001: uv and Python 3.12": decisions/001-uv-python312.md
@@ -224,12 +224,16 @@ nav:
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
   - API reference:
+      - Research evidence service: RESEARCH_API.md
       - api/index.md
       - Data: api/data.md
       - Microstructure: api/microstructure.md
       - Validation: api/validation.md
       - Metrics: api/metrics.md
       - research.verify: api/research_verify.md
+  - Proofcore:
+      - Overview: proofcore/README.md
+      - Migration: proofcore/MIGRATION.md
   - Archive:
       - archive.md
       - Implementation plan: IMPLEMENTATION_PLAN.md

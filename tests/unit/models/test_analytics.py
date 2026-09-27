@@ -24,6 +24,8 @@ from quant_fund.metrics.probability import (
 )
 from quant_fund.metrics.risk import historical_es, historical_var, losses_from_returns
 
+pytestmark = pytest.mark.smoke
+
 
 def test_net_gross_exposure_fixture():
     w = np.array([0.05, -0.03, 0.02, 0.0])

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "created_at": "2026-09-27T10:42:16.495715+00:00",
+  "created_at": "2026-09-25T06:49:52.903264+00:00",
   "benchmark_manifest": {
     "schema_version": 1,
     "created_at": "2026-09-25T06:47:10.618534+00:00",
@@ -143,17 +143,17 @@
   },
   "code_sha256": {
     "net_tournament.py": "02d3a3d045d7a8f97d73fed0b0c1d3c04a4a7810d0b874d57e8833e8b8e1d83b",
-    "net_replay.py": "080b3886f023d858c008da0cc1bd1648e87fae833d207088f64aedf59f7e0f9a",
+    "net_replay.py": "93a15a129fdfdba236997d67700d03118a565692a2bd2e327a83dcfba5dc7882",
     "cost_allocation.py": "e8aa8c29a90f197ae342f376a66d5f9d97dfab77309190cd7939ef1bff49fd14",
     "real_benchmark.py": "b20a14567d835744e13918ef7f04ae7f20d597207cb99bb9b9ca651204ea71d2",
-    "inference.py": "65b67f39e0c5e124b8e8db68cd549add0e3b5a5273315bf40b719f5702315421",
+    "inference.py": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
     "snooping.py": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa"
   },
   "runtime": {
     "python": "3.12.14",
     "numpy": "2.5.3",
     "polars": "1.44.2",
-    "cvxpy": "1.9.3",
+    "cvxpy": "1.9.2",
     "clarabel": "0.11.1",
     "scipy": "1.18.1"
   },
@@ -235,5 +235,5 @@
     "Allocation return/uncertainty inputs are unvalidated proxies; pair ablations are descriptive.",
     "Impact stress changes realized costs; allocation planning coefficients stay frozen."
   ],
-  "receipt_sha256": "e74f3033aaaa4bf26a5712cd01505efd5ceec6c1a7b192d842aa2d4c01430873"
+  "receipt_sha256": "7dab6ee1eb6b39c47e85f048c8f9584d5c6b08f214ef3c6a4cb908228be7ca90"
 }
