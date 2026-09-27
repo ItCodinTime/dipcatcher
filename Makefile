@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate market-sim-test
 
 .DEFAULT_GOAL := help
 
@@ -11,6 +11,9 @@ sync: ## Install the locked environment (all groups and extras)
 
 test: ## Lab test suite (unit/property/regression/end_to_end)
 	uv run pytest
+
+market-sim-test: ## Matching engine and agent-market tests, excluding the slow fact run
+	uv run pytest tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
 
 coverage: ## Lab tests + coverage (threshold in pyproject [tool.coverage.report])
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline

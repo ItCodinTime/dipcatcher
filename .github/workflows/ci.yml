@@ -284,6 +284,23 @@ jobs:
             data/metadata/research/latest.md
             data/metadata/research/runs/
 
+  market-sim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: C compiler
+        run: cc --version
+      - name: Market simulator smoke
+        run: uv run pytest -q tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
+
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 20

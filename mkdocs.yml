@@ -146,6 +146,7 @@ nav:
   - Research:
       - Research centre: RESEARCH_CENTRE.md
       - Northset: NORTHSET.md
+      - Market simulator: MARKET_SIM.md
       - Candle and order book: CANDLE_ORDER_BOOK.md
       - Real-data benchmark: REAL_DATA_BENCHMARK.md
       - Net-return tournament: NET_RETURN_TOURNAMENT.md

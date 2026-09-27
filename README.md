@@ -201,6 +201,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
 | `docs/NORTHSET.md` | Order-book and candlestick slice |
+| `docs/MARKET_SIM.md` | Agent-based limit-order-book simulator and stylized-fact report |
 | `docs/HF_OHLCV_1M.md` | Hugging Face US 1-minute OHLCV: license, schema, caveats |
 | `docs/FX1.md` | fx-1 package: corpus, honesty contract, intended base model |
 | `docs/FX1_TRAINING.md` | Compute ladder and ship gate (plan) |
