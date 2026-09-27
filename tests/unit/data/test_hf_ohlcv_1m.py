@@ -40,7 +40,7 @@ from quant_fund.microstructure.bench import bench_candle_order_book
 from quant_fund.microstructure.candle_book_features import candle_features_from_bars
 from quant_fund.northset.data_view import canonical_northset_bars
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "hf_ohlcv_1m" / "ohlcv_sample.parquet"
+FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "hf_ohlcv_1m" / "ohlcv_sample.parquet"
 
 
 def _clock() -> datetime:

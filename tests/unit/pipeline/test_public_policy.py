@@ -77,7 +77,7 @@ def test_alpha_drawdown_rl_qt_features_exclude_planted() -> None:
 
 
 def test_h6_h14_statements_mention_ridge_or_static_public_policy() -> None:
-    src = Path(__file__).resolve().parents[2] / "src" / "quant_fund" / "research" / "agent.py"
+    src = Path(__file__).resolve().parents[3] / "src" / "quant_fund" / "research" / "agent.py"
     text = src.read_text(encoding="utf-8")
     for hid in ("H6_linucb_vs_uniform", "H14_quantile_thompson"):
         idx = text.index(hid)

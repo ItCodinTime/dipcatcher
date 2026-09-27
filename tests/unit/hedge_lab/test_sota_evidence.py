@@ -21,7 +21,7 @@ from quant_fund.research.sota_evidence import (
 )
 
 _SPEC = importlib.util.spec_from_file_location(
-    "sota_eval_contract_tests", Path(__file__).parents[2] / "scripts" / "sota_eval_kronos.py"
+    "sota_eval_contract_tests", Path(__file__).parents[3] / "scripts" / "sota_eval_kronos.py"
 )
 assert _SPEC is not None and _SPEC.loader is not None
 evaluator = importlib.util.module_from_spec(_SPEC)

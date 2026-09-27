@@ -76,7 +76,11 @@ from quant_fund.models.deep_rl import PolicyGradientRanker, run_policy_gradient_
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
+    GMMDistribution,
+    IsotonicPitDistribution,
     LinearQuantileDistribution,
+    SkewTDistribution,
+    StackedDistribution,
     TreeQuantileDistribution,
 )
 from quant_fund.models.quantile_bandit import QuantileThompson
@@ -316,6 +320,7 @@ __all__ = [
     "GARCH_ONE_STEP_CRPS_TAUS",
     "GARCH_SECURITY_LEVEL_SCOPE",
     "GBRTRanker",
+    "GMMDistribution",
     "GXThreePassRanker",
     "GaussianDistribution",
     "GaussianHMMRegime",
@@ -327,6 +332,7 @@ __all__ = [
     "ID_FIT_RANKERS",
     "ID_PREDICT_RANKERS",
     "IPCARanker",
+    "IsotonicPitDistribution",
     "JoblibMixin",
     "KraussRanker",
     "LGBMLambdaRanker",
@@ -357,6 +363,8 @@ __all__ = [
     "SDFElasticNetRanker",
     "SDFRidgeRanker",
     "SingleStateRegime",
+    "SkewTDistribution",
+    "StackedDistribution",
     "TSMOMRanker",
     "ThreePassFilterRanker",
     "TreeQuantileDistribution",

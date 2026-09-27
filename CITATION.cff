@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using this metadata.
+type: software
+title: dipcatcher
+abstract: >-
+  Receipt-bound quant research on US equities and crypto for a small Alpaca
+  account. Research and simulated paper only. The Python distribution name
+  is fx-1.
+authors:
+  - family-names: Vaithianathan
+    given-names: Advaith
+    email: 140935487+cosmic-hydra@users.noreply.github.com
+repository-code: https://github.com/artificial-hedge/dipcatcher
+url: https://github.com/artificial-hedge/dipcatcher
+version: 0.4.0
+date-released: 2026-09-25
+keywords:
+  - quant-research
+  - equities
+  - crypto
+  - proper-scores

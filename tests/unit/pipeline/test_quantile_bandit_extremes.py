@@ -105,7 +105,7 @@ def test_planted_edge_policy_beats_uniform_honesty() -> None:
 
 
 def test_module_and_trace_have_no_sharpe_keys() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     text = (root / "src/quant_fund/models/quantile_bandit.py").read_text(encoding="utf-8")
     assert "sharpe" not in text.lower()
     rng = np.random.default_rng(0)

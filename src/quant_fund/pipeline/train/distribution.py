@@ -16,7 +16,11 @@ from quant_fund.models.base import load_joblib_artifact, save_joblib_artifact
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
+    GMMDistribution,
+    IsotonicPitDistribution,
     LinearQuantileDistribution,
+    SkewTDistribution,
+    StackedDistribution,
     TreeQuantileDistribution,
 )
 from quant_fund.pipeline.dataset import design_matrix, panel
@@ -29,7 +33,17 @@ from .splits import _aligned_label_end_times, _label_horizon, _require_model, _w
 def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[str, Any]:
     _require_model(
         model_name,
-        {"empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"},
+        {
+            "empirical",
+            "gaussian",
+            "linear_qr",
+            "xgboost",
+            "lightgbm",
+            "skew_t",
+            "gmm",
+            "isotonic",
+            "stack",
+        },
         "distribution",
     )
     set_global_seed(config.train.random_seed)
@@ -46,6 +60,10 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr": LinearQuantileDistribution(taus),
             "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
+            "skew_t": SkewTDistribution(taus),
+            "gmm": GMMDistribution(taus, seed=config.train.random_seed),
+            "isotonic": IsotonicPitDistribution(taus),
+            "stack": StackedDistribution(taus, seed=config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")
