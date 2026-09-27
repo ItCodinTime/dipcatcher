@@ -75,6 +75,9 @@ from quant_fund.cli.research_cmds import (
     backtest as backtest,
 )
 from quant_fund.cli.research_cmds import (
+    execution_sensitivity_cmd as execution_sensitivity_cmd,
+)
+from quant_fund.cli.research_cmds import (
     forecast as forecast,
 )
 from quant_fund.cli.research_cmds import (
