@@ -57,8 +57,10 @@ def test_coverage_floors_fail_closed_on_missing_table(tmp_path: Path) -> None:
 
 def test_coverage_floors_reject_floor_below_global_ratchet(tmp_path: Path) -> None:
     fake = tmp_path / "pyproject.toml"
-    rows = "\n".join(f"{pkg} = {floor}" for pkg, floor in EXPECTED_FLOORS.items())
-    fake.write_text(f"[tool.proofcore.coverage-floors]\n{rows}\nleakage = 70\n")
+    rows = "\n".join(
+        f"{pkg} = {70 if pkg == 'leakage' else floor}" for pkg, floor in EXPECTED_FLOORS.items()
+    )
+    fake.write_text(f"[tool.proofcore.coverage-floors]\n{rows}\n")
     with pytest.raises(ProofcoreError, match="raise-never-lower"):
         coverage_floors(fake)
 
@@ -143,6 +145,34 @@ def test_committed_receipts_dir_nonempty() -> None:
     assert receipt_paths(REPO_ROOT / "receipts"), "receipts/ must not be empty"
 
 
+def test_cli_verifier_respects_exit_status(tmp_path: Path, monkeypatch) -> None:
+    import subprocess
+
+    from quant_fund.proofcore import ci
+
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text("{}")
+
+    def fake_run(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert cmd[-2:] == ["verify-research", str(receipt)]
+        return subprocess.CompletedProcess(cmd, 1)
+
+    monkeypatch.setattr(ci.subprocess, "run", fake_run)
+    assert not ci._cli_verifier(receipt)
+
+
+def test_gate_main_dispatch_and_failure_reporting(monkeypatch, capsys, tmp_path: Path) -> None:
+    from quant_fund.proofcore import ci
+
+    monkeypatch.setattr(ci, "coverage_gate", lambda _path: ["pit below floor"])
+    assert ci.main(["coverage-gate", "--pyproject", str(tmp_path / "pyproject.toml")]) == 1
+    assert "pit below floor" in capsys.readouterr().err
+
+    monkeypatch.setattr(ci, "reverify_receipts", lambda _path: [])
+    assert ci.main(["receipts-reverify", str(tmp_path)]) == 0
+    assert "GATE OK" in capsys.readouterr().out
+
+
 # ---------------------------------------------------------------------------
 # Workflow YAML validity + make-target cross-reference
 # ---------------------------------------------------------------------------
@@ -170,10 +200,9 @@ def test_staged_workflow_matches_activated_copy() -> None:
 def test_workflow_declares_gate_matrix(workflow: dict) -> None:
     """§9.3 CI gate matrix, all present as jobs."""
     expected = {
-        "proof-verify",
+        "proof-integrity",
         "leakage-scan",
         "reality-filter",
-        "receipts-reverify",
         "layering",
         "coverage-floors",
         "fx1-coverage",
@@ -199,15 +228,13 @@ def test_workflow_warn_and_advisory_modes_as_adjudicated(workflow: dict) -> None
     jobs = workflow["jobs"]
     # Adjudicated: leakage-scan runs in WARN mode this wave — the job never
     # gates the build (no --fail-on, report archived as artifact).
-    leakage_runs = "\n".join(
-        step.get("run", "") for step in jobs["leakage-scan"]["steps"]
-    )
+    leakage_runs = "\n".join(step.get("run", "") for step in jobs["leakage-scan"]["steps"])
     assert "--fail-on error" not in leakage_runs
     assert "warn" in yaml.safe_dump(jobs["leakage-scan"]).lower()
     # §9.3: reality-filter advisory at first (phase 4), then blocking.
     assert jobs["reality-filter"].get("continue-on-error") is True
     # The rest of the matrix is blocking (no continue-on-error).
-    for name in ("proof-verify", "receipts-reverify", "layering", "coverage-floors"):
+    for name in ("proof-integrity", "layering", "coverage-floors"):
         assert not jobs[name].get("continue-on-error", False), name
 
 

@@ -20,10 +20,12 @@ checks on append.
 
 ## Phase 2 — proof-carrying runs (W2)
 
-`run_backtest_proven` is a NEW orchestrator; `run_backtest` and the receipt
-format are unchanged. Committed `receipts/*.json` remain valid under the
-existing verifier — and CI now re-verifies all of them on every run
-(`make receipts-reverify`, A3 #4). Proof bundles live in `proofs/`
+W2 currently supplies fingerprinting, read recording, and signing foundations.
+The proven-run orchestrator and replay verifier remain pending. `run_backtest`
+and the receipt format are unchanged. Committed `receipts/*.json` remain valid
+under their existing contracts. The heterogeneous committed receipt classes
+do not yet have one universal verifier; `make receipts-reverify` fails closed
+and is not a blocking CI gate. Future proof bundles live in `proofs/`
 (gitignored, like `data/`); the provenance DB lives at
 `data/metadata/proofcore.duckdb` (gitignored).
 
@@ -45,13 +47,11 @@ blocking once the ledger accumulates enough trials.
 
 ## Phase 5 — integration & CI gates on (W5)
 
-- `.github/workflows/proofcore.yml` gate matrix active: proof-verify,
-  leakage-scan (warn), reality-filter (advisory→blocking), receipts-reverify,
+- `.github/workflows/proofcore.yml` gate matrix active: proof-integrity,
+  leakage-scan (warn), reality-filter (advisory→blocking),
   layering, coverage-floors, fx1-coverage.
-  ACTIVATION: the workflow is staged at `docs/proofcore/proofcore.yml` — move
-  it to `.github/workflows/proofcore.yml` with a workflow-scoped token
-  (the wave-5 push token lacks that scope). `test_proofcore_ci.py` asserts
-  the two copies stay identical.
+  `docs/proofcore/proofcore.yml` retains a reference copy;
+  `test_proofcore_ci.py` asserts the active body stays identical.
 - Per-package coverage floors (`pit`/`proof`/`reality`/`proofcore` ≥ 90,
   `leakage` ≥ 85) enforced via `[tool.proofcore.coverage-floors]` in
   pyproject.toml — ADDITIVE to the existing global 80% floor, which is not
@@ -60,8 +60,8 @@ blocking once the ledger accumulates enough trials.
   by editing `fx1.yml`.
 - Hypothesis runs under the derandomized `ci` profile
   (`HYPOTHESIS_PROFILE=ci`, DESIGN.md §9.5).
-- `proofchain-head.txt` is published as a CI artifact on every main push once
-  persistent proven runs write to `proofs/` (external pin, §5.6).
+- External proof-chain head publication remains pending until persistent
+  proven runs and replay verification exist.
 
 ## What is deliberately NOT in this wave
 

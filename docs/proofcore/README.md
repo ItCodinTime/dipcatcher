@@ -1,10 +1,9 @@
 # PROOFCORE
 
-**PROOFCORE** is dipcatcher's proof-carrying, leakage-proof-by-construction,
-statistically-honest backtest & research runtime. It turns the three audit
-reports (correctness/leakage, architecture/performance, tests/CI) into one
-coherent architecture layered *above* the existing packages — additive only,
-no existing public API changes.
+**PROOFCORE** is an experimental set of PIT storage, proof foundations,
+leakage checks, and statistical diagnostics layered above the existing
+research packages. Bundle replay verification and proven-run orchestration
+remain pending.
 
 ## What it adds
 
@@ -12,7 +11,7 @@ no existing public API changes.
 |---|---|---|
 | Shared contracts | `quant_fund.proofcore.contracts` | pydantic schemas (`ProofBundleV1`, `TrialLedgerRow`, `LeakageReport`, `RealityReport`), canonical hashing, error taxonomy |
 | PIT Vault (W1) | `quant_fund.pit` | Write-once, content-addressed, bitemporal store; `asof(t)` is the ONLY legal read path |
-| Proof-Carrying Backtester (W2) | `quant_fund.proof` | Every run emits a signed, hash-chained `ProofBundleV1`; the verifier re-derives every hash AND recomputes headline metrics from the trade log |
+| Proof foundations (W2) | `quant_fund.proof` | Environment fingerprinting, data-read recording, and signer tests; the runner and replay verifier are pending |
 | Leakage Hunter (W3) | `quant_fund.leakage` | AST linter (LH001–LH012), runtime watchdog, seeded-leak fixture suite |
 | Reality Filter (W4) | `quant_fund.reality` | Unit-safe PSR/MinTRL, DSR with effective trials, CSCV/PBO, SPA, BH-FDR over the trial ledger |
 | Provenance & CI (W5) | `quant_fund.proofcore.provenance`, `.github/workflows/proofcore.yml` | duckdb provenance DB, receipts re-verification, per-package coverage floors, layering gate |
@@ -21,14 +20,10 @@ no existing public API changes.
 
 ```bash
 # provenance ledger (duckdb at data/metadata/proofcore.duckdb — gitignored)
-quant proofcore log --bundle proofs/bundles/<id>.json
+quant proofcore log --bundle path/to/existing-bundle.json  # logged as unverified
 quant proofcore query
 quant proofcore export --out data/metadata/proofcore-trials.jsonl
 quant proofcore chain-head
-
-# proven run + verification (W2)
-quant proof run --config configs/research.yaml --seed 7 --pit-root data/pit --bundle-dir proofs
-quant proof verify --bundle proofs/bundles/<id>.json --replay
 
 # leakage scan (warn mode this wave)
 quant leakage scan --paths src/quant_fund --format json
@@ -43,17 +38,20 @@ quant reality ledger-gate --ledger data/metadata/proofcore-trials.jsonl
 ```bash
 make proofcore-test       # contracts, provenance, CI-helper, layering tests
 make proofcore-coverage   # per-package floors: pit/proof/reality/proofcore 90, leakage 85
-make proof-verify         # double-run bundle identity + tamper evasion
+make proof-integrity      # current signer/recorder tests
 make leakage-scan         # warn mode this wave (adjudicated)
 make reality-gate         # trial-report + ledger-gate (advisory in CI at first)
-make receipts-reverify    # re-verify every committed receipt (A3 #4)
+make receipts-reverify    # fail-closed audit; heterogeneous receipt verifiers pending
 ```
 
 ## Honesty contract
 
-PROOFCORE strengthens, never weakens, the AGENTS.md honesty rules. No
-PROOFCORE CLI prints Sharpe/P&L/NAV as a headline — reality reports are
-diagnostics, and bundle `metrics_recompute` exists only as a verification
-artifact inside signed proofs.
+PROOFCORE follows the AGENTS.md honesty rules. Logged bundles remain
+unverified until a replay verifier is implemented; `--verification` is
+rejected. Reality reports are research diagnostics, not promotion evidence.
+
+The existing `receipts/*.json` use several schemas. The current
+`receipts-reverify` command reports unsupported receipts as failures and is
+not a blocking CI gate until each class has a matching verifier.
 
 See `MIGRATION.md` for the additive rollout phases.

@@ -29,30 +29,19 @@ def log_bundle(
     bundle: Path = typer.Option(..., "--bundle", help="Path to a ProofBundleV1 JSON file."),
     db: Path = _DB_OPTION,
     verification: Path | None = typer.Option(
-        None, "--verification", help="Optional VerificationResult JSON from `quant proof verify`."
+        None, "--verification", help="Reserved until `quant proof verify` supplies bound results."
     ),
 ) -> None:
     """Insert one proof bundle (and optional verification result) into the DB."""
-    from pydantic import BaseModel, ConfigDict
-
     from quant_fund.proofcore.contracts import ProofBundleV1
     from quant_fund.proofcore.provenance import ProvenanceDB
 
-    class _VerificationPayload(BaseModel):
-        """Structural stand-in for W2's VerificationResult (DESIGN.md §5.5)."""
-
-        model_config = ConfigDict(extra="allow")
-
-        ok: bool
-
+    if verification is not None:
+        typer.echo("verification ingestion unavailable until proof verifier exists", err=True)
+        raise typer.Exit(2)
     bundle_obj = ProofBundleV1.model_validate(json.loads(bundle.read_text()))
-    verification_obj = (
-        _VerificationPayload.model_validate(json.loads(verification.read_text()))
-        if verification is not None
-        else None
-    )
     with ProvenanceDB(db) as prov:
-        prov.insert_bundle(bundle_obj, verification_obj)
+        prov.insert_bundle(bundle_obj, None)
         head = prov.chain_head()
     typer.echo(f"logged bundle {bundle_obj.bundle_id}")
     typer.echo(f"chain_head={head}")
@@ -104,8 +93,8 @@ def export(
     if bundles_out is not None:
         bundles_out.parent.mkdir(parents=True, exist_ok=True)
         with bundles_out.open("w", encoding="utf-8") as fh:
-            for row in bundles:
-                fh.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+            for bundle_row in bundles:
+                fh.write(json.dumps(bundle_row, sort_keys=True, default=str) + "\n")
         typer.echo(f"exported {len(bundles)} bundle rows -> {bundles_out}")
 
 

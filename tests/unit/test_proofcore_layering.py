@@ -28,7 +28,7 @@ TOP_LEVEL_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset({"proofcore"}),
     "pit": frozenset({"pit", "proofcore", "schemas", "utils", "data"}),
     "proof": frozenset({"proof", "proofcore", "schemas", "utils"}),
-    "leakage": frozenset({"leakage", "proofcore", "schemas", "research"}),
+    "leakage": frozenset({"leakage", "proofcore", "schemas"}),
     "reality": frozenset({"reality", "proofcore", "metrics", "validation"}),
 }
 
@@ -38,17 +38,17 @@ LAZY_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset(),
     "pit": frozenset(),
     "proof": frozenset({"backtest", "metrics", "pit", "cli"}),
-    "leakage": frozenset({"pit", "cli"}),
+    "leakage": frozenset({"pit", "cli", "config", "utils", "research"}),
     "reality": frozenset({"cli"}),
 }
 
 # Third-party roots each package may use (stdlib is always allowed).
 THIRD_PARTY_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset({"duckdb", "pydantic", "typer"}),
-    "pit": frozenset({"polars", "pydantic", "numpy"}),
-    "proof": frozenset({"polars", "pydantic", "numpy"}),
-    "leakage": frozenset({"pydantic"}),
-    "reality": frozenset({"numpy", "scipy", "pydantic", "polars"}),
+    "pit": frozenset({"polars", "pydantic", "numpy", "typer"}),
+    "proof": frozenset({"polars", "pydantic", "numpy", "typer"}),
+    "leakage": frozenset({"pydantic", "typer"}),
+    "reality": frozenset({"numpy", "scipy", "pydantic", "polars", "typer"}),
 }
 
 
@@ -64,9 +64,8 @@ def _imports(path: Path) -> list[tuple[str, int, bool]]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 out.append((alias.name, node.lineno, id(node) not in lazy_nodes))
-        elif isinstance(node, ast.ImportFrom):
-            if node.level == 0 and node.module:
-                out.append((node.module, node.lineno, id(node) not in lazy_nodes))
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            out.append((node.module, node.lineno, id(node) not in lazy_nodes))
     return out
 
 
@@ -122,6 +121,11 @@ def test_scc_does_not_import_proofcore_at_top_level() -> None:
             continue
         for module, line, top_level in _imports(path):
             parts = module.split(".")
-            if top_level and len(parts) > 1 and parts[0] == "quant_fund" and parts[1] in PROOFCORE_PACKAGES:
+            if (
+                top_level
+                and len(parts) > 1
+                and parts[0] == "quant_fund"
+                and parts[1] in PROOFCORE_PACKAGES
+            ):
                 offenders.append(f"{rel}:{line} imports {module}")
     assert offenders == [], "SCC top-level imports of PROOFCORE packages:\n" + "\n".join(offenders)

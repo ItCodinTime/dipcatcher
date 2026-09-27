@@ -87,7 +87,7 @@ class _FakeVerification:
 def test_bundle_round_trip(tmp_path) -> None:
     db = ProvenanceDB(tmp_path / "prov.duckdb")
     bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
-    db.insert_bundle(bundle, _FakeVerification(ok=True))
+    db.insert_bundle(bundle, None)
     rows = db.bundles()
     assert len(rows) == 1
     row = rows[0]
@@ -99,8 +99,9 @@ def test_bundle_round_trip(tmp_path) -> None:
     assert row["merkle_root"] == bundle.data_manifest.merkle_root
     assert row["prev_bundle_hash"] == GENESIS_HASH
     assert row["signature_scheme"] == "none"
-    assert row["verified_ok"] is True
-    assert json.loads(row["verification_json"])["ok"] is True
+    assert row["verified_ok"] is None
+    assert row["verification_json"] is None
+    assert json.loads(row["bundle_json"])["bundle_id"] == bundle.bundle_id
     db.close()
 
 
@@ -108,11 +109,64 @@ def test_bundle_insert_idempotent(tmp_path) -> None:
     db = ProvenanceDB(tmp_path / "prov.duckdb")
     bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
     db.insert_bundle(bundle, None)
-    db.insert_bundle(bundle, _FakeVerification(ok=False))  # re-verify updates row
+    db.insert_bundle(bundle, None)
     rows = db.bundles()
     assert len(rows) == 1
-    assert rows[0]["verified_ok"] is False
+    assert rows[0]["verified_ok"] is None
+    with pytest.raises(ProvenanceError, match="verification ingestion unavailable"):
+        db.insert_bundle(bundle, _FakeVerification(ok=True))
     db.close()
+
+
+def test_cli_rejects_forged_verification_result(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from quant_fund.proofcore.cli import proofcore_app
+
+    bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+    bundle_file = tmp_path / "bundle.json"
+    bundle_file.write_text(bundle.model_dump_json(), encoding="utf-8")
+    forged = tmp_path / "verification.json"
+    forged.write_text('{"ok": true}', encoding="utf-8")
+    db_path = tmp_path / "prov.duckdb"
+    result = CliRunner().invoke(
+        proofcore_app,
+        [
+            "log",
+            "--bundle",
+            str(bundle_file),
+            "--verification",
+            str(forged),
+            "--db",
+            str(db_path),
+        ],
+    )
+    assert result.exit_code == 2
+    assert "verification ingestion unavailable" in result.output
+    assert not db_path.exists()
+
+
+def test_bundle_reinsert_rejects_changed_contents(tmp_path) -> None:
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(bundle, None)
+        changed = bundle.model_copy(update={"config_sha256": "ef" * 32})
+        with pytest.raises(ProvenanceError, match="append-only"):
+            db.insert_bundle(changed, None)
+        assert db.bundles()[0]["config_sha256"] == bundle.config_sha256
+
+
+def test_bundle_predecessor_must_be_chain_head(tmp_path) -> None:
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        wrong_first = _bundle(_id(1), prev=_id(99), created="2026-09-26T00:00:00+00:00")
+        with pytest.raises(ProvenanceError, match="chain head"):
+            db.insert_bundle(wrong_first, None)
+        first = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(first, None)
+        wrong_second = _bundle(_id(2), created="2026-09-26T00:01:00+00:00")
+        with pytest.raises(ProvenanceError, match="chain head"):
+            db.insert_bundle(wrong_second, None)
+        assert db.chain_head() == first.bundle_id
 
 
 def test_chain_head_empty_db_is_genesis(tmp_path) -> None:
@@ -166,17 +220,28 @@ def test_trial_insert_idempotent_but_tamper_refused(tmp_path) -> None:
         assert db.trials()[0].sharpe_periodic == 0.01
 
 
+def test_trial_bigint_comparison_preserves_precision(tmp_path) -> None:
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(bundle, None)
+        row = _trial(_id(11), bundle.bundle_id).model_copy(update={"n_obs": 2**53})
+        db.insert_trial(row)
+        changed = row.model_copy(update={"n_obs": 2**53 + 1})
+        with pytest.raises(ProvenanceError, match="append-only"):
+            db.insert_trial(changed)
+
+
 def test_trial_requires_known_bundle(tmp_path) -> None:
     """trial_ledger.bundle_hash REFERENCES proof_bundles — orphans fail closed."""
-    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
-        with pytest.raises(ProvenanceError):
-            db.insert_trial(_trial(_id(11), _id(99)))
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db, pytest.raises(ProvenanceError):
+        db.insert_trial(_trial(_id(11), _id(99)))
 
 
 def test_export_schema_matches_trial_ledger_contract(tmp_path) -> None:
     """The --out JSONL export must round-trip through TrialLedgerRow (§14.4)."""
-    from quant_fund.proofcore.cli import proofcore_app
     from typer.testing import CliRunner
+
+    from quant_fund.proofcore.cli import proofcore_app
 
     db_path = tmp_path / "prov.duckdb"
     out_path = tmp_path / "ledger.jsonl"
@@ -194,6 +259,27 @@ def test_export_schema_matches_trial_ledger_contract(tmp_path) -> None:
     row = TrialLedgerRow.model_validate(json.loads(lines[0]))
     assert row.trial_id == _id(11)
     assert set(json.loads(lines[0]).keys()) == set(TrialLedgerRow.model_fields.keys())
+
+
+def test_cli_query_and_chain_head_report_unverified_bundle(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from quant_fund.proofcore.cli import proofcore_app
+
+    path = tmp_path / "prov.duckdb"
+    bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+    with ProvenanceDB(path) as db:
+        db.insert_bundle(bundle, None)
+    runner = CliRunner()
+    query = runner.invoke(proofcore_app, ["query", "--db", str(path)])
+    assert query.exit_code == 0, query.output
+    summary = json.loads(query.output)
+    assert summary["n_bundles"] == 1
+    assert summary["verified_bundles"] == 0
+    assert summary["chain_head"] == bundle.bundle_id
+    head = runner.invoke(proofcore_app, ["chain-head", "--db", str(path)])
+    assert head.exit_code == 0
+    assert head.output.strip() == bundle.bundle_id
 
 
 def test_db_persists_across_connections(tmp_path) -> None:

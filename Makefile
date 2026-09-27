@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate proofcore-test proofcore-coverage proof-verify leakage-scan reality-gate receipts-reverify
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
 
 .DEFAULT_GOAL := help
 
@@ -88,15 +88,19 @@ proofcore-test: ## PROOFCORE W5 tests: contracts, provenance DB, CI helpers, lay
 proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/proofcore 90, leakage 85
 	# Subset run over the PROOFCORE test lanes; the global 80% floor still
 	# applies to the full `make coverage` lane and is NOT re-asserted here
-	(--cov-fail-under=0 defers to the per-package gates below, which read
+	# --cov-fail-under=0 defers to the per-package gates below, which read
 	# [tool.proofcore.coverage-floors] from pyproject.toml).
 	uv run pytest -m "not network" -q \
 		-k "pit or proof or leakage or reality or proofcore" \
 		--cov --cov-report= --cov-fail-under=0
 	uv run python -m quant_fund.proofcore.ci coverage-gate
 
-proof-verify: ## Proof-verify gate: double-run bundle identity + tamper evasion (A3 #6)
-	uv run pytest tests/property/test_backtest_receipt_identity.py -q
+proof-integrity: ## Current proof signer/recorder integrity checks
+	uv run pytest tests/unit/proof/test_integrity.py -q
+
+proof-verify: ## Pending: full proof bundle replay verifier is not implemented yet
+	@echo "proof-verify unavailable: quant proof verify is not implemented" >&2
+	@exit 2
 
 leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
 	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"

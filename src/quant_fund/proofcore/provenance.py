@@ -4,15 +4,14 @@ Append-oriented provenance ledger for proof bundles (W2) and reality-filter
 trial rows (W4). Legitimizes the existing duckdb hard dependency (A2 F14).
 
 Layering (DESIGN.md §1.3, layer 3): imports contracts + duckdb + stdlib ONLY.
-``VerificationResult`` (W2) is consumed structurally via
-:class:`VerificationResultLike` so this module never imports ``quant_fund.proof``.
+W2 has not implemented a verifier yet, so verification ingestion remains
+fail-closed. Bundles may be logged as unverified evidence.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 import duckdb
 
@@ -21,6 +20,7 @@ from quant_fund.proofcore.contracts import (
     ProofBundleV1,
     ProvenanceError,
     TrialLedgerRow,
+    canonical_json_bytes,
 )
 
 DEFAULT_DB_PATH: Path = Path("data/metadata/proofcore.duckdb")
@@ -35,6 +35,7 @@ _BUNDLE_COLUMNS: tuple[str, ...] = (
     "merkle_root",
     "prev_bundle_hash",
     "signature_scheme",
+    "bundle_json",
     "verified_ok",
     "verification_json",
 )
@@ -63,8 +64,9 @@ CREATE TABLE IF NOT EXISTS proof_bundles (
     config_sha256 TEXT NOT NULL,
     seed BIGINT NOT NULL,
     merkle_root TEXT NOT NULL,
-    prev_bundle_hash TEXT NOT NULL,
+    prev_bundle_hash TEXT NOT NULL UNIQUE,
     signature_scheme TEXT NOT NULL,
+    bundle_json TEXT NOT NULL,
     verified_ok BOOLEAN,
     verification_json TEXT
 );
@@ -85,26 +87,13 @@ CREATE TABLE IF NOT EXISTS trial_ledger (
 """
 
 
-@runtime_checkable
-class VerificationResultLike(Protocol):
-    """Structural stand-in for ``quant_fund.proof.verify.VerificationResult``.
-
-    Keeps ``proofcore.provenance`` at layer 3 (contracts + duckdb only) while
-    accepting W2's pydantic result object unchanged.
-    """
-
-    ok: bool
-
-    def model_dump(self, *, mode: str = "python") -> dict[str, Any]: ...
-
-
 class ProvenanceDB:
     """duckdb file at <root>/metadata/proofcore.duckdb. Two tables:
 
     proof_bundles(bundle_id TEXT PK, created_utc TEXT, run_kind TEXT,
                   git_revision TEXT, config_sha256 TEXT, seed BIGINT,
                   merkle_root TEXT, prev_bundle_hash TEXT, signature_scheme TEXT,
-                  verified_ok BOOLEAN, verification_json TEXT)
+                  bundle_json TEXT, verified_ok BOOLEAN, verification_json TEXT)
     trial_ledger(trial_id TEXT PK, bundle_hash TEXT REFERENCES proof_bundles,
                  family TEXT, strategy TEXT, cluster_id TEXT, n_obs BIGINT,
                  periods_per_year DOUBLE, sharpe_periodic DOUBLE, skew DOUBLE,
@@ -126,27 +115,37 @@ class ProvenanceDB:
     # Writes
     # ------------------------------------------------------------------
 
-    def insert_bundle(
-        self, bundle: ProofBundleV1, verification: VerificationResultLike | None
-    ) -> None:
-        """Insert (idempotently) one proof bundle row.
+    def insert_bundle(self, bundle: ProofBundleV1, verification: object | None) -> None:
+        """Append one bundle, preserving exact content and chain order.
 
-        ``INSERT OR REPLACE`` on the primary key per DESIGN.md §9.1. Because
-        ``trial_ledger.bundle_hash`` references ``proof_bundles``, replacing a
-        bundle that already has dependent trials is rejected by duckdb —
-        fail-closed tamper evidence, kept on purpose.
+        An identical reinsert is a no-op. Verification results cannot be
+        accepted until the proof verifier supplies a bound result schema.
         """
         if verification is not None:
-            verified_ok: bool | None = bool(verification.ok)
-            verification_json = json.dumps(
-                verification.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-            )
-        else:
-            verified_ok = None
-            verification_json = None
+            raise ProvenanceError("verification ingestion unavailable until proof verifier exists")
+        bundle_json = canonical_json_bytes(bundle.model_dump(mode="json")).decode("utf-8")
         try:
+            self._con.execute("BEGIN TRANSACTION")
+            existing = self._con.execute(
+                "SELECT bundle_json FROM proof_bundles WHERE bundle_id = ?",
+                [bundle.bundle_id],
+            ).fetchone()
+            if existing is not None:
+                if existing[0] != bundle_json:
+                    raise ProvenanceError(
+                        f"bundle {bundle.bundle_id} already stored with different contents; "
+                        "the bundle ledger is append-only"
+                    )
+                self._con.execute("COMMIT")
+                return
+            expected_prev = self.chain_head()
+            if bundle.prev_bundle_hash != expected_prev:
+                raise ProvenanceError(
+                    f"bundle {bundle.bundle_id} predecessor {bundle.prev_bundle_hash} "
+                    f"does not match chain head {expected_prev}"
+                )
             self._con.execute(
-                f"INSERT OR REPLACE INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
+                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
                 f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
                 [
                     bundle.bundle_id,
@@ -158,11 +157,17 @@ class ProvenanceDB:
                     bundle.data_manifest.merkle_root,
                     bundle.prev_bundle_hash,
                     bundle.signature.scheme,
-                    verified_ok,
-                    verification_json,
+                    bundle_json,
+                    None,
+                    None,
                 ],
             )
+            self._con.execute("COMMIT")
+        except ProvenanceError:
+            self._con.execute("ROLLBACK")
+            raise
         except Exception as exc:
+            self._con.execute("ROLLBACK")
             raise ProvenanceError(f"insert_bundle({bundle.bundle_id}) failed: {exc}") from exc
 
     def insert_trial(self, row: TrialLedgerRow) -> None:
@@ -281,8 +286,6 @@ class ProvenanceDB:
 
     @staticmethod
     def _normalize_cell(value: Any) -> Any:
-        # DuckDB returns Python ints for BIGINT and floats for DOUBLE; preserve
-        # integer precision so distinct BIGINT values cannot compare equal.
-        if isinstance(value, float):
-            return value
+        # DuckDB returns Python ints for BIGINT and floats for DOUBLE; do not
+        # coerce ints to float, which loses precision above 2**53.
         return value

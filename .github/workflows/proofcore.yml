@@ -1,6 +1,3 @@
-# Reference copy of .github/workflows/proofcore.yml. The active workflow is
-# checked against this body by tests/unit/test_proofcore_ci.py so gate changes
-# remain synchronized.
 # PROOFCORE CI gates (DESIGN.md §9.3, §10) — additive workflow.
 # Nothing here weakens ci.yml or fx1.yml: the global 80% coverage floor, the
 # existing smoke/verify-research gates, and the fx1 honesty gate are untouched.
