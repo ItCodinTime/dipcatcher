@@ -147,7 +147,7 @@ class ProvenanceDB:
                     f"bundle {bundle.bundle_id} predecessor {bundle.prev_bundle_hash} "
                     f"does not match chain head {expected_prev}"
                 )
-            self._con.execute(
+            self._con.execute(  # nosec B608: module column tuple, bound values
                 f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
                 f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
                 [
@@ -180,7 +180,7 @@ class ProvenanceDB:
         stored row differs (raise ``ProvenanceError``) — tamper-evidence at
         the DB layer (DESIGN.md §9.1).
         """
-        existing = self._con.execute(
+        existing = self._con.execute(  # nosec B608: module column tuple, bound trial_id
             f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",
             [row.trial_id],
         ).fetchone()
@@ -195,7 +195,7 @@ class ProvenanceDB:
                 )
             return
         try:
-            self._con.execute(
+            self._con.execute(  # nosec B608: module column tuple, bound values
                 f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "
                 f"VALUES ({', '.join('?' for _ in _TRIAL_COLUMNS)})",
                 values,
