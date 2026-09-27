@@ -1,4 +1,7 @@
-"""Typer app, sub-CLI mounts, and shared helpers for the quant CLI."""
+"""Typer app, sub-CLI mounts, and shared helpers for the quant CLI.
+
+``quant_fund.cli.app.app`` is this same ``app`` object.
+"""
 
 from __future__ import annotations
 
