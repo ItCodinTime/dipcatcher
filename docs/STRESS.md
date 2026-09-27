@@ -80,7 +80,7 @@ of a market.
 | Stationary block bootstrap | Politis–Romano indices via `quant_fund.metrics.inference`. Synchronous blocks keep cross-correlation. An AR(1) path keeps lag-1 autocorrelation; an i.i.d. resample of the same series does not. |
 | GARCH(1,1) + t copula, and a t-copula C-vine | Unconditional variance `ω/(1−α−β)`. Innovation marginal variance 1. Kendall τ `(2/π) arcsin(ρ)`. Tail dependence `2 t_{ν+1}(−√((ν+1)(1−ρ)/(1+ρ)))` (Demarta–McNeil 2005). The C-vine uses the Aas–Czado–Frigessi–Bakken recursion; the first pair is exactly that pair-copula. |
 | Gaussian HMM | Stationary distribution from `πP = π`. Unconditional mean and covariance of the Gaussian mixture. Draws start from `π`. A univariate fit can wrap `fit_markov_switching_mean`. |
-| Merton jump-diffusion | Reuses `merton_jump_simulate` and `merton_log_moments`. Multi-asset Brownian shocks are correlated; jumps are idiosyncratic, so jump variance sits on the covariance diagonal only. Calibration matches sample mean and variance with fixed jump mean and jump volatility. It does not match skewness. |
+| Merton jump-diffusion | Reuses `merton_jump_simulate` and `merton_log_moments`. Multi-asset Brownian shocks are correlated; jumps are idiosyncratic, so jump variance sits on the covariance diagonal only. Calibration matches the mean and variance of `log1p` of simple portfolio returns with fixed jump mean and jump volatility. It does not match skewness, and is unavailable if a simple return is at or below −1. |
 
 Heavy Monte Carlo checks are marked `slow`.
 
@@ -113,8 +113,9 @@ portfolio returns.
 
 Point estimates: historical and Gaussian (existing `quant_fund.metrics.risk`),
 Student-t and Cornish–Fisher (existing `parametric_var_es`), and a
-variance-targeted GARCH filter that scales a historical residual VaR/ES by
-the last conditional sigma.
+variance-targeted GARCH filter that centers losses, scales historical
+standardized-residual VaR/ES by the next conditional sigma, and adds the
+sample loss mean back.
 
 Intervals are stationary-bootstrap percentiles of the historical estimators.
 

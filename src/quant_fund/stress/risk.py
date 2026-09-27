@@ -86,17 +86,28 @@ def garch_filtered_var_es(losses: Array, level: float = 0.95) -> dict[str, float
     """Filtered historical VaR/ES on the loss series.
 
     A variance-targeted GARCH(1,1) is fit to losses. Standardized residuals are
-    scored with the historical VaR and ES, then scaled by the last conditional
-    sigma. This is a one-step conditional risk measure.
+    scored with historical VaR and ES, then scaled by the next conditional
+    sigma forecast. The sample mean is added back after filtering, preserving
+    equivariance to a constant shift in losses.
     """
     data = _losses(losses)
     alpha = _level(level)
     fit = fit_variance_targeted_garch11(data)
-    sigma = _conditional_sigma(data, fit["omega"], fit["alpha"], fit["beta"])
-    residual = data / sigma
-    var = float(sigma[-1] * historical_var(residual, alpha))
-    es = float(sigma[-1] * historical_es(residual, alpha))
-    return {"var": var, "es": es, "sigma_last": float(sigma[-1])}
+    mean = float(data.mean())
+    centered = data - mean
+    sigma = _conditional_sigma(centered, fit["omega"], fit["alpha"], fit["beta"])
+    residual = centered / sigma
+    sigma_next = float(
+        np.sqrt(
+            max(
+                fit["omega"] + fit["alpha"] * centered[-1] ** 2 + fit["beta"] * sigma[-1] ** 2,
+                1e-18,
+            )
+        )
+    )
+    var = float(mean + sigma_next * historical_var(residual, alpha))
+    es = float(mean + sigma_next * historical_es(residual, alpha))
+    return {"var": var, "es": es, "sigma_last": float(sigma[-1]), "sigma_forecast": sigma_next}
 
 
 def _conditional_sigma(values: Array, omega: float, alpha: float, beta: float) -> Array:
