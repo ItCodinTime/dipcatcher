@@ -526,3 +526,20 @@ Pairs selection - quant_fund.models.pairs:
 - Mantel (1966). "Evaluation of survival data and two new rank order statistics." *Cancer Chemo. Reports* 50 — log-rank.
 - Cox (1972). "Regression models and life-tables." *JRSS-B* 34 — proportional hazards.
 - Greenwood (1926): variance of the survival estimator.
+
+### SOTA canon wave 8 — anytime-valid inference, calibration, multivariate scores (2026-09-27)
+- Székely (2003), InterStat; Gneiting & Raftery (2007), *JASA* 102 — energy score strict propriety. `metrics/energy_score.py`.
+- Gneiting & Ranjan (2013), *Electron. J. Statist.* 7 — threshold/kernel weighting of scoring rules.
+- Gneiting, Balabdaoui & Raftery (2007), *JRSS-B* 69 — calibration principle for distributional forecasts.
+- Thorarinsdottir & Gneiting (2010), *JRSS-A* 173 — variance scaling. `models/posthoc_calibration.py`.
+- Déqué (2007), *Global Planet. Change* 57 — quantile mapping.
+- Chernozhukov, Fernández-Val & Galichon (2010), *Econometrica* 78 — rearrangement for non-crossing quantiles.
+- Zadrozny & Elkan (2002), *KDD*; Meinshausen (2006), *JMLR* 7 — quantile regression / distribution recovery.
+- Wang & Ramdas (2022), *JRSS-B* 84 — e-BH: FDR control on e-values under arbitrary dependence. `metrics/anytime_fdr.py`.
+- Wang, Dandapanthula & Ramdas (2025), *Statist. Probab. Lett.* — stopped e-BH under optional stopping (arXiv:2502.08539).
+- Xu & Ramdas (2024), AISTATS — online FDR with e-values (e-LOND) (arXiv:2311.06412).
+- Shin, Ramdas & Rinaldo (2023), *Ann. Statist.* 51 — e-detectors: anytime-valid sequential change detection (arXiv:2203.03532). `metrics/e_detectors.py`.
+- Howard, Ramdas, McAuliffe & Sekhon (2021), *Ann. Statist.* 49 — time-uniform concentration; Ville (1939).
+- Hoeffding (1963), *JASA* 58 — bounded e-values. Shiryaev (1963) — geometric-prior mixture.
+- Zaffran et al. (2022), ICML — AgACI (arXiv:2202.07282); Zaffran et al. (2022), NeurIPS — FACI aggregation under distribution shift. `models/agaci.py`.
+- Gibbs & Candès (2021), NeurIPS 34 — ACI; Koenker & Bassett (1978) — pinball; Cesa-Bianchi & Lugosi (2006) — EG updates; Gaillard, Stoltz & Van Erven (2014), COLT — ML-OGD.
