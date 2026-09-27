@@ -543,8 +543,10 @@ def bootstrap_sharpe_ci(
     if block is None:
         block = max(5, int(np.round(n ** (1.0 / 3.0))))
     if float(np.std(r, ddof=1)) <= 1e-15:
-        # Degenerate (numerically constant) series: Sharpe is undefined, and a
-        # tiny float-noise sd would fabricate an astronomical value.
+        if abs(float(np.mean(r))) <= 1e-15:
+            return 0.0, 0.0, 0.0
+        # Degenerate (numerically constant, nonzero) series: Sharpe is
+        # undefined, and a tiny float-noise sd would fabricate a huge value.
         return float("nan"), float("nan"), float("nan")
 
     def _sr(sample: Array) -> float:
