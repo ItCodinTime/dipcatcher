@@ -1,6 +1,6 @@
 # Research references
 
-Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC.md`.
+Methodological anchors. Implementations may differ; deviations are in [MATH_SPEC.md](MATH_SPEC.md).
 
 ## Cross-sectional asset pricing / ML
 
@@ -244,7 +244,7 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 ## Repo honesty anchors
 
-- `docs/MATH_SPEC.md`, `docs/VALIDATION.md`, `docs/DATA_SOURCE_LABELS.md`
+- [MATH_SPEC.md](MATH_SPEC.md), [VALIDATION.md](VALIDATION.md), [DATA_SOURCE_LABELS.md](DATA_SOURCE_LABELS.md)
 - `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent` (no Sharpe/Sortino/Calmar/pnl/nav in **research family** headlines; paper `analytics_export` may nest equity/stress pnl/nav under `live_pnl_claim=false`)
 - Paper/validate: `would_promote_live=false` on SYNTHETIC; `live_pnl_claim=false`
 

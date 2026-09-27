@@ -18,10 +18,10 @@ family, CLI, and catalog name is **Northset**. Kyle/OFI diagnostics live in
 - Depth honesty is enforced when loading/validating panels (`validate_book_panel_depth_honesty`).
 
 **Honesty:** date-level IC only; SYNTHETIC or offline-remapped books; `research_only`;
-no live tape / no live P&L claim. See `NORTHSET.md` § Fail-closed integrity gates,
+no live tape / no live P&L claim. See [NORTHSET.md](NORTHSET.md) § Fail-closed integrity gates,
 Date-level IC, Session L2, and Vendor remap.
 
-Optional: set `northset.include_kyle_ofi: true` so `bench_northset` nests the full `kyle_ofi` research blob under the Northset receipt (see NORTHSET § Kyle / OFI).
+Optional: set `northset.include_kyle_ofi: true` so `bench_northset` nests the full `kyle_ofi` research blob under the Northset receipt (see [NORTHSET.md](NORTHSET.md) § Kyle / OFI).
 
 ## TOB size share rate
 
