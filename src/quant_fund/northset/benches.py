@@ -6,6 +6,7 @@ Amihud, OFI, VPIN, session RV/jumps. No Sharpe. Research-only.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, cast
 
 import numpy as np
@@ -586,7 +587,7 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
 
     def _rate_or_nan(
         required: tuple[str, ...],
-        rate_fn,
+        rate_fn: Callable[[list[dict[str, float]]], float],
     ) -> float:
         # A missing column class is NaN (never a fake 0.0): external panels are
         # not repaired, and absent structure must read as unmeasured.

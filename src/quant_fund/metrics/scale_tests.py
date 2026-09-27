@@ -21,11 +21,7 @@ Array = NDArray[np.float64]
 
 def _groups(groups: tuple[Array, ...]) -> list[Array]:
     gs = [np.asarray(g, dtype=float).ravel() for g in groups]
-    if (
-        len(gs) < 2
-        or any(g.size < 2 for g in gs)
-        or any(not np.isfinite(g).all() for g in gs)
-    ):
+    if len(gs) < 2 or any(g.size < 2 for g in gs) or any(not np.isfinite(g).all() for g in gs):
         raise ValueError("need >= 2 groups each with >= 2 finite observations")
     return gs
 

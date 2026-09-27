@@ -17,7 +17,7 @@ from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
 _PRODUCTION = (
     "src/quant_fund/data/ingest.py",
     "src/quant_fund/features/engine.py",
-    "src/quant_fund/pipeline/forecast.py",
+    "src/quant_fund/pipeline/forecast/decide.py",
     "src/quant_fund/portfolio/risk_gate.py",
     "src/quant_fund/execution/simulated_broker.py",
     "src/quant_fund/paper/ledger.py",

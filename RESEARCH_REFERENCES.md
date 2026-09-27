@@ -375,3 +375,9 @@ honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
 - A. Kessy, A. Lewin, K. Strimmer (2018). "Optimal whitening and decorrelation." The American Statistician — `models/whitening.py`.
 - H. Markowitz (1952). "Portfolio selection." Journal of Finance — `models/efficient_frontier.py`.
 - J. Pratt (1964). "Risk aversion in the small and in the large." Econometrica; K. Arrow (1965). *Aspects of the Theory of Risk-Bearing* — `metrics/utility.py`.
+
+## Research 100 catalog
+
+See [the 100-reference source-to-code map](docs/RESEARCH100_CATALOG.md) and
+[implementation scope and evaluation](docs/RESEARCH100.md). Existing components
+are distinguished from new work; component tests are not empirical reproductions.

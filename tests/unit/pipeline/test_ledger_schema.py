@@ -17,6 +17,8 @@ from quant_fund.paper.ledger import (
 )
 from quant_fund.paper.loop import run_paper_loop
 
+pytestmark = pytest.mark.smoke
+
 
 def _mini_cfg(tmp_path: Path):
     cfg = load_config("configs/paper.yaml")
