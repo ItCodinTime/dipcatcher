@@ -1,10 +1,22 @@
 # Phase-1 code re-seal
 
-The published net-tournament and cost-aware-tournament seals now bind
-`code_sha256` to `843638b88393768ea1195a90375ee2c5c9532bcb` after merging `origin/main` `5c4e0c876f6d5f74e42d1205468a8768752e14e2`.
-The previous index revision remains `c564646b14849d72c5891a90034d8e26361fe0f5`. This note is the
-audit trail. Scores, selections, claims, and other numeric receipt fields
-were not recomputed.
+The published net-tournament and cost-aware-tournament seals bind
+`code_sha256` to `843638b88393768ea1195a90375ee2c5c9532bcb`. That revision
+is the merge of `origin/main` `5c4e0c876f6d5f74e42d1205468a8768752e14e2`
+into the re-seal branch. A later merge brought `origin/main`
+`e2b45bfdb921a96528f131400d6eb721e8841876`. The six sealed source blobs
+are the same on `843638b`, `5c4e0c8`, and `e2b45bf`, and they equal
+`net_tournament._code_hashes()` on this tree, so the example matches them
+directly. `git_revision` stays `843638b`: `uv.lock` at `e2b45bf` lists
+numpy twice, and `_committed_runtime` rejects a duplicate locked package.
+The previous index revision remains `c564646b14849d72c5891a90034d8e26361fe0f5`.
+This note is the audit trail. Scores, selections, claims, and other numeric
+receipt fields were not recomputed.
+
+`#150` (`51cf6e7026f5aad88a748e3a76b3079b09ad9137`) remains in
+`examples/05_phase1_evidence.py`. When a future checkout drifts, the
+example still accepts the sealed bytes if one historical commit contains
+all of them. This re-seal does not use that fallback.
 
 ## Code map
 
@@ -36,7 +48,8 @@ Unchanged: `net_tournament.py`, `real_benchmark.py`, `snooping.py`.
 `01e69522` (`#131`) does not modify `src/quant_fund/metrics/inference.py`
 (no diff against its parent). The
 inference blob on `5c4e0c876f6d5f74e42d1205468a8768752e14e2` matches `843638b88393768ea1195a90375ee2c5c9532bcb` and the `cdfebb9c` blob.
-None of the six sealed modules differ between `6360b2d` and `5c4e0c876f6d5f74e42d1205468a8768752e14e2`.
+None of the six sealed modules differ between `6360b2d` and `5c4e0c876f6d5f74e42d1205468a8768752e14e2`,
+or between `843638b88393768ea1195a90375ee2c5c9532bcb` and `e2b45bfdb921a96528f131400d6eb721e8841876`.
 
 ## Lock stamp
 
@@ -46,6 +59,13 @@ cvxpy `1.9.3`. No ancestor has both the current six source blobs and cvxpy
 `1.9.2`, so the stamp follows the new revision's lock. Python, numpy, polars,
 clarabel, and scipy are unchanged (`python` stays `3.12.14`, which still
 matches the `.python-version` series `3.12`). The studies were not re-run.
+
+`e2b45bfdb921a96528f131400d6eb721e8841876` still locks cvxpy `1.9.3`, polars
+`1.44.2`, clarabel `0.11.1`, and scipy `1.18.1`. Its `uv.lock` also lists
+numpy `2.3.5` for darwin x86_64 and numpy `2.5.3` for every other platform.
+`_committed_runtime` errors on that duplicate name, so the index cannot bind
+to `e2b45bf` and still verify. `843638b` locks one numpy `2.5.3`, the sealed
+stamp, and its six source blobs equal this tree.
 
 ## Receipt links
 

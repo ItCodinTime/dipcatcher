@@ -149,14 +149,20 @@ index revision is `c564646b14849d72c5891a90034d8e26361fe0f5`, with index
 receipt `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`.
 The published tournament `code_sha256` map was re-sealed at
 `843638b88393768ea1195a90375ee2c5c9532bcb` after merging `origin/main`
-`5c4e0c876f6d5f74e42d1205468a8768752e14e2`. The audit trail is
+`5c4e0c876f6d5f74e42d1205468a8768752e14e2`. That map still matches the six
+sealed modules after merging `origin/main`
+`e2b45bfdb921a96528f131400d6eb721e8841876`. The audit trail is
 `data/metadata/research/PHASE1_CODE_RESEAL.md`.
 
 Since that index revision, the sealed modules that changed are
 `net_replay.py`, `cost_allocation.py`, and `metrics/inference.py`.
 `net_tournament.py`, `real_benchmark.py`, and `snooping.py` are unchanged.
 `#131` (`01e69522`) does not reformat `inference.py`. That blob is the same
-from `6360b2d` through `5c4e0c8`.
+from `6360b2d` through `e2b45bf`. `#150`
+(`51cf6e7026f5aad88a748e3a76b3079b09ad9137`) keeps a historical-commit
+fallback in `examples/05_phase1_evidence.py` for a later checkout drift.
+The re-sealed map matches the current sources, so the example passes on
+that direct hash match.
 
 Numeric study results were not recomputed. The paper adapter pins the
 re-sealed index receipt. `docs/FORWARD_SHADOW_POWER.md` still cites the
