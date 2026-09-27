@@ -230,6 +230,7 @@ nav:
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
   - Market replay viewer: REPLAY_VIZ.md
+  - Research explorer: WEB_EXPLORER.md
   - API reference:
       - Research evidence service: RESEARCH_API.md
       - api/index.md
