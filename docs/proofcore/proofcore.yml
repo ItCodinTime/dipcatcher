@@ -105,14 +105,16 @@ jobs:
           path: leakage-report.json
           if-no-files-found: ignore
 
-  # §9.3 reality-filter: advisory at first (§13 phase 4), then blocking.
-  # The CI trial ledger is exported from the provenance DB; a fresh CI DB has
-  # < 10 trials, whose honest verdict is 'insufficient_evidence' (exit 1) —
-  # that is exactly why this job is advisory until the ledger accumulates.
+  # §9.3 reality-filter. data/metadata/proofcore.duckdb is not in the repo
+  # at HEAD or on main (data/metadata/** is gitignored). Export would create
+  # an empty DB and write 0 rows. `quant reality preflight --db` exits 3
+  # with REALITY_FILTER_SKIP; `make reality-gate` maps that to exit 0. This
+  # step turns the skip line into a notice. A database that has rows is
+  # exported and scored with the unchanged filter and fails the job unless
+  # the verdict is pass. continue-on-error is not used.
   reality-filter:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    continue-on-error: true # advisory at first (DESIGN.md §9.3/§13 phase 4)
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
@@ -122,8 +124,12 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Sync
         run: uv sync --frozen --all-groups
-      - name: Reality-filter gate (advisory)
-        run: make reality-gate
+      - name: Reality-filter gate
+        run: |
+          make reality-gate | tee "${RUNNER_TEMP:-/tmp}/reality-gate.log"
+          if grep -q '^REALITY_FILTER_SKIP:' "${RUNNER_TEMP:-/tmp}/reality-gate.log"; then
+            echo "::notice title=reality-filter::$(grep -m1 '^REALITY_FILTER_SKIP:' "${RUNNER_TEMP:-/tmp}/reality-gate.log")"
+          fi
 
   # §9.3/§12 coverage floors (A3 #2): per-package gates ADDITIVE to the
   # existing global 80% floor in ci.yml (which is not touched): pit 90,

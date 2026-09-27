@@ -27,11 +27,14 @@ pytestmark = [
     ),
 ]
 
-# Minimum median speedup. Loop kernels are far above this. Reductions NumPy
-# already implements in C are not gated. EMA, RSI, and Bollinger used to be
-# Python loops (floors 5x / 5x / 8x); they are now scipy.signal and sliding
-# windows, so a Rust speedup floor would fail on a faster Python side.
+# Minimum median speedup. EMA, RSI, and Bollinger now use scipy.signal and
+# sliding windows rather than Python loops. They need not be faster in Rust,
+# but the auto-selected native path must not take more than twice as long on
+# this synthetic CI workload. The remaining loop kernels keep their floors.
 _MIN_SPEEDUP = {
+    "bollinger": 0.5,
+    "rsi": 0.5,
+    "ema": 0.5,
     "book_features": 3.0,
     "turnover_series": 3.0,
     "hash_many": 1.5,

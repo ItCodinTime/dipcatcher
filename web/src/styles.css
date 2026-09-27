@@ -1,0 +1,404 @@
+:root {
+  --bg: #0f1218;
+  --panel: #171c26;
+  --panel-border: #2a3140;
+  --text: #e5e9f0;
+  --muted: #8b93a5;
+  --accent: #3b82f6;
+  --pass: #22c55e;
+  --fail: #ef4444;
+  --warn: #f59e0b;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px/1.55 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+.app {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--fail);
+  font-weight: 600;
+}
+
+.loading {
+  padding: 48px 0;
+  color: var(--muted);
+}
+
+/* ---------- header ---------- */
+.site-header {
+  padding: 18px 0 0;
+}
+
+.header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand-sub {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.site-header nav a {
+  color: var(--muted);
+  text-decoration: none;
+  margin-left: 18px;
+  padding-bottom: 2px;
+}
+
+.site-header nav a[aria-current="page"] {
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+}
+
+.honesty-strip {
+  margin: 14px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #f5c26b;
+  font-size: 13px;
+}
+
+.honesty-strip code {
+  font-family: var(--mono);
+}
+
+/* ---------- layout ---------- */
+.page-head {
+  margin-bottom: 16px;
+}
+
+.page-head h2 {
+  margin: 0 0 6px;
+}
+
+.breadcrumb {
+  margin: 18px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.breadcrumb a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin: 14px 0;
+}
+
+.panel h2,
+.panel h3 {
+  margin-top: 0;
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: #1d2330;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.badge.pass {
+  color: var(--pass);
+  border-color: var(--pass);
+}
+
+.badge.fail {
+  color: var(--fail);
+  border-color: var(--fail);
+}
+
+.badge.research {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.badge.synthetic {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.badge.kind-equity_backed {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---------- tables ---------- */
+.list-table,
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.list-table th,
+.list-table td,
+.stats-table th,
+.stats-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.list-table thead th,
+.stats-table thead th {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.list-table a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.stats-table tbody th {
+  font-family: var(--mono);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.stats-table td {
+  font-family: var(--mono);
+}
+
+.subtle-link {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ---------- charts ---------- */
+.chart {
+  margin: 8px 0 4px;
+}
+
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart .grid {
+  stroke: #262d3b;
+  stroke-width: 1;
+}
+
+.chart .baseline {
+  stroke: #3a4356;
+  stroke-dasharray: 4 3;
+}
+
+.chart .line {
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.chart .area {
+  opacity: 0.16;
+}
+
+.chart .tick {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+.chart .crosshair {
+  stroke: #566078;
+  stroke-dasharray: 3 3;
+}
+
+.chart-readout {
+  min-height: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- chips / meta ---------- */
+.chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+}
+
+.chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #1d2330;
+  border: 1px solid var(--panel-border);
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.meta-grid dt {
+  color: var(--muted);
+}
+
+.meta-grid dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+
+.disclaimer {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--warn);
+  background: rgba(245, 158, 11, 0.06);
+  color: #e8c890;
+  font-size: 13px;
+}
+
+/* ---------- checks ---------- */
+.check-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.check-status {
+  width: 18px;
+  font-weight: 700;
+}
+
+.check-pass .check-status {
+  color: var(--pass);
+}
+
+.check-fail .check-status {
+  color: var(--fail);
+}
+
+.check-info .check-status {
+  color: var(--muted);
+}
+
+.check-label {
+  min-width: 220px;
+}
+
+.check-detail {
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* ---------- misc ---------- */
+.provenance {
+  font-size: 13px;
+}
+
+.provenance-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.raw-json {
+  max-height: 480px;
+  overflow: auto;
+  font-size: 12px;
+  font-family: var(--mono);
+  background: #0b0e13;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.hash-table td {
+  vertical-align: top;
+}
+
+.footer-meta {
+  margin-top: 24px;
+  font-size: 12px;
+}
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: var(--mono);
+  background: #1d2330;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
