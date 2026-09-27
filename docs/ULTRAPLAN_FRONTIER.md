@@ -227,9 +227,11 @@ waiver in the audit log. Output: `docs/AUDIT_FRONTIER.md` ledger.
 - [ ] P6.6 Infra: `paper/*` (ledger atomicity, resume), `registry/`,
       `monitoring/` (drift, kill_switch), `api/app.py`, `cli/main.py`,
       `reporting/tearsheet.py`, `utils/*` (hashing, seeds, reproducibility).
-- [ ] P6.7 Scale hygiene: `research/catalog.py` is 10.7k LOC — assess
-      generated-vs-handwritten, dead code, duplication across
-      `metrics/*`/`models/*` overlaps.
+- [x] P6.7 Scale hygiene: `research/catalog.py` was 10.7k LOC — split into
+      the `research/catalog/` package by theme (`_helpers`, `constants`,
+      `predicates`, `session`/`candle`/`kyle`/`northset` honesty checkers,
+      `consistency`, `families`); `__init__.py` re-exports all 444 public
+      names so `from quant_fund.research.catalog import X` is unchanged.
 - [ ] P6.8 Perf sweep: cProfile top-20 hot paths across engine, features,
       scoring; fix only where semantics bit-identical.
 - [ ] P6.9 Test-quality audit: mutation spot-checks on money-path
