@@ -170,8 +170,8 @@ The radius is for the default parameters on the full
 Flat is not uniformly better on this path. TSMOM is a toss-up. Momentum's
 flat book loses less. Risk parity's flat book loses more. In sample, the
 hard sample ratio did not rise: the regularizer improved because the gradient
-norm fell. On the full path the smooth sample-ratio gradient norm is about
-1535 (tsmom), 1794 (momentum), and 1596 (risk parity). The largest component
+norm fell. On the full path the smooth sample-ratio gradient norm is
+1535.48 (tsmom), 1794.18 (momentum), and 1595.65 (risk parity). The largest component
 is the derivative with respect to `one_way_cost` (weights do not depend on
 that coefficient, and the mean net return is near zero, so a cost shift moves
 the ratio a lot). λ = 0.1 therefore dominates J. That is what this fixed
