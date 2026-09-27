@@ -107,7 +107,7 @@ Only after correctness. Polars/DuckDB first.
 wrappee caches landed; event-time day-index + order-preserving `history_prefix_upto`
 path for causal calibration (Wave 12 recovered causal 25d ≈ **3.19s** vs Wave 11
 ≈4.33s; Wave 5 best ≈2.84s — not fully restored). Wave 28 re-bench in
-`docs/PERF.md` + `data/metadata/perf_bench.json` (wave:28). Dominant remaining
+[PERF.md](PERF.md) + `data/metadata/perf_bench.json` (wave:28). Dominant remaining
 cost is still conformal Student-t MLE per asof. **Parallel causal dates blocked**
 by sequential `w_prev` (SKIP — correctness > wall). Batched polars asof filters
 deferred.
@@ -135,7 +135,7 @@ deferred.
 
 - **CPCV per-group purge** (Wave 25): purge+embargo applied per test group (union-span bug fixed); integrity smoke Wave 26.
 - **TrialLedger empty DSR** (Wave 27): empty ledger → honest NaN DSR (no invented score).
-- **PERF Wave 28**: re-bench + `docs/PERF.md` / `perf_bench.json` updated; parallel causal still SKIP.
+- **PERF Wave 28**: re-bench + [PERF.md](PERF.md) / `perf_bench.json` updated; parallel causal still SKIP.
 - **API honesty stamp** (Wave 31): FastAPI backtest/portfolio/risk/forecast/ranking paths force `research_only=true` / `live_pnl_claim=false`.
 - **Forbidden-metrics regression** (Wave 32): catalog helper + scorecard/verify reject Sharpe/Sortino/Calmar/pnl/nav keys in family blobs.
 - **Test count**: ~832+ non-network (`pytest -m 'not network'`); no Cursor; no commits; no fake live Sharpe.
