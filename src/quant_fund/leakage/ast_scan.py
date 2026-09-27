@@ -42,8 +42,10 @@ _TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.]{0,6}$")
 # ticker regex; match case-insensitively.
 _TICKER_CI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,6}$")
 # ADVERSARIAL §1a-E6: `normalizer`/`preprocessor` attribute names evaded the
-# scaler-name regex.
-_SCALER_NAME_RE = re.compile(r"scal|rank_gauss|norm|preproc", re.IGNORECASE)
+# Scaler-name regex. `normali` covers Normalizer/normalize. A bare `norm`
+# token also matches scipy.stats.norm.fit and stats.lognorm.fit, which
+# estimate a distribution and are not feature scalers.
+_SCALER_NAME_RE = re.compile(r"scal|rank_gauss|normali|preproc", re.IGNORECASE)
 _FOLD_FUNC_RE = re.compile(r"fold", re.IGNORECASE)
 _PSR_CALL_NAMES = frozenset({"probabilistic_sharpe", "min_track_record_length", "deflated_sharpe"})
 _SHARPE_CALL_NAMES = frozenset({"sharpe_ratio"})

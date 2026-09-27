@@ -60,6 +60,13 @@ def train(features, folds):
         scaler.fit([features[i] for i in train_idx])
 """
 
+LH003_DIST_FIT = """
+def shape(sample):
+    norm_params = stats.norm.fit(sample)
+    log_params = stats.lognorm.fit(sample, floc=0)
+    return norm_params, log_params
+"""
+
 LH004_POSITIVE = """
 def fuse(grid, feats):
     return grid.join_asof(feats, on="event_time", by="security_id")
@@ -182,6 +189,7 @@ def test_rule_positive_catch(tmp_path: Path, source: str, rule_id: str) -> None:
         (LH001_NEGATIVE, "LH001"),
         (LH002_NEGATIVE, "LH002"),
         (LH003_NEGATIVE, "LH003"),
+        (LH003_DIST_FIT, "LH003"),
         (LH004_NEGATIVE, "LH004"),
         (LH005_NEGATIVE, "LH005"),
         (LH006_NEGATIVE, "LH006"),
