@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke
 
 .DEFAULT_GOAL := help
 
@@ -61,6 +61,11 @@ mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
 
 pretrade-bench: ## Pre-trade hot-path latency gate (p50 < 5us, p99 < 20us)
 	uv run python -m quant_fund.pretrade.bench --gate
+
+stress-smoke: ## Fast stress-engine tests and the catalog report CLI
+	uv run pytest -q -m "not network and not slow" tests/unit/stress
+	uv run dipcatcher stress crises
+	uv run dipcatcher stress report --strategy configs/stress_research.yaml --out /tmp/stress-report.md --format markdown
 
 examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff check examples tests/examples
@@ -130,9 +135,8 @@ proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/pr
 proof-integrity: ## Current proof signer/recorder integrity checks
 	uv run pytest tests/unit/proof/test_integrity.py -q
 
-proof-verify: ## Pending: full proof bundle replay verifier is not implemented yet
-	@echo "proof-verify unavailable: quant proof verify is not implemented" >&2
-	@exit 2
+proof-verify: ## Bundle hash, sidecar, signature, and metric verification tests; replay remains closed
+	uv run pytest tests/unit/test_proof_bundle.py tests/unit/test_proof_verify.py tests/property/test_backtest_receipt_identity.py -q
 
 leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
 	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"
