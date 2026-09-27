@@ -9,8 +9,12 @@ the vault before any caller code sees the frame (DESIGN.md §4).
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Protocol, cast
 
 import polars as pl
@@ -61,6 +65,18 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+@contextmanager
+def _dataset_write_lock(directory: Path):
+    """Serialize appends across processes; SQLite releases the lock on crash."""
+    connection = sqlite3.connect(directory / ".append-lock.sqlite3", timeout=30)
+    try:
+        connection.execute("BEGIN EXCLUSIVE")
+        yield
+    finally:
+        connection.rollback()
+        connection.close()
+
+
 class PitVault:
     """Write-once content-addressed bitemporal store rooted at ``root``."""
 
@@ -89,7 +105,10 @@ class PitVault:
 
     def _dataset_dir(self, name: str) -> Path:
         self._validate_name(name)
-        return manifest_mod.dataset_dir(self.root, name)
+        directory = manifest_mod.dataset_dir(self.root, name)
+        if not directory.resolve().is_relative_to(self.root.resolve()):
+            raise VaultError(f"dataset path escapes vault root: {name!r}")
+        return directory
 
     def _security_level(self, name: str) -> bool:
         directory = self._dataset_dir(name)
@@ -139,37 +158,106 @@ class PitVault:
         security_level = self._security_level(name)
         require_pit_frame(frame, security_level=security_level)
         frame = normalize_pit_frame(frame)
-        current = manifest_mod.read_manifest(self.root, name)
-        current_bytes = manifest_mod.manifest_path(self.root, name).read_bytes()
-        current_sha = sha256_hex_bytes(current_bytes)
+        directory = self._dataset_dir(name)
+        with _dataset_write_lock(directory):
+            for stale in (directory / manifest_mod.PARTS_DIR).glob(".r*.tmp"):
+                stale.unlink()
+            current = manifest_mod.read_manifest(self.root, name)
+            current_bytes = manifest_mod.manifest_path(self.root, name).read_bytes()
+            current_sha = sha256_hex_bytes(current_bytes)
+            revision = current.revision + 1
+            part_rel = f"{name}/{manifest_mod.PARTS_DIR}/r{revision:07d}.parquet"
+            part_path = self.root / part_rel
+            if part_path.exists():
+                # An uncommitted orphan must be inspected or explicitly recovered.
+                raise VaultError(f"write-once violation: part already exists: {part_rel}")
 
-        revision = current.revision + 1
-        part_rel = f"{name}/{manifest_mod.PARTS_DIR}/r{revision:07d}.parquet"
-        part_path = self.root / part_rel
-        if part_path.exists():
-            # Write-once: a part whose name exists is never overwritten (§4.1).
-            raise VaultError(f"write-once violation: part already exists: {part_rel}")
-        frame.write_parquet(part_path)
+            existing_parts = self._verified_parts(current)
+            if existing_parts:
+                previous_schema = pl.scan_parquet(existing_parts[0]).collect_schema()
+                if dict(frame.schema) != dict(previous_schema):
+                    raise VaultError(
+                        f"{name}: incompatible part schema: {frame.schema} != {previous_schema}"
+                    )
+                frame = frame.select(previous_schema.names())
 
-        min_ka, max_ka, min_et, max_et = frame_span(frame)
-        entry = PitManifestFile(
-            path=part_rel,
-            sha256=manifest_mod.sha256_file(part_path),
-            rows=frame.height,
-            min_known_at=min_ka,
-            max_known_at=max_ka,
-            min_event_time=min_et,
-            max_event_time=max_et,
-        )
-        updated = PitManifest(
-            dataset=name,
-            created_utc=_now_iso(),
-            revision=revision,
-            prev_manifest_sha256=current_sha,
-            files=[*current.files, entry],
-        )
-        manifest_mod.write_manifest(self.root, name, updated, prev_manifest_sha256=current_sha)
-        return updated
+            temporary_path: Path | None = None
+            try:
+                with NamedTemporaryFile(
+                    dir=part_path.parent,
+                    prefix=f".r{revision:07d}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as temporary:
+                    temporary_path = Path(temporary.name)
+                frame.write_parquet(temporary_path)
+                with temporary_path.open("rb") as handle:
+                    os.fsync(handle.fileno())
+                # link() is an atomic exclusive publish: it cannot replace a part
+                # created by another writer or a crashed earlier append.
+                try:
+                    os.link(temporary_path, part_path)
+                except FileExistsError as exc:
+                    raise VaultError(
+                        f"write-once violation: part already exists: {part_rel}"
+                    ) from exc
+            finally:
+                if temporary_path is not None:
+                    temporary_path.unlink(missing_ok=True)
+
+            min_ka, max_ka, min_et, max_et = frame_span(frame)
+            entry = PitManifestFile(
+                path=part_rel,
+                sha256=manifest_mod.sha256_file(part_path),
+                rows=frame.height,
+                min_known_at=min_ka,
+                max_known_at=max_ka,
+                min_event_time=min_et,
+                max_event_time=max_et,
+            )
+            updated = PitManifest(
+                dataset=name,
+                created_utc=_now_iso(),
+                revision=revision,
+                prev_manifest_sha256=current_sha,
+                files=[*current.files, entry],
+            )
+            manifest_mod.write_manifest(self.root, name, updated, prev_manifest_sha256=current_sha)
+            return updated
+
+    def recover_uncommitted_part(self, name: str) -> bool:
+        """Remove only the next uncommitted part after operator inspection."""
+        directory = self._dataset_dir(name)
+        with _dataset_write_lock(directory):
+            current = manifest_mod.read_manifest(self.root, name)
+            revision = current.revision + 1
+            orphan = directory / manifest_mod.PARTS_DIR / f"r{revision:07d}.parquet"
+            if manifest_mod.versioned_manifest_path(self.root, name, revision).exists():
+                raise VaultError(f"{name}: revision {revision} has a retained manifest")
+            if not orphan.exists():
+                return False
+            if orphan.is_symlink() or not orphan.is_file():
+                raise VaultError(f"{name}: unsafe uncommitted part: {orphan}")
+            orphan.unlink()
+            return True
+
+    def recover_interrupted_manifest(self, name: str) -> bool:
+        """Commit a complete pending snapshot after an interrupted append."""
+        directory = self._dataset_dir(name)
+        with _dataset_write_lock(directory):
+            return manifest_mod.recover_interrupted_manifest(self.root, name)
+
+    def _verified_parts(self, manifest: PitManifest) -> list[Path]:
+        """Return only manifest-listed, hash-verified part paths."""
+        paths: list[Path] = []
+        for entry in manifest.files:
+            path = manifest_mod.part_path(self.root, manifest, entry.path)
+            if not path.is_file():
+                raise ManifestError(f"{entry.path}: committed part missing")
+            if manifest_mod.sha256_file(path) != entry.sha256:
+                raise ManifestError(f"{entry.path}: committed part sha256 mismatch")
+            paths.append(path)
+        return paths
 
     def restate(self, name: str, corrected: pl.DataFrame, *, known_at: datetime) -> PitManifest:
         """Append corrections with explicit known_at; old parts untouched."""
@@ -199,8 +287,7 @@ class PitVault:
             raise VaultUnavailableError(
                 f"{name}: no versions at all — nothing observable as of {t.isoformat()}"
             )
-        parts_glob = str(self._dataset_dir(name) / manifest_mod.PARTS_DIR / "r*.parquet")
-        scan = pl.scan_parquet(parts_glob)
+        scan = pl.scan_parquet(self._verified_parts(current))
         frame = select_asof(
             scan,
             t,
@@ -253,7 +340,10 @@ class PitVault:
             return [str(exc)]
         violations = manifest_mod.verify_part_hashes(self.root, current)
         for entry in current.files:
-            path = self.root / entry.path
+            try:
+                path = manifest_mod.part_path(self.root, current, entry.path)
+            except ManifestError:
+                continue  # already flagged by verify_part_hashes
             if not path.exists():
                 continue  # already flagged by verify_part_hashes
             stats = pl.scan_parquet(path).select(
@@ -291,8 +381,7 @@ class PitVault:
         current = manifest_mod.read_manifest(self.root, name)
         if not current.files:
             return pl.DataFrame()
-        parts_glob = str(self._dataset_dir(name) / manifest_mod.PARTS_DIR / "r*.parquet")
-        scan = pl.scan_parquet(parts_glob).filter(
+        scan = pl.scan_parquet(self._verified_parts(current)).filter(
             pl.col(EVENT_TIME_COL) == pl.lit(event_time.astimezone(UTC))
         )
         if security_level:

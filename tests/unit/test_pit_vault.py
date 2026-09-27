@@ -6,10 +6,13 @@ bytes -> verify() flags, manifest tamper -> ManifestError.
 
 from __future__ import annotations
 
+import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
 import pytest
+from pydantic import ValidationError
 
 from quant_fund.pit import (
     ManifestError,
@@ -19,7 +22,14 @@ from quant_fund.pit import (
     VaultError,
     VaultUnavailableError,
 )
+from quant_fund.pit import manifest as manifest_mod
 from quant_fund.pit.manifest import read_manifest, sha256_file
+from quant_fund.proofcore.contracts import (
+    PitManifestFile,
+    ProofError,
+    canonical_json_bytes,
+    merkle_root_hex,
+)
 from quant_fund.schemas.errors import PointInTimeError
 
 T0 = datetime(2024, 1, 1, tzinfo=UTC)
@@ -91,6 +101,18 @@ def test_manifest_chain_links(vault: PitVault) -> None:
     assert second.prev_manifest_sha256 == first_sha
     sidecar = (vault.root / "silver/bars/manifest.sha256").read_text().strip()
     assert sidecar == first_sha
+    assert (vault.root / "silver/bars/manifests/r0000000.json").is_file()
+    assert (vault.root / "silver/bars/manifests/r0000001.json").read_bytes() == first_bytes
+
+
+def test_manifest_pointer_tamper_detected_even_with_unchanged_sidecar(vault: PitVault) -> None:
+    vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    pointer = vault.root / "silver/bars/manifest.json"
+    altered = json.loads(pointer.read_text())
+    altered["created_utc"] = "2099-01-01T00:00:00+00:00"
+    pointer.write_text(json.dumps(altered))
+    with pytest.raises(ManifestError, match="differs from retained revision"):
+        vault.asof("silver/bars", T0)
 
 
 def test_manifest_tamper_raises(vault: PitVault) -> None:
@@ -116,6 +138,8 @@ def test_corrupted_part_flagged_by_verify(vault: PitVault) -> None:
         handle.write(b"bitrot")
     violations = vault.verify("silver/bars")
     assert any("sha256 mismatch" in v for v in violations)
+    with pytest.raises(ManifestError, match="sha256 mismatch"):
+        vault.asof("silver/bars", T0)
 
 
 def test_unlisted_part_flagged_by_verify(vault: PitVault) -> None:
@@ -123,6 +147,92 @@ def test_unlisted_part_flagged_by_verify(vault: PitVault) -> None:
     _frame([("Z", 9, 9, 1.0)]).write_parquet(vault.root / "silver/bars/parts/r9999999.parquet")
     violations = vault.verify("silver/bars")
     assert any("not listed in manifest" in v for v in violations)
+    assert vault.asof("silver/bars", T0 + timedelta(days=10)).frame["security_id"].to_list() == [
+        "A"
+    ]
+
+
+def test_uncommitted_part_can_be_explicitly_recovered(vault: PitVault) -> None:
+    vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    orphan = vault.root / "silver/bars/parts/r0000002.parquet"
+    _frame([("Z", 1, 1, 1.0)]).write_parquet(orphan)
+    assert vault.recover_uncommitted_part("silver/bars")
+    assert not orphan.exists()
+    assert vault.append("silver/bars", _frame([("B", 1, 1, 2.0)])).revision == 2
+
+
+def test_interrupted_manifest_publish_can_be_recovered(vault: PitVault, monkeypatch) -> None:
+    vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    atomic_write = manifest_mod._atomic_write
+
+    def interrupt_pointer(path, payload):
+        if path.name == manifest_mod.MANIFEST_NAME:
+            raise OSError("simulated interruption")
+        atomic_write(path, payload)
+
+    monkeypatch.setattr(manifest_mod, "_atomic_write", interrupt_pointer)
+    with pytest.raises(OSError, match="simulated interruption"):
+        vault.append("silver/bars", _frame([("B", 1, 1, 50.0)]))
+    monkeypatch.setattr(manifest_mod, "_atomic_write", atomic_write)
+    with pytest.raises(ManifestError, match="uncommitted later manifest"):
+        vault.asof("silver/bars", T0 + timedelta(days=2))
+    assert vault.recover_interrupted_manifest("silver/bars")
+    assert vault.verify("silver/bars") == []
+    assert set(vault.asof("silver/bars", T0 + timedelta(days=2)).frame["security_id"]) == {
+        "A",
+        "B",
+    }
+
+
+def test_append_rejects_payload_schema_drift_before_writing(vault: PitVault) -> None:
+    vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    with pytest.raises(VaultError, match="incompatible part schema"):
+        vault.append(
+            "silver/bars",
+            pl.DataFrame(
+                {
+                    "security_id": ["B"],
+                    "event_time": [T0],
+                    "known_at": [T0],
+                    "close": ["not a price"],
+                }
+            ),
+        )
+    assert not (vault.root / "silver/bars/parts/r0000002.parquet").exists()
+
+
+def test_concurrent_appends_are_serialized(vault: PitVault) -> None:
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        revisions = list(
+            pool.map(
+                lambda name: (
+                    PitVault(vault.root).append("silver/bars", _frame([(name, 0, 0, 1.0)])).revision
+                ),
+                ["A", "B"],
+            )
+        )
+    assert sorted(revisions) == [1, 2]
+    assert vault.verify("silver/bars") == []
+
+
+def test_manifest_path_and_digest_validation() -> None:
+    base = {
+        "path": "silver/bars/parts/r0000001.parquet",
+        "sha256": "0" * 64,
+        "rows": 1,
+        "min_known_at": T0.isoformat(),
+        "max_known_at": T0.isoformat(),
+        "min_event_time": T0.isoformat(),
+        "max_event_time": T0.isoformat(),
+    }
+    for bad_path in ("../parts/r0000001.parquet", "/tmp/parts/r0000001.parquet"):
+        with pytest.raises(ValidationError):
+            PitManifestFile.model_validate({**base, "path": bad_path})
+    with pytest.raises(ValidationError):
+        PitManifestFile.model_validate({**base, "sha256": "z" * 64})
+    with pytest.raises(ProofError):
+        merkle_root_hex(["z" * 64])
+    assert json.loads(canonical_json_bytes({"bad": float("nan")})) == {"bad": None}
 
 
 def test_write_once_refusal(vault: PitVault) -> None:

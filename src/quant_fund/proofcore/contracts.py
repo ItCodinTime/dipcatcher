@@ -9,13 +9,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import re
+from pathlib import PurePosixPath
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 SCHEMA_VERSION: str = "proofcore/1"
 GENESIS_HASH: str = "0" * 64
 HASH_HEX_LEN: int = 64
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
+_DIGEST_FIELD_NAMES = {"bundle_hash", "bundle_id", "merkle_root", "trial_id"}
 
 # ---------------------------------------------------------------------------
 # Errors (self-contained; adapters in pit/leakage map these onto
@@ -79,7 +84,23 @@ def canonical_json_bytes(obj: object) -> bytes:
     nested dict/list structures are legal input. Floats must be pre-rounded
     by the caller to the determinism policy precision (DESIGN.md §8.2).
     """
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+
+    def json_safe(value: object) -> object:
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if isinstance(value, dict):
+            return {key: json_safe(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [json_safe(item) for item in value]
+        return value
+
+    return json.dumps(
+        json_safe(obj),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("utf-8")
 
 
 def sha256_hex_bytes(data: bytes) -> str:
@@ -100,11 +121,9 @@ def merkle_root_hex(leaf_hashes: list[str]) -> str:
     if not leaf_hashes:
         return sha256_hex_bytes(b"")
     for h in leaf_hashes:
-        if len(h) != HASH_HEX_LEN:
+        if _SHA256_HEX.fullmatch(h) is None:
             raise ProofError(f"merkle leaf is not a sha256 hex digest: {h!r}")
-    level = sorted(leaf_hashes)
-    if len(level) == 1:
-        return sha256_hex_bytes(b"PC:leaf:" + bytes.fromhex(level[0]))
+    level = [sha256_hex_bytes(b"PC:leaf:" + bytes.fromhex(h)) for h in sorted(leaf_hashes)]
     while len(level) > 1:
         nxt: list[str] = []
         for i in range(0, len(level), 2):
@@ -122,6 +141,18 @@ def merkle_root_hex(leaf_hashes: list[str]) -> str:
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def validate_digest_fields(cls, value: object, info: ValidationInfo) -> object:
+        name = info.field_name
+        if (
+            name is not None
+            and (name == "sha256" or name.endswith("_sha256") or name in _DIGEST_FIELD_NAMES)
+            and (not isinstance(value, str) or _SHA256_HEX.fullmatch(value) is None)
+        ):
+            raise ValueError(f"{name} must be a lowercase sha256 hex digest")
+        return value
 
 
 class CodeFingerprint(_Strict):
@@ -146,7 +177,9 @@ class DataAccessRecord(_Strict):
 
     dataset: str = Field(description="vault-relative dataset name, e.g. 'silver/bars'")
     asof_utc: str = Field(description="ISO-8601 UTC decision timestamp supplied by caller")
-    params: dict[str, str] = Field(default_factory=dict, description="extra read params, str-coerced")
+    params: dict[str, str] = Field(
+        default_factory=dict, description="extra read params, str-coerced"
+    )
     rows: int = Field(ge=0)
     content_sha256: str = Field(
         min_length=HASH_HEX_LEN,
@@ -202,6 +235,23 @@ class PitManifestFile(_Strict):
     max_known_at: str
     min_event_time: str
     max_event_time: str
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        path = PurePosixPath(value)
+        if (
+            not value
+            or value.startswith("/")
+            or "\\" in value
+            or ":" in path.parts[0]
+            or any(part in (".", "..") for part in value.split("/"))
+            or len(path.parts) < 3
+            or path.parts[-2] != "parts"
+            or re.fullmatch(r"r[0-9]{7}\.parquet", path.name) is None
+        ):
+            raise ValueError("path must be a vault-relative dataset parts/rNNNNNNN.parquet")
+        return value
 
 
 class PitManifest(_Strict):
