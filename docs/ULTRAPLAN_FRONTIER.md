@@ -1,8 +1,8 @@
 # ULTRAPLAN — Frontier upgrades for dipcatcher
 
 **Status:** active. **Created:** 2026-09-22. **Owner lane:** frontier expansion —
-supersedes nothing; absorbs the open tails of `MEGAPLAN_SOTA.md` (phases A–G),
-`MEGAPLAN_SHARPE5.md` (performance lane), and the `.dsh-24x7` industry-grade bar
+supersedes nothing; absorbs the open tails of [MEGAPLAN_SOTA.md](MEGAPLAN_SOTA.md) (phases A–G),
+[MEGAPLAN_SHARPE5.md](MEGAPLAN_SHARPE5.md) (performance lane), and the `.dsh-24x7` industry-grade bar
 into one ordered program.
 
 ## Mission
@@ -80,7 +80,7 @@ receipts/progress. ✅/🔄/⬜ track state; ❌ = attempted, honestly failed.
       v4-daily + h4f cells; assert challenger/target non-TimesFM columns
       bit-identical; archive pre-splice matrices.
 - [ ] P0.3 Contract-v2 re-merge all cells (`--bars-root data/raw/sources`),
-      n_boot 2000, fresh receipts; update `EVAL_REPORT_SOTA.md` §4.1 table.
+      n_boot 2000, fresh receipts; update [EVAL_REPORT_SOTA.md](EVAL_REPORT_SOTA.md) §4.1 table.
 - [ ] P0.4 Native-protocol crossover merge (`sota_eval_native.py --merge-parts
       .dsh-24x7/native/nd_*`) → §4.3 ordering table (path RankIC, H-step
       RankIC, vol MAE/R²) with disclosed deviations.
@@ -220,7 +220,7 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 ### P6 — Full code audit ("every file can be made better" — verify or fix)
 
 Audit order = blast radius. Each finding → fix + regression test, or written
-waiver in the audit log. Output: `docs/AUDIT_FRONTIER.md` ledger.
+waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
 
 - [ ] P6.1 Money paths: `simulated_broker.py`, `carry_engine.py`,
       `perp_engine.py`, `engine.py`, `sleeves.py`, `risk_gate.py`,

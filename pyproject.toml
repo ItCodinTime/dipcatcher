@@ -34,10 +34,16 @@ dependencies = [
     "uvicorn>=0.32",
     "python-dotenv>=1.0",
     "joblib>=1.4",
+    "numba>=0.60",
+    "exchange-calendars==4.13.2",
 ]
 
 [project.optional-dependencies]
 nn = ["torch>=2.4"]
+# CPU JAX is enough for the differentiable backtest. Not a core dependency:
+# `uv sync --frozen --all-groups` (no extras) does not install it. The
+# `diffbacktest` CI job installs this extra explicitly and pins JAX to CPU.
+jax = ["jax>=0.4.38"]
 
 [project.urls]
 Repository = "https://github.com/artificial-hedge/dipcatcher"
@@ -53,6 +59,7 @@ dipcatcher = "quant_fund.cli.main:app"
 [dependency-groups]
 dev = [
     "pytest>=8.3",
+    "pytest-benchmark>=5.1",
     "pytest-cov>=6.0",
     "hypothesis>=6.115",
     "ruff>=0.8",
@@ -60,6 +67,11 @@ dev = [
     "pre-commit>=4.0",
     "types-pyyaml>=6.0",
     "httpx>=0.27",
+]
+docs = [
+    "mkdocs-material>=9.6",
+    "mkdocstrings[python]>=0.27",
+    "watchdog>=4",
 ]
 
 [build-system]
@@ -154,6 +166,7 @@ markers = [
     "network: tests that require internet (disabled by default)",
     "slow: longer integration tests",
     "synthetic: uses synthetic market data",
+    "perf_full: larger synthetic performance benchmarks (not the CI fast subset)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -185,3 +198,16 @@ output = "coverage.xml"
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+# PROOFCORE per-package coverage floors (A3 #2, DESIGN.md §9.3/§12) — ADDITIVE
+# to the global 80% floor above, which is unchanged. Enforced by
+# `make proofcore-coverage` / the coverage-floors job in
+# .github/workflows/proofcore.yml via `python -m quant_fund.proofcore.ci
+# coverage-gate`, which reads this table (single source of truth).
+# Ratchet-only thereafter: raise, never lower.
+[tool.proofcore.coverage-floors]
+pit = 90
+proof = 90
+leakage = 85
+reality = 90
+proofcore = 90

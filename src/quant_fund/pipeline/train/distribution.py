@@ -13,6 +13,7 @@ import numpy as np
 from quant_fund.config.models import AppConfig
 from quant_fund.metrics.scoring import mean_pinball, quantile_crossing_rate
 from quant_fund.models.base import load_joblib_artifact, save_joblib_artifact
+from quant_fund.models.conformal_dist import ConformalTDistribution
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
@@ -23,6 +24,9 @@ from quant_fund.models.distribution import (
     StackedDistribution,
     TreeQuantileDistribution,
 )
+from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
+from quant_fund.models.regime_dist import RegimeDistribution
 from quant_fund.pipeline.dataset import design_matrix, panel
 from quant_fund.registry.mlflow_store import configure_tracking, log_run
 from quant_fund.utils.seeds import set_global_seed
@@ -39,17 +43,28 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr",
             "xgboost",
             "lightgbm",
+            "lgbm_q2",
             "skew_t",
             "gmm",
             "isotonic",
             "stack",
+            "conf_t",
+            "fhs_skew",
+            "regime",
         },
         "distribution",
     )
     set_global_seed(config.train.random_seed)
     label = config.train.distribution_target
     df = panel(config, label=label)
-    x, y, dates, feats, _ = design_matrix(df, label)
+    x, y, dates, feats, ids = design_matrix(df, label)
+    if model_name in {"fhs_skew", "regime"} and (
+        ids.size == 0
+        or np.unique(ids).size != 1
+        or np.unique(dates).size != dates.size
+        or (dates.size > 1 and not np.all(dates[1:] > dates[:-1]))
+    ):
+        raise ValueError(f"{model_name} requires one security with strictly increasing event times")
     label_end_times = _aligned_label_end_times(df, label, feats)
     taus = config.quantiles.levels
 
@@ -60,10 +75,14 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr": LinearQuantileDistribution(taus),
             "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
+            "lgbm_q2": LGBMQ2Distribution(taus, seed=config.train.random_seed),
             "skew_t": SkewTDistribution(taus),
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
             "isotonic": IsotonicPitDistribution(taus),
             "stack": StackedDistribution(taus, seed=config.train.random_seed),
+            "conf_t": ConformalTDistribution(taus),
+            "fhs_skew": FhsSkewDistribution(taus),
+            "regime": RegimeDistribution(taus, seed=config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")

@@ -6,11 +6,9 @@ Split out of the original module. Import the parent path; it re-exports these na
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
-
-from quant_fund.pipeline.doctor import doctor as run_doctor
-from quant_fund.utils.logging import get_logger
 
 from .app import app
 from .support import _cfg, _collect_param_value
@@ -18,6 +16,8 @@ from .support import _cfg, _collect_param_value
 
 @app.command()
 def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
+    from quant_fund.pipeline.doctor import doctor as run_doctor
+
     info = run_doctor(str(config))
     for k, v in info.items():
         typer.echo(f"{k}: {v}")
@@ -56,6 +56,17 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     )
     if not healthy:
         raise typer.Exit(code=1)
+
+
+def get_logger(**binds: Any) -> Any:
+    """Resolve the structured logger on first call.
+
+    Kept as a module attribute so tests can patch it, without importing
+    structlog (and the utils barrel) when the CLI is only showing help.
+    """
+    from quant_fund.utils.logging import get_logger as _get_logger
+
+    return _get_logger(**binds)
 
 
 @app.command()

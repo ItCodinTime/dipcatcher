@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import numpy as np
 import typer
 
 ls_app = typer.Typer(
@@ -23,6 +22,8 @@ def specs_cmd() -> None:
 @ls_app.command("demo")
 def demo_cmd(seed: int = typer.Option(7, "--seed")) -> None:
     """Synthetic path through both frozen engines. Not a P&L claim."""
+    import numpy as np
+
     from quant_fund.lightspeed.metalabel import meta_label_gate
     from quant_fund.lightspeed.momentum import momentum_target_weights
     from quant_fund.lightspeed.rotation import tqqq_target_weights

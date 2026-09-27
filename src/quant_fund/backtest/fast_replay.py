@@ -42,6 +42,7 @@ from quant_fund.backtest.engine import (
 )
 from quant_fund.config.models import AppConfig, FillConvention
 from quant_fund.monitoring.kill_switch import KillSwitch
+from quant_fund.portfolio.risk_gate import LIMIT_ABS_SLACK, LIMIT_REL_SLACK, exceeds_limit, funded
 from quant_fund.schemas.errors import KillSwitchActive
 
 try:
@@ -308,6 +309,26 @@ def _order_costs_nb(
 
 
 @njit(cache=True)
+def _exceeds_nb(value: float, limit: float) -> bool:
+    """Numba twin of ``exceeds_limit``. Keep the slack constants identical."""
+    if not (value > limit):
+        return False
+    slack = LIMIT_ABS_SLACK
+    rel = LIMIT_REL_SLACK * abs(limit)
+    if rel > slack:
+        slack = rel
+    return (value - limit) > slack
+
+
+@njit(cache=True)
+def _funded_nb(cash: float, needed: float) -> bool:
+    """Numba twin of ``funded``."""
+    if cash >= needed:
+        return True
+    return not _exceeds_nb(needed, cash)
+
+
+@njit(cache=True)
 def _replay_kernel(
     exec_px: np.ndarray,  # (T,A) f64 — exec source (open next_open / close)
     close_px: np.ndarray,  # (T,A) f64 — decision close + mark fallback
@@ -342,6 +363,7 @@ def _replay_kernel(
     f_fee: np.ndarray,  # (M,) f64
     f_spr: np.ndarray,  # (M,) f64
     f_imp: np.ndarray,  # (M,) f64
+    f_bpt: np.ndarray,  # (M,) f64 turnover bps charged in ``total``
     f_asset: np.ndarray,  # (M,) i64
     f_et: np.ndarray,  # (M,) i64
     f_st: np.ndarray,  # (M,) i64
@@ -578,19 +600,19 @@ def _replay_kernel(
                 or vol_eff < 0.0
                 or not np.isfinite(delta)
                 or delta == 0.0
-                or abs(delta) * price > max_order_notional
-                or abs(current_w + (delta * price) / nav_safe) > max_name
-                or gross_after > max_gross
-                or abs(net_after) > max_net
-                or participation > max_participation
-                or gate_vol > max_predicted_vol
+                or _exceeds_nb(abs(delta) * price, max_order_notional)
+                or _exceeds_nb(abs(current_w + (delta * price) / nav_safe), max_name)
+                or _exceeds_nb(gross_after, max_gross)
+                or _exceeds_nb(abs(net_after), max_net)
+                or _exceeds_nb(participation, max_participation)
+                or _exceeds_nb(gate_vol, max_predicted_vol)
             )
             if rejected:
                 reject_count += 1
                 continue
 
             notional = delta * price
-            if delta > 0 and cash < notional + total:
+            if delta > 0 and not _funded_nb(cash, notional + total):
                 cash_reject_count += 1
                 continue
             cash -= notional + total
@@ -607,11 +629,17 @@ def _replay_kernel(
             cost_comm += comm
             cost_spr += spr
             cost_imp += imp
+            if frictionless:
+                bpt = 0.0
+            else:
+                nt = abs(delta) * price
+                bpt = abs(nt) * bps_per_turnover / 1e4
             f_qty[n_fills] = delta
             f_px[n_fills] = price
             f_fee[n_fills] = comm
             f_spr[n_fills] = spr
             f_imp[n_fills] = imp
+            f_bpt[n_fills] = bpt
             f_asset[n_fills] = a
             f_et[n_fills] = exec_t
             f_st[n_fills] = i
@@ -719,6 +747,7 @@ def _replay_driver(
     f_fee = np.empty(max_fills)
     f_spr = np.empty(max_fills)
     f_imp = np.empty(max_fills)
+    f_bpt = np.empty(max_fills)
     f_asset = np.empty(max_fills, dtype=np.int64)
     f_et = np.empty(max_fills, dtype=np.int64)
     f_st = np.empty(max_fills, dtype=np.int64)
@@ -776,6 +805,7 @@ def _replay_driver(
         f_fee,
         f_spr,
         f_imp,
+        f_bpt,
         f_asset,
         f_et,
         f_st,
@@ -825,11 +855,17 @@ def _replay_driver(
             "fee": f_fee[j],
             "spread_cost": f_spr[j],
             "impact_cost": f_imp[j],
+            "turnover_cost": f_bpt[j],
             "decision_price": f_dec[j] if f_decok[j] else None,
         }
         for j in range(n_fills)
     ]
-    cost_sum = {"commission": cost_comm, "spread": cost_spr, "impact": cost_imp}
+    cost_sum = {
+        "commission": cost_comm,
+        "spread": cost_spr,
+        "impact": cost_imp,
+        "turnover": float(f_bpt[:n_fills].sum()) if n_fills else 0.0,
+    }
     return (
         navs,
         fill_rows,
@@ -1027,7 +1063,7 @@ def run_backtest_fast(
 
         navs = []
         fill_rows = []
-        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
         reject_count = 0
         cash_reject_count = 0
         halt_count = 0
@@ -1185,19 +1221,19 @@ def run_backtest_fast(
                     or vol_eff < 0.0
                     or not math.isfinite(delta)
                     or delta == 0.0
-                    or abs(delta) * price > gate.max_order_notional
-                    or abs(current_w + (delta * price) / nav_safe) > gate.max_name
-                    or gross_after > gate.max_gross
-                    or abs(net_after) > gate.max_net
-                    or participation > gate.max_participation
-                    or gate_vol > gate.max_predicted_vol
+                    or exceeds_limit(abs(delta) * price, gate.max_order_notional)
+                    or exceeds_limit(abs(current_w + (delta * price) / nav_safe), gate.max_name)
+                    or exceeds_limit(gross_after, gate.max_gross)
+                    or exceeds_limit(abs(net_after), gate.max_net)
+                    or exceeds_limit(participation, gate.max_participation)
+                    or exceeds_limit(gate_vol, gate.max_predicted_vol)
                 )
                 if rejected:
                     reject_count += 1
                     continue
 
                 notional = delta * price
-                if delta > 0 and cash < notional + total_trade_cost:
+                if delta > 0 and not funded(cash, notional + total_trade_cost):
                     cash_reject_count += 1
                     continue
                 cash -= notional + total_trade_cost
@@ -1207,9 +1243,15 @@ def run_backtest_fast(
                 shares[a] = current + delta
                 terms_base[a] = shares[a] * npv[a]
                 traded_turn += abs(notional) / nav_safe
+                if costs_cfg.frictionless:
+                    bpt = 0.0
+                else:
+                    nt = abs(delta) * price
+                    bpt = abs(nt) * costs_cfg.bps_per_turnover / 1e4
                 cost_sum["commission"] += float(comm)
                 cost_sum["spread"] += float(spr)
                 cost_sum["impact"] += float(imp)
+                cost_sum["turnover"] += bpt
                 fill_rows.append(
                     {
                         "fill_time": dates[exec_t],
@@ -1220,6 +1262,7 @@ def run_backtest_fast(
                         "fee": comm,
                         "spread_cost": spr,
                         "impact_cost": imp,
+                        "turnover_cost": bpt,
                         "decision_price": dec_l[a] if dec_ok_d[a] else None,
                     }
                 )

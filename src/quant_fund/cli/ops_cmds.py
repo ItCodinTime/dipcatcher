@@ -43,11 +43,135 @@ def paper(
         False,
         help="Use earliest decision dates (multi-day grind); default prefers latest window.",
     ),
+    forward_stage: str | None = typer.Option(
+        None, help="Paired paper: commitment, freeze, decide, execute, interrupt, or verify."
+    ),
+    forward_run: Path | None = typer.Option(None, help="Forward paper run directory."),
+    forward_packet: Path | None = typer.Option(
+        None, help="Externally timestamped close/open packet."
+    ),
+    forward_attestation: Path | None = typer.Option(None, help="External protocol freeze record."),
+    forward_spec: Path = typer.Option(Path("configs/net_tournament.json")),
+    forward_benchmark: Path = typer.Option(Path("data/metadata/real_benchmark/us_wide_20260925")),
+    forward_tournament: Path = typer.Option(Path("data/metadata/net_tournament/us_wide_20260925")),
+    forward_reason: str | None = typer.Option(
+        None, help="Interruption reason: no_feed/downtime/missing_name/bad_timestamp/other."
+    ),
 ) -> None:
     """Phase 17 paper / shadow loop with simulated broker (no live fills)."""
     import json
 
     import polars as pl
+
+    if forward_stage is not None:
+        from quant_fund.paper import forward_shadow
+
+        if forward_stage not in {
+            "commitment",
+            "freeze",
+            "decide",
+            "execute",
+            "interrupt",
+            "verify",
+        }:
+            raise typer.BadParameter(
+                "--forward-stage must be commitment, freeze, decide, execute, interrupt or verify"
+            )
+        if forward_stage != "commitment" and forward_run is None:
+            raise typer.BadParameter("--forward-run is required")
+        if forward_stage == "freeze" and forward_attestation is None:
+            raise typer.BadParameter("--forward-attestation is required to freeze")
+        if forward_stage in {"decide", "execute"} and forward_packet is None:
+            raise typer.BadParameter("--forward-packet is required")
+        if forward_stage == "interrupt" and forward_reason is None:
+            raise typer.BadParameter("--forward-reason is required for an interruption")
+        try:
+            if forward_stage in {"commitment", "freeze"}:
+                forward_result = forward_shadow.prepare(
+                    forward_spec,
+                    forward_benchmark,
+                    forward_tournament,
+                    forward_attestation if forward_stage == "freeze" else None,
+                    forward_run if forward_stage == "freeze" else None,
+                )
+            elif forward_stage == "decide":
+                forward_result = forward_shadow.decide(forward_run, forward_packet)  # type: ignore[arg-type]
+            elif forward_stage == "execute":
+                forward_result = forward_shadow.execute(forward_run, forward_packet)  # type: ignore[arg-type]
+            elif forward_stage == "interrupt":
+                forward_result = forward_shadow.interrupt(forward_run, forward_reason)  # type: ignore[arg-type]
+            else:
+                forward_result = forward_shadow.verify(forward_run)  # type: ignore[arg-type]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            phase_only_error = str(exc).startswith(
+                (
+                    "next-open execution must reconcile",
+                    "a prior close decision must be recorded",
+                    "forward paper run is already interrupted",
+                )
+            )
+            if (
+                forward_stage in {"decide", "execute"}
+                and forward_run is not None
+                and not phase_only_error
+            ):
+                reason = (
+                    "no_feed"
+                    if isinstance(exc, FileNotFoundError)
+                    else "missing_name"
+                    if "missing/extra" in str(exc)
+                    else "bad_timestamp"
+                    if "timestamp" in str(exc) or "cutoff" in str(exc)
+                    else "other"
+                )
+                try:
+                    stopped = forward_shadow.interrupt(
+                        forward_run,
+                        reason,
+                        attempted_stage=forward_stage,
+                        attempted_packet=forward_packet,
+                        error=str(exc),
+                    )
+                    typer.echo(f"interruption_receipt={stopped['receipt_sha256']}")
+                except (OSError, ValueError, KeyError, TypeError) as stop_error:
+                    typer.echo(f"interruption_not_recorded={stop_error}")
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo("DATA_LABEL=PROSPECTIVE_PACKET_UNVERIFIED")
+        typer.echo(
+            "LOCAL_LEDGER_VERIFY_ONLY; external feed/calendar and strategy replay unverified"
+        )
+        displayed = {
+            key: value
+            for key, value in forward_result.items()
+            if key
+            in {
+                "protocol_commitment_sha256",
+                "git_revision",
+                "git_worktree_sha256",
+                "exchange_schedule_sha256",
+                "last_historical_warmup_session",
+                "receipt_sha256",
+                "stage",
+                "seq",
+                "session",
+                "kind",
+                "valid",
+                "state",
+                "paired_sessions",
+                "minimum",
+                "interruption_reason",
+                "external_attestation_verified",
+                "independent_strategy_replay",
+                "forward_evidence_accepted",
+                "research_only",
+                "live_pnl_claim",
+                "errors",
+            }
+        }
+        typer.echo(json.dumps(displayed, indent=2, allow_nan=False))
+        if forward_result.get("valid") is False:
+            raise typer.Exit(code=1)
+        return
 
     from quant_fund.features.engine import build_features
     from quant_fund.paper.ledger import latest_run_id

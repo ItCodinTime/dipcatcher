@@ -8,7 +8,10 @@ from __future__ import annotations
 import math
 
 BENCHMARK_CATALOG_VERSION = 2
-RESEARCH_RECEIPT_SCHEMA_VERSION = 1
+# Schema 2 stamps ``backtest_overfitting`` (PBO, DSR, PSR, MinTRL, trial counts).
+# Schema 1 receipts remain valid: they predate the block and are not rewritten.
+RESEARCH_RECEIPT_SCHEMA_VERSION = 2
+RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED = frozenset({1, 2})
 REQUIRED_BENCHMARK_FAMILIES = frozenset(
     {
         "ranking",
@@ -180,6 +183,7 @@ __all__ = [
     "OPTIONAL_BENCHMARK_FAMILIES",
     "REQUIRED_BENCHMARK_FAMILIES",
     "RESEARCH_RECEIPT_SCHEMA_VERSION",
+    "RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED",
     "family_blob_executed",
     "family_blob_forbidden_metrics_absent",
     "family_blob_has_finite_observation",

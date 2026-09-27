@@ -1,0 +1,157 @@
+# PROOFCORE CI gates (DESIGN.md §9.3, §10) — additive workflow.
+# Nothing here weakens ci.yml or fx1.yml: the global 80% coverage floor, the
+# existing smoke/verify-research gates, and the fx1 honesty gate are untouched.
+# Merge order (DESIGN.md §10): this workflow lands LAST — the proof/leakage/
+# reality CLI invocations below exist once W1-W4 merge.
+name: proofcore
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Hypothesis CI profile (DESIGN.md §9.5): derandomized, fixed example count.
+  HYPOTHESIS_PROFILE: ci
+
+jobs:
+  # W5's own unit/integration tests + the layering whitelist gate.
+  proofcore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: PROOFCORE tests
+        run: make proofcore-test
+
+  # §1.3 import-whitelist gate (A2 F1, local layering contract).
+  layering:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Layering gate
+        run: uv run pytest tests/unit/test_proofcore_layering.py -q
+
+  # W2 supplies signer/recorder integrity tests. Full bundle replay verification
+  # is pending; this job makes no verifier or promotion claim.
+  proof-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROOFCORE_SIGNING_KEY: ${{ secrets.PROOFCORE_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Proof signer and recorder integrity
+        run: make proof-integrity
+
+  # §9.3 leakage-scan — WARN MODE this wave (adjudicated): the scan runs, the
+  # report is archived, findings do NOT fail the build. LH009 flips to error
+  # only in the follow-up call-site migration wave (DESIGN.md §11.2, §14.3).
+  # The seeded-leak fixture suite (W3) is blocking once present.
+  leakage-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Leakage scan (warn mode)
+        run: make leakage-scan
+      - name: Upload leakage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: leakage-report
+          path: leakage-report.json
+          if-no-files-found: ignore
+
+  # §9.3 reality-filter: advisory at first (§13 phase 4), then blocking.
+  # The CI trial ledger is exported from the provenance DB; a fresh CI DB has
+  # < 10 trials, whose honest verdict is 'insufficient_evidence' (exit 1) —
+  # that is exactly why this job is advisory until the ledger accumulates.
+  reality-filter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true # advisory at first (DESIGN.md §9.3/§13 phase 4)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Reality-filter gate (advisory)
+        run: make reality-gate
+
+  # §9.3/§12 coverage floors (A3 #2): per-package gates ADDITIVE to the
+  # existing global 80% floor in ci.yml (which is not touched): pit 90,
+  # proof 90, leakage 85, reality 90, proofcore 90 — read from
+  # [tool.proofcore.coverage-floors] in pyproject.toml.
+  coverage-floors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Per-package coverage floors
+        run: make proofcore-coverage
+
+  # A3 #2 second half: the fx1 lane gets its first coverage gate. Added here
+  # (not in fx1.yml, which this wave does not edit) as a ratchet floor.
+  fx1-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: fx1 coverage ratchet
+        run: uv run pytest tests/fx1 -q --cov=fx1 --cov-fail-under=60 --cov-report=term-missing

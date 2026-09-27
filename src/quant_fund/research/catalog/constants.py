@@ -1,0 +1,26 @@
+"""Compatibility re-exports for ``quant_fund.research.catalog.constants``.
+
+The definitions live in :mod:`quant_fund.research.catalog.registry`.
+"""
+
+from __future__ import annotations
+
+from quant_fund.research.catalog.registry import (
+    BENCHMARK_CATALOG_VERSION,
+    BENCHMARK_FAMILY_ORDER,
+    FORBIDDEN_RESEARCH_METRIC_KEYS,
+    OPTIONAL_BENCHMARK_FAMILIES,
+    REQUIRED_BENCHMARK_FAMILIES,
+    RESEARCH_RECEIPT_SCHEMA_VERSION,
+    RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED,
+)
+
+__all__ = [
+    "BENCHMARK_CATALOG_VERSION",
+    "BENCHMARK_FAMILY_ORDER",
+    "FORBIDDEN_RESEARCH_METRIC_KEYS",
+    "OPTIONAL_BENCHMARK_FAMILIES",
+    "REQUIRED_BENCHMARK_FAMILIES",
+    "RESEARCH_RECEIPT_SCHEMA_VERSION",
+    "RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED",
+]

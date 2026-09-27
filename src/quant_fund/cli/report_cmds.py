@@ -25,9 +25,21 @@ def verify_research(
     import json
 
     if path.is_dir():
-        from quant_fund.research.phase1_verify import verify_phase1_run
+        try:
+            directory_manifest = json.loads((path / "manifest.json").read_text())
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            directory_manifest = None
+        if (
+            isinstance(directory_manifest, dict)
+            and directory_manifest.get("kind") == "forward_shadow_manifest"
+        ):
+            from quant_fund.paper.forward_shadow import verify
 
-        result = verify_phase1_run(path)
+            result = verify(path)
+        else:
+            from quant_fund.research.phase1_verify import verify_phase1_run
+
+            result = verify_phase1_run(path)
     elif path.is_file() and path.name.endswith(".json"):
         try:
             payload = json.loads(path.read_text())
