@@ -13,8 +13,9 @@ LIBRARY_ROOTS = (SRC / "quant_fund", SRC / "fx1")
 CLI_PREFIX = "quant_fund.cli"
 # Research and the rest of the core may use execution impact math.
 # They must not import the simulated broker or the paper/live loop.
-# simtest, pretrade, and formal are the simulation boundary that drives the
-# broker; they are not on the research/pipeline/models import path.
+# simtest, pretrade, formal, and parity are the simulation boundary that
+# drives SimulatedBroker (parity replays one tape into that broker only).
+# They are not on the research/pipeline/models import path.
 BROKER_MODULES = ("quant_fund.execution.simulated_broker",)
 PAPER_PREFIX = "quant_fund.paper"
 BROKER_ALLOWED_PREFIXES = (
@@ -24,6 +25,7 @@ BROKER_ALLOWED_PREFIXES = (
     "quant_fund.simtest",
     "quant_fund.pretrade",
     "quant_fund.formal",
+    "quant_fund.parity",
 )
 
 
