@@ -14,8 +14,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import shutil
-import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -81,7 +79,7 @@ from quant_fund.research.catalog import (
     tail_var_battery_keys_present,
 )
 from quant_fund.utils.hashing import canonical_frame_fingerprint, hash_bytes, hash_file
-from quant_fund.utils.reproducibility import git_worktree_sha256
+from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
 from quant_fund.utils.seeds import set_global_seed
 
 
@@ -176,19 +174,7 @@ def _jsonable(obj: Any) -> Any:
 
 def _git_revision() -> str:
     """Return the checked-out revision, or an explicit unknown marker."""
-    git = shutil.which("git")
-    if git is None:
-        return "UNKNOWN"
-    try:
-        return subprocess.run(
-            [git, "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=2,
-        ).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return "UNKNOWN"
+    return git_revision()
 
 
 def _git_worktree_sha256() -> str:
@@ -511,10 +497,14 @@ def _data_snooping_section(blob: object) -> str:
     )
 
 
-def _build_hypotheses(
+def _hypotheses_rankers_and_rewards(
     families: dict[str, Any],
     rankers: list[dict[str, Any]],
 ) -> list[HypothesisResult]:
+    """Oracle, snooping, pairwise DM, vol/tail, and reward-policy hypotheses.
+
+    Order matches the historical ``_build_hypotheses`` prefix.
+    """
     hyps: list[HypothesisResult] = []
     model_rankers = [r for r in rankers if not str(r.get("name", "")).startswith("_")]
     by = {r["name"]: r for r in model_rankers}
@@ -693,6 +683,12 @@ def _build_hypotheses(
                     family="discovery",
                 )
             )
+    return hyps
+
+
+def _hypotheses_conformal_bounds(families: dict[str, Any]) -> list[HypothesisResult]:
+    """Conformal, e-value, jackknife, CRC, and coverage-bound hypotheses."""
+    hyps: list[HypothesisResult] = []
     conf = families.get("conformal") or {}
     aci = conf.get("aci") if isinstance(conf, dict) else None
     if isinstance(aci, dict) and _finite_number(aci.get("kupiec_p")) is not None:
@@ -913,6 +909,12 @@ def _build_hypotheses(
                     meets_floor=meets,
                 )
             )
+    return hyps
+
+
+def _hypotheses_northset(families: dict[str, Any]) -> list[HypothesisResult]:
+    """Northset book hypotheses and the remaining policy contrasts."""
+    hyps: list[HypothesisResult] = []
     ns = families.get("northset") or {}
     # mean_session_spread_bps_mean: session-L2 path ≠ daily mean_spread_bps.
     # mean_session_close_spread_bps: last-snap ≠ path mean_session_spread_bps_mean and ≠ daily mean_spread_bps.
@@ -1489,6 +1491,16 @@ def _build_hypotheses(
                     family="discovery",
                 )
             )
+    return hyps
+
+
+def _build_hypotheses(
+    families: dict[str, Any],
+    rankers: list[dict[str, Any]],
+) -> list[HypothesisResult]:
+    hyps = _hypotheses_rankers_and_rewards(families, rankers)
+    hyps.extend(_hypotheses_conformal_bounds(families))
+    hyps.extend(_hypotheses_northset(families))
     _apply_family_fdr(hyps, "calibration")
     _apply_family_fdr(hyps, "discovery")
     return hyps
