@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import cvxpy as cp
 import numpy as np
@@ -10,6 +11,8 @@ import pytest
 from quant_fund.research.cost_allocation import AllocationConfig, allocate
 from quant_fund.research.net_replay import MarketPanel, ReplayConfig, Strategy, replay
 from quant_fund.research.net_tournament import allocation_ablations
+
+_FAILURE_FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "cost_allocation"
 
 
 def solve(alpha=(0.01,), previous=None, covariance=None, config=None, **kwargs):
@@ -104,6 +107,78 @@ def test_infeasible_and_failed_solver_never_fall_back(monkeypatch):
     with pytest.raises(AllocationFailure, match="solver failed") as failed:
         solve()
     assert failed.value.diagnostic["status"] == "solver_error"
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["momentum_original39", "reversal_original114", "momentum_factor359", "reversal_factor7"],
+)
+def test_reconstructed_validation_decisions_require_certified_weights(name):
+    """Market-derived solver inputs are numerical regressions, not edge evidence."""
+    with np.load(_FAILURE_FIXTURES / f"{name}.npz", allow_pickle=False) as fixture:
+        fields = {key: fixture[key] for key in fixture.files}
+    config = AllocationConfig()
+    weights, diagnostic = allocate(
+        **fields,
+        config=config,
+        linear_cost=0.0006,
+        gross_limit=0.9405,
+        name_limit=0.198,
+        cash_buffer=0.01,
+        borrow_cost=0.03 / 252,
+        funding_cost=0.06 / 252,
+    )
+    assert diagnostic["status"] == cp.OPTIMAL
+    assert diagnostic["max_constraint_violation"] <= 1e-7
+    assert diagnostic["solve_attempts"][-1]["weights_accepted"] is True
+    assert all(
+        attempt["weights_accepted"] is False for attempt in diagnostic["solve_attempts"][:-1]
+    )
+    change = np.abs(weights - fields["previous"])
+    cost = 0.0006 * change.sum() + fields["impact"] @ change**1.5
+    assert np.max(change - fields["capacity"]) <= 1e-7
+    assert change.sum() <= config.turnover_limit + 1e-7
+    assert np.abs(weights).sum() + 0.9405 * cost <= 0.9405 + 1e-7
+    assert np.max(np.abs(weights) + 0.198 * cost) <= 0.198 + 1e-7
+
+
+def test_inaccurate_statuses_never_supply_fallback_weights(monkeypatch):
+    from quant_fund.research.cost_allocation import AllocationFailure
+
+    original = cp.Problem.solve
+
+    def inaccurate(problem, *args, **kwargs):
+        value = original(problem, *args, **kwargs)
+        problem._status = cp.OPTIMAL_INACCURATE
+        return value
+
+    monkeypatch.setattr(cp.Problem, "solve", inaccurate)
+    with pytest.raises(AllocationFailure, match="no accepted solution") as failed:
+        solve()
+    assert len(failed.value.diagnostic["attempts"]) == 4
+    assert all(
+        attempt["weights_accepted"] is False for attempt in failed.value.diagnostic["attempts"]
+    )
+
+
+def test_inconsistent_solver_objective_never_supplies_weights(monkeypatch):
+    from quant_fund.research.cost_allocation import AllocationFailure
+
+    original = cp.Problem.solve
+
+    def inconsistent(problem, *args, **kwargs):
+        value = original(problem, *args, **kwargs)
+        if problem.status == cp.OPTIMAL:
+            problem._value = float(problem.value) + 0.001
+        return value
+
+    monkeypatch.setattr(cp.Problem, "solve", inconsistent)
+    with pytest.raises(AllocationFailure, match="no accepted solution") as failed:
+        solve()
+    assert all(
+        attempt["status"] == "independent_check_failed"
+        for attempt in failed.value.diagnostic["attempts"]
+    )
 
 
 @pytest.mark.parametrize(

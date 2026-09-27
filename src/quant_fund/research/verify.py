@@ -16,7 +16,7 @@ from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     OPTIONAL_BENCHMARK_FAMILIES,
     REQUIRED_BENCHMARK_FAMILIES,
-    RESEARCH_RECEIPT_SCHEMA_VERSION,
+    RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED,
     book_age_seconds_honesty_errors,
     candle_all_finite_rate_prefix_honesty_errors,
     candle_all_ic_n_dates_nonneg_honesty_errors,
@@ -111,6 +111,8 @@ from quant_fund.research.catalog import (
     tail_var_battery_keys_present,
     tail_var_battery_missing_keys,
 )
+from quant_fund.research.receipt_schema import overfitting_block_errors
+from quant_fund.robustness.schema import robustness_extension_errors
 from quant_fund.utils.hashing import SHA256_HEX_LENGTH, hash_bytes, hash_file
 
 
@@ -230,8 +232,18 @@ def _notebook_identity_errors(notebook: dict[str, Any]) -> list[str]:
             errors.append(f"invalid_notebook_{key}")
     schema_version = notebook.get("schema_version")
     # Bools are ints in Python; reject them explicitly so True cannot pass as 1.
-    if isinstance(schema_version, bool) or schema_version != RESEARCH_RECEIPT_SCHEMA_VERSION:
+    # Schema 1 receipts predate the overfitting block and stay valid.
+    # Schema 2 is the current writer and must carry the block.
+    if (
+        isinstance(schema_version, bool)
+        or schema_version not in RESEARCH_RECEIPT_SCHEMA_VERSIONS_ACCEPTED
+    ):
         errors.append("invalid_research_receipt_schema_version")
+    else:
+        errors.extend(overfitting_block_errors(notebook))
+    # Optional robustness extension. Absence is valid on every parent schema
+    # this verifier accepts. A present block must match its own schema.
+    errors.extend(robustness_extension_errors(notebook))
     for key in ("version", "data_source", "disclaimer", "ranking_target"):
         value = notebook.get(key)
         if not isinstance(value, str) or not value.strip():
@@ -351,6 +363,11 @@ def _provenance_state(notebook: dict[str, Any]) -> tuple[dict[str, Any], object,
         value = provenance.get(key)
         if not _is_sha256(value):
             errors.append(f"invalid_{key}")
+    # Optional. Existing receipts omit it. When a lake snapshot is cited, the
+    # id must be the content hash of that immutable manifest.
+    snapshot_id = provenance.get("data_snapshot_id")
+    if snapshot_id is not None and not _is_sha256(snapshot_id):
+        errors.append("invalid_data_snapshot_id")
     for key in ("row_count", "column_count"):
         value = provenance.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -550,7 +567,11 @@ def _family_fanin_errors(notebook: dict[str, Any], families: dict[str, Any]) -> 
     errors.extend(kyle_ofi_nest_honesty_errors(families.get("northset")))
     # mean_microprice_weight_balance ∈[0,1] — northset + candle_order_book parity
     errors.extend(mean_microprice_weight_balance_honesty_errors(families.get("northset")))
-    errors.extend(mean_microprice_weight_balance_honesty_errors(families.get("candle_order_book")))
+    errors.extend(
+        mean_microprice_weight_balance_honesty_errors(
+            families.get("candle_order_book"),
+        )
+    )
     # structure_finite_rate ∈[0,1] — northset aggregate + candle finite_rate_* companions
     errors.extend(structure_finite_rate_honesty_errors(families.get("northset")))
     errors.extend(structure_finite_rate_honesty_errors(families.get("candle_order_book")))
@@ -631,19 +652,35 @@ def _family_fanin_errors(notebook: dict[str, Any], families: dict[str, Any]) -> 
     errors.extend(book_age_seconds_honesty_errors(families.get("candle_order_book")))
     errors.extend(depth_shape_finite_rate_honesty_errors(families.get("candle_order_book")))
     errors.extend(mean_tob_size_share_honesty_errors(families.get("northset")))
-    errors.extend(mean_tob_size_share_honesty_errors(families.get("candle_order_book")))
+    errors.extend(
+        mean_tob_size_share_honesty_errors(
+            families.get("candle_order_book"),
+        )
+    )
     errors.extend(candle_log_tick_spacing_finite_honesty_errors(families.get("candle_order_book")))
     # mean_tob_notional_share ∈(0,1] when finite — ≠ mean_tob_size_share (Commander #62)
     for mtn_err in mean_tob_notional_share_honesty_errors(families.get("northset")):
         errors.append(mtn_err)
     errors.extend(mean_close_mid_abs_rel_honesty_errors(families.get("northset")))
-    errors.extend(mean_close_mid_abs_rel_honesty_errors(families.get("candle_order_book")))
+    errors.extend(
+        mean_close_mid_abs_rel_honesty_errors(
+            families.get("candle_order_book"),
+        )
+    )
     errors.extend(mean_candle_dir_x_imbalance_honesty_errors(families.get("candle_order_book")))
     errors.extend(mean_queue_priority_honesty_errors(families.get("northset")))
-    errors.extend(mean_queue_priority_honesty_errors(families.get("candle_order_book")))
+    errors.extend(
+        mean_queue_priority_honesty_errors(
+            families.get("candle_order_book"),
+        )
+    )
     errors.extend(mean_notional_imbalance_honesty_errors(families.get("northset")))
     errors.extend(size_concentration_top_honesty_errors(families.get("northset")))
-    errors.extend(size_concentration_top_honesty_errors(families.get("candle_order_book")))
+    errors.extend(
+        size_concentration_top_honesty_errors(
+            families.get("candle_order_book"),
+        )
+    )
     errors.extend(mean_depth_imbalance_honesty_errors(families.get("northset")))
     errors.extend(mean_depth_imbalance_abs_honesty_errors(families.get("northset")))
     errors.extend(mean_depth_imbalance_honesty_errors(families.get("candle_order_book")))

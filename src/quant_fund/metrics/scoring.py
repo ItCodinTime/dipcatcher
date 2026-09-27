@@ -45,13 +45,18 @@ def mean_pinball(y: Array, q: Array, tau: float) -> float:
 
 
 def coverage(y: Array, lower: Array, upper: Array) -> float:
+    """Empirical interval coverage. Non-finite entries are masked out honestly
+    (a missing observation is not evidence of a miss); all-invalid → NaN."""
     y = _as_1d("y", y)
     lower = _as_1d("lower", lower)
     upper = _as_1d("upper", upper)
     _require_same_length(("y", y), ("lower", lower), ("upper", upper))
     if y.size == 0:
         return float("nan")
-    return float(np.mean((y >= lower) & (y <= upper)))
+    valid = np.isfinite(y) & np.isfinite(lower) & np.isfinite(upper)
+    if not np.any(valid):
+        return float("nan")
+    return float(np.mean((y[valid] >= lower[valid]) & (y[valid] <= upper[valid])))
 
 
 def interval_width(lower: Array, upper: Array) -> float:

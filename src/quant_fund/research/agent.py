@@ -35,6 +35,7 @@ from quant_fund.metrics.inference import (
     onesided_from_twosided,
     two_proportion_test,
 )
+from quant_fund.metrics.overfitting import overfitting_diagnostics
 from quant_fund.northset.benches import bench_northset
 from quant_fund.pipeline.dataset import build_gold, ensure_silver, panel
 from quant_fund.reporting.report import latest_report_dir, write_report
@@ -138,6 +139,7 @@ class ResearchNotebook:
     scorecard: dict[str, dict[str, Any]] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
+    backtest_overfitting: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return cast(dict[str, Any], _jsonable(asdict(self)))
@@ -481,6 +483,81 @@ def _ranker_data_snooping(
         "mcs_included": [names[i] for i, flag in enumerate(mcs.included) if flag],
         "mcs_p_values": {names[i]: mcs.p_values[i] for i in range(len(names))},
     }
+
+
+def _horizon_bars(label: str) -> int:
+    """Trailing integer on a label name (``future_return_5`` → 5)."""
+    suffix = str(label).rsplit("_", 1)[-1]
+    if suffix.isdigit() and int(suffix) >= 1:
+        return int(suffix)
+    return 1
+
+
+def _aligned_ranker_scores(
+    rankers: list[dict[str, Any]],
+) -> tuple[int, list[str], np.ndarray | None]:
+    """Trial count plus the common-date score matrix of evaluated rankers.
+
+    ``n_trials`` counts every non-internal ranker the runner evaluated.
+    The matrix contains only rankers with a finite date-level score series
+    on the intersection of those dates. Rankers that were evaluated but
+    cannot be aligned stay in ``n_trials`` and are absent from the matrix.
+    """
+    evaluated = [
+        ranker
+        for ranker in rankers
+        if str(ranker.get("name", "")).strip() and not str(ranker.get("name", "")).startswith("_")
+    ]
+    usable: list[tuple[str, dict[str, float]]] = []
+    for ranker in evaluated:
+        series = ranker.get("ic_series")
+        dates = ranker.get("ic_dates")
+        if not isinstance(series, list) or not isinstance(dates, list):
+            continue
+        if len(series) != len(dates):
+            continue
+        by_date: dict[str, float] = {}
+        for date, value in zip(dates, series, strict=True):
+            number = float(value)
+            if np.isfinite(number):
+                by_date[str(date)] = number
+        if by_date:
+            usable.append((str(ranker["name"]), by_date))
+    if len(usable) < 1:
+        return len(evaluated), [], None
+    common = set(usable[0][1])
+    for _name, by_date in usable[1:]:
+        common &= set(by_date)
+    if not common:
+        return len(evaluated), [], None
+    order = sorted(common)
+    names = [name for name, _by_date in usable]
+    matrix = np.column_stack(
+        [np.asarray([by_date[date] for date in order], dtype=float) for _name, by_date in usable]
+    )
+    return len(evaluated), names, matrix
+
+
+def _overfitting_section(block: object) -> str:
+    """One-line notebook summary of the backtest-overfitting diagnostics."""
+    if not isinstance(block, dict) or not block:
+        return "unavailable"
+
+    def _fmt(value: object) -> str:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return "n/a"
+        number = float(value)
+        if not np.isfinite(number):
+            return "n/a"
+        return f"{number:.4g}"
+
+    return (
+        f"PBO={_fmt(block.get('pbo'))} DSR={_fmt(block.get('dsr'))} "
+        f"PSR={_fmt(block.get('psr'))} MinTRL={_fmt(block.get('min_trl'))} "
+        f"n_trials={block.get('n_trials')} "
+        f"n_trials_effective={block.get('n_trials_effective')} "
+        f"research_diagnostic_only"
+    )
 
 
 def _data_snooping_section(blob: object) -> str:
@@ -1583,6 +1660,14 @@ def run_research(config: AppConfig) -> ResearchNotebook:
 
     hyps = _build_hypotheses(families, rankers)
     scorecard = _benchmark_scorecard(families)
+    n_trials, trial_names, trial_scores = _aligned_ranker_scores(rankers)
+    overfitting = overfitting_diagnostics(
+        trial_scores,
+        n_trials=n_trials,
+        names=trial_names or None,
+        horizon_bars=_horizon_bars(label),
+        embargo_bars=int(config.embargo_bars()),
+    )
 
     synthetic = config.data.source == "synthetic"
     disclaimer = (
@@ -1609,6 +1694,7 @@ def run_research(config: AppConfig) -> ResearchNotebook:
         hypotheses=hyps,
         scorecard=scorecard,
         provenance=provenance,
+        backtest_overfitting=overfitting,
     )
 
     dest_dir = Path(config.data.root) / "metadata" / "research"
@@ -1647,6 +1733,7 @@ def run_research(config: AppConfig) -> ResearchNotebook:
             if not str(r.get("name", "")).startswith("_")
         },
         "data_snooping": _data_snooping_section(ranking_blob.get("data_snooping")),
+        "backtest_overfitting": _overfitting_section(overfitting),
         "alpha": families["alpha"],
         "volatility": families["volatility"],
         "distribution": families["distribution"],

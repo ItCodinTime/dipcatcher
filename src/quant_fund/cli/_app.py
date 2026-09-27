@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
-from quant_fund.config import dump_resolved, load_config
-from quant_fund.config.models import AppConfig
 from quant_fund.hmm.cli import hmm_app
 from quant_fund.lightspeed.cli import ls_app
+from quant_fund.pit.cli import pit_app
 from quant_fund.quant_models.cli import qm_app
-from quant_fund.utils.logging import configure_logging
+
+if TYPE_CHECKING:
+    from quant_fund.config.models import AppConfig
 
 
 def format_data_label(*, synthetic: bool, data_source: str) -> str:
@@ -52,10 +54,14 @@ train_app = typer.Typer(help="Train a forecast family.")
 app.add_typer(train_app, name="train")
 app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
+app.add_typer(pit_app, name="pit")
 app.add_typer(qm_app, name="qm")
 
 
 def _cfg(config: Path) -> AppConfig:
+    from quant_fund.config import dump_resolved, load_config
+    from quant_fund.utils.logging import configure_logging
+
     cfg = load_config(config)
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")

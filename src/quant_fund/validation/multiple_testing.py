@@ -93,7 +93,14 @@ class TrialLedger:
         arr = np.asarray(returns, dtype=float).reshape(-1)
         if arr.size == 0 or not np.all(np.isfinite(arr)):
             return float("nan")
-        sr_info = sharpe_ratio(arr)
+        # A1 F1-class fix (PROOFCORE W4): use the PER-PERIOD Sharpe
+        # (irregular=True), matching the per-period observation count n.
+        # Previously sharpe_ratio(arr) defaulted to periods_per_year=252 and
+        # fed an ANNUALIZED SR into deflated_sharpe with a per-period n,
+        # inflating the z-stat by ~sqrt(252) ~ 15.9x. Diagnostic values
+        # change by design; see CHANGELOG.md. `self.sharpes` must likewise be
+        # per-period scores so var_sr shares the convention.
+        sr_info = sharpe_ratio(arr, irregular=True)
         sr = float(sr_info["sharpe"])
         n = int(sr_info["n"])
         if not math.isfinite(sr) or n < 2:

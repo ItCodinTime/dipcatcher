@@ -1,43 +1,12 @@
-from typing import TYPE_CHECKING
+"""Forecast-model package.
 
-if TYPE_CHECKING:
-    from quant_fund.lightspeed.ranker import NauticaRanker
+Heavy estimators (sklearn and optional torch backends) load on first use.
+Importing the package does not import them.
+"""
 
-from quant_fund.models.asset_pricing import IPCARanker, RandomFourierRanker, SDFRidgeRanker
-from quant_fund.models.base import ForecastModel, ModelMeta
-from quant_fund.models.cs_papers import (
-    AdaptiveLassoRanker,
-    ClassicRanker,
-    ClassicShortRanker,
-    CombinationRanker,
-    DoubleSelectionRanker,
-    FamaMacBethRanker,
-    FamaMacBethRidgeRanker,
-    FNWRanker,
-    GBRTRanker,
-    GXThreePassRanker,
-    ICWeightedCombinationRanker,
-    KraussRanker,
-    MSFECombinationRanker,
-    PCRRanker,
-    PLSRanker,
-    PrincipalPortfolioRanker,
-    ReversalRanker,
-    RPPCARanker,
-    SDFElasticNetRanker,
-    ThreePassFilterRanker,
-    TSMOMRanker,
-    VMERanker,
-)
-from quant_fund.models.deep_rl import PolicyGradientRanker
-from quant_fund.models.ranking import CompositeRanker, ElasticNetRanker, NeuralRanker, RidgeRanker
-from quant_fund.models.robinhood_plus import (
-    ENGINE_DISPLAY,
-    ENGINE_NAME,
-    MODEL_VERSION,
-    RobinhoodPlusEngine,
-    RobinhoodPlusPredictor,
-)
+from __future__ import annotations
+
+from importlib import import_module
 
 __all__ = [
     "AdaptiveLassoRanker",
@@ -80,16 +49,62 @@ __all__ = [
     "VMERanker",
 ]
 
+_EXPORTS: dict[str, str] = {
+    "AdaptiveLassoRanker": "quant_fund.models.cs_papers",
+    "ClassicRanker": "quant_fund.models.cs_papers",
+    "ClassicShortRanker": "quant_fund.models.cs_papers",
+    "CombinationRanker": "quant_fund.models.cs_papers",
+    "CompositeRanker": "quant_fund.models.ranking",
+    "DoubleSelectionRanker": "quant_fund.models.cs_papers",
+    "ENGINE_DISPLAY": "quant_fund.models.robinhood_plus",
+    "ENGINE_NAME": "quant_fund.models.robinhood_plus",
+    "ElasticNetRanker": "quant_fund.models.ranking",
+    "FamaMacBethRanker": "quant_fund.models.cs_papers",
+    "FamaMacBethRidgeRanker": "quant_fund.models.cs_papers",
+    "FNWRanker": "quant_fund.models.cs_papers",
+    "ForecastModel": "quant_fund.models.base",
+    "GBRTRanker": "quant_fund.models.cs_papers",
+    "GXThreePassRanker": "quant_fund.models.cs_papers",
+    "ICWeightedCombinationRanker": "quant_fund.models.cs_papers",
+    "IPCARanker": "quant_fund.models.asset_pricing",
+    "KraussRanker": "quant_fund.models.cs_papers",
+    "MSFECombinationRanker": "quant_fund.models.cs_papers",
+    "MODEL_VERSION": "quant_fund.models.robinhood_plus",
+    "ModelMeta": "quant_fund.models.base",
+    "NauticaRanker": "quant_fund.lightspeed.ranker",
+    "NeuralRanker": "quant_fund.models.ranking",
+    "PCRRanker": "quant_fund.models.cs_papers",
+    "PLSRanker": "quant_fund.models.cs_papers",
+    "PolicyGradientRanker": "quant_fund.models.deep_rl",
+    "PrincipalPortfolioRanker": "quant_fund.models.cs_papers",
+    "RPPCARanker": "quant_fund.models.cs_papers",
+    "RandomFourierRanker": "quant_fund.models.asset_pricing",
+    "ReversalRanker": "quant_fund.models.cs_papers",
+    "RidgeRanker": "quant_fund.models.ranking",
+    "RobinhoodPlusEngine": "quant_fund.models.robinhood_plus",
+    "RobinhoodPlusPredictor": "quant_fund.models.robinhood_plus",
+    "SDFElasticNetRanker": "quant_fund.models.cs_papers",
+    "SDFRidgeRanker": "quant_fund.models.asset_pricing",
+    "ThreePassFilterRanker": "quant_fund.models.cs_papers",
+    "TSMOMRanker": "quant_fund.models.cs_papers",
+    "VMERanker": "quant_fund.models.cs_papers",
+}
+
 
 def __getattr__(name: str) -> object:
-    """Load the Lightspeed adapter lazily to avoid a package cycle.
+    """Resolve a public model on first access.
 
-    ``lightspeed.ranker`` subclasses ``ClassicRanker`` from ``cs_papers``.
-    Importing it eagerly here makes ``import quant_fund.lightspeed`` recurse
-    through this package while ``cs_papers`` is still initializing.
+    ``NauticaRanker`` stays behind this hook: ``lightspeed.ranker`` subclasses
+    ``ClassicRanker``, so importing it while this package is still initializing
+    recurses.
     """
-    if name == "NauticaRanker":
-        from quant_fund.lightspeed.ranker import NauticaRanker
+    module_name = _EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value
 
-        return NauticaRanker
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+def __dir__() -> list[str]:
+    return sorted(set(__all__) | set(globals()))

@@ -11,10 +11,9 @@ serves a JavaScript proof-of-work wall.
 from __future__ import annotations
 
 import json
-import time
 import urllib.error
-import urllib.request
 from datetime import UTC, datetime
+from email.message import Message
 from pathlib import Path
 
 import polars as pl
@@ -26,6 +25,7 @@ from quant_fund.data.adapters.stooq import (
     session_close,
     write_file_lake,
 )
+from quant_fund.data.concurrent_io import IoError, call_with_retry, map_ordered, pooled_request
 
 SOURCE = "yahoo"
 REVISION = "YAHOO_VENDOR_ADJ"
@@ -45,6 +45,13 @@ YAHOO_UK: tuple[tuple[str, str], ...] = (
 )
 
 
+class _TerminalHTTP(Exception):
+    """HTTP status that must not be retried (caller still sees HTTPError)."""
+
+    def __init__(self, status: int) -> None:
+        self.status = status
+
+
 def fetch_yahoo_chart(
     symbol: str,
     *,
@@ -59,22 +66,40 @@ def fetch_yahoo_chart(
         start=int(start.timestamp()),
         end=int(end.timestamp()),
     )
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    attempt = 0
-    while True:
+
+    def once() -> dict[str, object]:
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — public chart JSON  # nosec B310
-                payload = json.loads(resp.read().decode("utf-8"))
-            break
-        except urllib.error.HTTPError as exc:
-            # Yahoo throttles bursts with 429; back off instead of dropping the name.
-            if exc.code not in (429, 503) or attempt >= retries:
-                raise
-            attempt += 1
-            time.sleep(backoff_s * attempt)
-    if not isinstance(payload, dict):
-        raise ValueError("yahoo chart payload is not an object")
-    return payload
+            status, body = pooled_request(
+                "GET",
+                url,
+                headers={"User-Agent": USER_AGENT},
+                timeout=timeout,
+                max_bytes=50_000_000,
+            )
+        except IoError as exc:
+            raise urllib.error.URLError(str(exc)) from exc
+        if status in (429, 500, 502, 503, 504):
+            raise urllib.error.HTTPError(url, status, f"HTTP {status}", Message(), None)
+        if status >= 400:
+            raise _TerminalHTTP(status)
+        payload = json.loads(body.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("yahoo chart payload is not an object")
+        return payload
+
+    try:
+        return call_with_retry(
+            once,
+            retries=retries,
+            backoff_s=backoff_s,
+            max_backoff_s=max(backoff_s, 8.0),
+            jitter=True,
+            retry_on=(urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError),
+        )
+    except _TerminalHTTP as exc:
+        raise urllib.error.HTTPError(
+            url, exc.status, f"HTTP {exc.status}", Message(), None
+        ) from None
 
 
 def parse_yahoo_chart(
@@ -147,12 +172,13 @@ def download_yahoo_universe(
     end: datetime | None = None,
     pause_s: float = 0.15,
     sectors: dict[str, str] | None = None,
+    max_workers: int = 4,
 ) -> dict[str, object]:
     start_ts = start or datetime(2019, 1, 2, tzinfo=UTC)
     end_ts = end or datetime.now(tz=UTC)
-    frames: list[pl.DataFrame] = []
-    errors: dict[str, str] = {}
-    for security_id, symbol in names:
+
+    def _one(pair: tuple[str, str]) -> tuple[str, pl.DataFrame | None, str | None]:
+        security_id, symbol = pair
         try:
             payload = fetch_yahoo_chart(symbol, start=start_ts, end=end_ts)
             frame = parse_yahoo_chart(payload, security_id=security_id, yahoo_symbol=symbol)
@@ -163,12 +189,23 @@ def download_yahoo_universe(
             ValueError,
             json.JSONDecodeError,
         ) as exc:
-            errors[security_id] = str(exc)
-            time.sleep(pause_s)
+            return security_id, None, str(exc)
+        return security_id, frame, None
+
+    fetched = map_ordered(
+        _one,
+        list(names),
+        max_workers=max_workers,
+        min_interval_s=pause_s,
+    )
+    frames: list[pl.DataFrame] = []
+    errors: dict[str, str] = {}
+    for security_id, frame, err in fetched:
+        if err is not None:
+            errors[security_id] = err
             continue
-        if not frame.is_empty():
+        if frame is not None and not frame.is_empty():
             frames.append(frame)
-        time.sleep(pause_s)
     if not frames:
         return {
             "status": "empty",
