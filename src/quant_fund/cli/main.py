@@ -146,9 +146,10 @@ def _rebind_command_functions() -> None:
         if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
             cmd.callback = facade[callback.__name__]
     group_callback = train_app.registered_callback
-    callback = getattr(group_callback, "callback", None)
-    if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
-        group_callback.callback = facade[callback.__name__]
+    if group_callback is not None:
+        callback = group_callback.callback
+        if isinstance(callback, types.FunctionType) and callback.__name__ in facade:
+            group_callback.callback = facade[callback.__name__]
 
 
 _publish_command_modules()
