@@ -17,15 +17,25 @@ class VolThresholdRegime(JoblibMixin):
     def __init__(self, q: float = 0.7) -> None:
         self.q = q
         self.cut = 0.0
+        self._fitted = False
 
     def fit(
         self, x: NDArray[np.float64], y: NDArray[np.float64] | None = None, **kwargs: Any
     ) -> VolThresholdRegime:
-        vol = x[:, 0]
-        self.cut = float(np.nanquantile(vol, self.q))
+        vol = np.asarray(x, dtype=float)[:, 0]
+        if not np.isfinite(vol).any():
+            raise ValueError("VolThresholdRegime requires a finite vol column")
+        with np.errstate(all="ignore"):
+            cut = float(np.nanquantile(vol, self.q))
+        if not np.isfinite(cut):
+            raise ValueError("VolThresholdRegime vol cut is not finite")
+        self.cut = cut
+        self._fitted = True
         return self
 
     def predict_proba(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if not self._fitted:
+            raise RuntimeError("VolThresholdRegime must be fitted before prediction")
         high = (x[:, 0] >= self.cut).astype(float)
         return np.column_stack([1.0 - high, high])
 
@@ -115,6 +125,8 @@ class GaussianHMMRegime(JoblibMixin):
         return self.predict_proba(x)
 
     def aic_bic(self, x: NDArray[np.float64]) -> dict[str, float]:
+        if self.model is None:
+            raise RuntimeError("GaussianHMMRegime must be fitted before scoring")
         xx = self.scaler.transform(np.where(np.isfinite(x), x, 0.0))
         n = xx.shape[0]
         k = self.n_states

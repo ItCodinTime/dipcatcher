@@ -83,7 +83,7 @@ def bns_jump_test(r: Array, alpha: float = 0.999) -> dict[str, float]:
     tpq = tripower_quarticity(v)
     n = v.size
     # Huang–Tauchen (2005) z: sqrt(n) * RJ / sqrt(c * max(1, TPQ/BV^2)),
-    # c = (pi/2)^2 + pi - 5 ~ 2.467.
+    # c = (pi/2)^2 + pi - 5 ~ 0.609.
     c = (math.pi / 2.0) ** 2 + math.pi - 5.0
     ratio = max(1.0, tpq / (bv * bv))
     rj = (rv - bv) / rv

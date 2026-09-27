@@ -77,6 +77,8 @@ def stoch_vol_fit(y: Array) -> dict[str, Array | float]:
     phi0 = np.arctanh(min(0.9, max(-0.9, float(np.corrcoef(z[:-1], z[1:])[0, 1]))))
     th0 = np.array([float(z.mean()), phi0, 0.3])
     res = optimize.minimize(nll, th0, method="Nelder-Mead", options={"maxiter": 4000})
+    if not np.isfinite(res.fun) or res.fun >= 1e11:
+        raise ValueError("stochastic-volatility QMLE failed to converge")
     mu = float(res.x[0])
     phi = float(np.tanh(res.x[1]))
     s_eta = float(res.x[2])
