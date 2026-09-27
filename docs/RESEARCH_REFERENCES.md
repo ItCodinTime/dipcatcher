@@ -1,6 +1,6 @@
 # Research references
 
-Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC.md`.
+Methodological anchors. Implementations may differ; deviations are in [MATH_SPEC.md](MATH_SPEC.md).
 
 ## Cross-sectional asset pricing / ML
 
@@ -244,7 +244,7 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 ## Repo honesty anchors
 
-- `docs/MATH_SPEC.md`, `docs/VALIDATION.md`, `docs/DATA_SOURCE_LABELS.md`
+- [MATH_SPEC.md](MATH_SPEC.md), [VALIDATION.md](VALIDATION.md), [DATA_SOURCE_LABELS.md](DATA_SOURCE_LABELS.md)
 - `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent` (no Sharpe/Sortino/Calmar/pnl/nav in **research family** headlines; paper `analytics_export` may nest equity/stress pnl/nav under `live_pnl_claim=false`)
 - Paper/validate: `would_promote_live=false` on SYNTHETIC; `live_pnl_claim=false`
 
@@ -542,3 +542,11 @@ Pairs selection - quant_fund.models.pairs:
 - Hoeffding (1963), *JASA* 58 — bounded e-values. Shiryaev (1963) — geometric-prior mixture.
 - Zaffran et al. (2022), ICML — AgACI (arXiv:2202.07282); Zaffran et al. (2022), NeurIPS — FACI aggregation under distribution shift. `models/agaci.py`.
 - Gibbs & Candès (2021), NeurIPS 34 — ACI; Koenker & Bassett (1978) — pinball; Cesa-Bianchi & Lugosi (2006) — EG updates; Gaillard, Stoltz & Van Erven (2014), COLT — ML-OGD.
+
+### SOTA canon wave 9 — distributional forecasts and change monitoring (2026-09-27)
+- Prinster, Han, Liu & Saria (2025). "WATCH: Adaptive Monitoring for AI Deployments via Weighted-Conformal Martingales." *ICML*, PMLR 267, arXiv:2505.04608. `metrics/watch.py`.
+- Tibshirani, Foygel Barber, Candès & Ramdas (2019), NeurIPS — conformal prediction under covariate shift (density-ratio weights).
+- Xu & Xie (2021), ICML, PMLR 139; Xu & Xie (2023), *IEEE TPAMI* 45(10) — EnbPI: ensemble bootstrap conformal intervals for time series, signed-residual width-minimising band (arXiv:2010.09107); Politis & Romano (1992) — circular block bootstrap. `models/enbpi.py`.
+- Meinshausen (2006), *JMLR* 7 — quantile regression forests (leaf-weight conditional CDF). `models/qrf.py`.
+- Duan et al. (2020), ICML — NGBoost: natural gradient boosting for probabilistic prediction (arXiv:1910.03225); Amari (1998) — natural gradient. `models/ngboost_lite.py`.
+- Vovk, Gammerman & Shafer (2005), *Algorithmic Learning in a Random World* — conformal test martingales; Vovk et al. (2021), COPA — Simple Jumper / retrain-on-alarm (arXiv:2012.14246); Fedorova et al. (2012), ICML — plug-in martingales; Ville (1939) — 1/α anytime alarm. `metrics/conformal_martingale.py`.

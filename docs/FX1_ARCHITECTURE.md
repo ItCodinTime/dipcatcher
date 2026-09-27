@@ -2,19 +2,21 @@
 
 ## The inversion in one paragraph
 
-fx-1 is the product: a quant LLM fine-tuned from Kimi K3 open weights.
-dipcatcher is the harness: the data engine, evaluation bench, and
-verification layer that builds and tests fx-1. The repo is organized so the
-model's *integrity is inherited from the harness's gates* — and then made
-externally verifiable through four uniqueness moves (masked eval, attested
-inference, corpus ledger, MRM dossier).
+fx-1 (`src/fx1`) is an in-tree sub-project: corpus construction, an eval
+bank, training plumbing, and a training plan. No trained checkpoint is in
+this repository. dipcatcher is the harness: the data engine, evaluation
+bench, and verification layer. The package is organized so a future training
+run would inherit its integrity from the harness gates, then expose that
+integrity through four specified moves (masked eval, attested inference,
+corpus ledger, MRM dossier). This page describes that plan and the code
+layout.
 
 ## Layer diagram
 
 ```
                          ┌─────────────────────────────┐
                          │  SERVING  (fx1.serve)        │
-                         │  hosted K3 · local fx-1      │
+                         │  hosted K3 · local seam      │
                          │  release signing · TEE/zkML  │
                          │  cited_complete (honesty+    │
                          │  provenance at inference)    │
@@ -45,16 +47,22 @@ inference, corpus ledger, MRM dossier).
 
 ## Trust flow (what an auditor should trace)
 
+No step below has produced a checkpoint in this repository. The sequence is
+the plan the package encodes.
+
 1. **Corpus example** → carries `receipt_sha256` of a harness artifact that
    passed `verify-research`; recorded in the hash-chained ledger.
 2. **Training run** → blocked until quality gates, contamination scan, frozen
    split, and a passing base eval exist; emits an immutable receipt.
-3. **Checkpoint** → ships only with a model card whose eval deltas beat the
-   base statistically (bootstrap CI + McNemar) and whose honesty gate passed
-   natively; signed release; optional TEE/zkML attestation.
-4. **Served answer** → honesty-validated at inference, provenance-footered;
-   refusal behaviors trained via DPO and red-teamed adversarially.
-5. **Regulatory dossier** → `fx1 mrm` compiles all of the above into the
+   `build_training_manifest` writes that receipt. It does not launch training.
+3. **Checkpoint** → none is in the tree. The ship gate would require a model
+   card whose eval deltas beat the base statistically (bootstrap CI +
+   McNemar) and whose honesty gate passed natively, plus a signed release
+   and optional TEE/zkML attestation.
+4. **Served answer** → the serve path is specified to validate honesty and
+   attach provenance. Refusal behavior is specified as DPO pairs and
+   red-team cases. Local generation is unimplemented.
+5. **Regulatory dossier** → `fx1 mrm` compiles the available evidence into the
    five-activity structure.
 
 ## Invariants (all enforced in tests)

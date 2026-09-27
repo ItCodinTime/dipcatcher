@@ -106,3 +106,31 @@ canon wave 8 (anytime-valid + calibration + multivariate scores, 2026-09-27):
     rates (Zaffran et al. 2022 ICML/NeurIPS).
   108 tests green (7+12+40+27+22); ruff + ruff-format + mypy clean on all 10 files.
   No commits. Research/infrastructure only — no live broker / vendor MD / live_pnl_claim.
+canon wave 9 (time-series conformal + distributional tree/boosting baselines, 2026-09-27):
+  branch devin/1790496175-wave9-conformal-ts-trees (PR).
+  - models/enbpi.py: EnbPI (Xu & Xie 2021/2023) — circular block bootstrap ensemble,
+    OOB/LOO residuals, sliding residual window, batch online predict_online.
+  - models/qrf.py: QuantileRegressionForest (Meinshausen 2006) — leaf-weight conditional
+    CDF from sklearn RandomForestRegressor, all-tree or OOB weights; quantiles/CDF/PIT.
+  - models/ngboost_lite.py: NGBoostGaussian (Duan et al. 2020) — natural-gradient Gaussian
+    boosting, logscore/CRPS objectives, scalar line search, validation early stopping.
+  - metrics/conformal_martingale.py: smoothed/weighted conformal p-values, power/mixture/
+    Simple-Jumper test martingales (Vovk et al. 2005/2021), Ville 1/alpha alarm,
+    WatchMonitor reset-on-alarm (WATCH-style).
+  39 focused tests green; ruff + ruff-format + mypy clean. SYNTHETIC-only assertions.
+  Review follow-up: EnbPI intervals are the paper's signed-residual
+  width-minimising band (not split-conformal absolute residuals). NGBoost
+  line search returns 0 when every positive step raises the loss, and
+  fit_info.searched_rounds counts the patience tail separately from the
+  kept learners. QRF training PIT uses trees and responses that exclude
+  the queried row. The shared CI baseline handles the sealed US snapshot.
+  No live broker / vendor MD / live_pnl_claim.
+
+canon wave 9 WATCH extension (2026-09-27):
+  - metrics/watch.py: parallel label and nearest-neighbor covariate martingales,
+    covariate adaptation, sticky shift diagnostics, Gaussian density-ratio plugin.
+  - Online p-values randomize ties. Conservative tied p-values with a two-sided
+    jumper caused certain false alarms on a constant exchangeable stream.
+  - The practical frozen calibration bag and estimated density ratios make
+    post-adaptation alarms diagnostic; no claimed anytime-valid guarantee.
+  16 focused WATCH tests green. SYNTHETIC-only assertions; research-only.
