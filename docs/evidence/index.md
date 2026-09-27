@@ -802,3 +802,35 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.00015650157077502314
   - 0.00012397308872545248
   - 0.00011681797278370385
+
+### `receipts/fast_replay_p42_conformance_20260927.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/fast_replay_p42_conformance_20260927.json | 8236a26489e9253dfcc1f3d879a2fd276c0023fb4d167c764c5330406ce950d8 | absent | no_embedded_seal | absent | absent | unspecified | absent | true | false |
+
+- `receipt`: fast_replay_p42_conformance
+- `generated`: 2026-09-27T00:00:00Z
+- `ultraplan_item`: P4.2
+- `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
+- `base_commit`: 7d2e01e4dba09d178ed46ad802950d2296d3eae6
+- `evidence`:
+  - tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type
+  - tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)
+  - tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload
+- `fixes`:
+  - engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)
+  - run_backtest_fast now carries the dispatcher's panel/completeness refusals itself — direct calls and fast=True share one fail-closed source of truth
+  - fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)
+- `gaps_refused`:
+  - allow_close_auction=True (close-auction order semantics not replicated)
+  - risk_overlay (mid-loop target scaling/flattening not replicated)
+  - GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 — refused rather than approximate)
+  - empty/duplicate-key/non-Datetime/mismatched-unit panels
+- `known_issue_out_of_lane`: aggregate_shortfall orders top_cost_names/by_side by group_by+sort on the aggregated value alone; exact ties keep polars hash-partition order — nondeterministic across executions even in the reference engine (observed on a generated workload with total_is ties of 0.0). Conformance suite canonicalizes element order in those two lists; fix belongs to execution/implementation_shortfall.py.
+- `rerun`: uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q
+- `research_only`: true
+- `disclaimer`:
+<!-- verbatim-receipt-text -->
+> All workloads are SYNTHETIC generated fixtures. This receipt attests engine conformance, not performance; NAV/fee/P&L numbers are not evidence of live-trading results.
+<!-- /verbatim-receipt-text -->
