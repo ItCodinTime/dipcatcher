@@ -38,6 +38,7 @@ from quant_fund.models.base import (
     save_joblib_artifact,
 )
 from quant_fund.models.calibration import ProbabilityCalibrator
+from quant_fund.models.conformal_dist import ConformalTDistribution
 from quant_fund.models.cs_papers import (
     DATED_FIT_RANKERS,
     DATED_PREDICT_RANKERS,
@@ -822,6 +823,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "gmm",
             "isotonic",
             "stack",
+            "conf_t",
             "fhs_skew",
         },
         "distribution",
@@ -851,6 +853,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
             "isotonic": IsotonicPitDistribution(taus),
             "stack": StackedDistribution(taus, seed=config.train.random_seed),
+            "conf_t": ConformalTDistribution(taus),
             "fhs_skew": FhsSkewDistribution(taus),
         }
         if model_name not in catalog:
