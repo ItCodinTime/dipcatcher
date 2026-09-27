@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -433,3 +434,24 @@ def test_refuse_append_onto_a_corrupt_log(tmp_path: Path) -> None:
     ledger.entries_path.write_bytes(ledger.entries_path.read_bytes().replace(b"{", b" ", 1))
     with pytest.raises(AuditError):
         ledger.append("paper_decision", {"simulation_only": True})
+
+
+@pytest.mark.parametrize("line", [b'{"payload":NaN}\n', b'{"payload":Infinity}\n'])
+def test_nonfinite_json_corruption_returns_failed_verdict(tmp_path: Path, line: bytes) -> None:
+    root = tmp_path / "malformed-ledger"
+    root.mkdir()
+    (root / "entries.jsonl").write_bytes(line)
+    report = verify_ledger(root)
+    assert report["valid"] is False
+    assert "invalid_json_value:0" in report["errors"]
+
+
+def test_unattested_extra_entry_field_is_rejected(tmp_path: Path) -> None:
+    ledger = AuditLedger(tmp_path / "ledger", sync=False)
+    ledger.append("risk_decision", {"accepted": True})
+    row = json.loads(ledger.entries_path.read_text())
+    row["unattested"] = "forged"
+    ledger.entries_path.write_bytes(canonical_json_bytes(row) + b"\n")
+    report = verify_ledger(ledger.root)
+    assert report["valid"] is False
+    assert "unexpected_entry_fields:0" in report["errors"]

@@ -115,17 +115,17 @@
   },
   "code_sha256": {
     "net_tournament.py": "02d3a3d045d7a8f97d73fed0b0c1d3c04a4a7810d0b874d57e8833e8b8e1d83b",
-    "net_replay.py": "080b3886f023d858c008da0cc1bd1648e87fae833d207088f64aedf59f7e0f9a",
-    "cost_allocation.py": "058afffc7e6943c74710fedad694db383560331bb174387b0e6e1e551aa3a186",
+    "net_replay.py": "93a15a129fdfdba236997d67700d03118a565692a2bd2e327a83dcfba5dc7882",
+    "cost_allocation.py": "e8aa8c29a90f197ae342f376a66d5f9d97dfab77309190cd7939ef1bff49fd14",
     "real_benchmark.py": "b20a14567d835744e13918ef7f04ae7f20d597207cb99bb9b9ca651204ea71d2",
-    "inference.py": "45c069f82381fdb03d84f2d3dd63779a4d796d82dc7dfa4e8fe6e1821328961b",
+    "inference.py": "9380482ea2b71bca04276a3c3d87a881f6806dce11687cc401373117b337f31a",
     "snooping.py": "4b33158fee886e09f6f2cdae861768541990c11768bcb189dd44dcbbdfad58fa"
   },
   "runtime": {
     "python": "3.12.14",
     "numpy": "2.5.3",
     "polars": "1.44.2",
-    "cvxpy": "1.9.3",
+    "cvxpy": "1.9.2",
     "clarabel": "0.11.1",
     "scipy": "1.18.1"
   },
@@ -177,5 +177,5 @@
     "Allocation return/uncertainty inputs are unvalidated proxies; pair ablations are descriptive.",
     "Impact stress changes realized costs; allocation planning coefficients stay frozen."
   ],
-  "receipt_sha256": "c6b14d526fb53e0a04f74c3f55475bcc8ae6d5382e0b70d8b429eff53e7f0786"
+  "receipt_sha256": "4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13"
 }
