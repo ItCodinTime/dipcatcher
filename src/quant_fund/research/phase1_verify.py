@@ -144,8 +144,15 @@ _BENCHMARK_RUNTIME_KEYS = ("python", "numpy", "polars")
 _TOURNAMENT_RUNTIME_KEYS = (*_BENCHMARK_RUNTIME_KEYS, "cvxpy", "clarabel", "scipy")
 
 
-def _committed_runtime(revision: str, errors: list[str]) -> dict[str, str]:
-    """Read the dependency versions and Python series frozen at the indexed commit."""
+def _committed_runtime(revision: str, errors: list[str]) -> dict[str, str | frozenset[str]]:
+    """Read the dependency versions and Python series frozen at the indexed commit.
+
+    uv.lock may lock a package at several versions under different platform
+    markers (e.g. numpy 2.3.5 darwin-x86_64 vs 2.5.3 elsewhere). Each required
+    name therefore maps to the SET of its locked versions; ``_runtime_matches``
+    accepts a recorded version when it is one of them — still fail-closed, a
+    version absent from the lock never passes.
+    """
     root = Path(__file__).resolve().parents[3]
     try:
         lock_bytes = subprocess.run(
@@ -172,17 +179,22 @@ def _committed_runtime(revision: str, errors: list[str]) -> dict[str, str]:
     if not isinstance(packages, list):
         errors.append("index: historical uv.lock lacks packages")
         return {}
-    runtime = {"python": python_series}
+    runtime: dict[str, str | frozenset[str]] = {"python": python_series}
     for package in packages:
         if not isinstance(package, dict):
             errors.append("index: invalid historical locked package")
             return {}
         name, version = package.get("name"), package.get("version")
         if name in _TOURNAMENT_RUNTIME_KEYS[1:]:
-            if name in runtime or not isinstance(version, str) or not version:
-                errors.append(f"index: invalid or duplicate historical locked package {name}")
+            if not isinstance(version, str) or not version:
+                errors.append(f"index: invalid historical locked package {name}")
                 return {}
-            runtime[name] = version
+            existing = runtime.get(name)
+            runtime[name] = (
+                frozenset({version})
+                if not isinstance(existing, frozenset)
+                else existing | {version}
+            )
     if set(runtime) != set(_TOURNAMENT_RUNTIME_KEYS):
         errors.append("index: historical uv.lock lacks required runtime packages")
         return {}
@@ -208,7 +220,11 @@ def _runtime_matches(recorded: Any, expected: Mapping[str, object], *, historica
         )
     ):
         return False
-    return all(recorded[key] == value for key, value in expected.items() if key != "python")
+    return all(
+        (recorded[key] in value if isinstance(value, frozenset) else recorded[key] == value)
+        for key, value in expected.items()
+        if key != "python"
+    )
 
 
 def _honesty(value: dict[str, Any], errors: list[str], label: str, *, report: bool) -> None:
@@ -237,7 +253,7 @@ def _benchmark_manifest(
     errors: list[str],
     *,
     committed_code_hashes: dict[str, str] | None = None,
-    committed_runtime: dict[str, str] | None = None,
+    committed_runtime: dict[str, str | frozenset[str]] | None = None,
 ) -> dict[str, Any] | None:
     manifest = _receipt(run_dir / "manifest.json", errors)
     if manifest is None:
@@ -371,7 +387,7 @@ def _benchmark(
     errors: list[str],
     *,
     committed_code_hashes: dict[str, str] | None = None,
-    committed_runtime: dict[str, str] | None = None,
+    committed_runtime: dict[str, str | frozenset[str]] | None = None,
 ) -> dict[str, Any] | None:
     manifest = _benchmark_manifest(
         run_dir,
@@ -390,7 +406,7 @@ def _tournament_manifest(
     errors: list[str],
     *,
     committed_code_hashes: dict[str, str] | None = None,
-    committed_runtime: dict[str, str] | None = None,
+    committed_runtime: dict[str, str | frozenset[str]] | None = None,
 ) -> dict[str, Any] | None:
     manifest = _receipt(run_dir / "manifest.json", errors)
     if manifest is None:
@@ -665,7 +681,7 @@ def verify_phase1_run(
     run_dir: Path,
     *,
     committed_code_hashes: dict[str, str] | None = None,
-    committed_runtime: dict[str, str] | None = None,
+    committed_runtime: dict[str, str | frozenset[str]] | None = None,
 ) -> dict[str, Any]:
     """Verify a completed run or a tournament blocked by frozen validation."""
     run_dir = Path(run_dir)
