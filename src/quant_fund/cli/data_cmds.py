@@ -6,9 +6,6 @@ from pathlib import Path
 
 import typer
 
-from quant_fund.pipeline.doctor import doctor as run_doctor
-from quant_fund.utils.logging import get_logger
-
 from ._app import (
     _cfg,
     _collect_param_value,
@@ -18,6 +15,8 @@ from ._app import (
 
 @app.command()
 def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
+    from quant_fund.pipeline.doctor import doctor as run_doctor
+
     info = run_doctor(str(config))
     for k, v in info.items():
         typer.echo(f"{k}: {v}")
@@ -61,6 +60,7 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
 @app.command()
 def ingest(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     from quant_fund.data.ingest import ingest as do_ingest
+    from quant_fund.utils.logging import get_logger
 
     cfg = _cfg(config)
     paths = do_ingest(cfg)

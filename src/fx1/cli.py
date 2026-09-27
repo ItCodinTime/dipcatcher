@@ -12,11 +12,6 @@ from pathlib import Path
 
 import typer
 
-from fx1.data import build_corpus
-from fx1.eval import run_suite
-from fx1.harness import Harness
-from fx1.train import TrainConfig, build_training_manifest
-
 app = typer.Typer(
     name="fx1",
     help="fx-1 — the quant LLM. dipcatcher is the harness that builds, evaluates, and verifies it.",
@@ -60,6 +55,8 @@ def corpus_build(
     out: Path = typer.Option(Path("data/fx1/corpus.jsonl"), help="Output JSONL."),
 ) -> None:
     """Build the fx-1 SFT corpus from gate-passed dipcatcher receipts."""
+    from fx1.data import build_corpus
+
     stats = build_corpus(list(receipts_dir), out)
     typer.echo(json.dumps(stats, indent=2))
 
@@ -87,6 +84,8 @@ def train_manifest(
 ) -> None:
     """Validate the run contract (eval-before-train, provenance, cost) and
     write an immutable training manifest."""
+    from fx1.train import TrainConfig, build_training_manifest
+
     cfg = TrainConfig.model_validate_json(config.read_text(encoding="utf-8"))
     manifest = build_training_manifest(cfg, out)
     typer.echo(json.dumps({"run_name": manifest["run_name"], "out": str(out)}))
@@ -99,7 +98,7 @@ def harness_list(
     ),
 ) -> None:
     """List the lab commands fx-1 may invoke through the harness."""
-    from fx1.harness import HarnessRole
+    from fx1.harness import Harness, HarnessRole
 
     role_filter = HarnessRole(role) if role else None
     for cmd in Harness().list_commands(role=role_filter):
@@ -111,6 +110,8 @@ def harness_run(
     name: str = typer.Argument(..., help="Registered harness command name."),
 ) -> None:
     """Run a registered dipcatcher harness command (fail-closed registry)."""
+    from fx1.harness import Harness
+
     result = Harness().run(name)
     typer.echo(result.stdout)
     if result.stderr:
@@ -125,7 +126,7 @@ def eval_bank(
     out: Path = typer.Option(Path("data/fx1/eval.json")),
 ) -> None:
     """Run the built-in eval task bank against an fx-1 backend."""
-    from fx1.eval import DEFAULT_BANK
+    from fx1.eval import DEFAULT_BANK, run_suite
     from fx1.serve import get_backend
 
     if backend == "local_fx1":
@@ -389,11 +390,12 @@ def dipbench_demo(
 @sources_app.command("list")
 def sources_list() -> None:
     """List every registered datasource with its live availability probe."""
-    from fx1.data.sources.adapters import build_adapter
     from fx1.data.sources.registry import list_sources
+    from fx1.data.sources.router import probe_names
 
-    for spec in list_sources():
-        probe = build_adapter(spec).probe()
+    specs = list_sources()
+    probes = probe_names([spec.name for spec in specs])
+    for spec, probe in zip(specs, probes, strict=True):
         typer.echo(
             f"{spec.name:<16} [{probe.status.value:<17}] "
             f"{spec.display} — {','.join(spec.markets)} / "
@@ -406,13 +408,14 @@ def sources_probe(
     name: str | None = typer.Argument(None, help="Source name (default: all)."),
 ) -> None:
     """Probe availability (script + credentials) without leaking secrets."""
-    from fx1.data.sources.adapters import build_adapter
     from fx1.data.sources.registry import get_spec, list_sources, roots_status
+    from fx1.data.sources.router import probe_names
 
     specs = [get_spec(name)] if name else list_sources()
+    probes = probe_names([spec.name for spec in specs])
     report = {
         "roots": roots_status(),
-        "probes": [build_adapter(spec).probe().model_dump() for spec in specs],
+        "probes": [probe.model_dump() for probe in probes],
     }
     typer.echo(json.dumps(report, indent=2))
 

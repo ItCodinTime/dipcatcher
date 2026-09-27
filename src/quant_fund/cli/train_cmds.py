@@ -6,8 +6,6 @@ from pathlib import Path
 
 import typer
 
-from quant_fund.pipeline.train import train_family
-
 from ._app import (
     _cfg,
     train_app,
@@ -28,6 +26,8 @@ def train_callback(
 
 
 def _train(family: str, config: Path, model: str | None) -> None:
+    from quant_fund.pipeline.train import train_family
+
     cfg = _cfg(config)
     result = train_family(cfg, family, model)
     typer.echo(result)
