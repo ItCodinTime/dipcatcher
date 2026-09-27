@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -28,7 +29,7 @@ def _joblib_artifact_digest(path: Path) -> str:
     return hash_file(path)
 
 
-def _load_ranker_cached(config: AppConfig):
+def _load_ranker_cached(config: AppConfig) -> Any:
     """Load the strongest available supervised ranker artifact.
 
     Candidate artifacts are searched in priority order; cache identity is
@@ -63,7 +64,7 @@ def _load_ranker_cached(config: AppConfig):
     key = (str(rank_path.resolve()), digest)
     cached = _RANKER_CACHE.get(key)
     if cached is not None:
-        return cached
+        return cast(Any, cached)
     # The artifact name is a routing hint only: the serialized object may be
     # any ranking implementation. JoblibMixin.load retains checksum
     # verification while avoiding a Ridge-only type assertion.
@@ -75,7 +76,7 @@ def _load_ranker_cached(config: AppConfig):
     return model
 
 
-def _load_rl_cached(config: AppConfig):
+def _load_rl_cached(config: AppConfig) -> tuple[Any, list[str], str] | None:
     """Load the strongest available persisted RL policy and feature contract."""
     root = Path(config.data.root) / "metadata"
     path = next(
@@ -97,7 +98,7 @@ def _load_rl_cached(config: AppConfig):
     key = (str(path.resolve()), path.stat().st_mtime)
     cached = _RL_POLICY_CACHE.get(key)
     if cached is not None:
-        return cached
+        return cast(tuple[Any, list[str], str], cached)
     artifact = load_joblib_artifact(path)
     if not isinstance(artifact, dict) or "policy" not in artifact or "features" not in artifact:
         raise ValueError("RL artifact is malformed: expected policy and features")

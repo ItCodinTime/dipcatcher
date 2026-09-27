@@ -46,7 +46,7 @@ class StaleValuationError(RuntimeError):
 class BacktestResult:
     equity: pl.DataFrame
     fills: pl.DataFrame
-    metrics: dict[str, float | str | int | bool | dict]
+    metrics: dict[str, float | str | int | bool | dict[str, Any]]
     frictionless: bool
     source_note: str
 
@@ -257,7 +257,7 @@ def _run_backtest_event_loop(
     # Pre-index rows by timestamp once: per-date frame scans inside the loop
     # are O(rows x dates) and dominate wall time on wide books. Dict lookup
     # keeps identical iteration order (input row order preserved per date).
-    day_rows_map: dict[datetime, list[dict]] = {}
+    day_rows_map: dict[datetime, list[dict[str, Any]]] = {}
     for row in px.iter_rows(named=True):
         day_rows_map.setdefault(row["event_time"], []).append(row)
     # The panel-level validation above already rejects duplicate
@@ -270,8 +270,8 @@ def _run_backtest_event_loop(
         )
     dates = sorted(day_rows_map)
     book = Book(cash=initial_nav)
-    navs: list[dict] = []
-    fill_rows: list[dict] = []
+    navs: list[dict[str, Any]] = []
+    fill_rows: list[dict[str, Any]] = []
     cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
     last_marks: dict[str, float] = {}
     mark_ages: dict[str, int] = {}
@@ -526,8 +526,8 @@ def _run_backtest_event_loop(
 
 def _build_result(
     *,
-    navs: list[dict],
-    fill_rows: list[dict],
+    navs: list[dict[str, Any]],
+    fill_rows: list[dict[str, Any]],
     cost_sum: dict[str, float],
     reject_count: int,
     cash_reject_count: int,
@@ -593,7 +593,7 @@ def _build_result(
                 "kill_switch_halts": halt_count,
             },
         )
-        metrics: dict[str, float | str | int | bool | dict] = {
+        metrics: dict[str, float | str | int | bool | dict[str, Any]] = {
             "total_return": navs_list[-1] / float(initial_nav) - 1.0,
             "sharpe": sr["sharpe"],
             "n": sr["n"],

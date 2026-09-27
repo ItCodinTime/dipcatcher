@@ -49,6 +49,8 @@ jobs:
         run: uv run mypy src/quant_fund
       - name: Mypy strict allowlist
         run: uv run python scripts/check_mypy_strict_allowlist.py
+      - name: Mypy public API (strict)
+        run: uv run mypy --strict --follow-imports=silent src/quant_fund/__init__.py src/quant_fund/public.py
       - name: Static security analysis
         run: uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
 
