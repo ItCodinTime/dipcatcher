@@ -29,6 +29,21 @@ _BINANCE_INTERVALS = frozenset(
 )
 
 
+def _require_kline_rows(payload: Any) -> list[list[Any]]:
+    """Validate the kline row shape and timestamp fields before use."""
+    if not isinstance(payload, list):
+        raise SourceError("Binance klines response must be a list")
+    for item in payload:
+        if not (isinstance(item, list) and len(item) >= 7):
+            raise SourceError("malformed Binance kline row")
+        try:
+            int(item[0])
+            int(item[6])
+        except (TypeError, ValueError) as exc:
+            raise SourceError("malformed Binance kline row") from exc
+    return payload
+
+
 def _paginated_klines(
     client: Any,
     endpoint: str,
@@ -76,8 +91,7 @@ def _paginated_klines(
                 },
             )
         )
-        if not isinstance(payload, list):
-            raise SourceError("Binance klines response must be a list")
+        payload = _require_kline_rows(payload)
         if not payload:
             break
         rows.extend(payload)
@@ -134,10 +148,7 @@ class BinancePublicDataSource(SourceAdapter):
                 pause_seconds=pause_seconds,
                 earliest_ms=SPOT_EARLIEST_MS,
             )
-        if not isinstance(payload, list):
-            raise SourceError("Binance klines response must be a list")
-        if not all(isinstance(item, list) and len(item) >= 7 for item in payload):
-            raise SourceError("malformed Binance kline row")
+        payload = _require_kline_rows(payload)
         now_ms = int(utc_now().timestamp() * 1000)
         rows = [
             {
@@ -224,8 +235,6 @@ class BinanceUsdtmPerpSource(SourceAdapter):
             pause_seconds=pause_seconds,
             earliest_ms=PERP_EARLIEST_MS,
         )
-        if payload and not all(isinstance(item, list) and len(item) >= 7 for item in payload):
-            raise SourceError("malformed Binance perp kline row")
         rows = [
             {
                 "security_id": symbol.upper(),
@@ -579,9 +588,11 @@ class TreasurySource(SourceAdapter):
             [
                 {
                     "security_id": str(row.get("security_type", endpoint)),
-                    "event_time": row[date_key],
+                    # Ragged later rows surface as a null timestamp, which
+                    # normalize_observations rejects — never silently skipped.
+                    "event_time": row.get(date_key),
                     "available_time": utc_now(),
-                    "value": row[value_key],
+                    "value": row.get(value_key),
                 }
                 for row in rows
             ],
@@ -619,9 +630,9 @@ class CftcSource(SourceAdapter):
             [
                 {
                     "security_id": row.get("market_and_exchange_names", self.name),
-                    "event_time": row[date_key],
+                    "event_time": row.get(date_key),
                     "available_time": utc_now(),
-                    "value": row[value_key],
+                    "value": row.get(value_key),
                 }
                 for row in payload
             ],
@@ -648,9 +659,9 @@ class FinaSource(SourceAdapter):
             [
                 {
                     "security_id": row.get("symbol", self.name),
-                    "event_time": row[date_key],
+                    "event_time": row.get(date_key),
                     "available_time": utc_now(),
-                    "value": row[value_key],
+                    "value": row.get(value_key),
                 }
                 for row in rows
             ],
@@ -671,7 +682,7 @@ class WorldBankSource(SourceAdapter):
                 {"format": "json", "per_page": page_size},
             )
         )
-        if not isinstance(payload, list) or len(payload) < 2:
+        if not isinstance(payload, list) or len(payload) < 2 or not isinstance(payload[1], list):
             raise SourceError("World Bank payload has unexpected shape")
         return normalize_observations(
             [

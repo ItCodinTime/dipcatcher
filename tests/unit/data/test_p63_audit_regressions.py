@@ -27,6 +27,8 @@ from quant_fund.data.sources.adapters import (
     BinancePublicDataSource,
     FredSource,
     SecEdgarSource,
+    TreasurySource,
+    WorldBankSource,
 )
 from quant_fund.data.sources.base import HttpClient, SourceError, pit_frame
 from quant_fund.data.universe import build_membership_panel, membership_asof
@@ -224,6 +226,36 @@ def test_spot_paginated_fetch_uses_spot_floor_not_perp() -> None:
         symbol="BTCUSDT", interval="1d", max_pages=3, pause_seconds=0.0
     )
     assert f"startTime={SPOT_EARLIEST_MS}" in client.urls[0]
+
+
+def test_kline_non_numeric_timestamp_fails_closed() -> None:
+    """A string in the open/close-time slots raised a bare ValueError before."""
+    bad = [1_500_000_000_000, "1", "2", "0.5", "1.5", "10", "not-a-ts"]
+    with pytest.raises(SourceError, match="malformed"):
+        BinancePublicDataSource(client=_SeqClient([[bad]])).fetch(
+            symbol="BTCUSDT", interval="1d", max_pages=2, pause_seconds=0.0
+        )
+    # Legacy single-page path validates identically.
+    with pytest.raises(SourceError, match="malformed"):
+        BinancePublicDataSource(client=_SeqClient([[bad]])).fetch(symbol="BTCUSDT", interval="1d")
+
+
+def test_treasury_ragged_row_fails_closed() -> None:
+    """First row has record_date; a later row missing it must not KeyError."""
+    payload = {
+        "data": [
+            {"record_date": "2020-01-01", "avg_interest_rate_amt": "1.5"},
+            {"avg_interest_rate_amt": "2.0"},  # ragged: no record_date
+        ]
+    }
+    with pytest.raises(SourceError):
+        TreasurySource(client=_SeqClient([payload])).fetch()
+
+
+def test_worldbank_payload_second_element_must_be_list() -> None:
+    """payload[1] used to be iterated unchecked -> raw TypeError/AttributeError."""
+    with pytest.raises(SourceError, match="unexpected shape"):
+        WorldBankSource(client=_SeqClient([[{"page": 1}, {"not": "a list"}]])).fetch()
 
 
 def test_perp_universe_missing_onboard_date_fails_closed() -> None:
