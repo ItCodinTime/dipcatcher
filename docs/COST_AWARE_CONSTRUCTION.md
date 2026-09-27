@@ -22,7 +22,7 @@ new frozen run has selected a validation candidate.
 
 ## Run a matched comparison
 
-After preparing the benchmark manifest as described in REAL_DATA_BENCHMARK.md:
+After preparing the benchmark manifest as described in [REAL_DATA_BENCHMARK.md](REAL_DATA_BENCHMARK.md):
 
 ```bash
 PYTHONPATH=src python -m quant_fund.research.net_tournament prepare \

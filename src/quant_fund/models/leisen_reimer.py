@@ -19,7 +19,7 @@ import numpy as np
 def _peizer_pratt(z: float, n: int) -> float:
     """Peizer-Pratt method-2 inversion of the normal CDF onto (0, 1)."""
     c = z / (n + 1.0 / 3.0 + 0.1 / (n + 1.0))
-    return 0.5 + np.sign(z) * 0.5 * np.sqrt(1.0 - np.exp(-(c**2) * (n + 1.0 / 6.0)))
+    return float(0.5 + np.sign(z) * 0.5 * np.sqrt(1.0 - np.exp(-(c**2) * (n + 1.0 / 6.0))))
 
 
 def leisen_reimer(

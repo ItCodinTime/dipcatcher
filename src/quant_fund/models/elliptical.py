@@ -43,7 +43,7 @@ def mv_t_logpdf(x: Array, mu: Array, sigma: Array, nu: float) -> Array:
     const = (
         gammaln((nu + d) / 2.0) - gammaln(nu / 2.0) - 0.5 * d * np.log(nu * np.pi) - 0.5 * logdet
     )
-    return const - 0.5 * (nu + d) * np.log1p(maha / nu)
+    return np.asarray(const - 0.5 * (nu + d) * np.log1p(maha / nu), dtype=float)
 
 
 def mv_t_fit(

@@ -130,4 +130,4 @@ def dcc_forecast(fit: dict[str, Array | float]) -> Array:
     a, b = float(fit["a"]), float(fit["b"])
     q_next = (1 - a - b) * qbar + a * np.outer(z[-1], z[-1]) + b * q_last
     d = np.sqrt(np.maximum(np.diag(q_next), 1e-14))
-    return q_next / np.outer(d, d)
+    return np.asarray(q_next / np.outer(d, d), dtype=float)

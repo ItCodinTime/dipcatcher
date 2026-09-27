@@ -9,6 +9,7 @@ price surface in ``validate_greeks``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -127,7 +128,7 @@ def scaled_greeks(
     return out
 
 
-def _fd(f, x: float, h: float, order: int = 1) -> float:
+def _fd(f: Callable[[float], float], x: float, h: float, order: int = 1) -> float:
     if order == 1:
         return (f(x + h) - f(x - h)) / (2 * h)
     if order == 2:

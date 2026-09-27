@@ -22,7 +22,7 @@ Array = NDArray[np.float64]
 
 
 def _soft(x: float, a: float) -> float:
-    return np.sign(x) * max(abs(x) - a, 0.0)
+    return float(np.sign(x) * max(abs(x) - a, 0.0))
 
 
 def glasso(
@@ -92,7 +92,7 @@ def partial_correlation(theta: Array) -> Array:
     d = np.sqrt(np.maximum(np.diag(th), 1e-14))
     p = -th / np.outer(d, d)
     np.fill_diagonal(p, 1.0)
-    return np.clip(p, -1.0, 1.0)
+    return np.asarray(np.clip(p, -1.0, 1.0), dtype=float)
 
 
 def select_rho_bic(returns: Array, rhos: Array) -> dict[str, Array | float]:

@@ -27,7 +27,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -86,7 +86,7 @@ def load_slate(path: str | Path = SLATE_PATH) -> tuple[dict[str, Any], str, str]
 def _lane_spec(slate: dict[str, Any], lane: int) -> dict[str, Any]:
     for spec in slate["lanes"]:
         if int(spec["lane"]) == int(lane):
-            return spec
+            return cast(dict[str, Any], spec)
     raise ValueError(f"lane {lane} is not in the frozen slate")
 
 
@@ -394,7 +394,7 @@ def run_lane1_calibration(
     meta = Path(cfg.data.root) / "metadata" / receipt_path.name
     meta.write_text(payload, encoding="utf-8")
     receipt["calibration_pass"] = bool(calibration.get("pass"))
-    return receipt
+    return cast(dict[str, Any], receipt)
 
 
 def run_lane2(

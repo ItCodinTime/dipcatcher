@@ -61,7 +61,7 @@ def skew_t_cdf(x: Array, nu: float, lam: float, mu: float = 0.0, sigma: float = 
     hi = (1.0 - lam) * 0.5 + (1.0 + lam) * (
         student_t.cdf(scale * (b * z + a) / (1.0 + lam), nu) - 0.5
     )
-    return np.where(z < -a / b, lo, hi)
+    return np.asarray(np.where(z < -a / b, lo, hi), dtype=float)
 
 
 def skew_t_ppf(p: float, nu: float, lam: float, mu: float = 0.0, sigma: float = 1.0) -> float:

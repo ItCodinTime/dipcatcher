@@ -30,7 +30,7 @@ def conditional_default_prob(pd: Array, rho: float, m: float) -> Array:
     if not 0.0 < rho < 1.0:
         raise ValueError("rho must be in (0, 1)")
     c = norm.ppf(np.asarray(pd, dtype=float))
-    return norm.cdf((c - np.sqrt(rho) * m) / np.sqrt(1.0 - rho))
+    return np.asarray(norm.cdf((c - np.sqrt(rho) * m) / np.sqrt(1.0 - rho)), dtype=float)
 
 
 def _conditional_pmf(pvec: Array) -> Array:

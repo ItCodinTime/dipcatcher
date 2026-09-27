@@ -23,7 +23,7 @@ def _silverman(x: Array) -> float:
     sd = float(np.std(x))
     iqr = float(np.subtract(*np.percentile(x, [75, 25])))
     spread = min(sd, iqr / 1.34) if iqr > 0 else sd
-    return max(0.9 * spread * n ** (-0.2), 1e-6)
+    return float(max(0.9 * spread * n ** (-0.2), 1e-6))
 
 
 def _local_linear(x: Array, y: Array, h: float) -> Array:

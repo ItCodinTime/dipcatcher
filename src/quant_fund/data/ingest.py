@@ -9,6 +9,7 @@ from pathlib import Path
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.adapters.hf_ohlcv_1m import HfOhlcv1mProvider
 from quant_fund.data.adapters.parquet import ParquetMarketProvider
 from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
 from quant_fund.data.corporate_actions import adjust_prices, apply_listing_actions
@@ -69,11 +70,12 @@ class PublicMarketProvider:
 
 def make_provider(
     config: AppConfig,
-) -> SyntheticMarketProvider | ParquetMarketProvider | PublicMarketProvider:
+) -> SyntheticMarketProvider | ParquetMarketProvider | PublicMarketProvider | HfOhlcv1mProvider:
     """Route config.data.source to a market provider (fail-closed).
 
     Allowed: ``synthetic`` → SyntheticMarketProvider;
-    ``file`` / ``parquet`` → ParquetMarketProvider.
+    ``file`` / ``parquet`` → ParquetMarketProvider;
+    ``hf_ohlcv_1m`` → local month cache (no download).
     Unknown sources raise ValueError (defense in depth beyond DataConfig).
     """
     source = str(config.data.source).strip().lower()
@@ -88,6 +90,15 @@ def make_provider(
     if source in {"file", "parquet"}:
         root = config.data.parquet_path or (Path(config.data.root) / "raw")
         return ParquetMarketProvider(Path(root))
+    if source == "hf_ohlcv_1m":
+        cache = config.data.source_path or (Path(config.data.root) / "hf_ohlcv_1m")
+        return HfOhlcv1mProvider(
+            cache,
+            symbols=config.data.source_symbol,
+            interval=config.data.source_interval,
+            allow_download=False,
+            max_months=24,
+        )
     from quant_fund.data.sources.registry import SOURCE_REGISTRY
 
     if source in SOURCE_REGISTRY:

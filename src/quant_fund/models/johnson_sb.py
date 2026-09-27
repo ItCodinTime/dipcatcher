@@ -45,7 +45,7 @@ def johnson_sb_cdf(x: Array, gamma: float, delta: float, xi: float, lam: float) 
     if delta <= 0.0 or lam <= 0.0:
         raise ValueError("delta and lambda must be positive")
     u = np.clip((np.asarray(x, dtype=float) - xi) / lam, 1e-12, 1.0 - 1e-12)
-    return norm.cdf(gamma + delta * np.log(u / (1.0 - u)))
+    return np.asarray(norm.cdf(gamma + delta * np.log(u / (1.0 - u))), dtype=float)
 
 
 def johnson_sb_ppf(p: float, gamma: float, delta: float, xi: float, lam: float) -> float:

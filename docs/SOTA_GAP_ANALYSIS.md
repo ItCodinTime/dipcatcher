@@ -1248,7 +1248,7 @@ versioned as the v2 supervised input contract.
 
 - **`/ready` missing-manifest fail-closed harden:** `resolve_allowed_config_path` always `.resolve()`s `_CONFIGS_DIR` before `relative_to` (macOS `/var`→`/private/var` flake → spurious 400 without `checks`); test isolates repo lake, asserts `report["data_manifest"]=="missing"`, plus unresolved-configs-dir regression
 - **Dual honesty catalogs:** research family/scorecard blobs keep `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent`; paper `analytics_export` may nest equity `nav_*` / stress `*_pnl` diagnostics but `validate_analytics_export` fails closed on `live_pnl_claim=true`
-- Docstrings on `research/catalog.py` + `ANALYTICS_SCHEMA_KEYS` / `validate_analytics_export`; thin proof `tests/unit/test_honesty_catalog_dual.py`; INSTITUTIONAL_READINESS dual-catalog note
+- Docstrings on `research/catalog/` + `ANALYTICS_SCHEMA_KEYS` / `validate_analytics_export`; thin proof `tests/unit/test_honesty_catalog_dual.py`; INSTITUTIONAL_READINESS dual-catalog note
 - MATH_SPEC + RESEARCH_CENTRE dual-catalog note; conformal residual / OT / PERF **skipped** (no concrete gap / prefer skip)
 - No fake live Sharpe / live capital claim
 

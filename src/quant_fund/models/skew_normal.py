@@ -31,7 +31,7 @@ _MAX_SKEW = 0.995  # attainable |skewness| upper bound for the skew-normal
 
 
 def _delta(alpha: float) -> float:
-    return alpha / np.sqrt(1.0 + alpha * alpha)
+    return float(alpha / np.sqrt(1.0 + alpha * alpha))
 
 
 def skew_normal_pdf(x: Array, xi: float = 0.0, omega: float = 1.0, alpha: float = 0.0) -> Array:
@@ -39,7 +39,7 @@ def skew_normal_pdf(x: Array, xi: float = 0.0, omega: float = 1.0, alpha: float 
     if omega <= 0.0:
         raise ValueError("omega must be positive")
     z = (np.asarray(x, dtype=float) - xi) / omega
-    return (2.0 / omega) * norm.pdf(z) * norm.cdf(alpha * z)
+    return np.asarray((2.0 / omega) * norm.pdf(z) * norm.cdf(alpha * z), dtype=float)
 
 
 def skew_normal_cdf(x: Array, xi: float = 0.0, omega: float = 1.0, alpha: float = 0.0) -> Array:
@@ -47,7 +47,7 @@ def skew_normal_cdf(x: Array, xi: float = 0.0, omega: float = 1.0, alpha: float 
     if omega <= 0.0:
         raise ValueError("omega must be positive")
     z = (np.asarray(x, dtype=float) - xi) / omega
-    return norm.cdf(z) - 2.0 * owens_t(z, alpha)
+    return np.asarray(norm.cdf(z) - 2.0 * owens_t(z, alpha), dtype=float)
 
 
 def skew_normal_ppf(p: float, xi: float = 0.0, omega: float = 1.0, alpha: float = 0.0) -> float:

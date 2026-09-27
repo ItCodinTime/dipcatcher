@@ -33,7 +33,10 @@ def johnson_su_pdf(
         raise ValueError("delta and lambda must be positive")
     u = (np.asarray(x, dtype=float) - xi) / lam
     z = gamma + delta * np.arcsinh(u)
-    return (delta / (lam * np.sqrt(2.0 * np.pi))) / np.sqrt(1.0 + u * u) * np.exp(-0.5 * z * z)
+    return np.asarray(
+        (delta / (lam * np.sqrt(2.0 * np.pi))) / np.sqrt(1.0 + u * u) * np.exp(-0.5 * z * z),
+        dtype=float,
+    )
 
 
 def johnson_su_cdf(
@@ -43,7 +46,7 @@ def johnson_su_cdf(
     if delta <= 0.0 or lam <= 0.0:
         raise ValueError("delta and lambda must be positive")
     u = (np.asarray(x, dtype=float) - xi) / lam
-    return norm.cdf(gamma + delta * np.arcsinh(u))
+    return np.asarray(norm.cdf(gamma + delta * np.arcsinh(u)), dtype=float)
 
 
 def johnson_su_ppf(

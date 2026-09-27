@@ -34,7 +34,9 @@ def vasicek_loss_cdf(x: Array, pd: float, rho: float) -> Array:
     """CDF of the portfolio loss fraction."""
     _check(pd, rho)
     xx = np.clip(np.asarray(x, dtype=float), 1e-12, 1.0 - 1e-12)
-    return norm.cdf((np.sqrt(1.0 - rho) * norm.ppf(xx) - norm.ppf(pd)) / np.sqrt(rho))
+    return np.asarray(
+        norm.cdf((np.sqrt(1.0 - rho) * norm.ppf(xx) - norm.ppf(pd)) / np.sqrt(rho)), dtype=float
+    )
 
 
 def vasicek_loss_pdf(x: Array, pd: float, rho: float) -> Array:
@@ -43,7 +45,9 @@ def vasicek_loss_pdf(x: Array, pd: float, rho: float) -> Array:
     xx = np.clip(np.asarray(x, dtype=float), 1e-12, 1.0 - 1e-12)
     ppf_x = norm.ppf(xx)
     inner = np.sqrt(1.0 - rho) * ppf_x - norm.ppf(pd)
-    return np.sqrt((1.0 - rho) / rho) * np.exp(0.5 * ppf_x**2 - 0.5 / rho * inner**2)
+    return np.asarray(
+        np.sqrt((1.0 - rho) / rho) * np.exp(0.5 * ppf_x**2 - 0.5 / rho * inner**2), dtype=float
+    )
 
 
 def vasicek_var(q: float, pd: float, rho: float) -> float:

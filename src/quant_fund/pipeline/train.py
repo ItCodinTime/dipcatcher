@@ -38,6 +38,7 @@ from quant_fund.models.base import (
     save_joblib_artifact,
 )
 from quant_fund.models.calibration import ProbabilityCalibrator
+from quant_fund.models.conformal_dist import ConformalTDistribution
 from quant_fund.models.cs_papers import (
     DATED_FIT_RANKERS,
     DATED_PREDICT_RANKERS,
@@ -75,9 +76,15 @@ from quant_fund.models.deep_rl import PolicyGradientRanker, run_policy_gradient_
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
+    GMMDistribution,
+    IsotonicPitDistribution,
     LinearQuantileDistribution,
+    SkewTDistribution,
+    StackedDistribution,
     TreeQuantileDistribution,
 )
+from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
 from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.ranking import (
     CompositeRanker,
@@ -807,13 +814,33 @@ def _predict_ranker(model: Any, name: str, x, dates, ids=None) -> np.ndarray:
 def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[str, Any]:
     _require_model(
         model_name,
-        {"empirical", "gaussian", "linear_qr", "xgboost", "lightgbm"},
+        {
+            "empirical",
+            "gaussian",
+            "linear_qr",
+            "xgboost",
+            "lightgbm",
+            "lgbm_q2",
+            "skew_t",
+            "gmm",
+            "isotonic",
+            "stack",
+            "conf_t",
+            "fhs_skew",
+        },
         "distribution",
     )
     set_global_seed(config.train.random_seed)
     label = config.train.distribution_target
     df = panel(config, label=label)
-    x, y, dates, feats, _ = design_matrix(df, label)
+    x, y, dates, feats, ids = design_matrix(df, label)
+    if model_name == "fhs_skew" and (
+        ids.size == 0
+        or np.unique(ids).size != 1
+        or np.unique(dates).size != dates.size
+        or (dates.size > 1 and not np.all(dates[1:] > dates[:-1]))
+    ):
+        raise ValueError("fhs_skew requires one security with strictly increasing event times")
     label_end_times = _aligned_label_end_times(df, label, feats)
     taus = config.quantiles.levels
 
@@ -824,6 +851,13 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "linear_qr": LinearQuantileDistribution(taus),
             "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
+            "lgbm_q2": LGBMQ2Distribution(taus, seed=config.train.random_seed),
+            "skew_t": SkewTDistribution(taus),
+            "gmm": GMMDistribution(taus, seed=config.train.random_seed),
+            "isotonic": IsotonicPitDistribution(taus),
+            "stack": StackedDistribution(taus, seed=config.train.random_seed),
+            "conf_t": ConformalTDistribution(taus),
+            "fhs_skew": FhsSkewDistribution(taus),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")

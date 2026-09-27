@@ -42,7 +42,7 @@ def beta_weights(k: int, theta1: float, theta2: float) -> Array:
     s = w.sum()
     if s <= 0 or not np.all(np.isfinite(w)):
         raise ValueError("degenerate beta weights")
-    return w / s
+    return np.asarray(w / s, dtype=float)
 
 
 def fit_midas(

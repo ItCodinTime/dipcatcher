@@ -22,6 +22,25 @@ app = typer.Typer(
     help="fx-1 — the quant LLM. dipcatcher is the harness that builds, evaluates, and verifies it.",
     add_completion=False,
 )
+
+
+@app.callback(invoke_without_command=True)
+def _main(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", help="Show the fx-1 package version and exit.", is_eager=True
+    ),
+) -> None:
+    if version:
+        from fx1 import __version__
+
+        typer.echo(f"fx1 {__version__}")
+        raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
+
 corpus_app = typer.Typer(help="Training-corpus construction.")
 train_app = typer.Typer(help="Training-run manifests (LoRA/QLoRA on K3).")
 harness_app = typer.Typer(help="Inspect/run the dipcatcher harness.")
@@ -209,6 +228,12 @@ def masked_eval(
 def contamination_audit(
     corpus: Path = typer.Option(Path("data/fx1/corpus.jsonl")),
     out: Path = typer.Option(Path("data/fx1/contamination_report.json")),
+    with_rephrased_gap: bool = typer.Option(
+        False,
+        "--with-rephrased-gap",
+        help="Also run the canonical-vs-rephrased gap probe against a live backend.",
+    ),
+    backend: str = typer.Option("hosted_k3", help="Backend for the gap probe."),
 ) -> None:
     """Run the publishable contamination audit over the corpus vs eval bank."""
     from fx1.eval import DEFAULT_BANK, run_contamination_audit
@@ -221,6 +246,13 @@ def contamination_audit(
                 texts.append(" ".join(m.get("content", "") for m in record.get("messages", [])))
     prompts = [m["content"] for t in DEFAULT_BANK for m in t.messages if m["role"] == "user"]
     report = run_contamination_audit(texts, prompts)
+    if with_rephrased_gap:
+        from fx1.eval import run_rephrased_gap
+        from fx1.serve import get_backend
+
+        model = get_backend(backend)
+        report.probes.append(run_rephrased_gap(model.complete))
+        report.overall_flagged = report.overall_flagged or any(p.flagged for p in report.probes)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     typer.echo(

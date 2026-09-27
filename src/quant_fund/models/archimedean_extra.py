@@ -28,7 +28,7 @@ def _as_uv(u: Array) -> Array:
     arr = np.asarray(u, dtype=float)
     if arr.ndim != 2 or arr.shape[1] != 2 or arr.shape[0] < 10 or not np.isfinite(arr).all():
         raise ValueError("u must be a finite (n, 2) array of pseudo-observations")
-    return np.clip(arr, _EPS, 1.0 - _EPS)
+    return np.asarray(np.clip(arr, _EPS, 1.0 - _EPS), dtype=float)
 
 
 # ------------------------------------------------------------------------ Frank
@@ -44,11 +44,11 @@ def frank_tau(theta: float) -> float:
 def frank_cdf(u: Array, v: Array, theta: float) -> Array:
     """Frank copula CDF."""
     if abs(theta) < 1e-8:
-        return np.asarray(u, dtype=float) * np.asarray(v, dtype=float)
+        return np.asarray(np.asarray(u, dtype=float) * np.asarray(v, dtype=float), dtype=float)
     a = np.expm1(-theta)  # e^{-theta} - 1
     gu = np.expm1(-theta * np.asarray(u, dtype=float))
     gv = np.expm1(-theta * np.asarray(v, dtype=float))
-    return -1.0 / theta * np.log1p(gu * gv / a)
+    return np.asarray(-1.0 / theta * np.log1p(gu * gv / a), dtype=float)
 
 
 def frank_fit(u: Array) -> dict[str, float]:
@@ -75,7 +75,7 @@ def frank_sim(theta: float, n: int, rng: np.random.Generator | None = None) -> A
 
         def cond(v: float, eu: float = eu, wi: float = w[i]) -> float:
             gv = np.exp(-theta * v) - 1.0
-            return eu * gv / (a + (eu - 1.0) * gv) - wi
+            return float(eu * gv / (a + (eu - 1.0) * gv) - wi)
 
         out_v[i] = brentq(cond, _EPS, 1.0 - _EPS, xtol=1e-9)
     return np.column_stack([u, out_v])
@@ -100,7 +100,10 @@ def joe_pdf(u: Array, v: Array, theta: float) -> Array:
     a = (1.0 - uu) ** theta
     b = (1.0 - vv) ** theta
     s = a + b - a * b
-    return s ** (1.0 / theta - 2.0) * ((1.0 - uu) * (1.0 - vv)) ** (theta - 1.0) * (theta - 1.0 + s)
+    return np.asarray(
+        s ** (1.0 / theta - 2.0) * ((1.0 - uu) * (1.0 - vv)) ** (theta - 1.0) * (theta - 1.0 + s),
+        dtype=float,
+    )
 
 
 def joe_fit(u: Array) -> dict[str, float]:
@@ -132,7 +135,7 @@ def joe_sim(theta: float, n: int, rng: np.random.Generator | None = None) -> Arr
             a = (1.0 - ui) ** theta
             b = (1.0 - v) ** theta
             s = a + b - a * b
-            return au * (1.0 - b) * s ** (1.0 / theta - 1.0) - wi
+            return float(au * (1.0 - b) * s ** (1.0 / theta - 1.0) - wi)
 
         out_v[i] = brentq(cond, _EPS, 1.0 - _EPS, xtol=1e-9)
     return np.column_stack([u, out_v])

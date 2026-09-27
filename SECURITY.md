@@ -15,7 +15,10 @@ harness. Security-relevant surfaces:
 ## Hard rules (enforced in code, tested)
 
 - No credentials in source or tests; secrets come from environment variables
-  only (`MOONSHOT_API_KEY`, `FX1_SIGNING_KEY`, `QUANT_API_KEY`).
+  only (`MOONSHOT_API_KEY`, `FX1_SIGNING_KEY`, `QUANT_API_KEY`). The full
+  env-var surface is enumerated in `.env.example`, a staged-diff
+  `secret-scan` pre-commit hook is enforced, and diagnostics
+  (`fx1 doctor`, `dipcatcher doctor`) report presence flags, never values.
 - Fail-closed defaults: missing signatures, missing model cards, failing
   honesty gates, and invalid receipts all *block* rather than warn.
 - Network access is opt-in (explicit `collect`, explicit API serve), never

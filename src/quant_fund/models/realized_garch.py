@@ -415,7 +415,7 @@ class RealizedGARCHVol(JoblibMixin):
         from scipy.stats import norm
 
         out[valid] = norm.cdf((values[valid] - self._mean_decimal()) / scales[valid])
-        return np.clip(out, 0.0, 1.0)
+        return np.asarray(np.clip(out, 0.0, 1.0), dtype=float)
 
     def log_density(
         self, returns: NDArray[np.float64], sigma: NDArray[np.float64] | None = None

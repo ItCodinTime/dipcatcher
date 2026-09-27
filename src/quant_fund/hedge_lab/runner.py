@@ -89,7 +89,7 @@ def _equity_returns(equity: pl.DataFrame) -> np.ndarray:
     nav = equity["nav"].to_numpy().astype(float)
     if nav.size < 2:
         return np.asarray([], dtype=float)
-    return nav[1:] / nav[:-1] - 1.0
+    return np.asarray(nav[1:] / nav[:-1] - 1.0, dtype=float)
 
 
 def _benchmark_returns(
@@ -113,7 +113,7 @@ def _benchmark_returns(
     close = joined["close"].to_numpy().astype(float)
     if close.size < 3:
         return None
-    return close[1:] / close[:-1] - 1.0
+    return np.asarray(close[1:] / close[:-1] - 1.0, dtype=float)
 
 
 def _align_book_and_benchmark(book: np.ndarray, bench: np.ndarray | None) -> np.ndarray | None:
