@@ -332,9 +332,7 @@ def test_process_map_falls_back_when_fork_is_unavailable(
     def unsupported_fork(_method: str) -> None:
         raise ValueError("cannot find context for fork")
 
-    monkeypatch.setattr(
-        "quant_fund.compute.parallel.multiprocessing.get_context", unsupported_fork
-    )
+    monkeypatch.setattr("quant_fund.compute.parallel.multiprocessing.get_context", unsupported_fork)
     items = [(i, np.ones(4)) for i in range(4)]
     expected = [_seeded_dot(item, derive_seed(3, i)) for i, item in enumerate(items)]
     assert process_map(_seeded_dot, items, base_seed=3, max_workers=2) == expected
