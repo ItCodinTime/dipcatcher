@@ -212,7 +212,7 @@ class ProvenanceDB:
 
     def trials(self, *, family: str | None = None) -> list[TrialLedgerRow]:
         """All trial rows (optionally one family), ordered by (created_utc, trial_id)."""
-        sql = f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger"  # nosec B608
+        sql = f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger"
         params: list[Any] = []
         if family is not None:
             sql += " WHERE family = ?"
@@ -240,7 +240,7 @@ class ProvenanceDB:
     def bundles(self) -> list[dict[str, Any]]:
         """All proof-bundle rows as plain dicts (audit/export path), chain order."""
         sql = (
-            f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles "  # nosec B608
+            f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles "
             "ORDER BY created_utc, bundle_id"
         )
         rows = self._con.execute(sql).fetchall()

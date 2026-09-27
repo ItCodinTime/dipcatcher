@@ -161,3 +161,16 @@ Keep the original receipt files, index, and paper-adapter pin unchanged. A
 corrected study needs a new run with fresh receipts and an explicit relationship
 to the earlier result. Historical code lookup does not rerun the study or turn
 the retrospective result into prospective or live evidence.
+
+### Historical phase-1 code and dependency drift
+
+The September 2026 tournament receipts remain bound to their original code
+revision, dependency stamp, and receipt hashes. Current implementation changes
+in replay, allocation, or statistical inference do not authorize replacing
+those historical hashes. Updating a lockfile version without recomputing the
+result also cannot establish that the new dependency produced that result.
+
+Use the historical verification path in `examples/05_phase1_evidence.py` to
+check the archived receipt against its committed source revision. To claim
+results from current code, run a new evaluation and publish a new receipt and
+index. Preserve the original receipt bytes and the forward-shadow index seal.
