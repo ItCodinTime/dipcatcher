@@ -75,7 +75,13 @@ def _equity_stats(equity: pl.DataFrame, bars_per_year: float) -> dict[str, Any]:
     rets = rets[np.isfinite(rets)]
     peak = np.maximum.accumulate(nav)
     dd = nav / peak - 1.0
-    ann_ret = float(nav[-1] / nav[0]) ** (bars_per_year / max(nav.size - 1, 1)) - 1.0
+    # A nonpositive nav ratio means the curve crossed zero — annualizing it
+    # would produce a complex number, so report NaN instead of guessing.
+    ann_ret = (
+        float(nav[-1] / nav[0]) ** (bars_per_year / max(nav.size - 1, 1)) - 1.0
+        if nav[0] > 0 and nav[-1] > 0
+        else float("nan")
+    )
     ann_vol = float(annualized_vol(rets, periods_per_year=bars_per_year))
     # A2 F4 (PROOFCORE W4): delegate to the canonical fail-closed Sharpe in
     # metrics/returns.py — same formula, same NaN policy (rets.size < 2 or
@@ -94,6 +100,18 @@ def _equity_stats(equity: pl.DataFrame, bars_per_year: float) -> dict[str, Any]:
         "max_drawdown": float(np.min(dd)),
         "bars_per_year": float(bars_per_year),
     }
+
+
+def _trailing_window_sum(per_bar: np.ndarray, roll_n: int) -> np.ndarray:
+    """out[i] = sum(per_bar[max(0, i-roll_n+1) .. i]) — causal trailing window.
+
+    ``np.convolve(a, ones(n), "full")[k] = sum(a[k-n+1 .. k])``, so the first
+    ``len(a)`` outputs already are the trailing sums; taking a later slice
+    would read *future* bars.
+    """
+    if roll_n < 1:
+        raise ValueError("roll_n must be positive")
+    return np.convolve(per_bar, np.ones(roll_n), "full")[: len(per_bar)]
 
 
 def _bars_per_year(interval: str) -> float:
@@ -222,17 +240,18 @@ def run_sim_live(
             )[1]
             ref_arr = np.asarray(ref_times)
             # Assign each funding event to the bar containing it; bars with
-            # no events get 0; then rolling 7-bar (daily) / 42-bar (4h) sum.
-            roll_n = 7 if interval == "1d" else 42
+            # no events get 0; then a trailing 7-day sum in bar units
+            # (1d→7, 4h→42, 1h→168 — derived, not per-interval literals).
+            roll_n = max(1, int(round(7.0 * _bars_per_year(interval) / 365.25)))
             per_bar = np.zeros(len(ref_arr))
             idx = np.searchsorted(ref_arr, f_times, side="right") - 1
             for j, v in zip(idx, f_vals, strict=True):
                 if j >= 0:
                     per_bar[j] += v
-            # full[i + roll_n - 1] = sum(per_bar[i-roll_n+1 .. i]) — trailing.
-            roll = np.convolve(per_bar, np.ones(roll_n), "full")[
-                roll_n - 1 : roll_n - 1 + len(per_bar)
-            ]
+            # full[i] = sum(per_bar[max(0, i-roll_n+1) .. i]) — strictly
+            # trailing: mkt_series[t] must not include funding after bar t,
+            # or the fund_cut breaker would see the future.
+            roll = _trailing_window_sum(per_bar, roll_n)
             mkt_series = {t: float(v) for t, v in zip(ref_arr.tolist(), roll, strict=True)}
         else:
             mkt_series = {}
