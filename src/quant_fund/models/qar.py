@@ -9,15 +9,23 @@ estimate a1(tau) may exceed 1 in the lower tail (local explosion)
 even when the median process is stationary -- this is the asymmetric
 adjustment phenomenon the QAR paper documents.
 
+``QARDistribution`` packages the AR(1) special case as a distribution
+head for the training pipeline.
+
 Fail-closed: tau outside (0,1), insufficient data, non-finite y.
 """
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
+from sklearn.linear_model import QuantileRegressor
 
 from quant_fund.metrics.regression import quantile_regression
+from quant_fund.metrics.scoring import rearrange_quantiles
+from quant_fund.models.base import JoblibMixin, ModelMeta
 
 Array = NDArray[np.float64]
 
@@ -66,3 +74,71 @@ def qar_summary(fit: dict[str, Array]) -> dict[str, Array]:
         "coverage": below,
         "coverage_dev": np.abs(below - taus),
     }
+
+
+class QARDistribution(JoblibMixin):
+    """QAR(1) challenger head (Koenker & Xiao 2006).
+
+    Per tau, fit ``q_tau(t) = a_tau + b_tau * y_{t-1}`` by
+    Koenker-Bassett quantile regression on consecutive *row* pairs
+    ``(y[t-1], y[t])`` of the fit window. Rows arrive in panel
+    (date-major) order; this head relies on row order as series order,
+    so adjacent rows may pair different securities on a shared date --
+    it pools the lagged cross-section as a distributional challenger,
+    not a per-security model. Non-finite ``y`` rows are dropped before
+    pairing, so a pair may span a dropped gap.
+
+    ``predict`` is unconditional on ``x``: every row receives the fitted
+    per-tau conditional evaluated at the last finite fitted ``y`` (the
+    one-step-ahead conditional quantile from the window's end),
+    rearranged to be monotone in tau.
+    """
+
+    MIN_OBS = 30
+
+    def __init__(self, taus: list[float]) -> None:
+        self.taus = taus
+        self.coef_: NDArray[np.float64] | None = None  # (n_taus, 2) [a, b]
+        self.y_last_ = 0.0
+        self.n_pairs_ = 0
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> QARDistribution:
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        if yy.size < self.MIN_OBS:
+            raise ValueError("QARDistribution requires >= 30 finite observations")
+        if float(np.ptp(yy)) <= 0.0:
+            raise ValueError("QARDistribution requires non-constant y")
+        tt = np.asarray(self.taus, dtype=float).reshape(-1)
+        if tt.size == 0 or (tt <= 0.0).any() or (tt >= 1.0).any():
+            raise ValueError("taus must lie in (0, 1)")
+        y_lag = yy[:-1].reshape(-1, 1)
+        y_cur = yy[1:]
+        coef = np.empty((tt.size, 2))
+        for i, tau in enumerate(tt):
+            m = QuantileRegressor(quantile=float(tau), alpha=0.0, solver="highs")
+            m.fit(y_lag, y_cur)
+            beta = np.concatenate([[m.intercept_], np.asarray(m.coef_, dtype=float)])
+            if not np.isfinite(beta).all():
+                raise ValueError(f"QAR fit failed at tau={tau}")
+            coef[i] = beta
+        self.coef_ = coef
+        self.y_last_ = float(yy[-1])
+        self.n_pairs_ = int(y_cur.size)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.coef_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        q = self.coef_[:, 0] + self.coef_[:, 1] * self.y_last_
+        q = rearrange_quantiles(q.reshape(1, -1))[0]
+        return np.tile(q, (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        persistence = self.coef_[:, 1].tolist() if self.coef_ is not None else []
+        return ModelMeta(
+            family="distribution",
+            name="qar",
+            version="v1",
+            extra={"persistence_a1": persistence, "n_pairs": self.n_pairs_},
+        )
