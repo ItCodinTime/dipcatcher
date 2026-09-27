@@ -75,14 +75,15 @@ def _explicit_parts(row: Mapping[str, Any]) -> tuple[float, float, float]:
     fee = _f(row.get("fee", row.get("fill_fee")))
     if "explicit_cost" in row and row.get("explicit_cost") is not None:
         explicit = _f(row.get("explicit_cost"))
+        fees = explicit - spread - impact
     else:
         explicit = fee + spread + impact
+        fees = fee
     if spread < 0.0 or impact < 0.0 or explicit < -1e-8:
         raise ValueError("explicit costs must be non-negative")
-    fees = explicit - spread - impact
     if fees < -1e-8:
         raise ValueError("explicit cost must cover spread and impact")
-    return fees, spread, impact
+    return max(0.0, fees), spread, impact
 
 
 def _leg_value(qty: float, price: float, explicit: float, mark: float) -> float:
@@ -167,15 +168,16 @@ def _arrival(paper_rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         decision = row.get("decision_price")
         if qty == 0.0 or decision is None:
             continue
+        fees, spread, impact = _explicit_parts(row)
         side = 1.0 if qty > 0.0 else -1.0
         part = fill_shortfall(
             side_sign=side,
             quantity=abs(qty),
             decision_price=float(decision),
             exec_price=float(row["price"]),
-            fee=_f(row.get("fee", row.get("fill_fee"))),
-            spread_cost=_f(row.get("spread", row.get("fill_spread"))),
-            impact_cost=_f(row.get("impact", row.get("fill_impact"))),
+            fee=fees,
+            spread_cost=spread,
+            impact_cost=impact,
         )
         total["drift"] += part["drift"]
         total["fee"] += part["fee"]

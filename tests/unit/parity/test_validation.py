@@ -84,3 +84,23 @@ def test_shortfall_refuses_inconsistent_explicit_cost() -> None:
     }
     with pytest.raises(ValueError, match="must cover spread and impact"):
         attribute_shortfall([fill], [], {"SYNTHETIC_A": 100.0})
+
+
+def test_arrival_shortfall_includes_charged_turnover_cost() -> None:
+    fill = {
+        "event_time": "2026-01-01",
+        "security_id": "SYNTHETIC_A",
+        "signed_qty": 1.0,
+        "decision_price": 100.0,
+        "price": 100.0,
+        "fee": 1.0,
+        "spread": 2.0,
+        "impact": 3.0,
+        "explicit_cost": 7.0,
+    }
+    result = attribute_shortfall([], [fill], {"SYNTHETIC_A": 100.0})
+    arrival = result["paper_arrival_shortfall"]
+    assert arrival["fee"] == 2.0
+    assert arrival["spread_cost"] == 2.0
+    assert arrival["impact_cost"] == 3.0
+    assert arrival["total_is"] == 7.0
