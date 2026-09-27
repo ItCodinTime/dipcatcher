@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence docs docs-serve stress-smoke fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 .DEFAULT_GOAL := help
 
@@ -42,6 +42,11 @@ evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py
 
 ci: lint typecheck coverage ## Local mirror of the CI gate
+
+stress-smoke: ## Fast stress-engine tests and the catalog report CLI
+	uv run pytest -q -m "not network and not slow" tests/unit/stress
+	uv run dipcatcher stress crises
+	uv run dipcatcher stress report --strategy configs/stress_research.yaml --out /tmp/stress-report.md --format markdown
 
 examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff check examples tests/examples

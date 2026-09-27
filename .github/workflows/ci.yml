@@ -271,3 +271,37 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  stress-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Fast stress tests
+        run: uv run pytest -q -m "not network and not slow" tests/unit/stress
+      - name: Catalog report smoke
+        run: |
+          uv run dipcatcher stress crises | tee crises.txt
+          grep -q $'crash_1987\thistorical' crises.txt
+          grep -q $'rates_2022\thistorical' crises.txt
+          grep -q $'dfast_2025_severely_adverse\thypothetical' crises.txt
+          uv run dipcatcher stress report \
+            --strategy configs/stress_research.yaml \
+            --out stress-report.md \
+            --format markdown
+          grep -q 'research_only: True' stress-report.md
+          grep -q 'live_trading: False' stress-report.md
+          grep -q crash_1987 stress-report.md
+          grep -q rates_2022 stress-report.md
+          grep -q dfast_2025_severely_adverse stress-report.md
+          if grep -E 'sharpe:|sortino:|calmar:' stress-report.md; then
+            echo "stress report contains a forbidden headline key"
+            exit 1
+          fi

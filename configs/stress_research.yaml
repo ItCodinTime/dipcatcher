@@ -1,0 +1,18 @@
+# Research-only factor book for the stress-report smoke.
+# Weights are scenario exposures, not a live allocation.
+# No return panel: the smoke stays on the catalog and the public-domain paths.
+name: catalog_factor_book
+research_only: true
+positions:
+  - factor: us_equity
+    weight: 0.60
+    mapping: return
+  - factor: ust_10y
+    weight: 7.0
+    mapping: duration
+  - factor: eurchf
+    weight: 0.10
+    mapping: return
+  - factor: inverse_vol_etp
+    weight: 0.05
+    mapping: return

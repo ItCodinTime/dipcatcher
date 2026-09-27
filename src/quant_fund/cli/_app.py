@@ -11,6 +11,7 @@ from quant_fund.hmm.cli import hmm_app
 from quant_fund.lightspeed.cli import ls_app
 from quant_fund.pit.cli import pit_app
 from quant_fund.quant_models.cli import qm_app
+from quant_fund.stress.cli import stress_app
 from quant_fund.utils.logging import configure_logging
 
 
@@ -53,6 +54,7 @@ app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
 app.add_typer(pit_app, name="pit")
 app.add_typer(qm_app, name="qm")
+app.add_typer(stress_app, name="stress")
 
 
 def _cfg(config: Path):
