@@ -134,8 +134,7 @@ def cscv_pbo(returns: Array, s_blocks: int = 16) -> dict[str, object]:
     r = np.asarray(returns, dtype=float)
     if r.ndim != 2 or r.shape[0] < 2 * int(s_blocks) or r.shape[1] < 2:
         raise RealityFilterError(
-            "returns must be (n_periods, n_trials) with n_periods >= 2 * s_blocks "
-            "and n_trials >= 2"
+            "returns must be (n_periods, n_trials) with n_periods >= 2 * s_blocks and n_trials >= 2"
         )
     splits = cscv_splits(int(r.shape[0]), int(s_blocks))
     n_trials = int(r.shape[1])

@@ -60,11 +60,10 @@ def trial_report(
     except (RealityFilterError, ValueError) as exc:
         typer.echo(f"REALITY_FILTER_ERROR: {exc}", err=True)
         raise typer.Exit(code=2) from exc
-    payload = report.model_dump(mode="json")
-    payload["disclaimer"] = DISCLAIMER
-    text = json.dumps(payload, sort_keys=True)
+    text = json.dumps(report.model_dump(mode="json"), sort_keys=True)
     if out is not None:
         out.write_text(text + "\n", encoding="utf-8")
+    typer.echo(DISCLAIMER, err=True)
     _emit(text)
 
 

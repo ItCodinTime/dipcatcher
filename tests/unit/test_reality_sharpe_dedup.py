@@ -44,11 +44,15 @@ def test_no_inline_sharpe_formula_outside_metrics_returns() -> None:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             # a BinOp multiplying by a sqrt() call of a periods-per-year name
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if node.func.attr == "sqrt" and node.args:
-                    arg = node.args[0]
-                    if isinstance(arg, ast.Name) and "per_year" in arg.id:
-                        pytest.fail(f"inline sqrt(periods_per_year) Sharpe in {path}:{node.lineno}")
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "sqrt"
+                and node.args
+            ):
+                arg = node.args[0]
+                if isinstance(arg, ast.Name) and "per_year" in arg.id:
+                    pytest.fail(f"inline sqrt(periods_per_year) Sharpe in {path}:{node.lineno}")
 
 
 def test_sharpe_ratio_batch_matches_scalar_canonical() -> None:

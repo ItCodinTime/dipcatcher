@@ -49,12 +49,12 @@ def _report_hash(fields: dict[str, object]) -> str:
     """sha256 over the canonical JSON of all report fields minus the hash.
 
     Floats are rounded to 12 decimals per the §8.2 determinism policy before
-    serialization; NaN serializes as the deterministic ``NaN`` token.
+    serialization; non-finite values serialize as JSON null.
     """
 
     def _round(obj: object) -> object:
         if isinstance(obj, float):
-            return round(obj, 12) if np.isfinite(obj) else obj
+            return round(obj, 12) if np.isfinite(obj) else None
         if isinstance(obj, list):
             return [_round(x) for x in obj]
         if isinstance(obj, dict):
@@ -134,7 +134,9 @@ def build_reality_report(
             raise RealityFilterError(
                 f"returns_by_trial missing series for {len(missing)} ledger trials"
             )
-        lengths = {int(np.asarray(v, dtype=float).reshape(-1).size) for v in returns_by_trial.values()}
+        lengths = {
+            int(np.asarray(v, dtype=float).reshape(-1).size) for v in returns_by_trial.values()
+        }
         if len(lengths) != 1:
             raise RealityFilterError("returns_by_trial series must share one length")
         n_periods = lengths.pop()
@@ -144,7 +146,10 @@ def build_reality_report(
         if n_periods >= 2 * int(s_blocks) and n_periods % int(s_blocks) == 0:
             pbo_res = cscv_pbo(mat, s_blocks=int(s_blocks))
             pbo = float(pbo_res["pbo"])  # type: ignore[arg-type]
-            pbo_logit = [float(x) for x in pbo_res["logits"]]  # type: ignore[union-attr]
+            raw_logits = pbo_res["logits"]
+            if not isinstance(raw_logits, list):
+                raise RealityFilterError("CSCV returned malformed logits")
+            pbo_logit = [float(x) for x in raw_logits]
         spa_pvalue = float(
             spa_from_trials(
                 {r.trial_id: returns_by_trial[r.trial_id] for r in rows},

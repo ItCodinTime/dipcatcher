@@ -70,7 +70,7 @@ def psr_from_returns(
     if n < 4:
         return out
     sig, skew, kurt = moments_from_returns(r)
-    if not (np.isfinite(sig) and np.isfinite(skew) and np.isfinite(kurt)) or sig == 0.0:
+    if not (np.isfinite(sig) and np.isfinite(skew) and np.isfinite(kurt)) or np.ptp(r) == 0.0:
         return out
     sr_periodic = float(np.mean(r) / sig)
     psr = probabilistic_sharpe(sr_periodic, float(sr_star), n, float(skew), float(kurt))
@@ -99,7 +99,7 @@ def min_trl_from_returns(
     if int(r.size) < 4:
         return float("nan")
     sig, skew, kurt = moments_from_returns(r)
-    if not (np.isfinite(sig) and np.isfinite(skew) and np.isfinite(kurt)) or sig == 0.0:
+    if not (np.isfinite(sig) and np.isfinite(skew) and np.isfinite(kurt)) or np.ptp(r) == 0.0:
         return float("nan")
     sr_periodic = float(np.mean(r) / sig)
     if sr_periodic <= float(sr_star):
@@ -107,6 +107,4 @@ def min_trl_from_returns(
         # benchmark SR: fail-closed NaN (the underlying Bailey–LdP formula
         # would otherwise return a meaningless finite count).
         return float("nan")
-    return min_track_record_length(
-        sr_periodic, float(skew), float(kurt), sr_star=float(sr_star)
-    )
+    return min_track_record_length(sr_periodic, float(skew), float(kurt), sr_star=float(sr_star))
