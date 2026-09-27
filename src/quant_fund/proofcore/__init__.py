@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from quant_fund.proofcore.contracts import (
     SCHEMA_VERSION,
+    SHA256_HEX_PATTERN,
     CodeFingerprint,
     DataAccessRecord,
     DataManifestSummary,
@@ -15,6 +16,7 @@ from quant_fund.proofcore.contracts import (
     ProofBundleV1,
     ProofcoreError,
     RealityReport,
+    Sha256Hex,
     SignatureBlock,
     TrialLedgerRow,
     canonical_json_bytes,
@@ -24,6 +26,7 @@ from quant_fund.proofcore.contracts import (
 
 __all__ = [
     "SCHEMA_VERSION",
+    "SHA256_HEX_PATTERN",
     "CodeFingerprint",
     "DataAccessRecord",
     "DataManifestSummary",
@@ -35,6 +38,7 @@ __all__ = [
     "ProofBundleV1",
     "ProofcoreError",
     "RealityReport",
+    "Sha256Hex",
     "SignatureBlock",
     "TrialLedgerRow",
     "canonical_json_bytes",

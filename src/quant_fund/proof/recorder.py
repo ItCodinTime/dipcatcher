@@ -8,17 +8,18 @@ proof commits to exactly the bytes the strategy consumed.
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
 from quant_fund.proofcore.contracts import (
     DataAccessRecord,
     DataManifestSummary,
+    ProofError,
     merkle_root_hex,
     sha256_hex_json,
 )
 
-__all__ = ["DataAccessRecorder", "InMemoryRecorder", "make_read_record"]
+__all__ = ["DataAccessRecorder", "InMemoryRecorder", "asof_utc_text", "make_read_record"]
 
 
 @runtime_checkable
@@ -26,6 +27,17 @@ class DataAccessRecorder(Protocol):
     """Anything a PitVault can report a read into (DESIGN.md §5.1)."""
 
     def record(self, read: DataAccessRecord) -> None: ...
+
+
+def asof_utc_text(asof: datetime) -> str:
+    """Encode a timezone-aware instant as ISO-8601 UTC.
+
+    Aware values are converted with ``astimezone(UTC)`` before ``isoformat``
+    so equal instants share one proof encoding. The input must carry a timezone.
+    """
+    if asof.tzinfo is None or asof.utcoffset() is None:
+        raise ProofError("asof must be a timezone-aware datetime")
+    return asof.astimezone(UTC).isoformat()
 
 
 def make_read_record(
@@ -40,11 +52,12 @@ def make_read_record(
 
     ``DataAccessRecord.params`` values are strings only so canonical JSON is
     byte-stable (DESIGN.md §3 notes); coercion lives here, not in the vault.
+    ``asof`` is stored as UTC (see ``asof_utc_text``).
     """
     coerced = {str(key): str(value) for key, value in (params or {}).items()}
     return DataAccessRecord(
         dataset=dataset,
-        asof_utc=asof.isoformat(),
+        asof_utc=asof_utc_text(asof),
         params=coerced,
         rows=rows,
         content_sha256=content_sha256,
