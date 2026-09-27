@@ -42,6 +42,7 @@ from quant_fund.backtest.engine import (
 )
 from quant_fund.config.models import AppConfig, FillConvention
 from quant_fund.monitoring.kill_switch import KillSwitch
+from quant_fund.portfolio.risk_gate import LIMIT_ABS_SLACK, LIMIT_REL_SLACK, exceeds_limit, funded
 from quant_fund.schemas.errors import KillSwitchActive
 
 try:
@@ -305,6 +306,26 @@ def _order_costs_nb(
     imp = float(nt * impact_y * vol_d * np.sqrt(part))
     bpt = abs(nt) * bps_per_turnover / 1e4
     return comm, spr, imp, float(comm + spr + imp + bpt)
+
+
+@njit(cache=True)
+def _exceeds_nb(value: float, limit: float) -> bool:
+    """Numba twin of ``exceeds_limit``. Keep the slack constants identical."""
+    if not (value > limit):
+        return False
+    slack = LIMIT_ABS_SLACK
+    rel = LIMIT_REL_SLACK * abs(limit)
+    if rel > slack:
+        slack = rel
+    return (value - limit) > slack
+
+
+@njit(cache=True)
+def _funded_nb(cash: float, needed: float) -> bool:
+    """Numba twin of ``funded``."""
+    if cash >= needed:
+        return True
+    return not _exceeds_nb(needed, cash)
 
 
 @njit(cache=True)
@@ -579,19 +600,19 @@ def _replay_kernel(
                 or vol_eff < 0.0
                 or not np.isfinite(delta)
                 or delta == 0.0
-                or abs(delta) * price > max_order_notional
-                or abs(current_w + (delta * price) / nav_safe) > max_name
-                or gross_after > max_gross
-                or abs(net_after) > max_net
-                or participation > max_participation
-                or gate_vol > max_predicted_vol
+                or _exceeds_nb(abs(delta) * price, max_order_notional)
+                or _exceeds_nb(abs(current_w + (delta * price) / nav_safe), max_name)
+                or _exceeds_nb(gross_after, max_gross)
+                or _exceeds_nb(abs(net_after), max_net)
+                or _exceeds_nb(participation, max_participation)
+                or _exceeds_nb(gate_vol, max_predicted_vol)
             )
             if rejected:
                 reject_count += 1
                 continue
 
             notional = delta * price
-            if delta > 0 and cash < notional + total:
+            if delta > 0 and not _funded_nb(cash, notional + total):
                 cash_reject_count += 1
                 continue
             cash -= notional + total
@@ -1200,19 +1221,19 @@ def run_backtest_fast(
                     or vol_eff < 0.0
                     or not math.isfinite(delta)
                     or delta == 0.0
-                    or abs(delta) * price > gate.max_order_notional
-                    or abs(current_w + (delta * price) / nav_safe) > gate.max_name
-                    or gross_after > gate.max_gross
-                    or abs(net_after) > gate.max_net
-                    or participation > gate.max_participation
-                    or gate_vol > gate.max_predicted_vol
+                    or exceeds_limit(abs(delta) * price, gate.max_order_notional)
+                    or exceeds_limit(abs(current_w + (delta * price) / nav_safe), gate.max_name)
+                    or exceeds_limit(gross_after, gate.max_gross)
+                    or exceeds_limit(abs(net_after), gate.max_net)
+                    or exceeds_limit(participation, gate.max_participation)
+                    or exceeds_limit(gate_vol, gate.max_predicted_vol)
                 )
                 if rejected:
                     reject_count += 1
                     continue
 
                 notional = delta * price
-                if delta > 0 and cash < notional + total_trade_cost:
+                if delta > 0 and not funded(cash, notional + total_trade_cost):
                     cash_reject_count += 1
                     continue
                 cash -= notional + total_trade_cost

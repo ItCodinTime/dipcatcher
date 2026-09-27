@@ -32,7 +32,7 @@ from quant_fund.pipeline.forecast import (
     MARKET_RISK_OVERLAY_REALIZED_GARCH,
     market_risk_overlay_asof,
 )
-from quant_fund.portfolio.risk_gate import check_order
+from quant_fund.portfolio.risk_gate import check_order, funded
 from quant_fund.risk.overlay import BookRiskOverlay
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
@@ -386,7 +386,7 @@ def run_backtest(
             total_trade_cost = float(costs["total"])
             # Match live/paper execution semantics: a buy is rejected rather
             # than allowing the research book to enter an impossible overdraft.
-            if delta > 0 and book.cash < notional + total_trade_cost:
+            if delta > 0 and not funded(book.cash, notional + total_trade_cost):
                 cash_reject_count += 1
                 continue
             book.cash -= notional + total_trade_cost
