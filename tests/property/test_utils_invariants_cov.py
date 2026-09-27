@@ -11,6 +11,8 @@ import numpy as np
 import polars as pl
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
+from quant_fund.utils.seeds import set_global_seed
 
 from quant_fund.utils.hashing import (
     canonical_frame_fingerprint,
@@ -19,8 +21,6 @@ from quant_fund.utils.hashing import (
     hash_bytes,
     hash_file,
 )
-from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
-from quant_fund.utils.seeds import set_global_seed
 
 # ---------------- hashing ----------------
 
@@ -112,7 +112,7 @@ def test_frame_fingerprint_row_col_order_invariant(sids, n, perm) -> None:
     df = pl.DataFrame(data)
     h1 = canonical_frame_fingerprint(df)
     # permute columns
-    df2 = df.select(perm.draw(st.permutations(sids)))
+    df2 = df[perm.draw(st.permutations(sids))]
     # permute rows
     row_idx = perm.draw(st.permutations(list(range(n))))
     df3 = df[row_idx]
@@ -124,6 +124,12 @@ def test_frame_fingerprint_counts_duplicate_rows() -> None:
     df = pl.DataFrame({"a": [1.0, 1.0], "b": [2.0, 2.0]})
     df1 = pl.DataFrame({"a": [1.0], "b": [2.0]})
     assert canonical_frame_fingerprint(df) != canonical_frame_fingerprint(df1)
+
+
+def test_frame_fingerprint_treats_selector_syntax_as_literal_names() -> None:
+    frame = pl.DataFrame({"*": [1, 2], "0": [3, 4], "plain": [5, 6]})
+    reordered = frame[["plain", "0", "*"]]
+    assert canonical_frame_fingerprint(frame) == canonical_frame_fingerprint(reordered)
 
 
 @given(
