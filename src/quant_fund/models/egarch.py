@@ -59,6 +59,8 @@ def egarch_fit(y: Array) -> dict[str, Array | float]:
 
     th0 = np.array([0.02 * np.log(v0 + 1e-8) - 0.05, -0.1, 0.1, 0.95, float(yy.mean())])
     res = optimize.minimize(nll, th0, method="Nelder-Mead", options={"maxiter": 6000})
+    if not np.isfinite(res.fun) or res.fun >= 1e11:
+        raise ValueError("EGARCH QMLE failed to converge")
     w, a, g, b, mu = (float(v) for v in res.x)
     s2 = _egarch_path(yy, w, a, g, b, mu)
     if s2 is None:
@@ -105,6 +107,8 @@ def gjr_garch_fit(y: Array) -> dict[str, Array | float]:
 
     th0 = np.array([0.05 * v0, 0.02, 0.1, 0.9, float(yy.mean())])
     res = optimize.minimize(nll, th0, method="Nelder-Mead", options={"maxiter": 6000})
+    if not np.isfinite(res.fun) or res.fun >= 1e11:
+        raise ValueError("GJR QMLE failed to converge")
     w, a, g, b, mu = (float(v) for v in res.x)
     s2 = _gjr_path(yy, w, a, g, b, mu)
     if s2 is None:
