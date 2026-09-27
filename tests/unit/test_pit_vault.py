@@ -131,6 +131,88 @@ def test_manifest_malformed_json_raises(vault: PitVault) -> None:
         read_manifest(vault.root, "silver/bars")
 
 
+@pytest.mark.parametrize("damage", ["missing", "malformed", "identity", "chain"])
+def test_retained_manifest_history_is_validated(vault: PitVault, damage: str) -> None:
+    vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    history = manifest_mod.versioned_manifest_path(vault.root, "silver/bars", 0)
+    if damage == "missing":
+        history.unlink()
+    elif damage == "malformed":
+        history.write_text("{")
+    else:
+        payload = json.loads(history.read_text())
+        if damage == "identity":
+            payload["dataset"] = "silver/other"
+        else:
+            payload["prev_manifest_sha256"] = "f" * 64
+        history.write_text(json.dumps(payload))
+    with pytest.raises(ManifestError):
+        read_manifest(vault.root, "silver/bars")
+
+
+def test_manifest_pointer_and_sidecar_are_required(vault: PitVault) -> None:
+    pointer = manifest_mod.manifest_path(vault.root, "silver/bars")
+    pointer.unlink()
+    with pytest.raises(ManifestError, match="manifest.json missing"):
+        read_manifest(vault.root, "silver/bars")
+    manifest_mod._atomic_write(
+        pointer,
+        manifest_mod.versioned_manifest_path(vault.root, "silver/bars", 0).read_bytes(),
+    )
+    manifest_mod.sidecar_path(vault.root, "silver/bars").unlink()
+    with pytest.raises(ManifestError, match="sidecar missing"):
+        read_manifest(vault.root, "silver/bars")
+
+
+def test_manifest_write_refuses_wrong_anchor_and_revision_overwrite(vault: PitVault) -> None:
+    current = read_manifest(vault.root, "silver/bars")
+    with pytest.raises(ManifestError, match="disagrees"):
+        manifest_mod.write_manifest(
+            vault.root, "silver/bars", current, prev_manifest_sha256="f" * 64
+        )
+    with pytest.raises(ManifestError, match="write-once"):
+        manifest_mod.write_manifest(
+            vault.root,
+            "silver/bars",
+            current,
+            prev_manifest_sha256=current.prev_manifest_sha256,
+        )
+
+
+def test_manifest_part_paths_cannot_escape_dataset(vault: PitVault, tmp_path) -> None:
+    manifest = read_manifest(vault.root, "silver/bars")
+    with pytest.raises(ManifestError, match="outside dataset"):
+        manifest_mod.part_path(vault.root, manifest, "other/parts/r0000001.parquet")
+    outside = tmp_path / "outside.parquet"
+    outside.write_bytes(b"outside")
+    (vault.root / "silver/bars/parts/r0000001.parquet").symlink_to(outside)
+    with pytest.raises(ManifestError, match="escapes dataset"):
+        manifest_mod.part_path(vault.root, manifest, "silver/bars/parts/r0000001.parquet")
+
+
+def test_verify_reports_missing_and_unreadable_part(vault: PitVault, monkeypatch) -> None:
+    manifest = vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
+    part = vault.root / manifest.files[0].path
+    part.unlink()
+    assert any("part file missing" in message for message in vault.verify("silver/bars"))
+    part.write_bytes(b"bytes")
+
+    def unreadable(_path):
+        raise OSError("simulated read error")
+
+    monkeypatch.setattr(manifest_mod, "sha256_file", unreadable)
+    assert any("unreadable part" in message for message in vault.verify("silver/bars"))
+
+
+def test_recover_repairs_sidecar_without_pending_revision(vault: PitVault) -> None:
+    sidecar = manifest_mod.sidecar_path(vault.root, "silver/bars")
+    assert manifest_mod.genesis_sidecar_ok(vault.root, "silver/bars")
+    sidecar.write_text("f" * 64 + "\n")
+    assert vault.recover_interrupted_manifest("silver/bars")
+    assert manifest_mod.genesis_sidecar_ok(vault.root, "silver/bars")
+    assert not vault.recover_interrupted_manifest("silver/bars")
+
+
 def test_corrupted_part_flagged_by_verify(vault: PitVault) -> None:
     vault.append("silver/bars", _frame([("A", 0, 0, 100.0)]))
     part = vault.root / "silver/bars/parts/r0000001.parquet"

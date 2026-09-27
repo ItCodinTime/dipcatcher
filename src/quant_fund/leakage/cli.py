@@ -96,7 +96,7 @@ def watch_cmd(
     from datetime import UTC, datetime
 
     decision_time = datetime.now(UTC)
-    datasets = sorted(p.parent.name for p in root.glob("*/manifest.json"))
+    datasets = vault.list_datasets()
     if not datasets:
         typer.echo(f"no datasets under {root} (no manifest.json found).", err=True)
         raise typer.Exit(2)

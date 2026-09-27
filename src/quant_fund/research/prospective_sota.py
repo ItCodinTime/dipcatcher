@@ -21,7 +21,7 @@ import numpy as np
 from scipy.stats import norm
 
 from quant_fund.metrics.scoring import crps_empirical
-from quant_fund.paper.quantile_signals import _arch_fit
+from quant_fund.models.arch_fit import arch_fit as _arch_fit
 
 SCHEMA = "prospective_sota_v1"
 METHODS = ("candidate", "dip_fhs", "published")

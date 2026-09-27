@@ -1,18 +1,74 @@
-"""Kyle/OFI honesty checkers (``kyle_*_honesty_errors``)."""
+"""Nested kyle_ofi residual-flow and dispersion honesty checks.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
-from ._helpers import (
-    _KYLE_FORBIDDEN_TOKENS,
-    _KYLE_OFI_IC_METHOD_ALLOWED,
-    _KYLE_RESIDUAL_SPEARMAN_KEYS,
-    _finite_scalar,
-    _kyle_ofi_blob,
-    _kyle_ofi_has_nest_diagnostic_marker,
+from .receipt import join_coverage_honesty_errors
+
+
+def northset_include_kyle_ofi_nest_presence_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify ``include_kyle_ofi`` ↔ nested ``kyle_ofi`` presence.
+
+    Stamp contract (``bench_northset``):
+    - ``include_kyle_ofi is True`` ⇒ ``kyle_ofi`` is a dict with ``research_only is True``
+    - ``include_kyle_ofi is False`` ⇒ ``kyle_ofi`` key absent
+
+    Does not invent nest internals / does not overwrite kyle_ofi.py — presence only.
+    Skip when flag absent. Research diagnostic only; never live Sharpe.
+    """
+    if not isinstance(blob, dict):
+        return []
+    if blob.get("family") not in (None, "northset"):
+        return []
+    if "include_kyle_ofi" not in blob:
+        return []
+    flag = blob.get("include_kyle_ofi")
+    if type(flag) is not bool:
+        return []  # bool-flags helper owns type
+
+    has_nest = "kyle_ofi" in blob
+    nest = blob.get("kyle_ofi") if has_nest else None
+
+    if flag is True:
+        if not isinstance(nest, dict):
+            return ["kyle_ofi_nest_missing_while_include_kyle_ofi_true"]
+        if nest.get("research_only") is not True:
+            return ["kyle_ofi_nest_research_only_not_true_while_include_kyle_ofi_true"]
+        return []
+    # flag False
+    if has_nest:
+        return ["kyle_ofi_nest_present_while_include_kyle_ofi_false"]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# Soft-verify: nested northset["kyle_ofi"] residual_flow / dispersion honesty
+# (Sergeant / research diagnostic only — never live Sharpe / promotion.)
+# ---------------------------------------------------------------------------
+
+_KYLE_RESIDUAL_SPEARMAN_KEYS = (
+    "residual_ofi_ex_depth_fwd_delta_mid_mean_spearman",
+    "residual_depth_ex_ofi_fwd_delta_mid_mean_spearman",
+    "residual_depth_ex_ofi_fwd_ret_1_mean_spearman",
+    "residual_ofi_ex_depth_fwd_ret_1_mean_spearman",
+    "residual_depth_ex_ofi_fwd_ret_2_mean_spearman",
+    "residual_ofi_ex_depth_fwd_ret_2_mean_spearman",
+    "residual_depth_ex_ofi_fwd_ret_3_mean_spearman",
+    "residual_ofi_ex_depth_fwd_ret_3_mean_spearman",
 )
-from .session import (
-    join_coverage_honesty_errors,
-)
+_KYLE_FORBIDDEN_TOKENS = ("sharpe", "sortino", "calmar", "pnl", "nav", "live_pnl_claim")
+
+
+def _kyle_ofi_blob(blob: object) -> dict | None:
+    """Return nested kyle_ofi dict from a northset family blob, or the blob itself."""
+    if not isinstance(blob, dict):
+        return None
+    if blob.get("family") == "kyle_ofi":
+        return blob
+    nest = blob.get("kyle_ofi")
+    return nest if isinstance(nest, dict) else None
 
 
 def kyle_residual_flow_honesty_errors(blob: object) -> list[str]:
@@ -58,38 +114,28 @@ def kyle_residual_flow_honesty_errors(blob: object) -> list[str]:
     return errors
 
 
-def kyle_r2_vs_kyle_ofi_r2_never_equate_honesty_errors(blob: object) -> list[str]:
-    """Never equate always-on ``kyle_r2`` with ``kyle_ofi_r2``.
+def northset_kyle_r2_unit_honesty_errors(blob: object) -> list[str]:
+    """Soft-verify always-on ``kyle_r2`` / ``kyle_ofi_r2`` ∈ [0, 1] when finite.
 
-    DATA_CONTRACTS: both are name-mean OLS R², different flow columns
-    (``signed_volume`` vs ``ofi``). When both keys are present:
-
-    - Distinct key identity
-    - Key-scoped finite probes (ofi-only blob must not count as kyle_r2)
-    - Numeric equality on clean synth is allowed
-
-    Skip when either key absent. Research diagnostic only; never live Sharpe.
-    Always-on — not nest invent / kyle_ofi.py overwrite.
+    Name-mean OLS R² from ``kyle_lambda`` helpers (signed_volume vs ofi paths).
+    NaN/absent skip; ±inf fail-closed. Research diagnostic only; never live Sharpe.
+    Always-on surface — not nest invent / kyle_ofi overwrite.
     """
     if not isinstance(blob, dict):
         return []
-    k_sv = "kyle_r2"
-    k_ofi = "kyle_ofi_r2"
-    if k_sv not in blob or k_ofi not in blob:
-        return []
-
     errs: list[str] = []
-    if k_sv == k_ofi:
-        errs.append("kyle_r2_kyle_ofi_r2_keys_collapsed")
-
-    if not _finite_scalar({k_sv: 0.5}.get(k_sv)):
-        errs.append("kyle_r2_finite_probe_broken")
-    if _finite_scalar({k_ofi: 0.5}.get(k_sv)):
-        errs.append("kyle_ofi_r2_incorrectly_counts_as_finite_kyle_r2")
-    if not _finite_scalar({k_ofi: 0.5}.get(k_ofi)):
-        errs.append("kyle_ofi_r2_finite_probe_broken")
-    if _finite_scalar({k_sv: 0.5}.get(k_ofi)):
-        errs.append("kyle_r2_incorrectly_counts_as_finite_kyle_ofi_r2")
+    for key in ("kyle_r2", "kyle_ofi_r2"):
+        if key not in blob:
+            continue
+        try:
+            x = float(blob.get(key))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            errs.append(f"{key}_non_numeric")
+            continue
+        if x != x:
+            continue
+        if abs(x) == float("inf") or not (0.0 <= x <= 1.0):
+            errs.append(f"{key}_out_of_unit_interval")
     return errs
 
 
@@ -342,6 +388,45 @@ def kyle_ofi_label_synthetic_honesty_errors(blob: object) -> list[str]:
     return errors
 
 
+def _kyle_ofi_has_nest_diagnostic_marker(kyle: dict) -> bool:
+    """True when any kyle nest diagnostic stamp is present/finite."""
+    for key in _KYLE_RESIDUAL_SPEARMAN_KEYS:
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:
+            return True
+    for key in (
+        "kyle_lambda_depth_p50",
+        "kyle_lambda_ofi_p50",
+        "kyle_lambda_ofi_depth_spearman",
+        "kyle_lambda_ofi_depth_pearson",
+        "kyle_lambda_date_series_n_depth",
+        "kyle_lambda_date_series_n_ofi",
+        "join_coverage",
+        "kyle_lambda_depth_mean",
+        "kyle_lambda_ofi_mean",
+    ):
+        if key not in kyle:
+            continue
+        try:
+            x = float(kyle[key])  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if x == x:
+            return True
+    if "kyle_lambda_dispersion_window" in kyle:
+        return True
+    for key in ("book_dgp", "dgp", "data_source", "label", "book_source"):
+        v = kyle.get(key)
+        if isinstance(v, str) and v.strip():
+            return True
+    return False
+
+
 def kyle_ofi_nest_claim_honesty_errors(blob: object) -> list[str]:
     """Soft-verify: any nest diagnostic marker ⇒ research_only + claim.
 
@@ -363,6 +448,9 @@ def kyle_ofi_nest_claim_honesty_errors(blob: object) -> list[str]:
     if leaked:
         errors.append("kyle_ofi_nest_forbidden_metric_keys")
     return errors
+
+
+_KYLE_OFI_IC_METHOD_ALLOWED = frozenset({"date_level_spearman_hac"})
 
 
 def kyle_ofi_ic_method_honesty_errors(blob: object) -> list[str]:
@@ -1090,3 +1178,36 @@ def kyle_ofi_nest_honesty_errors(blob: object) -> list[str]:
     errors.extend(kyle_ofi_label_nonempty_honesty_errors(blob))
     errors.extend(kyle_ofi_date_series_counts_honesty_errors(blob))
     return errors
+
+
+__all__ = [
+    "kyle_lambda_date_series_honesty_errors",
+    "kyle_lambda_dispersion_honesty_errors",
+    "kyle_lambda_ofi_depth_corr_honesty_errors",
+    "kyle_ofi_book_panel_path_honesty_errors",
+    "kyle_ofi_date_series_counts_honesty_errors",
+    "kyle_ofi_diagnostic_string_honesty_errors",
+    "kyle_ofi_dispersion_window_honesty_errors",
+    "kyle_ofi_family_honesty_errors",
+    "kyle_ofi_hac_lags_honesty_errors",
+    "kyle_ofi_ic_method_honesty_errors",
+    "kyle_ofi_join_coverage_honesty_errors",
+    "kyle_ofi_label_nonempty_honesty_errors",
+    "kyle_ofi_label_synthetic_honesty_errors",
+    "kyle_ofi_lambda_decile_order_honesty_errors",
+    "kyle_ofi_min_join_coverage_pair_honesty_errors",
+    "kyle_ofi_min_names_honesty_errors",
+    "kyle_ofi_n_dates_companion_honesty_errors",
+    "kyle_ofi_n_fused_scored_honesty_errors",
+    "kyle_ofi_nest_claim_honesty_errors",
+    "kyle_ofi_nest_honesty_errors",
+    "kyle_ofi_pvalue_honesty_errors",
+    "kyle_ofi_rolling_mean_hac_band_honesty_errors",
+    "kyle_ofi_spearman_honesty_errors",
+    "kyle_ofi_std_iqr_honesty_errors",
+    "kyle_ofi_synthetic_source_honesty_errors",
+    "kyle_ofi_tstat_honesty_errors",
+    "kyle_residual_flow_honesty_errors",
+    "northset_include_kyle_ofi_nest_presence_honesty_errors",
+    "northset_kyle_r2_unit_honesty_errors",
+]

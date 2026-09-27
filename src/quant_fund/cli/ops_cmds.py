@@ -1,4 +1,7 @@
-"""Ops commands: report, tearsheet, api, paper, monitor, sim-live."""
+"""API, paper, monitor, and sim-live commands.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
@@ -6,84 +9,8 @@ from pathlib import Path
 
 import typer
 
-from ._app import (
-    _cfg,
-    app,
-)
-
-
-@app.command()
-def report(
-    latest: bool = typer.Option(False, "--latest"),
-    config: Path = typer.Option(Path("configs/research.yaml")),
-) -> None:
-    from quant_fund.reporting.report import latest_report_dir, write_report
-
-    cfg = _cfg(config)
-    dest = latest_report_dir(Path(cfg.data.root)) / "latest.md"
-    write_report(
-        dest,
-        "Research report",
-        {"config": cfg.dump(), "note": "see MLflow for experiment metrics"},
-        synthetic=cfg.data.source == "synthetic",
-    )
-    typer.echo(dest)
-
-
-@app.command("tearsheet")
-def tearsheet_cmd(
-    equity: Path = typer.Option(
-        ..., "--equity", help="Equity parquet: event_time, nav (research-only label)"
-    ),
-    fills: Path | None = typer.Option(None, "--fills", help="Optional fills parquet for IS/TCA"),
-    weights: Path | None = typer.Option(
-        None,
-        "--weights",
-        help="Optional target-weight panel (event_time, security_id, target_weight)",
-    ),
-    bars: Path | None = typer.Option(
-        None, "--bars", help="Optional per-name bars for per-security attribution"
-    ),
-    out_md: Path | None = typer.Option(None, "--out-md", help="Markdown output path"),
-    out_json: Path | None = typer.Option(None, "--out-json", help="JSON sheet output path"),
-    periods_per_year: float = typer.Option(252.0, "--periods-per-year"),
-    label: str = typer.Option("BACKTEST_SIM", "--label"),
-    synthetic: bool = typer.Option(False, "--synthetic"),
-) -> None:
-    """Institutional tearsheet: summary stats, drawdowns, period table, costs, attribution.
-
-    Reads backtest/paper artifacts (equity curve, fills, weights) and emits a
-    durable report. Never a live-P&L claim — live_pnl_claim=False is stamped.
-    """
-    import json
-
-    import polars as pl
-
-    from quant_fund.reporting.tearsheet import (
-        build_tearsheet,
-        tearsheet_markdown,
-        write_tearsheet_md,
-    )
-
-    eq = pl.read_parquet(equity)
-    sheet = build_tearsheet(
-        eq,
-        fills=pl.read_parquet(fills) if fills is not None else None,
-        weights=pl.read_parquet(weights) if weights is not None else None,
-        bars=pl.read_parquet(bars) if bars is not None else None,
-        periods_per_year=periods_per_year,
-        label=label,
-        synthetic=synthetic,
-    )
-    if out_md is not None:
-        write_tearsheet_md(out_md, sheet)
-        typer.echo(f"markdown={out_md}")
-    if out_json is not None:
-        out_json.parent.mkdir(parents=True, exist_ok=True)
-        out_json.write_text(json.dumps(sheet, indent=2, default=str))
-        typer.echo(f"json={out_json}")
-    if out_md is None and out_json is None:
-        typer.echo(tearsheet_markdown(sheet))
+from .app import app
+from .support import _cfg
 
 
 @app.command()
@@ -116,11 +43,135 @@ def paper(
         False,
         help="Use earliest decision dates (multi-day grind); default prefers latest window.",
     ),
+    forward_stage: str | None = typer.Option(
+        None, help="Paired paper: commitment, freeze, decide, execute, interrupt, or verify."
+    ),
+    forward_run: Path | None = typer.Option(None, help="Forward paper run directory."),
+    forward_packet: Path | None = typer.Option(
+        None, help="Externally timestamped close/open packet."
+    ),
+    forward_attestation: Path | None = typer.Option(None, help="External protocol freeze record."),
+    forward_spec: Path = typer.Option(Path("configs/net_tournament.json")),
+    forward_benchmark: Path = typer.Option(Path("data/metadata/real_benchmark/us_wide_20260925")),
+    forward_tournament: Path = typer.Option(Path("data/metadata/net_tournament/us_wide_20260925")),
+    forward_reason: str | None = typer.Option(
+        None, help="Interruption reason: no_feed/downtime/missing_name/bad_timestamp/other."
+    ),
 ) -> None:
     """Phase 17 paper / shadow loop with simulated broker (no live fills)."""
     import json
 
     import polars as pl
+
+    if forward_stage is not None:
+        from quant_fund.paper import forward_shadow
+
+        if forward_stage not in {
+            "commitment",
+            "freeze",
+            "decide",
+            "execute",
+            "interrupt",
+            "verify",
+        }:
+            raise typer.BadParameter(
+                "--forward-stage must be commitment, freeze, decide, execute, interrupt or verify"
+            )
+        if forward_stage != "commitment" and forward_run is None:
+            raise typer.BadParameter("--forward-run is required")
+        if forward_stage == "freeze" and forward_attestation is None:
+            raise typer.BadParameter("--forward-attestation is required to freeze")
+        if forward_stage in {"decide", "execute"} and forward_packet is None:
+            raise typer.BadParameter("--forward-packet is required")
+        if forward_stage == "interrupt" and forward_reason is None:
+            raise typer.BadParameter("--forward-reason is required for an interruption")
+        try:
+            if forward_stage in {"commitment", "freeze"}:
+                forward_result = forward_shadow.prepare(
+                    forward_spec,
+                    forward_benchmark,
+                    forward_tournament,
+                    forward_attestation if forward_stage == "freeze" else None,
+                    forward_run if forward_stage == "freeze" else None,
+                )
+            elif forward_stage == "decide":
+                forward_result = forward_shadow.decide(forward_run, forward_packet)  # type: ignore[arg-type]
+            elif forward_stage == "execute":
+                forward_result = forward_shadow.execute(forward_run, forward_packet)  # type: ignore[arg-type]
+            elif forward_stage == "interrupt":
+                forward_result = forward_shadow.interrupt(forward_run, forward_reason)  # type: ignore[arg-type]
+            else:
+                forward_result = forward_shadow.verify(forward_run)  # type: ignore[arg-type]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            phase_only_error = str(exc).startswith(
+                (
+                    "next-open execution must reconcile",
+                    "a prior close decision must be recorded",
+                    "forward paper run is already interrupted",
+                )
+            )
+            if (
+                forward_stage in {"decide", "execute"}
+                and forward_run is not None
+                and not phase_only_error
+            ):
+                reason = (
+                    "no_feed"
+                    if isinstance(exc, FileNotFoundError)
+                    else "missing_name"
+                    if "missing/extra" in str(exc)
+                    else "bad_timestamp"
+                    if "timestamp" in str(exc) or "cutoff" in str(exc)
+                    else "other"
+                )
+                try:
+                    stopped = forward_shadow.interrupt(
+                        forward_run,
+                        reason,
+                        attempted_stage=forward_stage,
+                        attempted_packet=forward_packet,
+                        error=str(exc),
+                    )
+                    typer.echo(f"interruption_receipt={stopped['receipt_sha256']}")
+                except (OSError, ValueError, KeyError, TypeError) as stop_error:
+                    typer.echo(f"interruption_not_recorded={stop_error}")
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo("DATA_LABEL=PROSPECTIVE_PACKET_UNVERIFIED")
+        typer.echo(
+            "LOCAL_LEDGER_VERIFY_ONLY; external feed/calendar and strategy replay unverified"
+        )
+        displayed = {
+            key: value
+            for key, value in forward_result.items()
+            if key
+            in {
+                "protocol_commitment_sha256",
+                "git_revision",
+                "git_worktree_sha256",
+                "exchange_schedule_sha256",
+                "last_historical_warmup_session",
+                "receipt_sha256",
+                "stage",
+                "seq",
+                "session",
+                "kind",
+                "valid",
+                "state",
+                "paired_sessions",
+                "minimum",
+                "interruption_reason",
+                "external_attestation_verified",
+                "independent_strategy_replay",
+                "forward_evidence_accepted",
+                "research_only",
+                "live_pnl_claim",
+                "errors",
+            }
+        }
+        typer.echo(json.dumps(displayed, indent=2, allow_nan=False))
+        if forward_result.get("valid") is False:
+            raise typer.Exit(code=1)
+        return
 
     from quant_fund.features.engine import build_features
     from quant_fund.paper.ledger import latest_run_id
@@ -500,3 +551,11 @@ def sim_live(
                 typer.echo(f"  {name:<18} {st.get('status', 'failed')}")
     typer.echo(f"receipt: {result.receipt_path}")
     typer.echo("SIMULATED — no live-PnL claim.")
+
+
+__all__ = [
+    "api",
+    "monitor",
+    "paper",
+    "sim_live",
+]
