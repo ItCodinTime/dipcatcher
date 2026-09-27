@@ -10,7 +10,7 @@ mod rolling;
 
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict};
+use pyo3::types::{PyBytes, PyDict, PyList, PyTuple};
 
 fn as_slice<'a>(values: &'a PyReadonlyArray1<'a, f64>) -> PyResult<&'a [f64]> {
     values.as_slice().map_err(|err| {
@@ -235,17 +235,47 @@ fn hash_bytes(data: &[u8]) -> String {
     hashing::sha256_hex(data)
 }
 
+fn push_ascii(out: &mut Vec<[u8; 64]>, item: &Bound<'_, PyAny>) -> PyResult<()> {
+    let blob = item.downcast::<PyBytes>().map_err(|_| {
+        pyo3::exceptions::PyTypeError::new_err("hash_many expects a sequence of bytes")
+    })?;
+    out.push(hashing::sha256_hex_ascii(blob.as_bytes()));
+    Ok(())
+}
+
+fn py_list_from_ascii<'py>(py: Python<'py>, hexes: &[[u8; 64]]) -> PyResult<Bound<'py, PyList>> {
+    PyList::new(
+        py,
+        hexes.iter().map(|hex| {
+            std::str::from_utf8(hex).unwrap_or_else(|_| unreachable!("hex digits are ASCII"))
+        }),
+    )
+}
+
 #[pyfunction]
-fn hash_many(chunks: &Bound<'_, PyAny>) -> PyResult<Vec<String>> {
-    let mut out = Vec::new();
-    for item in chunks.try_iter()? {
-        let item = item?;
-        let blob = item.downcast::<PyBytes>().map_err(|_| {
-            pyo3::exceptions::PyTypeError::new_err("hash_many expects a sequence of bytes")
-        })?;
-        out.push(hashing::sha256_hex(blob.as_bytes()));
+fn hash_many<'py>(py: Python<'py>, chunks: &Bound<'_, PyAny>) -> PyResult<Bound<'py, PyList>> {
+    // Hex stays in one `[u8; 64]` buffer per digest. Building a Rust `String`
+    // per chunk allocated twice (the `String`, then the Python `str`) and lost
+    // the 1.5× floor against hashlib on SHA-NI hosts.
+    if let Ok(list) = chunks.downcast::<PyList>() {
+        let mut hexes = Vec::with_capacity(list.len());
+        for index in 0..list.len() {
+            push_ascii(&mut hexes, &list.get_item(index)?)?;
+        }
+        return py_list_from_ascii(py, &hexes);
     }
-    Ok(out)
+    if let Ok(tuple) = chunks.downcast::<PyTuple>() {
+        let mut hexes = Vec::with_capacity(tuple.len());
+        for index in 0..tuple.len() {
+            push_ascii(&mut hexes, &tuple.get_item(index)?)?;
+        }
+        return py_list_from_ascii(py, &hexes);
+    }
+    let mut hexes = Vec::new();
+    for item in chunks.try_iter()? {
+        push_ascii(&mut hexes, &item?)?;
+    }
+    py_list_from_ascii(py, &hexes)
 }
 
 #[pymodule]
