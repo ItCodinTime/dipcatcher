@@ -14,6 +14,7 @@ are for longer sequences. Research only; not a live book.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,6 +22,14 @@ from numpy.typing import NDArray
 Array = NDArray[np.float64]
 IntArray = NDArray[np.intp]
 _EPS = 1e-15
+
+
+class DiscreteHMMDict(TypedDict):
+    """Serialized HMM matrices and initial-state probabilities."""
+
+    A: list[list[float]]
+    B: list[list[float]]
+    pi: list[float]
 
 
 @dataclass
@@ -53,7 +62,7 @@ class DiscreteHMM:
     def n_obs(self) -> int:
         return int(self.B.shape[1])
 
-    def as_dict(self) -> dict[str, list[float]]:
+    def as_dict(self) -> DiscreteHMMDict:
         return {
             "A": self.A.tolist(),
             "B": self.B.tolist(),
