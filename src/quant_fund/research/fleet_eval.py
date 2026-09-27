@@ -40,6 +40,7 @@ from quant_fund.models.distribution import (
     StackedDistribution,
 )
 from quant_fund.models.skew_t import skew_t_ppf
+from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 from quant_fund.utils.reproducibility import git_revision
 
@@ -65,7 +66,7 @@ HeadFactory = Callable[[], Any]
 
 
 def _require_n(n: int) -> int:
-    if isinstance(n, bool) or int(n) < 1:
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
         raise ValueError("shard size n must be a positive integer")
     return int(n)
 
@@ -317,11 +318,15 @@ def _score_row(
             raise ValueError(f"predict returned shape {q.shape}; expected ({n_eval}, {taus.size})")
         if not np.isfinite(q).all():
             raise ValueError("predict returned non-finite quantiles")
+        if np.any(np.diff(q, axis=1) < 0.0):
+            raise ValueError("predict returned crossing quantiles")
         y_eval = shard.y[n_train : n_train + n_eval]
         row["crps"] = crps_from_quantiles(y_eval, q, taus)
         ks, ks_p = pit_ks(pit_values(y_eval, q, taus))
         row["pit_ks"] = ks
-        row["pit_ks_p"] = ks_p
+        # The usual KS p-value assumes independent PIT draws. These two
+        # generators deliberately include serial dependence.
+        row["pit_ks_p"] = None if shard.name in {"regime_switch", "garch_cluster"} else ks_p
         for level, pair in coverage_index.items():
             if pair is not None:
                 row[_coverage_key(level)] = coverage(y_eval, q[:, pair[0]], q[:, pair[1]])
@@ -352,7 +357,14 @@ def run_distribution_fleet(
     """
     if not isinstance(factories, Mapping) or not factories:
         raise ValueError("fleet requires a nonempty mapping of head factories")
-    if int(n_train) < 1 or int(n_eval) < 1:
+    if (
+        isinstance(n_train, bool)
+        or not isinstance(n_train, (int, np.integer))
+        or n_train < 1
+        or isinstance(n_eval, bool)
+        or not isinstance(n_eval, (int, np.integer))
+        or n_eval < 1
+    ):
         raise ValueError("n_train and n_eval must be positive")
     n_train = int(n_train)
     n_eval = int(n_eval)
@@ -388,8 +400,12 @@ def run_distribution_fleet(
             raise ValueError(f"shard {shard_name!r} did not return a SyntheticShard")
         y = np.asarray(shard.y, dtype=float).reshape(-1)
         x = np.asarray(shard.x, dtype=float)
-        if y.size < n_shard or x.ndim != 2 or x.shape[0] < n_shard:
-            raise ValueError(f"shard {shard_name!r} produced {y.size} rows; needs >= {n_shard}")
+        if shard.name != shard_name or shard.config.get("data_label") != "SYNTHETIC":
+            raise ValueError(f"shard {shard_name!r} must match its name and SYNTHETIC label")
+        if y.size != n_shard or x.ndim != 2 or x.shape[0] != n_shard:
+            raise ValueError(
+                f"shard {shard_name!r} produced {y.size} rows; needs exactly {n_shard}"
+            )
         if not np.isfinite(y).all() or not np.isfinite(x).all():
             raise ValueError(f"shard {shard_name!r} produced non-finite data")
         shard = SyntheticShard(shard.name, x, y, dict(shard.config))
@@ -471,8 +487,14 @@ def run_distribution_fleet(
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    """Publish a complete text artifact without exposing partial bytes."""
+    """Publish a complete immutable text artifact without replacing an existing one."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise FileExistsError(f"receipt path is a symlink: {path}")
+    if path.exists():
+        if path.read_text(encoding="utf-8") != content:
+            raise FileExistsError(f"receipt already exists with different content: {path}")
+        return
     temporary_path: Path | None = None
     try:
         with NamedTemporaryFile(
@@ -487,7 +509,13 @@ def _atomic_write_text(path: Path, content: str) -> None:
             temporary.write(content)
             temporary.flush()
             os.fsync(temporary.fileno())
-        os.replace(temporary_path, path)
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            if path.is_symlink() or path.read_text(encoding="utf-8") != content:
+                raise FileExistsError(
+                    f"receipt already exists with different content: {path}"
+                ) from None
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
@@ -503,6 +531,16 @@ def write_fleet_receipt(
     digest is embedded as ``receipt_sha256`` (mirroring the real_benchmark
     seal convention). The write is atomic.
     """
+    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
+    if (
+        receipt.get("schema") != FLEET_EVAL_SCHEMA
+        or receipt.get("data_label") != "SYNTHETIC"
+        or receipt.get("live_pnl_claim") is not False
+        or not isinstance(receipt.get("results"), list)
+        or not receipt["results"]
+        or not family_blob_forbidden_metrics_absent(research_blob)
+    ):
+        raise ValueError("fleet receipt violates its synthetic research contract")
     canonical = json.loads(canonical_json_bytes(dict(receipt)))
     digest = hash_bytes(canonical_json_bytes(canonical))
     payload = {**canonical, "receipt_sha256": digest}

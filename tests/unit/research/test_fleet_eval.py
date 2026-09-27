@@ -6,6 +6,7 @@ All data here is SYNTHETIC — correctness evidence, never market evidence.
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -112,6 +113,8 @@ def test_generators_fail_closed_on_size() -> None:
             gen(0, 0)
         with pytest.raises(ValueError):
             gen(-5, 0)
+        with pytest.raises(ValueError):
+            gen(1.5, 0)
 
 
 def test_resolve_shard_generators() -> None:
@@ -207,6 +210,36 @@ def test_fleet_records_head_failure() -> None:
     assert receipt["n_error_rows"] == 1
 
 
+def test_fleet_rejects_crossing_forecast_as_error_row() -> None:
+    class _Crossed:
+        def fit(self, x: np.ndarray, y: np.ndarray) -> _Crossed:
+            return self
+
+        def predict(self, x: np.ndarray) -> np.ndarray:
+            return np.tile(np.linspace(1.0, -1.0, len(TAUS)), (x.shape[0], 1))
+
+        def metadata(self) -> SimpleNamespace:
+            return SimpleNamespace(family="distribution")
+
+    frame, receipt = run_distribution_fleet(
+        {"crossed": _Crossed}, shards=["iid_gaussian"], n_train=64, n_eval=32
+    )
+    assert frame["status"].to_list() == ["error"]
+    assert "crossing quantiles" in frame["error"].to_list()[0]
+    assert receipt["n_error_rows"] == 1
+
+
+def test_fleet_rejects_mislabeled_custom_shard() -> None:
+    def mislabeled(n: int, seed: int) -> SyntheticShard:
+        shard = iid_gaussian(n, seed)
+        return SyntheticShard(shard.name, shard.x, shard.y, {"data_label": "REAL"})
+
+    with pytest.raises(ValueError, match="SYNTHETIC label"):
+        run_distribution_fleet(
+            _two_head_factories(), shards={"iid_gaussian": mislabeled}, n_train=64, n_eval=32
+        )
+
+
 def test_fleet_fail_closed_arguments() -> None:
     with pytest.raises(ValueError):
         run_distribution_fleet({}, n_train=64, n_eval=32)
@@ -214,6 +247,10 @@ def test_fleet_fail_closed_arguments() -> None:
         run_distribution_fleet(_two_head_factories(), n_train=0, n_eval=32)
     with pytest.raises(ValueError):
         run_distribution_fleet(_two_head_factories(), n_train=64, n_eval=0)
+    with pytest.raises(ValueError):
+        run_distribution_fleet(_two_head_factories(), n_train=1.5, n_eval=32)
+    with pytest.raises(ValueError):
+        run_distribution_fleet(_two_head_factories(), n_train=64, n_eval=True)
     with pytest.raises(ValueError):
         run_distribution_fleet(_two_head_factories(), n_train=64, n_eval=32, taus=(0.5, 0.1))
 
@@ -245,6 +282,33 @@ def test_receipt_round_trip(tmp_path: Any) -> None:
     # Seal check: receipt_sha256 covers the payload (real_benchmark convention).
     sealed = payload.pop("receipt_sha256")
     assert sealed == hash_bytes(canonical_json_bytes(payload))
+    assert write_fleet_receipt(receipt, tmp_path) == path
+    path.write_text("tampered\n")
+    with pytest.raises(FileExistsError, match="different content"):
+        write_fleet_receipt(receipt, tmp_path)
+
+
+def test_receipt_rejects_non_synthetic_label(tmp_path: Any) -> None:
+    _, receipt = run_distribution_fleet(
+        _two_head_factories(), shards=["iid_gaussian"], n_train=64, n_eval=32
+    )
+    with pytest.raises(ValueError, match="synthetic research contract"):
+        write_fleet_receipt({**receipt, "data_label": "REAL"}, tmp_path)
+    receipt["shards"]["iid_gaussian"]["config"]["paper_pnl"] = 1.0
+    with pytest.raises(ValueError, match="synthetic research contract"):
+        write_fleet_receipt(receipt, tmp_path)
+
+
+def test_dependent_shard_has_no_iid_ks_p_value() -> None:
+    frame, _ = run_distribution_fleet(
+        {"gaussian": lambda: GaussianDistribution(list(TAUS))},
+        shards=["regime_switch"],
+        n_train=128,
+        n_eval=64,
+    )
+    assert frame["status"].to_list() == ["ok"]
+    assert frame["pit_ks"].is_finite().all()
+    assert frame["pit_ks_p"].null_count() == 1
 
 
 def test_no_forbidden_metric_keys(tmp_path: Any) -> None:
