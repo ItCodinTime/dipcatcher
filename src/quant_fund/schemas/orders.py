@@ -92,6 +92,9 @@ class Fill(BaseModel):
     spread_cost: float = 0.0
     impact_cost: float = 0.0
     slippage: float = 0.0
+    # Cash charged via ``bps_per_turnover``. Distinct from ``slippage``, which
+    # is an adverse-drift diagnostic and is not deducted from cash.
+    turnover_cost: float = 0.0
     is_partial: bool = False
     # Price at decision time (signal bar close) when the caller supplies it;
     # enables signed implementation-shortfall decomposition downstream.
@@ -104,7 +107,7 @@ class Fill(BaseModel):
             raise ValueError("price must be finite and strictly positive")
         return value
 
-    @field_validator("fee", "spread_cost", "impact_cost", "slippage")
+    @field_validator("fee", "spread_cost", "impact_cost", "slippage", "turnover_cost")
     @classmethod
     def validate_cost(cls, value: float) -> float:
         if not math.isfinite(value) or value < 0.0:

@@ -353,6 +353,21 @@ honesty gates (executed / nonempty / finite / forbidden-metrics-absent).
 - T. Calinski, J. Harabasz (1974). "A dendrite method for cluster analysis." Communications in Statistics — `metrics/cluster_validity.py`.
 - D. Davies, D. Bouldin (1979). "A cluster separation measure." IEEE TPAMI — `metrics/cluster_validity.py`.
 
+## Wave 22 references (variance tests, Sharpe inference, liquidity & agreement)
+
+### Equality-of-variance tests
+- M. Bartlett (1937). "Properties of sufficiency and statistical tests." Proc. Roy. Soc. — `metrics/scale_tests.py`.
+- H. Levene (1960). "Robust tests for equality of variances." — `metrics/scale_tests.py`.
+- M. Brown, A. Forsythe (1974). "Robust tests for the equality of variances." JASA — `metrics/scale_tests.py`.
+- M. Fligner, T. Killeen (1976). "Distribution-free two-sample tests for scale." JASA — `metrics/scale_tests.py`.
+
+### Performance inference & liquidity
+- O. Ledoit, M. Wolf (2008). "Robust performance hypothesis testing with the Sharpe ratio." J. Empirical Finance — `metrics/ledoit_wolf_sharpe.py`.
+- B. Hui, B. Heubel (1984). Liquidity ratio — `metrics/liquidity_extra.py`.
+- P. Martin, B. McCann (1989). *The Investor's Guide to Fidelity Funds* — Ulcer Index / Martin ratio (`metrics/liquidity_extra.py`).
+
+### Agreement
+- J. Cohen (1960). "A coefficient of agreement for nominal scales."; J. Cohen (1968). "Weighted kappa." — `metrics/agreement.py`.
 ## Wave 21 references (forecast accuracy, whitening, MVO & utility)
 
 - H. Theil (1966). *Applied Economic Forecasting* — Theil's U inequality coefficients (`metrics/forecast_accuracy.py`).

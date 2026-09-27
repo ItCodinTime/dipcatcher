@@ -32,17 +32,24 @@ _TRANSFORM_PATH = Path(__file__).resolve()
 # ``live_pnl_claim: true`` token or an explicit live-trading profit phrase.
 # Commentary about the *rule* (e.g. "not live performance evidence") does not
 # match — the claim must be affirmative.
-_LIVE_TEXT = re.compile(
-    r"(live[_\s-]?pnl[_\s-]?claim[\"'\s:]+true"
-    r"|live trading (?:profit|returns?|pnl|p&l)"
-    r"|real[- ]money (?:returns?|profits?)"
-    r"|实盘(?:收益|盈利|回报))",
-    re.IGNORECASE,
-)
+_LIVE_TEXT: re.Pattern[str] | None = None
+
+
+def _live_text() -> re.Pattern[str]:
+    global _LIVE_TEXT
+    if _LIVE_TEXT is None:
+        _LIVE_TEXT = re.compile(
+            r"(live[_\s-]?pnl[_\s-]?claim[\"'\s:]+true"
+            r"|live trading (?:profit|returns?|pnl|p&l)"
+            r"|real[- ]money (?:returns?|profits?)"
+            r"|实盘(?:收益|盈利|回报))",
+            re.IGNORECASE,
+        )
+    return _LIVE_TEXT
 
 
 def _text_claims_live(text: str) -> bool:
-    return bool(_LIVE_TEXT.search(text))
+    return bool(_live_text().search(text))
 
 
 def transform_sha256() -> str:
