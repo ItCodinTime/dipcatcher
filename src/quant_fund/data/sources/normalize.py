@@ -23,6 +23,13 @@ def _number(value: Any, field: str) -> float:
     return number
 
 
+# Plausible-magnitude ceiling for OHLCV fields. Above this, values are almost
+# certainly unit-scaling or fat-finger artifacts (no major-unit listed price or
+# daily volume approaches 1e12); fail closed rather than flow them to bronze.
+# Chaos-tested in tests/unit/data/test_ingest_fault_injection.py.
+_MAX_OHLCV_MAGNITUDE = 1e12
+
+
 def normalize_ohlcv(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -53,6 +60,8 @@ def normalize_ohlcv(
             raise SourceError("OHLCV prices must be positive")
         if values["volume"] < 0 or values["low"] > values["high"]:
             raise SourceError("invalid OHLCV envelope or volume")
+        if max(values.values()) > _MAX_OHLCV_MAGNITUDE:
+            raise SourceError("OHLCV magnitude exceeds plausible bound")
         if (
             not values["low"] <= values["open"] <= values["high"]
             or not values["low"] <= values["close"] <= values["high"]
@@ -67,6 +76,8 @@ def normalize_ohlcv(
                 "available_time": raw.get("available_time"),
             }
         )
+    if not normalized:
+        raise SourceError("OHLCV payload is empty")
     return pit_frame(normalized, source=source, revision_id=revision_id).sort(
         ["security_id", "event_time"]
     )
@@ -103,6 +114,8 @@ def normalize_observations(
             if key in raw:
                 row[key] = raw[key]
         normalized.append(row)
+    if not normalized:
+        raise SourceError("observation payload is empty")
     return pit_frame(normalized, source=source, revision_id=revision_id).sort(
         ["security_id", "event_time"]
     )
