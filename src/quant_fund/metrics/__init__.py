@@ -55,10 +55,15 @@ from quant_fund.metrics.returns import (
     drawdown_series,
     max_drawdown,
     sharpe_ratio,
+    sharpe_ratio_batch,
     sortino_ratio,
     turnover,
     wealth_index,
 )
+
+# A2 F4 (PROOFCORE W4): explicit-name re-export of the scoring.py IC-based
+# information ratio so consumers stop re-inlining mean/std*sqrt(ppy).
+from quant_fund.metrics.scoring import icir as ic_information_ratio
 from quant_fund.metrics.risk import gaussian_es, gaussian_var, historical_es, historical_var
 from quant_fund.metrics.scoring import (
     GARCH_ONE_STEP_CRPS_TAUS,
@@ -171,6 +176,7 @@ __all__ = [
     "historical_es",
     "historical_var",
     "icir",
+    "ic_information_ratio",
     "max_drawdown",
     "fissler_ziegel_loss",
     "mean_fissler_ziegel",
@@ -185,6 +191,7 @@ __all__ = [
     "rank_ic",
     "rearrange_quantiles",
     "sharpe_ratio",
+    "sharpe_ratio_batch",
     "sortino_ratio",
     "turnover",
     "wealth_index",
