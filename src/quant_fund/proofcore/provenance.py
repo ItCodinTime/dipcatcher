@@ -56,6 +56,37 @@ _TRIAL_COLUMNS: tuple[str, ...] = (
     "created_utc",
 )
 
+
+def _column_list(columns: tuple[str, ...]) -> str:
+    """Comma-separated identifiers from a fixed column tuple, never user input."""
+    return ", ".join(columns)
+
+
+def _placeholders(columns: tuple[str, ...]) -> str:
+    return ", ".join("?" for _ in columns)
+
+
+# Statements are assembled once from the constant column tuples above.
+# ``execute`` receives these names so the SQL text is not built at the call.
+_BUNDLE_COLUMN_SQL = _column_list(_BUNDLE_COLUMNS)
+_TRIAL_COLUMN_SQL = _column_list(_TRIAL_COLUMNS)
+_INSERT_BUNDLE_SQL = (
+    "INSERT INTO proof_bundles ("
+    + _BUNDLE_COLUMN_SQL
+    + ") VALUES ("
+    + _placeholders(_BUNDLE_COLUMNS)
+    + ")"
+)
+_SELECT_TRIAL_BY_ID_SQL = "SELECT " + _TRIAL_COLUMN_SQL + " FROM trial_ledger WHERE trial_id = ?"
+_INSERT_TRIAL_SQL = (
+    "INSERT INTO trial_ledger ("
+    + _TRIAL_COLUMN_SQL
+    + ") VALUES ("
+    + _placeholders(_TRIAL_COLUMNS)
+    + ")"
+)
+_SELECT_TRIALS_SQL = "SELECT " + _TRIAL_COLUMN_SQL + " FROM trial_ledger"
+
 _DDL = """
 CREATE TABLE IF NOT EXISTS proof_bundles (
     bundle_id TEXT PRIMARY KEY,
@@ -148,8 +179,7 @@ class ProvenanceDB:
                     f"does not match chain head {expected_prev}"
                 )
             self._con.execute(
-                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "
-                f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
+                _INSERT_BUNDLE_SQL,
                 [
                     bundle.bundle_id,
                     bundle.created_utc,
@@ -181,7 +211,7 @@ class ProvenanceDB:
         the DB layer (DESIGN.md §9.1).
         """
         existing = self._con.execute(
-            f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",
+            _SELECT_TRIAL_BY_ID_SQL,
             [row.trial_id],
         ).fetchone()
         values = self._trial_values(row)
@@ -196,8 +226,7 @@ class ProvenanceDB:
             return
         try:
             self._con.execute(
-                f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "
-                f"VALUES ({', '.join('?' for _ in _TRIAL_COLUMNS)})",
+                _INSERT_TRIAL_SQL,
                 values,
             )
         except Exception as exc:
@@ -209,7 +238,7 @@ class ProvenanceDB:
 
     def trials(self, *, family: str | None = None) -> list[TrialLedgerRow]:
         """All trial rows (optionally one family), ordered by (created_utc, trial_id)."""
-        sql = f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger"
+        sql = _SELECT_TRIALS_SQL
         params: list[Any] = []
         if family is not None:
             sql += " WHERE family = ?"
