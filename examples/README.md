@@ -8,7 +8,7 @@ Runnable research gallery. Each file is a [jupytext](https://jupytext.readthedoc
 | `02_purged_walkforward_conformal.py` | tracked real snapshot | Purged/embargoed walk-forward, split-conformal intervals, pinball / CRPS / coverage. Skips when `data/file_us_wide/bronze/bars.parquet` is absent or its SHA-256 does not match `configs/real_benchmark_us_wide.json` |
 | `03_synthetic_l2_book.py` | SYNTHETIC | Synthetic L2 book, VPIN proxy, queue imbalance, candle/book as-of join |
 | `04_hf_ohlcv_1m.py` | fixture, or network | `hf_ohlcv_1m` on a checked-in fixture. `HF_OHLCV_1M_ALLOW_DOWNLOAD=1` fetches one monthly file for a one-day AAPL window into a temp cache |
-| `05_phase1_evidence.py` | tracked real snapshot | `verify_phase1_index` / `verify_phase1_run` on the sealed Phase-1 evidence index. Skips when the only seal errors are a missing gitignored `data/file_us_wide` snapshot |
+| `05_phase1_evidence.py` | tracked real snapshot | `verify_phase1_index` / `verify_phase1_run` on the sealed Phase-1 evidence index |
 
 ```bash
 uv run python examples/01_receipt_round_trip.py
@@ -19,7 +19,7 @@ make examples   # ruff, mypy, and the offline pytest runner
 
 ## Labels
 
-SYNTHETIC output is an engine check, not market evidence. The US snapshot scores are proper scores on a survivorship-biased vendor file whose availability timestamps were reconstructed; the example prints those disclosures from the benchmark config. Phase-1 verification can report `runtime differs from this environment` when this interpreter's patch version is not the one that sealed the receipts. That note is not a broken seal. If every other seal error is an unreadable source dataset because `data/file_us_wide/bronze/bars.parquet` is absent, `05_phase1_evidence.py` prints `SKIP:` and exits 0 without treating the index as verified. A hash mismatch or any other seal error still fails the example. A verified receipt does not authorize live trading.
+SYNTHETIC output is an engine check, not market evidence. The US snapshot scores are proper scores on a survivorship-biased vendor file whose availability timestamps were reconstructed; the example prints those disclosures from the benchmark config. Phase-1 verification can report `runtime differs from this environment` when this interpreter's patch version is not the one that sealed the receipts. That note is not a broken seal. Any other verifier error fails `05_phase1_evidence.py`. The sealed US tape is gitignored; the example restores `data/file_us_wide/bronze/bars.parquet` from git history when the worktree does not have it, then checks the sealed SHA-256. A verified receipt does not authorize live trading.
 
 ## Hugging Face OHLCV-1m
 

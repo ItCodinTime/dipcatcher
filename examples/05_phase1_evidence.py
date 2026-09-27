@@ -18,9 +18,9 @@
 # Not investment advice. No live-trading claim.
 # The example calls `verify_phase1_index` and `verify_phase1_run`, the same path as
 # `dipcatcher verify-research`. A runtime mismatch against the sealing interpreter
-# is reported and does not by itself fail the summary. If every remaining seal
-# error is a missing gitignored source snapshot, the example skips and does not
-# claim the index was verified. Any other verifier error fails the example.
+# is reported and does not by itself fail the summary. Any other verifier error
+# fails the example. The sealed US tape is gitignored; when it is absent this
+# example restores that blob from git history so the dataset hash is checked.
 # Passing verification does not authorize live trading.
 
 # %%
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,6 +37,7 @@ from quant_fund.research.phase1_verify import verify_phase1_index, verify_phase1
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "data" / "metadata" / "research" / "phase1_evidence_index.json"
 _RUNTIME_NOTE = "runtime differs from this environment"
+_SEALED_TAPE = "data/file_us_wide/bronze/bars.parquet"
 
 
 def _load_object(path: Path) -> dict[str, object]:
@@ -48,18 +50,6 @@ def _load_object(path: Path) -> dict[str, object]:
             raise SystemExit(f"{path} has a non-string key")
         parsed[key] = value
     return parsed
-
-
-def _only_missing_snapshot(errors: list[str]) -> bool:
-    """True when every seal error is an absent derived source file."""
-    if not errors:
-        return False
-    for error in errors:
-        if "source dataset unreadable" not in error:
-            return False
-        if "No such file or directory" not in error and "FileNotFoundError" not in error:
-            return False
-    return True
 
 
 def _errors(result: dict[str, object]) -> list[str]:
@@ -149,7 +139,48 @@ def _summarize_run(index_dir: Path, entry: dict[str, object], number: int) -> No
     print("test_receipt=sealed" if test_on_disk else "test_receipt=absent")
 
 
+def _materialize_sealed_tape() -> None:
+    """Restore the gitignored sealed US tape from the commit that untracked it.
+
+    Phase-1 receipts bind ``dataset_sha256`` to those bytes. The worktree no
+    longer contains the derived parquet; the blob is still in git history.
+    """
+    dest = ROOT / _SEALED_TAPE
+    if dest.is_file():
+        return
+    found = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "log",
+            "--diff-filter=D",
+            "-1",
+            "--format=%H",
+            "--",
+            _SEALED_TAPE,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    revision = found.stdout.strip()
+    if found.returncode != 0 or not revision:
+        return
+    blob = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "blob", f"{revision}^:{_SEALED_TAPE}"],
+        check=False,
+        capture_output=True,
+    )
+    payload = blob.stdout
+    if blob.returncode != 0 or not payload:
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(payload)
+
+
 def main() -> None:
+    _materialize_sealed_tape()
     if not INDEX_PATH.is_file():
         raise SystemExit(f"phase-1 evidence index is absent: {INDEX_PATH}")
     index = _load_object(INDEX_PATH)
@@ -169,15 +200,6 @@ def main() -> None:
     print(f"seal_errors={len(seal_errors)}")
     for error in seal_errors:
         print(f"seal_error={error}")
-    if index.get("kind") != "phase1_evidence_index":
-        raise SystemExit("evidence file is not a phase-1 index")
-    if _only_missing_snapshot(seal_errors):
-        print(
-            "SKIP: tracked real US snapshot absent "
-            "(gitignored derived bars; dataset bytes were not checked)"
-        )
-        print("index_verified=false")
-        return
     runs = index.get("runs")
     if not isinstance(runs, list) or not runs:
         raise SystemExit("evidence index has no runs")
@@ -187,6 +209,8 @@ def main() -> None:
         _summarize_run(INDEX_PATH.parent, entry, number)
     if seal_errors:
         raise SystemExit("phase-1 verification reported a non-runtime error")
+    if index.get("kind") != "phase1_evidence_index":
+        raise SystemExit("evidence file is not a phase-1 index")
 
 
 if __name__ == "__main__":
