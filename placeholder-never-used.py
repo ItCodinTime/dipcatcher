@@ -1,1 +1,0 @@
-"""Executable smoke checks for one frozen research certificate."""
