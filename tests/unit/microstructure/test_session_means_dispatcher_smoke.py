@@ -62,7 +62,7 @@ def test_dispatcher_invokes_each_helper(monkeypatch) -> None:
 
     wrapped = tuple(_wrap(fn) for fn in _KNOWN)
     monkeypatch.setattr(
-        "quant_fund.research.catalog.NORTHSET_SESSION_MEANS_HONESTY_HELPERS",
+        "quant_fund.research.catalog.consistency.NORTHSET_SESSION_MEANS_HONESTY_HELPERS",
         wrapped,
     )
     # Re-import path: dispatcher reads the module-level tuple at call time
