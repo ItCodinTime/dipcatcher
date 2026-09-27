@@ -17,6 +17,7 @@ from quant_fund.proof.cli import proof_app
 from quant_fund.proofcore.cli import proofcore_app
 from quant_fund.quant_models.cli import qm_app
 from quant_fund.reality.cli import reality_app
+from quant_fund.stress.cli import stress_app
 
 
 def format_data_label(*, synthetic: bool, data_source: str) -> str:
@@ -62,6 +63,7 @@ app.add_typer(proof_app, name="proof")
 app.add_typer(leakage_app, name="leakage")
 app.add_typer(reality_app, name="reality")
 app.add_typer(proofcore_app, name="proofcore")
+app.add_typer(stress_app, name="stress")
 
 
 def _cfg(config: Path):
