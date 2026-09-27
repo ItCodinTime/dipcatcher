@@ -9,7 +9,7 @@ the vault before any caller code sees the frame (DESIGN.md §4).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -58,7 +58,7 @@ def _require_aware(t: datetime, *, what: str) -> None:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class PitVault:
@@ -120,9 +120,7 @@ class PitVault:
             prev_manifest_sha256=GENESIS_HASH,
             files=[],
         )
-        manifest_mod.write_manifest(
-            self.root, name, manifest, prev_manifest_sha256=GENESIS_HASH
-        )
+        manifest_mod.write_manifest(self.root, name, manifest, prev_manifest_sha256=GENESIS_HASH)
 
     def list_datasets(self) -> list[str]:
         """All datasets under root (dirs carrying a manifest.json), sorted."""
@@ -194,7 +192,7 @@ class PitVault:
         - records the read into recorder + watchdog if attached
         """
         _require_aware(t, what="asof timestamp")
-        t = t.astimezone(timezone.utc)
+        t = t.astimezone(UTC)
         security_level = self._security_level(name)  # VaultError if dataset missing
         current = manifest_mod.read_manifest(self.root, name)  # ManifestError if corrupt
         if not current.files:
@@ -295,7 +293,7 @@ class PitVault:
             return pl.DataFrame()
         parts_glob = str(self._dataset_dir(name) / manifest_mod.PARTS_DIR / "r*.parquet")
         scan = pl.scan_parquet(parts_glob).filter(
-            pl.col(EVENT_TIME_COL) == pl.lit(event_time.astimezone(timezone.utc))
+            pl.col(EVENT_TIME_COL) == pl.lit(event_time.astimezone(UTC))
         )
         if security_level:
             scan = scan.filter(pl.col(SECURITY_ID_COL) == pl.lit(security_id))
