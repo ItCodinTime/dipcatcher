@@ -20,10 +20,9 @@ import math
 from dataclasses import dataclass, replace
 
 import numpy as np
-from scipy import stats
-
 from quant_fund.market_sim.config import EVIDENCE, EcologyConfig
 from quant_fund.market_sim.simulator import META_AGENT, Metaorder, Simulator, run_ecology
+from scipy import stats
 
 # Pre-registered trial design. Do not edit these to chase a slope of 1/2.
 IMPACT_QUANTITIES: tuple[int, ...] = (50, 100, 200, 400, 800, 1600)

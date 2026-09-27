@@ -6,7 +6,6 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-
 from quant_fund.market_sim.agents import (
     Action,
     ExecutionAgent,
@@ -204,3 +203,19 @@ def test_scenario_names_are_the_library() -> None:
 def test_seed_and_strategy_ids_stay_out_of_the_population() -> None:
     assert SEED_AGENT == 900_001
     assert STRATEGY_AGENT == 900_003
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["tick_size", "mm_gamma", "mm_k", "strategy_nav", "noise_market_prob", "fundamental_rate"],
+)
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_config_rejects_nonfinite_values(field, value):
+    with pytest.raises(ValueError, match="finite"):
+        EcologyConfig(**{field: value})
+
+
+@pytest.mark.parametrize("value", [True, 2.5, float("inf")])
+def test_config_rejects_noninteger_event_counts(value):
+    with pytest.raises(ValueError, match="integer"):
+        EcologyConfig(max_events=value)

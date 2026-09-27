@@ -13,7 +13,6 @@ from typing import Protocol
 
 import numpy as np
 from numpy.random import Generator
-
 from quant_fund.market_sim.agents import (
     Action,
     Agent,

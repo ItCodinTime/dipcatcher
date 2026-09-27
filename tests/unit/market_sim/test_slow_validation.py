@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from quant_fund.market_sim.harness import mean_reversion_weight, stress_strategy
 from quant_fund.market_sim.honesty import diagnostic_keys_ok
 from quant_fund.market_sim.stylized import run_stylized_validation

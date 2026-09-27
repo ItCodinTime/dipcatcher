@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from quant_fund.market_sim.book import OrderBook
 from quant_fund.market_sim.native import core_version
 
@@ -145,3 +144,23 @@ def test_two_streams_share_a_checksum() -> None:
 
     assert _run() == _run()
     assert _run() != 0
+
+
+@pytest.mark.parametrize("field", ["side", "price_tick", "qty", "agent"])
+@pytest.mark.parametrize("value", [2**32 + 1, -(2**32) + 1, True, 1.5])
+def test_submit_rejects_ctypes_integer_wrap_before_mutation(field, value):
+    with OrderBook() as book:
+        args = dict(side=1, price_tick=100, qty=5, ts_ns=1, agent=7)
+        args[field] = value
+        before = book.audit()
+        with pytest.raises(ValueError):
+            book.limit(**args)
+        assert book.audit() == before
+
+
+def test_uncross_rejects_overflow_timestamp():
+    with OrderBook() as book:
+        book.halt()
+        with pytest.raises(ValueError):
+            book.uncross(2**64 + 1, 100)
+        assert book.halted

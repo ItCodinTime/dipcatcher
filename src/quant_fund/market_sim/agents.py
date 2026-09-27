@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from numpy.random import Generator
-
 from quant_fund.market_sim.quotes import avellaneda_stoikov_quotes
 
 

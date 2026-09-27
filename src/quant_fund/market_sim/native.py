@@ -9,7 +9,10 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import os
+import platform
+import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import cast
@@ -110,17 +113,31 @@ def _cache_dir() -> Path:
     return path
 
 
+def _compiler() -> str:
+    configured = os.environ.get("LOB_CORE_CC")
+    if configured:
+        return configured
+    if sys.platform == "win32":
+        gcc = shutil.which("gcc")
+        if gcc:
+            return gcc
+        candidate = Path("C:/msys64/mingw64/bin/gcc.exe")
+        if candidate.is_file():
+            return str(candidate)
+        raise RuntimeError("market_sim requires MinGW GCC on Windows; set LOB_CORE_CC")
+    return "cc"
+
+
+def _compiler_flags() -> list[str]:
+    return ["-O3", "-std=c11", "-shared", "-Wall", "-Wextra", "-Werror"] + (
+        ["-Wl,--export-all-symbols"] if sys.platform == "win32" else ["-fPIC"]
+    )
+
+
 def _compile(source: Path, dest: Path) -> None:
-    compiler = os.environ.get("LOB_CORE_CC", "cc")
     cmd = [
-        compiler,
-        "-O3",
-        "-std=c11",
-        "-fPIC",
-        "-shared",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
+        _compiler(),
+        *_compiler_flags(),
         "-o",
         str(dest),
         str(source),
@@ -202,9 +219,10 @@ def load_library() -> ctypes.CDLL:
         return _LIB
     source = _SOURCE
     digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
-    dest = _cache_dir() / f"lob_core_{digest}.so"
+    suffix = ".dll" if sys.platform == "win32" else ".so"
+    dest = _cache_dir() / f"lob_core_{sys.platform}_{platform.machine()}_{digest}{suffix}"
     if not dest.is_file():
-        fd, tmp_name = tempfile.mkstemp(prefix="lob_core_", suffix=".so", dir=dest.parent)
+        fd, tmp_name = tempfile.mkstemp(prefix="lob_core_", suffix=suffix, dir=dest.parent)
         os.close(fd)
         tmp = Path(tmp_name)
         try:
@@ -221,8 +239,7 @@ def load_library() -> ctypes.CDLL:
 
 def compiler_command() -> str:
     """Compiler and flags used for the cached core. Methodology, not a benchmark."""
-    compiler = os.environ.get("LOB_CORE_CC", "cc")
-    return f"{compiler} -O3 -std=c11 -fPIC -shared -Wall -Wextra -Werror"
+    return " ".join([_compiler(), *_compiler_flags()])
 
 
 def core_version() -> str:

@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify market-sim-test
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test
 
 .DEFAULT_GOAL := help
 
@@ -9,16 +9,17 @@ help: ## Show targets
 sync: ## Install the locked environment (all groups and extras)
 	uv sync --frozen --all-groups --all-extras
 
-test: ## Lab test suite (unit/property/regression/end_to_end)
-	uv run pytest
+test: ## PR-gate lab tests (not network, not slow; xdist)
+	uv run pytest -n auto --dist loadfile -m "not network and not slow"
 
-market-sim-test: ## Matching engine and agent-market tests, excluding the slow fact run
-	uv run pytest tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
+test-full: ## Full offline lab suite, including slow tests
+	uv run pytest -n auto --dist loadfile -m "not network"
 
-coverage: ## Lab tests + coverage (threshold in pyproject [tool.coverage.report])
+coverage: ## PR-gate tests + coverage (threshold in pyproject)
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
-	# --cov-fail-under so CI and local cannot drift.
-	uv run pytest -m "not network" --cov --cov-report=term-missing --cov-report=xml
+	# --cov-fail-under so CI and local cannot drift. Sharded CI combines
+	# partial data files and applies the same threshold once.
+	uv run pytest -n auto --dist loadfile -m "not network and not slow" --cov --cov-report=term-missing --cov-report=xml
 
 lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
@@ -61,6 +62,14 @@ mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
 	uv run pytest tests/unit/mc_engine -q -m "not slow"
 	uv run python -m quant_fund.mc_engine run --paths 1500 --steps 8 --workers 1 \
 		--backend serial --chunk-size 500 --seed 1 --no-progress
+
+pretrade-bench: ## Pre-trade hot-path latency gate (p50 < 5us, p99 < 20us)
+	uv run python -m quant_fund.pretrade.bench --gate
+
+stress-smoke: ## Fast stress-engine tests and the catalog report CLI
+	uv run pytest -q -m "not network and not slow" tests/unit/stress
+	uv run dipcatcher stress crises
+	uv run dipcatcher stress report --strategy configs/stress_research.yaml --out /tmp/stress-report.md --format markdown
 
 examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff check examples tests/examples
@@ -130,9 +139,8 @@ proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/pr
 proof-integrity: ## Current proof signer/recorder integrity checks
 	uv run pytest tests/unit/proof/test_integrity.py -q
 
-proof-verify: ## Pending: full proof bundle replay verifier is not implemented yet
-	@echo "proof-verify unavailable: quant proof verify is not implemented" >&2
-	@exit 2
+proof-verify: ## Bundle hash, sidecar, signature, and metric verification tests; replay remains closed
+	uv run pytest tests/unit/test_proof_bundle.py tests/unit/test_proof_verify.py tests/property/test_backtest_receipt_identity.py -q
 
 leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
 	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"
@@ -152,3 +160,6 @@ reality-gate: ## Reality-filter gate: export trial ledger from provenance DB + l
 
 receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending
 	uv run python -m quant_fund.proofcore.ci receipts-reverify receipts
+
+market-sim-test: ## Matching engine and agent-market tests
+	uv run pytest tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"

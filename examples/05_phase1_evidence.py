@@ -18,15 +18,18 @@
 # Not investment advice. No live-trading claim.
 # The example calls `verify_phase1_index` and `verify_phase1_run`, the same path as
 # `dipcatcher verify-research`. A runtime mismatch against the sealing interpreter
-# is reported and does not by itself fail the summary. Any other verifier error
-# fails the example. The sealed US tape is gitignored; when it is absent this
-# example restores that blob from git history so the dataset hash is checked.
+# is reported and does not by itself fail the summary. A code-hash mismatch
+# against this checkout does not fail the summary when those exact bytes are
+# still in git history. Any other verifier error fails the example. The sealed
+# US tape is gitignored; when it is absent this example restores that blob from
+# git history so the dataset hash is checked.
 # Passing verification does not authorize live trading.
 
 # %%
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import subprocess
 import sys
@@ -37,7 +40,19 @@ from quant_fund.research.phase1_verify import verify_phase1_index, verify_phase1
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "data" / "metadata" / "research" / "phase1_evidence_index.json"
 _RUNTIME_NOTE = "runtime differs from this environment"
+_CHECKOUT_DRIFT = (
+    "code hashes differ from this checkout",
+    "code SHA-256 differs from this checkout",
+)
 _SEALED_TAPE = "data/file_us_wide/bronze/bars.parquet"
+_SOURCE_BY_NAME = {
+    "net_tournament.py": "src/quant_fund/research/net_tournament.py",
+    "net_replay.py": "src/quant_fund/research/net_replay.py",
+    "cost_allocation.py": "src/quant_fund/research/cost_allocation.py",
+    "real_benchmark.py": "src/quant_fund/research/real_benchmark.py",
+    "inference.py": "src/quant_fund/metrics/inference.py",
+    "snooping.py": "src/quant_fund/metrics/snooping.py",
+}
 
 
 def _load_object(path: Path) -> dict[str, object]:
@@ -139,6 +154,77 @@ def _summarize_run(index_dir: Path, entry: dict[str, object], number: int) -> No
     print("test_receipt=sealed" if test_on_disk else "test_receipt=absent")
 
 
+def _blob_sha256(revision: str, path: str) -> str | None:
+    blob = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "blob", f"{revision}:{path}"],
+        check=False,
+        capture_output=True,
+    )
+    if blob.returncode != 0 or not blob.stdout:
+        return None
+    return hashlib.sha256(blob.stdout).hexdigest()
+
+
+def _history_commit_for(expected: dict[str, str]) -> str | None:
+    """Commit whose file bytes match a sealed code digest. None if none does."""
+    paths: list[str] = []
+    for name in expected:
+        path = _SOURCE_BY_NAME.get(name)
+        if path is None:
+            return None
+        paths.append(path)
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "log", "--format=%H", "--", *paths],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        return None
+    for revision in listed.stdout.split():
+        matched = all(
+            _blob_sha256(revision, _SOURCE_BY_NAME[name]) == digest
+            for name, digest in expected.items()
+        )
+        if matched:
+            return revision
+    return None
+
+
+def _historical_code_commits(index: dict[str, object]) -> list[str] | None:
+    """Sealing commits for every indexed code digest, when git history still has them."""
+    runs = index.get("runs")
+    if not isinstance(runs, list):
+        return None
+    commits: list[str] = []
+    for entry in runs:
+        if not isinstance(entry, dict):
+            return None
+        relative = entry.get("path")
+        if not isinstance(relative, str):
+            return None
+        manifest_path = (INDEX_PATH.parent / relative / "manifest.json").resolve()
+        if not manifest_path.is_file():
+            return None
+        code = _load_object(manifest_path).get("code_sha256")
+        expected: dict[str, str] | None
+        if isinstance(code, str) and code:
+            expected = {"real_benchmark.py": code}
+        elif (
+            isinstance(code, dict)
+            and code
+            and all(isinstance(key, str) and isinstance(value, str) for key, value in code.items())
+        ):
+            expected = {str(k): str(v) for k, v in code.items()}
+        else:
+            return None
+        revision = _history_commit_for(expected)
+        if revision is None:
+            return None
+        commits.append(revision)
+    return commits
+
+
 def _materialize_sealed_tape() -> None:
     """Restore the gitignored sealed US tape from the commit that untracked it.
 
@@ -188,6 +274,10 @@ def main() -> None:
     errors = _errors(verified)
     seal_errors = [error for error in errors if _RUNTIME_NOTE not in error]
     runtime_errors = [error for error in errors if _RUNTIME_NOTE in error]
+    drift = [error for error in seal_errors if any(marker in error for marker in _CHECKOUT_DRIFT)]
+    historical = _historical_code_commits(index) if drift else None
+    if drift and historical is not None:
+        seal_errors = [error for error in seal_errors if error not in drift]
     print("verifier=phase1_evidence_index")
     print("data_label=tracked_real_snapshot")
     print("claim=research_only")
@@ -200,6 +290,9 @@ def main() -> None:
     print(f"seal_errors={len(seal_errors)}")
     for error in seal_errors:
         print(f"seal_error={error}")
+    if drift and historical is not None:
+        print("code_checkout_drift=historical")
+        print("code_seal_commits=" + ",".join(historical))
     runs = index.get("runs")
     if not isinstance(runs, list) or not runs:
         raise SystemExit("evidence index has no runs")

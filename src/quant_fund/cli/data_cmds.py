@@ -1,4 +1,7 @@
-"""Data commands: doctor, ingest, collect, build-features/labels."""
+"""Ingest, collect, and gold-build commands.
+
+Split out of the original module. Import the parent path; it re-exports these names.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +10,8 @@ from typing import Any
 
 import typer
 
-from ._app import (
-    _cfg,
-    _collect_param_value,
-    app,
-)
+from .app import app
+from .support import _cfg, _collect_param_value
 
 
 @app.command()
@@ -136,3 +136,12 @@ def build_labels_cmd(config: Path = typer.Option(Path("configs/research.yaml")))
     cfg = _cfg(config)
     _, labs = build_gold(cfg)
     typer.echo(f"labels rows={labs.height}")
+
+
+__all__ = [
+    "build_features_cmd",
+    "build_labels_cmd",
+    "collect",
+    "doctor",
+    "ingest",
+]

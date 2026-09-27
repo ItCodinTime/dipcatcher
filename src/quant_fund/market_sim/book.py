@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 from dataclasses import dataclass
+from numbers import Integral
 from types import TracebackType
 
 from quant_fund.market_sim.native import (
@@ -92,6 +93,14 @@ class BookAudit:
     halted: bool
     n_trades: int
     list_ok: bool
+
+
+def _integer(value: int, name: str, bits: int, *, unsigned: bool = False) -> int:
+    low = 0 if unsigned else -(1 << (bits - 1))
+    high = (1 << (bits if unsigned else bits - 1)) - 1
+    if isinstance(value, bool) or not isinstance(value, Integral) or not low <= value <= high:
+        raise ValueError(f"{name} must fit a {'uint' if unsigned else 'int'}{bits}")
+    return int(value)
 
 
 class OrderBook:
@@ -195,8 +204,17 @@ class OrderBook:
         agent: int,
         order_id: int = 0,
     ) -> SubmitResult:
-        if ts_ns < 0 or ts_ns > 2**63 - 1:
-            raise ValueError("ts_ns must fit in a non-negative int64")
+        ts_ns = _integer(ts_ns, "ts_ns", 64)
+        if ts_ns < 0:
+            raise ValueError("ts_ns must be non-negative")
+        for name, value in (
+            ("side", side),
+            ("price_tick", price_tick),
+            ("qty", qty),
+            ("agent", agent),
+        ):
+            _integer(value, name, 32)
+        _integer(order_id, "order_id", 64, unsigned=True)
         ev = EventC(
             ts=int(ts_ns),
             type=int(ev_type),
@@ -242,7 +260,8 @@ class OrderBook:
 
     def order_qty(self, order_id: int) -> int:
         """Remaining shares, or -1 if the id is not live."""
-        return int(self._dll().lob_order_qty(self._require(), int(order_id)))
+        order_id = _integer(order_id, "order_id", 64, unsigned=True)
+        return int(self._dll().lob_order_qty(self._require(), order_id))
 
     def halt(self) -> None:
         """Stop continuous matching. Limits rest, including through the opposite side."""
@@ -276,10 +295,14 @@ class OrderBook:
 
     def depth(self, side: int, n_levels: int = 5) -> int:
         """Total shares on the first ``n_levels`` occupied prices from the touch."""
-        return int(self._dll().lob_depth(self._require(), int(side), int(n_levels)))
+        side = _integer(side, "side", 32)
+        n_levels = _integer(n_levels, "n_levels", 32)
+        return int(self._dll().lob_depth(self._require(), side, n_levels))
 
     def level_qty(self, side: int, price_tick: int) -> int:
-        return int(self._dll().lob_level_qty(self._require(), int(side), int(price_tick)))
+        side = _integer(side, "side", 32)
+        price_tick = _integer(price_tick, "price_tick", 32)
+        return int(self._dll().lob_level_qty(self._require(), side, price_tick))
 
     def mid_tick(self) -> float | None:
         bid, ask, _, _ = self.touch()
@@ -301,6 +324,8 @@ class OrderBook:
         continuous trading. Market orders resting through the halt are
         market-on-open and are cancelled if they do not trade.
         """
+        ts_ns = _integer(ts_ns, "ts_ns", 64)
+        _integer(ref_tick, "ref_tick", 32)
         if ts_ns < 0:
             raise ValueError("ts_ns must be non-negative")
         out = UncrossResultC()

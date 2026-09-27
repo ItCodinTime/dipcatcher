@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #define LOB_PRICE_MAX 100000
 #define LOB_MAX_ORDERS (1 << 20)
@@ -1174,9 +1177,17 @@ static void seed_ladder(Book *b, int32_t mid) {
 }
 
 static int64_t mono_ns(void) {
+#ifdef _WIN32
+    LARGE_INTEGER ticks, frequency;
+    QueryPerformanceCounter(&ticks);
+    QueryPerformanceFrequency(&frequency);
+    return (ticks.QuadPart / frequency.QuadPart) * 1000000000LL
+        + (ticks.QuadPart % frequency.QuadPart) * 1000000000LL / frequency.QuadPart;
+#else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+#endif
 }
 
 int lob_bench(int64_t n_events, uint64_t seed, BenchResult *out) {

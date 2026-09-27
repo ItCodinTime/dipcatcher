@@ -10,7 +10,9 @@ simulated tape is that data.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+import math
+from dataclasses import dataclass, fields, replace
+from numbers import Integral, Real
 
 EVIDENCE: dict[str, bool | str] = {
     "research_only": True,
@@ -68,6 +70,35 @@ class EcologyConfig:
     strategy_max_weight: float = 0.5
 
     def __post_init__(self) -> None:
+        # Type hints on a dataclass do not validate runtime callers.
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if field.type == "int":
+                if isinstance(value, bool) or not isinstance(value, Integral):
+                    raise ValueError(f"{field.name} must be an integer")
+            elif isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+                raise ValueError(f"{field.name} must be finite")
+        for name in (
+            "fundamental_rate",
+            "mm_rate",
+            "momentum_rate",
+            "mean_revert_rate",
+            "noise_rate",
+            "informed_rate",
+            "execution_rate",
+            "mm_size",
+            "depth_levels",
+            "execution_qty",
+            "execution_slices",
+            "mm_inventory_cap",
+        ):
+            if getattr(self, name) <= 0:
+                raise ValueError(f"{name} must be positive")
+        for name in ("fundamental_sigma", "noise_size_sigma", "hawkes_qty", "hawkes_extra"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be non-negative")
+        if not 1_000 <= self.initial_mid_tick < 99_000:
+            raise ValueError("initial_mid_tick must leave room for seed quotes")
         if self.seed < 0:
             raise ValueError("seed must be non-negative")
         if self.tick_size <= 0.0:
