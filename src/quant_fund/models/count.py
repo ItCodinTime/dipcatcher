@@ -18,6 +18,8 @@ from numpy.typing import NDArray
 from scipy import optimize
 from scipy.special import gammaln
 
+from quant_fund.utils.numeric import ScalarObjective, numeric_hessian
+
 Array = NDArray[np.float64]
 
 
@@ -35,27 +37,11 @@ def _check(y: Array, x: Array) -> tuple[Array, Array]:
     return np.round(yy), xx
 
 
-def _num_hess(nll: object, theta: Array) -> Array:
-    fn = nll  # type: ignore[assignment]
-    k = theta.size
-    h = 1e-5 * np.maximum(1.0, np.abs(theta))
-    hh = np.zeros((k, k))
-    for i in range(k):
-        for j in range(i, k):
-            ei = np.zeros(k)
-            ej = np.zeros(k)
-            ei[i] = h[i]
-            ej[j] = h[j]
-            hh[i, j] = hh[j, i] = (
-                float(fn(theta + ei + ej))  # type: ignore[operator]
-                - float(fn(theta + ei - ej))  # type: ignore[operator]
-                - float(fn(theta - ei + ej))  # type: ignore[operator]
-                + float(fn(theta - ei - ej))  # type: ignore[operator]
-            ) / (4.0 * h[i] * h[j])
-    return hh
+def _num_hess(nll: ScalarObjective, theta: Array) -> Array:
+    return numeric_hessian(nll, theta)
 
 
-def _se(nll: object, theta: Array) -> Array:
+def _se(nll: ScalarObjective, theta: Array) -> Array:
     try:
         cov = np.linalg.inv(_num_hess(nll, theta))
         return np.sqrt(np.maximum(np.diag(cov), 0.0))
