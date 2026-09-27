@@ -13,6 +13,8 @@ evidence.
 uv run python -m quant_fund.parity smoke --out data/metadata/parity-smoke
 ```
 
+The same page is linked from the Operations section of the docs site.
+
 That smoke writes the same files a real comparison writes, on a four-day
 SYNTHETIC tape, and exits non-zero unless every bar matches.
 
