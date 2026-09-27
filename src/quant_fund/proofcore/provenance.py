@@ -281,9 +281,8 @@ class ProvenanceDB:
 
     @staticmethod
     def _normalize_cell(value: Any) -> Any:
-        # duckdb returns plain Python scalars for TEXT/BIGINT/DOUBLE; normalize
-        # ints/floats to float so a BIGINT-vs-int comparison cannot false-positive
-        # as tampering.
-        if isinstance(value, float | int) and not isinstance(value, bool):
-            return float(value)
+        # DuckDB returns Python ints for BIGINT and floats for DOUBLE; preserve
+        # integer precision so distinct BIGINT values cannot compare equal.
+        if isinstance(value, float):
+            return value
         return value
