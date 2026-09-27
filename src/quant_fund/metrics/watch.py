@@ -297,6 +297,7 @@ class WATCHMonitor:
     clear the threshold crossing. Once adapted, the fixed calibration bag and
     estimated weights make the alarm diagnostic. ``adapt_threshold`` defaults
     to ``1/sqrt(α)``, a lab default below ``1/α``, not a constant from the paper.
+    If an update fails after state has advanced, instantiate a new monitor.
     """
 
     def __init__(
@@ -340,6 +341,7 @@ class WATCHMonitor:
         self._x_alarm = False
         self._wealth_y: list[float] = [1.0]
         self._x_dim: int | None = None
+        self._poisoned = False
 
     @property
     def adapted(self) -> bool:
@@ -351,6 +353,8 @@ class WATCHMonitor:
 
     def update(self, y_score: float, x: Array | float) -> WATCHStep:
         """Incorporate one label score and its covariate. Returns the step record."""
+        if self._poisoned:
+            raise RuntimeError("WATCH monitor cannot continue after a failed update")
         score = float(y_score)
         if not np.isfinite(score):
             raise ValueError("y_score must be finite")
@@ -361,6 +365,16 @@ class WATCHMonitor:
             self._x_dim = int(features.size)
         elif features.size != self._x_dim:
             raise ValueError("x feature dimension changed")
+        try:
+            return self._update_validated(score, features)
+        except Exception:
+            # Weight callbacks and numerical routines can fail after the X
+            # martingale has advanced. Reusing that partial state would make
+            # the next alarm misleading; callers must start a new monitor.
+            self._poisoned = True
+            raise
+
+    def _update_validated(self, score: float, features: Array) -> WATCHStep:
         self._x.append(features.copy())
         p_x = self._x_pvalue()
         m_x = self._x_jumper.update(p_x)

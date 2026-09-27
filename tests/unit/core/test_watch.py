@@ -243,3 +243,5 @@ def test_fail_closed_edges() -> None:
     return_bad_shape = True
     with pytest.raises(ValueError, match="wrong shape"):
         broken.update(0.0, 5.0)
+    with pytest.raises(RuntimeError, match="cannot continue"):
+        broken.update(0.0, 0.0)
