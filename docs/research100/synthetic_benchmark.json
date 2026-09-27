@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "data_label": "SYNTHETIC",
+  "claim": "integration_evidence_only",
+  "promotable": false,
+  "seed": 100,
+  "data_sha256": "788b35924a692fdf8c0ff8f69e84ed8f255b80abd0a920c71e91a8a3d4c0192c",
+  "parameters": {
+    "scale_train": [
+      0,
+      40
+    ],
+    "lookback": 40,
+    "oos_rows": [
+      80,
+      140
+    ],
+    "fee_rate": 0.001,
+    "block": 5,
+    "n_boot": 199,
+    "training_scale": 4.743366954794038e-05
+  },
+  "versions": {
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "cvxpy": "1.9.2",
+    "clarabel": "0.11.1"
+  },
+  "module_sha256": {
+    "quant_fund.research.research100_benchmark": "9e50569dffb12e46f5646500a6f5a9bc62c0fdbca8cde966beb5ef2b3a1df68d",
+    "quant_fund.portfolio.research_allocators": "650aa263f4c037a2b133b3cb3cdaf21f182b8c8e7965a28799517cb2b8c8888b",
+    "quant_fund.metrics.research_evaluation": "bf6ea664afe1d4df8a75dd971c131d949171d333a0d1ba789af457d33e754115",
+    "quant_fund.models.covariance": "35e400e5bcd8f4c38d702f2ba2375996d2d747e91872b9d7e335e99cc7a2699f",
+    "quant_fund.portfolio.allocators": "2453adaedee0e2ca21bb0d19c15598b2e850a868fa3d1de7a054089b3153218d"
+  },
+  "candidate_order": [
+    "inverse_volatility",
+    "multi_period",
+    "risk_constrained_kelly",
+    "volatility_managed"
+  ],
+  "summaries": {
+    "equal_weight": {
+      "total_net_return": -0.04363582121342802,
+      "sum_cost_fraction": 0.0017424022205117665,
+      "total_one_way_turnover": 1.742402220511761,
+      "sharpe": {
+        "iid": -1.223644822080819,
+        "serial_adjusted": -1.61324101884816,
+        "variance_inflation": 0.5753236692460739,
+        "lags": 5.0
+      }
+    },
+    "inverse_volatility": {
+      "total_net_return": -0.05019971338289342,
+      "sum_cost_fraction": 0.002080998228566784,
+      "total_one_way_turnover": 2.0809982285667874,
+      "sharpe": {
+        "iid": -1.5535840238914533,
+        "serial_adjusted": -2.0834045337714953,
+        "variance_inflation": 0.5560608040131296,
+        "lags": 5.0
+      }
+    },
+    "multi_period": {
+      "total_net_return": -0.08557104311419528,
+      "sum_cost_fraction": 0.002212722896902182,
+      "total_one_way_turnover": 2.212722896902182,
+      "sharpe": {
+        "iid": -4.55410351108774,
+        "serial_adjusted": -3.441902064229264,
+        "variance_inflation": 1.7506880913800225,
+        "lags": 5.0
+      }
+    },
+    "risk_constrained_kelly": {
+      "total_net_return": -0.19090712764397477,
+      "sum_cost_fraction": 0.0103162553333577,
+      "total_one_way_turnover": 10.316255333357692,
+      "sharpe": {
+        "iid": -5.046970194883539,
+        "serial_adjusted": -20.295633659088697,
+        "variance_inflation": 0.06183811600551442,
+        "lags": 5.0
+      }
+    },
+    "volatility_managed": {
+      "total_net_return": -0.05901939156530289,
+      "sum_cost_fraction": 0.002320656756401882,
+      "total_one_way_turnover": 2.32065675640188,
+      "sharpe": {
+        "iid": -2.3748335546513517,
+        "serial_adjusted": -2.781570989568073,
+        "variance_inflation": 0.7289303896744903,
+        "lags": 5.0
+      }
+    }
+  },
+  "comparison": {
+    "claim": "research_only",
+    "promotable": false,
+    "n_observations": 60,
+    "n_trials_supplied": 4,
+    "mean_net_improvement": [
+      -0.0001208000748924909,
+      -0.0007746076139710993,
+      -0.0027628215221037994,
+      -0.0002894666342071417
+    ],
+    "reality_check": {
+      "statistic": -0.0009357133565584519,
+      "p_value": 0.85,
+      "n_obs": 60,
+      "n_strategies": 4,
+      "n_rows_dropped": 0,
+      "block": 5.0,
+      "n_boot": 199,
+      "best_index": 0,
+      "best_mean": -0.0001208000748924909
+    },
+    "spa": {
+      "statistic": 0.0,
+      "p_lower": 1.0,
+      "p_consistent": 1.0,
+      "p_upper": 1.0,
+      "n_obs": 60,
+      "n_strategies": 4,
+      "n_rows_dropped": 0,
+      "n_dropped": 0,
+      "block": 5.0,
+      "n_boot": 199,
+      "best_index": 0,
+      "best_mean": -0.0001208000748924909,
+      "studentized": [
+        -0.4547212994367401,
+        -0.8252666954811886,
+        -1.8043244259512279,
+        -0.6826630530707687
+      ]
+    }
+  }
+}

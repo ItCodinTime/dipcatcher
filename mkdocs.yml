@@ -149,6 +149,8 @@ nav:
       - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
+      - Research 100: RESEARCH100.md
+      - Research 100 catalog: RESEARCH100_CATALOG.md
       - Stress and scenarios: STRESS.md
       - Northset: NORTHSET.md
       - Candle and order book: CANDLE_ORDER_BOOK.md

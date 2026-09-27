@@ -17,6 +17,7 @@ from quant_fund.proof.cli import proof_app
 from quant_fund.proofcore.cli import proofcore_app
 from quant_fund.quant_models.cli import qm_app
 from quant_fund.reality.cli import reality_app
+from quant_fund.research.research100_cli import research100_app
 from quant_fund.stress.cli import stress_app
 
 
@@ -59,6 +60,7 @@ app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
 app.add_typer(pit_app, name="pit")
 app.add_typer(qm_app, name="qm")
+app.add_typer(research100_app, name="research100")
 app.add_typer(proof_app, name="proof")
 app.add_typer(leakage_app, name="leakage")
 app.add_typer(reality_app, name="reality")

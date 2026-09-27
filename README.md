@@ -220,3 +220,11 @@ evidence only. Nothing here is investment advice or a promise of live profit.*
 ## Evidence
 
 Sealed benchmark results, including negative and failed runs, are rendered only from committed receipts into [docs/evidence/index.md](docs/evidence/index.md). Regenerate with `make evidence`.
+
+### Research 100
+
+[100 source-linked research references](docs/RESEARCH100_CATALOG.md) map to
+executable components and tests. [Usage and evidence](docs/RESEARCH100.md) cover
+new cost-aware allocation, risk-constrained Kelly, causal volatility management,
+and serial-adjusted evaluation. Existing components and new work are distinguished;
+no claim of 100 reproduced studies or demonstrated market-performance uplift is made.
