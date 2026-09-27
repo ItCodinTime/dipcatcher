@@ -541,7 +541,8 @@ def _family_fanin_errors(notebook: dict[str, Any], families: dict[str, Any]) -> 
     # Catalog receipt soft-verify fan-in (vpin_mean / gap_finite_rate /
     # ohlc_identity_rate / spread means / sweep+IC / book age / …).
     # Dispatcher already existed in catalog; wire into verify-research.
-    errors.extend(northset_receipt_honesty_errors(families.get("northset")))
+    for receipt_err in northset_receipt_honesty_errors(families.get("northset")):
+        errors.append(receipt_err)
     errors.extend(northset_top_level_claim_honesty_errors(families.get("northset")))
     errors.extend(northset_shape_and_session_l2_floors_honesty_errors(families.get("northset")))
     # Soft kyle_ofi nest residual_flow / dispersion honesty (research diagnostic):
@@ -633,7 +634,8 @@ def _family_fanin_errors(notebook: dict[str, Any], families: dict[str, Any]) -> 
     errors.extend(mean_tob_size_share_honesty_errors(families.get("candle_order_book")))
     errors.extend(candle_log_tick_spacing_finite_honesty_errors(families.get("candle_order_book")))
     # mean_tob_notional_share ∈(0,1] when finite — ≠ mean_tob_size_share (Commander #62)
-    errors.extend(mean_tob_notional_share_honesty_errors(families.get("northset")))
+    for mtn_err in mean_tob_notional_share_honesty_errors(families.get("northset")):
+        errors.append(mtn_err)
     errors.extend(mean_close_mid_abs_rel_honesty_errors(families.get("northset")))
     errors.extend(mean_close_mid_abs_rel_honesty_errors(families.get("candle_order_book")))
     errors.extend(mean_candle_dir_x_imbalance_honesty_errors(families.get("candle_order_book")))
