@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +28,9 @@ fmt: ## Auto-fix lint + format
 typecheck: ## mypy on the harness
 	uv run mypy src/quant_fund
 
+diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
+	JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
+
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
 
@@ -37,6 +40,10 @@ audit: ## Locked-deps vulnerability audit (pip-audit)
 
 doctor: ## Harness environment check
 	uv run dipcatcher doctor
+
+native: ## Build optional quant_core (Rust + maturin). NumPy stays the fallback.
+	uv pip install "maturin>=1.7,<2"
+	uv run maturin develop --release --manifest-path rust/quant_core/Cargo.toml
 
 evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py

@@ -106,9 +106,7 @@ def test_report_with_returns_computes_pbo_and_spa() -> None:
         r = rets[f"{i:064x}"]
         sr = float(np.mean(r) / np.std(r, ddof=1))
         rows.append(make_row(i, sr=sr, n_obs=n_periods))
-    rep = build_reality_report(
-        rows, s_blocks=8, returns_by_trial=rets, spa_n_boot=200, seed=3
-    )
+    rep = build_reality_report(rows, s_blocks=8, returns_by_trial=rets, spa_n_boot=200, seed=3)
     assert np.isfinite(rep.pbo) or np.isnan(rep.pbo)
     assert 0.0 <= float(rep.spa_pvalue) <= 1.0
     assert rep.pbo_logit  # logits recorded

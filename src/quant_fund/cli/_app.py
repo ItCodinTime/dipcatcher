@@ -6,7 +6,6 @@ from pathlib import Path
 
 import typer
 
-from quant_fund.config import dump_resolved, load_config
 from quant_fund.hmm.cli import hmm_app
 from quant_fund.leakage.cli import leakage_app
 from quant_fund.lightspeed.cli import ls_app
@@ -15,7 +14,6 @@ from quant_fund.proof.cli import proof_app
 from quant_fund.proofcore.cli import proofcore_app
 from quant_fund.quant_models.cli import qm_app
 from quant_fund.reality.cli import reality_app
-from quant_fund.utils.logging import configure_logging
 
 
 def format_data_label(*, synthetic: bool, data_source: str) -> str:
@@ -64,6 +62,9 @@ app.add_typer(proofcore_app, name="proofcore")
 
 
 def _cfg(config: Path):
+    from quant_fund.config import dump_resolved, load_config
+    from quant_fund.utils.logging import configure_logging
+
     cfg = load_config(config)
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")

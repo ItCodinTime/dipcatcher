@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import typer
-
-from quant_fund.pipeline.train import train_family
 
 from ._app import (
     _cfg,
@@ -25,6 +24,16 @@ def train_callback(
     typer.echo(
         "Specify a family: ranking, reinforcement, calibration, distribution, volatility, alpha, regime, tail, covariance, liquidity"
     )
+
+
+def train_family(cfg: Any, family: str, model: str | None) -> Any:
+    """Resolve the trainer on first call so ``--help`` does not import it.
+
+    Tests patch this module attribute; the import stays inside the function.
+    """
+    from quant_fund.pipeline.train import train_family as _train_family
+
+    return _train_family(cfg, family, model)
 
 
 def _train(family: str, config: Path, model: str | None) -> None:

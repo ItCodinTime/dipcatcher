@@ -62,7 +62,10 @@ def test_dsr_single_trial_equals_psr() -> None:
 def test_dsr_more_clusters_deflates() -> None:
     # Same per-trial stats, but spread across many independent clusters ->
     # the expected max SR under the null rises -> DSR drops.
-    few = [make_row(i, sr=float(s), cluster="one") for i, s in enumerate(np.linspace(0.03, 0.07, 5), start=1)]
+    few = [
+        make_row(i, sr=float(s), cluster="one")
+        for i, s in enumerate(np.linspace(0.03, 0.07, 5), start=1)
+    ]
     many = [make_row(i, sr=float(s)) for i, s in enumerate(np.linspace(0.03, 0.07, 5), start=1)]
     assert dsr_from_ledger(many) < dsr_from_ledger(few)
 
