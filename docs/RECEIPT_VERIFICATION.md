@@ -89,6 +89,12 @@ entitlements, vendor adjustments, historical availability reconstruction,
 survivorship, undisclosed experiments, and prior holdout inspection remain
 disclosed limitations. Passing verification never authorizes live trading.
 
+An optional `robustness` object may be stamped beside the notebook with
+`extensions_schema_version` 1. Notebooks that omit both keys stay valid.
+The extension's checks, the migration that fills an uncomputed view without
+rewriting sealed files, and the distinction between proven radii and
+empirical attacks are described in `docs/ROBUSTNESS.md`.
+
 Legacy manifests containing an absolute dataset path can be verified where
 that original path exists; they are not portable to a new checkout. New
 manifests store the dataset relative to the benchmark run directory, and

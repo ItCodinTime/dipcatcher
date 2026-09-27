@@ -110,6 +110,7 @@ from quant_fund.research.catalog import (
     tail_var_battery_keys_present,
     tail_var_battery_missing_keys,
 )
+from quant_fund.robustness.schema import robustness_extension_errors
 from quant_fund.utils.hashing import hash_bytes, hash_file
 
 
@@ -219,6 +220,9 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
     # Bools are ints in Python; reject them explicitly so True cannot pass as 1.
     if isinstance(schema_version, bool) or schema_version != RESEARCH_RECEIPT_SCHEMA_VERSION:
         errors.append("invalid_research_receipt_schema_version")
+    # Optional robustness extension. Absence is valid on every parent schema
+    # this verifier accepts. A present block must match its own schema.
+    errors.extend(robustness_extension_errors(notebook))
     for key in ("version", "data_source", "disclaimer", "ranking_target"):
         value = notebook.get(key)
         if not isinstance(value, str) or not value.strip():
