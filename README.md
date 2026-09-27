@@ -212,3 +212,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 
 *fx-1 and the dipcatcher harness produce research, backtest, or simulated
 evidence only. Nothing here is investment advice or a promise of live profit.*
+
+## Evidence
+
+Sealed benchmark results, including negative and failed runs, are rendered only from committed receipts into [docs/evidence/index.md](docs/evidence/index.md). Regenerate with `make evidence`.
