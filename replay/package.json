@@ -1,0 +1,21 @@
+{
+  "name": "dipcatcher-replay-viz",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Market replay visualizer for recorded bar + order-book sessions (canvas 2D)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc --noEmit --strict --skipLibCheck --module esnext --moduleResolution bundler --target es2022 playwright.config.ts tests/viewer.spec.ts",
+    "serve": "node scripts/serve.mjs",
+    "test": "playwright test",
+    "gen:fixture": "python3 scripts/gen_fixture.py"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "typescript": "^5.9.0"
+  }
+}
