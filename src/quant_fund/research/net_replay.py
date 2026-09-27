@@ -237,131 +237,31 @@ def replay(
         desired = np.zeros(len(shares))
         active = target != 0
         desired[active] = target[active] * signal_nav / signal_prices[active]
-        borrow, financing = 0.0, 0.0
-        if previous_open is not None:
-            years = (panel.dates[e] - panel.dates[previous_open]).total_seconds() / (365 * 86400)
-            shorts = shares < 0
-            borrow = (
-                float(-shares[shorts] @ panel.opening[previous_open, shorts])
-                * config.borrow_apr
-                * years
-            )
-            financing = (
-                -cash * config.funding_apr if cash < 0 else -cash * config.cash_apr
-            ) * years
-            cash -= borrow + financing
-        mark = np.where(np.isfinite(prices) & (prices > 0), prices, 0.0)
-        costs = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
-        deltas = desired - shares
-        # Risk-reducing trades first, then new risk; deterministic security order.
-        order = sorted(
-            np.flatnonzero(np.abs(deltas) > 1e-12),
-            key=lambda a: (abs(desired[a]) >= abs(shares[a]), panel.names[a]),
+        cash, shares, daily, new_fills, new_rejections = execute_orders(
+            names=panel.names,
+            desired=desired,
+            shares=shares,
+            cash=cash,
+            prices=prices,
+            adv=adv,
+            sigma=sigma,
+            signal_time=panel.dates[i],
+            execution_time=panel.dates[e],
+            previous_time=panel.dates[previous_open] if previous_open is not None else None,
+            previous_prices=panel.opening[previous_open]
+            if previous_open is not None
+            else np.zeros(len(shares)),
+            last_nav=last_nav,
+            config=config,
+            eligible_count=int(eligible.sum()),
+            terminal=terminal,
+            impact_multiplier=impact_multiplier,
         )
-        for a in order:
-            price = prices[a]
-            if (
-                not np.isfinite(price)
-                or price <= 0
-                or not np.isfinite(adv[a])
-                or adv[a] <= 0
-                or not np.isfinite(sigma[a])
-            ):
-                rejected += 1
-                rejections.append(
-                    {
-                        "execution_session": panel.dates[e].isoformat(),
-                        "security_id": panel.names[a],
-                        "requested_quantity": float(deltas[a]),
-                        "reason": "unavailable_price_or_known_liquidity",
-                    }
-                )
-                continue
-            quantity = float(
-                np.sign(deltas[a])
-                * min(abs(deltas[a]), config.participation_limit * adv[a] / price)
-            )
-            notional = abs(quantity) * price
-            commission = notional * config.commission_bps / 1e4
-            spread = notional * config.half_spread_bps / 1e4
-            impact = (
-                notional
-                * config.impact_y
-                * impact_multiplier
-                * sigma[a]
-                * np.sqrt(notional / adv[a])
-            )
-            fee = commission + spread + impact
-            before_nav = cash + float(shares @ mark)
-            after_nav = before_nav - fee
-            after_shares = shares.copy()
-            after_shares[a] += quantity
-            after_cash = cash - quantity * price - fee
-            if after_nav <= 0 or not np.isfinite(after_nav):
-                raise ValueError("nonpositive NAV after costs")
-            before_gross, after_gross = (
-                float(np.abs(shares * mark).sum()) / before_nav,
-                float(np.abs(after_shares * mark).sum()) / after_nav,
-            )
-            before_name, after_name = (
-                abs(shares[a] * price) / before_nav,
-                abs(after_shares[a] * price) / after_nav,
-            )
-            if (
-                (after_gross > config.gross_limit + 1e-10 and after_gross > before_gross + 1e-10)
-                or (
-                    after_name > config.max_name_weight + 1e-10 and after_name > before_name + 1e-10
-                )
-                or (config.gross_limit <= 1 and after_cash < -1e-8)
-            ):
-                rejected += 1
-                rejections.append(
-                    {
-                        "execution_session": panel.dates[e].isoformat(),
-                        "security_id": panel.names[a],
-                        "requested_quantity": float(deltas[a]),
-                        "reason": "exposure_or_cash_limit",
-                    }
-                )
-                continue
-            shares, cash = after_shares, after_cash
-            costs["commission"] += commission
-            costs["spread"] += spread
-            costs["impact"] += impact
-            fills.append(
-                {
-                    "signal_session": panel.dates[i].isoformat(),
-                    "execution_session": panel.dates[e].isoformat(),
-                    "security_id": panel.names[a],
-                    "quantity": quantity,
-                    "requested_quantity": float(deltas[a]),
-                    "unfilled_quantity": float(deltas[a] - quantity),
-                    "price": float(price),
-                    "commission": float(commission),
-                    "spread": float(spread),
-                    "impact": float(impact),
-                    "known_adv": float(adv[a]),
-                    "known_volatility": float(sigma[a]),
-                }
-            )
-        nav = cash + float(shares @ mark)
-        if not np.isfinite(nav) or nav <= 0:
-            raise ValueError("nonpositive ending NAV")
-        ledger.append(
-            {
-                "date": panel.dates[e].isoformat(),
-                "nav": nav,
-                "cash": cash,
-                "net_return": nav / last_nav - 1,
-                "gross_market_value": float(np.abs(shares * mark).sum()),
-                **costs,
-                "borrow": borrow,
-                "financing": financing,
-                "eligible_names": int(eligible.sum()),
-                "terminal": terminal,
-            }
-        )
-        last_nav, previous_open = nav, e
+        ledger.append(daily)
+        fills.extend(new_fills)
+        rejections.extend(new_rejections)
+        rejected += len(new_rejections)
+        last_nav, previous_open = daily["nav"], e
     values = np.array([config.initial_nav, *[row["nav"] for row in ledger]])
     return {
         "status": "completed",
@@ -375,6 +275,164 @@ def replay(
         "terminal_residual_gross": ledger[-1]["gross_market_value"],
         "liquidation_complete": bool(np.abs(shares).max() < 1e-10),
     }
+
+
+def execute_orders(
+    *,
+    names: list[str],
+    desired: np.ndarray,
+    shares: np.ndarray,
+    cash: float,
+    prices: np.ndarray,
+    adv: np.ndarray,
+    sigma: np.ndarray,
+    signal_time: datetime,
+    execution_time: datetime,
+    previous_time: datetime | None,
+    previous_prices: np.ndarray,
+    last_nav: float,
+    config: ReplayConfig,
+    eligible_count: int,
+    terminal: bool = False,
+    impact_multiplier: float = 1.0,
+) -> tuple[float, np.ndarray, dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Execute frozen quantities with the same accounting for replay and forward shadow."""
+    config.validate()
+    n = len(names)
+    if any(
+        np.asarray(v).shape != (n,) for v in (desired, shares, prices, adv, sigma, previous_prices)
+    ):
+        raise ValueError("execution vectors must match names")
+    if not np.isfinite(desired).all() or not np.isfinite(shares).all():
+        raise ValueError("quantities must be finite")
+    if (
+        not np.isfinite([cash, last_nav, impact_multiplier]).all()
+        or last_nav <= 0
+        or impact_multiplier <= 0
+    ):
+        raise ValueError("invalid cash, NAV or impact multiplier")
+    if execution_time <= signal_time or (
+        previous_time is not None and execution_time <= previous_time
+    ):
+        raise ValueError("execution times must advance")
+    held = shares != 0
+    if not (np.isfinite(prices[held]) & (prices[held] > 0)).all():
+        raise ValueError("held asset lacks an execution-open valuation")
+    if (
+        previous_time is not None
+        and not (np.isfinite(previous_prices[held]) & (previous_prices[held] > 0)).all()
+    ):
+        raise ValueError("held asset lacks a prior-open valuation")
+    shares = shares.copy()
+    fills, rejections = [], []
+    borrow, financing = 0.0, 0.0
+    if previous_time is not None:
+        years = (execution_time - previous_time).total_seconds() / (365 * 86400)
+        shorts = shares < 0
+        borrow = float(-shares[shorts] @ previous_prices[shorts]) * config.borrow_apr * years
+        financing = (-cash * config.funding_apr if cash < 0 else -cash * config.cash_apr) * years
+        cash -= borrow + financing
+    mark = np.where(np.isfinite(prices) & (prices > 0), prices, 0.0)
+    costs = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+    deltas = desired - shares
+    # Risk-reducing trades first, then new risk; deterministic security order.
+    order = sorted(
+        np.flatnonzero(np.abs(deltas) > 1e-12),
+        key=lambda a: (abs(desired[a]) >= abs(shares[a]), names[a]),
+    )
+    for a in order:
+        price = prices[a]
+        if (
+            not np.isfinite(price)
+            or price <= 0
+            or not np.isfinite(adv[a])
+            or adv[a] <= 0
+            or not np.isfinite(sigma[a])
+        ):
+            rejections.append(
+                {
+                    "execution_session": execution_time.isoformat(),
+                    "security_id": names[a],
+                    "requested_quantity": float(deltas[a]),
+                    "reason": "unavailable_price_or_known_liquidity",
+                }
+            )
+            continue
+        quantity = float(
+            np.sign(deltas[a]) * min(abs(deltas[a]), config.participation_limit * adv[a] / price)
+        )
+        notional = abs(quantity) * price
+        commission = notional * config.commission_bps / 1e4
+        spread = notional * config.half_spread_bps / 1e4
+        impact = (
+            notional * config.impact_y * impact_multiplier * sigma[a] * np.sqrt(notional / adv[a])
+        )
+        fee = commission + spread + impact
+        before_nav = cash + float(shares @ mark)
+        after_nav = before_nav - fee
+        after_shares = shares.copy()
+        after_shares[a] += quantity
+        after_cash = cash - quantity * price - fee
+        if after_nav <= 0 or not np.isfinite(after_nav):
+            raise ValueError("nonpositive NAV after costs")
+        before_gross, after_gross = (
+            float(np.abs(shares * mark).sum()) / before_nav,
+            float(np.abs(after_shares * mark).sum()) / after_nav,
+        )
+        before_name, after_name = (
+            abs(shares[a] * price) / before_nav,
+            abs(after_shares[a] * price) / after_nav,
+        )
+        if (
+            (after_gross > config.gross_limit + 1e-10 and after_gross > before_gross + 1e-10)
+            or (after_name > config.max_name_weight + 1e-10 and after_name > before_name + 1e-10)
+            or (config.gross_limit <= 1 and after_cash < -1e-8)
+        ):
+            rejections.append(
+                {
+                    "execution_session": execution_time.isoformat(),
+                    "security_id": names[a],
+                    "requested_quantity": float(deltas[a]),
+                    "reason": "exposure_or_cash_limit",
+                }
+            )
+            continue
+        shares, cash = after_shares, after_cash
+        costs["commission"] += commission
+        costs["spread"] += spread
+        costs["impact"] += impact
+        fills.append(
+            {
+                "signal_session": signal_time.isoformat(),
+                "execution_session": execution_time.isoformat(),
+                "security_id": names[a],
+                "quantity": quantity,
+                "requested_quantity": float(deltas[a]),
+                "unfilled_quantity": float(deltas[a] - quantity),
+                "price": float(price),
+                "commission": float(commission),
+                "spread": float(spread),
+                "impact": float(impact),
+                "known_adv": float(adv[a]),
+                "known_volatility": float(sigma[a]),
+            }
+        )
+    nav = cash + float(shares @ mark)
+    if not np.isfinite(nav) or nav <= 0:
+        raise ValueError("nonpositive ending NAV")
+    daily = {
+        "date": execution_time.isoformat(),
+        "nav": nav,
+        "cash": cash,
+        "net_return": nav / last_nav - 1,
+        "gross_market_value": float(np.abs(shares * mark).sum()),
+        **costs,
+        "borrow": borrow,
+        "financing": financing,
+        "eligible_names": eligible_count,
+        "terminal": terminal,
+    }
+    return cash, shares, daily, fills, rejections
 
 
 def _cost_weights(
