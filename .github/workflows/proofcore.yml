@@ -102,12 +102,13 @@ jobs:
           path: leakage-report.json
           if-no-files-found: ignore
 
-  # §9.3 reality-filter. The provenance DB is gitignored and no production
-  # path records trials, so CI exports an empty ledger. `quant reality
-  # preflight` exits 3 with REALITY_FILTER_SKIP; `make reality-gate` maps
-  # that to exit 0. This step turns the skip line into a notice. A ledger
-  # that has rows is scored with the unchanged filter and fails the job
-  # unless the verdict is pass. continue-on-error is not used.
+  # §9.3 reality-filter. data/metadata/proofcore.duckdb is not in the repo
+  # at HEAD or on main (data/metadata/** is gitignored). Export would create
+  # an empty DB and write 0 rows. `quant reality preflight --db` exits 3
+  # with REALITY_FILTER_SKIP; `make reality-gate` maps that to exit 0. This
+  # step turns the skip line into a notice. A database that has rows is
+  # exported and scored with the unchanged filter and fails the job unless
+  # the verdict is pass. continue-on-error is not used.
   reality-filter:
     runs-on: ubuntu-latest
     timeout-minutes: 20

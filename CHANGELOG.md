@@ -10,11 +10,12 @@ The version source is `fx1.__version__`.
 
 ### Fixed
 
-- **reality-filter CI**: a fresh provenance DB exports zero trial rows
-  (`data/metadata/**` is gitignored; only tests call
-  `ProvenanceDB.insert_trial`). `quant reality preflight` exits 3 with
-  `REALITY_FILTER_SKIP`, `make reality-gate` exits 0, and the workflow
-  annotates that line as a notice. Recorded rows are scored with the same
+- **reality-filter CI**: `data/metadata/proofcore.duckdb` is not in the
+  repository at HEAD or on main, so `quant proofcore export` creates an
+  empty database and writes 0 trial rows. `quant reality preflight --db`
+  exits 3 with `REALITY_FILTER_SKIP` for that missing file (and for an
+  export that has no rows). `make reality-gate` exits 0 and the workflow
+  annotates the skip as a notice. Recorded rows are scored with the same
   thresholds, and a verdict other than `pass` fails the job.
 - **A1 F1 (PROOFCORE W4)**: `hedge_lab/scoreboard.py` `book_economic_scoreboard`
   no longer feeds the **annualized** Sharpe into `probabilistic_sharpe` /

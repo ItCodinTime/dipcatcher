@@ -44,14 +44,15 @@ flips to error only in the follow-up call-site migration wave.
 
 Unit-safe PSR/MinTRL, DSR/PBO/SPA/BH-FDR land, plus the scoreboard A1 F1 fix
 (diagnostic values deflate by design — CHANGELOG-flagged). The CI
-`reality-filter` job exports `data/metadata/proofcore.duckdb` (gitignored)
-and scores that ledger with the unchanged filter. Only tests call
-`ProvenanceDB.insert_trial`, so a fresh checkout exports zero rows.
-`insufficient_evidence` is a scored verdict and needs rows; the job leaves
-the empty export unscored. `quant reality preflight` exits 3 with
-`REALITY_FILTER_SKIP`; `make reality-gate` maps that to exit 0 and the
-workflow emits a notice. The job fails when a recorded ledger's verdict is
-anything other than `pass`.
+`reality-filter` job scores the provenance trial ledger with the unchanged
+filter. `data/metadata/proofcore.duckdb` is not in the tree at HEAD or on
+main (`data/metadata/**` is gitignored; only tests call
+`ProvenanceDB.insert_trial`). Export of that missing path creates an empty
+database and writes 0 rows. `insufficient_evidence` is a scored verdict and
+needs rows, so `quant reality preflight --db` exits 3 with
+`REALITY_FILTER_SKIP` before that empty database is created. `make
+reality-gate` maps exit 3 to exit 0 and the workflow emits a notice. The
+job fails when a recorded ledger's verdict is anything other than `pass`.
 
 ## Phase 5 — integration & CI gates on (W5)
 

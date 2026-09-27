@@ -1,8 +1,8 @@
-"""`make reality-gate` on an exported provenance ledger.
+"""`make reality-gate` on the provenance trial ledger.
 
-A fresh DB has no trials: the gate must skip explicitly (exit 0) rather than
-fail closed inside `trial-report`. A DB that has a row must still be scored
-with the unchanged filter.
+``data/metadata/proofcore.duckdb`` is not in the git tree. A missing DB file
+must skip (exit 0) before export creates an empty database. A DB that has a
+row must still be scored with the unchanged filter.
 """
 
 from __future__ import annotations
@@ -37,9 +37,54 @@ def _run_gate(db: Path, ledger: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def test_provenance_db_absent_from_head_and_main() -> None:
+    """The file the gate exports is not checked in at HEAD or on main."""
+    for rev in ("HEAD", "origin/main"):
+        present = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", rev],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if present.returncode != 0:
+            continue
+        missing = subprocess.run(
+            ["git", "cat-file", "-e", f"{rev}:data/metadata/proofcore.duckdb"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert missing.returncode != 0, rev
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", "data/metadata/proofcore.duckdb"],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    assert ignored.returncode == 0
+
+
+def test_reality_gate_skips_when_db_is_absent(tmp_path: Path) -> None:
+    db = tmp_path / "proofcore.duckdb"
+    ledger = tmp_path / "trials.jsonl"
+    proc = _run_gate(db, ledger)
+    combined = proc.stdout + proc.stderr
+    assert proc.returncode == 0, combined
+    assert "REALITY_FILTER_SKIP:" in proc.stdout
+    assert "absent from the repository" in proc.stdout
+    assert "writes 0 trial rows" in proc.stdout
+    assert "exported 0 trial rows" not in combined
+    assert "verdict=" not in proc.stdout
+    assert not db.exists()
+    assert not ledger.exists()
+
+
 def test_reality_gate_skips_when_export_has_no_rows(tmp_path: Path) -> None:
     db = tmp_path / "proofcore.duckdb"
     ledger = tmp_path / "trials.jsonl"
+    with ProvenanceDB(db):
+        pass
     proc = _run_gate(db, ledger)
     combined = proc.stdout + proc.stderr
     assert proc.returncode == 0, combined
