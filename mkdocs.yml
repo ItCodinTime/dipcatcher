@@ -171,6 +171,7 @@ nav:
       - Causal capacity: CAUSAL_CAPACITY.md
       - Forward shadow power: FORWARD_SHADOW_POWER.md
       - Model cards: MODEL_CARDS.md
+      - Explainability: EXPLAINABILITY.md
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
       - Scenario Monte Carlo: MC_ENGINE.md
@@ -243,6 +244,8 @@ nav:
   - Proofcore:
       - Overview: proofcore/README.md
       - Migration: proofcore/MIGRATION.md
+      - Reality-filter pre-registration: REALITY_PREREGISTRATION.md
+      - Reality-filter trial: REALITY_TRIAL_2026.md
   - Archive:
       - archive.md
       - Implementation plan: IMPLEMENTATION_PLAN.md
