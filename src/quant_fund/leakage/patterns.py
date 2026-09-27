@@ -52,6 +52,13 @@ PROXIMITY_WINDOW = 80  # chars between token and numeric literal
 # optional % or "percent" suffix. Always contains at least one digit.
 _NUMERIC_RE = re.compile(r"[-+]?[$€£]?\s*\d[\d,]*(?:\.\d+)?\s*(?:%|percent\b)?")
 
+# Spelled-out numerals (ADVERSARIAL §1a-E8/F6: "Sharpe, which exceeded two",
+# "net asset value peaked near two million dollars"). Optional scale word.
+_NUMBER_WORD_RE = re.compile(
+    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|half)"
+    r"(?:\s+(?:hundred|thousand|million|billion))?\b"
+)
+
 
 def _alias_pattern(alias: str) -> re.Pattern[str]:
     """Word-boundary-ish match that also works for non-word aliases (p&l)."""
@@ -59,11 +66,51 @@ def _alias_pattern(alias: str) -> re.Pattern[str]:
 
 
 def _normalize(text: str) -> str:
-    return unicodedata.normalize("NFKC", text).casefold()
+    # NFKC, then strip Cf (format) characters: zero-width spaces/joiners are
+    # an evasion channel (ADVERSARIAL §1a-F3: "sha\u200brpe").
+    normalized = unicodedata.normalize("NFKC", text)
+    return "".join(ch for ch in normalized if unicodedata.category(ch) != "Cf").casefold()
 
 
 def _aliases_for(token: str) -> tuple[str, ...]:
     return _TOKEN_ALIASES.get(token, (token,))
+
+
+def find_forbidden_token_mentions(text: str) -> list[str]:
+    """Forbidden tokens MENTIONED in *text* (no numeric-proximity requirement).
+
+    Used by the warning-severity channels (f-string templates whose number
+    arrives at runtime, spelled-out claims) where a digit literal may be
+    absent by construction.
+    """
+    norm = _normalize(text)
+    return sorted(
+        token
+        for token in FORBIDDEN_HEADLINE_TOKENS
+        if any(_alias_pattern(alias).search(norm) for alias in _aliases_for(token))
+    )
+
+
+def find_spelled_out_headline(text: str) -> list[str]:
+    """Forbidden tokens headlined with a SPELLED-OUT number (ADVERSARIAL E8/F6).
+
+    Same proximity window as the digit matcher; the numeric evidence is an
+    English number word (``two``, ``twelve``, ``half a million``...).
+    """
+    norm = _normalize(text)
+    hits: set[str] = set()
+    for token in FORBIDDEN_HEADLINE_TOKENS:
+        for alias in _aliases_for(token):
+            pattern = _alias_pattern(alias)
+            for match in pattern.finditer(norm):
+                lo = max(0, match.start() - PROXIMITY_WINDOW)
+                hi = min(len(norm), match.end() + PROXIMITY_WINDOW)
+                if _NUMBER_WORD_RE.search(norm, lo, hi):
+                    hits.add(token)
+                    break
+            if token in hits:
+                break
+    return sorted(hits)
 
 
 def find_forbidden_headline(text: str) -> list[str]:

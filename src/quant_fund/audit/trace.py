@@ -74,8 +74,8 @@ def trace_published_number(
     ``verify-research`` result and does not change ``linked``.
     """
     path = Path(receipt_path)
-    before = path.read_bytes()
     try:
+        before = path.read_bytes()
         parsed = json.loads(before)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         return _unlinked(metric_path, [f"receipt_unreadable:{exc}"])
@@ -95,6 +95,8 @@ def trace_published_number(
         errors.append("metric_not_found")
 
     report = verify_ledger(ledger.root, trust_public_key=trust_public_key)
+    if not report["fully_signed"]:
+        errors.append("ledger_not_fully_signed")
     if not report["valid"]:
         errors.append("ledger_invalid")
         errors.extend(str(item) for item in report["errors"])
@@ -187,7 +189,11 @@ def trace_published_number(
         from quant_fund.research.verify import verify_research_artifact
 
         result["research_verifier"] = verify_research_artifact(path)
-    if path.read_bytes() != before:
+    try:
+        unchanged = path.read_bytes() == before
+    except OSError:
+        unchanged = False
+    if not unchanged:
         result["linked"] = False
         result["errors"] = [*errors, "receipt_mutated"]
     return result

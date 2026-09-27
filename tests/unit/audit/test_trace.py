@@ -132,3 +132,26 @@ def test_missing_metric_is_not_linked(tmp_path: Path) -> None:
     report = trace_published_number(path, "metrics.missing", ledger)
     assert report["linked"] is False
     assert "metric_not_found" in report["errors"]
+
+
+def test_unsigned_suffix_is_never_presented_as_signed_evidence(tmp_path: Path) -> None:
+    ledger, signer = _ledger(tmp_path)
+    ledger.append("risk_decision", {"accepted": True})
+    ledger.signer = None
+    path = tmp_path / "receipt.json"
+    path.write_text(json.dumps(_notebook()))
+    record_research_receipt(ledger, path)
+    report = trace_published_number(
+        path, "metrics.pinball", ledger, trust_public_key=signer.public_key
+    )
+    assert report["ledger"]["valid"] is True
+    assert report["ledger"]["fully_signed"] is False
+    assert report["linked"] is False
+    assert "ledger_not_fully_signed" in report["errors"]
+
+
+def test_missing_receipt_returns_unlinked(tmp_path: Path) -> None:
+    ledger, _ = _ledger(tmp_path)
+    report = trace_published_number(tmp_path / "absent.json", "metrics.pinball", ledger)
+    assert report["linked"] is False
+    assert report["errors"][0].startswith("receipt_unreadable:")
