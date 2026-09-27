@@ -84,3 +84,63 @@ def test_malformed_ledger_line_fails_closed(tmp_path: Path) -> None:
     ledger.write_text('{"trial_id": "nope"}\n', encoding="utf-8")
     res = runner.invoke(reality_app, ["trial-report", "--ledger", str(ledger)])
     assert res.exit_code == 2
+
+
+def test_empty_ledger_trial_report_stays_fail_closed(tmp_path: Path) -> None:
+    """Scoring commands do not treat 'no rows' as a pass or a skip."""
+    ledger = tmp_path / "empty.jsonl"
+    ledger.write_text("\n", encoding="utf-8")
+    res = runner.invoke(reality_app, ["trial-report", "--ledger", str(ledger)])
+    assert res.exit_code == 2
+    assert "contains no trial rows" in res.output
+    assert "REALITY_FILTER_SKIP" not in res.output
+
+
+def test_preflight_absent_provenance_db_is_explicit_skip(tmp_path: Path) -> None:
+    db = tmp_path / "proofcore.duckdb"
+    res = runner.invoke(reality_app, ["preflight", "--db", str(db)])
+    assert res.exit_code == 3, res.output
+    assert res.output.startswith("REALITY_FILTER_SKIP:")
+    assert "absent from the repository" in res.output
+    assert "not at HEAD or on main" in res.output
+    assert "writes 0 trial rows" in res.output
+    assert not db.exists()
+
+
+def test_preflight_present_db_is_ready(tmp_path: Path) -> None:
+    db = tmp_path / "proofcore.duckdb"
+    db.write_bytes(b"")
+    res = runner.invoke(reality_app, ["preflight", "--db", str(db)])
+    assert res.exit_code == 0, res.output
+    assert res.output.startswith("REALITY_FILTER_READY: db=")
+
+
+def test_preflight_requires_db_or_ledger() -> None:
+    res = runner.invoke(reality_app, ["preflight"])
+    assert res.exit_code == 2
+    assert "REALITY_FILTER_ERROR:" in res.output
+
+
+def test_preflight_empty_ledger_is_explicit_skip(tmp_path: Path) -> None:
+    ledger = tmp_path / "empty.jsonl"
+    ledger.write_text("\n\n", encoding="utf-8")
+    res = runner.invoke(reality_app, ["preflight", "--ledger", str(ledger)])
+    assert res.exit_code == 3, res.output
+    assert res.output.startswith("REALITY_FILTER_SKIP:")
+    assert "contains no trial rows" in res.output
+    assert "was not scored" in res.output
+
+
+def test_preflight_missing_ledger_is_error(tmp_path: Path) -> None:
+    res = runner.invoke(reality_app, ["preflight", "--ledger", str(tmp_path / "nope.jsonl")])
+    assert res.exit_code == 2
+    assert "REALITY_FILTER_ERROR:" in res.output
+
+
+def test_preflight_ready_does_not_score(tmp_path: Path) -> None:
+    ledger = tmp_path / "one.jsonl"
+    _write_ledger(ledger, [_row(1, sr=0.0)])
+    res = runner.invoke(reality_app, ["preflight", "--ledger", str(ledger)])
+    assert res.exit_code == 0, res.output
+    assert res.output.strip() == "REALITY_FILTER_READY: n_rows=1"
+    assert "verdict=" not in res.output
