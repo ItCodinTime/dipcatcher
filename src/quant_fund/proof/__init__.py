@@ -1,13 +1,10 @@
 """Proof-carrying backtester (PROOFCORE W2, DESIGN.md §5).
 
-The package exports the recorder and signer that exist in this revision.
-Bundle minting, replay, chain heads, and verification stay unexported until
-``proof.bundle``, ``proof.replay``, ``proof.runner``, and ``proof.verify``
-land. Advertising them earlier makes ``from quant_fund.proof import *`` and
-attribute access fail with ``ModuleNotFoundError``.
-
-Heavy dependencies stay behind ``__getattr__`` so ``import quant_fund.proof``
-stays cheap and acyclic (§1.3 layering contract).
+Every proven run emits a signed, hash-chained proof bundle; the independent
+verifier re-derives every hash AND recomputes headline metrics from the
+trade-log bytes (A1 F2 fix). Heavy dependencies (backtest engine, metrics)
+stay behind ``__getattr__`` so ``import quant_fund.proof`` stays cheap and
+acyclic (§1.3 layering contract).
 """
 
 from __future__ import annotations
@@ -17,6 +14,7 @@ from typing import Any
 from quant_fund.proofcore.contracts import ProofError, ProofVerificationError
 
 __all__ = [
+    "ASOF_SENTINEL",
     "DataAccessRecorder",
     "HmacSha256Signer",
     "InMemoryRecorder",
@@ -24,14 +22,31 @@ __all__ = [
     "ProofError",
     "ProofVerificationError",
     "Signer",
+    "VerificationResult",
+    "asof_utc_text",
+    "build_bundle",
+    "chain_head",
+    "recompute_headline_metrics",
+    "replay_bundle",
+    "run_backtest_proven",
+    "verify_bundle",
 ]
 
 _LAZY = {
+    "ASOF_SENTINEL": ("quant_fund.proof.runner", "ASOF_SENTINEL"),
     "DataAccessRecorder": ("quant_fund.proof.recorder", "DataAccessRecorder"),
     "HmacSha256Signer": ("quant_fund.proof.sign", "HmacSha256Signer"),
     "InMemoryRecorder": ("quant_fund.proof.recorder", "InMemoryRecorder"),
     "NullSigner": ("quant_fund.proof.sign", "NullSigner"),
     "Signer": ("quant_fund.proof.sign", "Signer"),
+    "VerificationResult": ("quant_fund.proof.verify", "VerificationResult"),
+    "asof_utc_text": ("quant_fund.proof.recorder", "asof_utc_text"),
+    "build_bundle": ("quant_fund.proof.bundle", "build_bundle"),
+    "chain_head": ("quant_fund.proof.bundle", "chain_head"),
+    "recompute_headline_metrics": ("quant_fund.proof.bundle", "recompute_headline_metrics"),
+    "replay_bundle": ("quant_fund.proof.replay", "replay_bundle"),
+    "run_backtest_proven": ("quant_fund.proof.runner", "run_backtest_proven"),
+    "verify_bundle": ("quant_fund.proof.verify", "verify_bundle"),
 }
 
 
