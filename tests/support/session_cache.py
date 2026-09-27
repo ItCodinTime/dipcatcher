@@ -5,7 +5,7 @@ tests with the same synthetic inputs. Those calls are pure with respect to
 their inputs (the bench returns a dict; silver/gold materialization is a
 function of the config, not of the destination directory). This module caches
 them for one pytest session, across xdist workers, and invalidates the cache
-when ``src/quant_fund`` changes.
+when source code or locked dependencies change.
 
 Monkeypatches bypass the cache: a fingerprint of the patched callables is
 compared to the fingerprint taken when the wrappers were installed.
@@ -13,7 +13,6 @@ compared to the fingerprint taken when the wrappers were installed.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import importlib
 import json
@@ -21,10 +20,17 @@ import os
 import pickle
 import shutil
 import sys
+import tempfile
 from collections.abc import Callable
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 _LAKE_DIRS = ("bronze", "silver", "gold")
 _FINGERPRINT_MODULES = (
@@ -38,13 +44,10 @@ _FINGERPRINT_MODULES = (
     "quant_fund.pipeline.dataset",
     "quant_fund.data.ingest",
 )
-_CLI_COMMANDS = frozenset({"northset", "research", "candle-book", "doctor"})
-
 _INSTALLED = False
 _ORIGINAL_FINGERPRINT: tuple[tuple[str, str, int], ...] | None = None
 _BENCH_STATS = {"hit": 0, "miss": 0, "bypass": 0}
 _DATA_STATS = {"hit": 0, "miss": 0, "bypass": 0}
-_CLI_MEMORY: dict[tuple[str, ...], dict[str, Any]] = {}
 _BENCH_MEMORY: dict[str, bytes] = {}
 # flock is not reentrant across two opens of the same lock file. This depth
 # map lets a materialize hold the data-root lock while ingest, which takes
@@ -68,14 +71,21 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+@lru_cache(maxsize=1)
 def _source_stamp() -> str:
-    """Hash quant_fund sources so a code edit cannot reuse pickled results."""
+    """Separate test runs with different code or locked dependencies."""
     root = _repo_root() / "src" / "quant_fund"
     digest = hashlib.sha256()
     digest.update(b"session-cache-v2\0")
     digest.update(sys.version.encode())
     for path in sorted(root.rglob("*.py")):
         digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    for name in ("pyproject.toml", "uv.lock"):
+        path = _repo_root() / name
+        digest.update(name.encode())
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
@@ -97,7 +107,7 @@ def _fingerprint() -> tuple[tuple[str, str, int], ...]:
         if module is None:
             continue
         for attr, value in sorted(vars(module).items()):
-            if attr.startswith("_") or not callable(value):
+            if attr.startswith("__") or not callable(value):
                 continue
             items.append((name, attr, id(value)))
     return tuple(items)
@@ -119,16 +129,32 @@ def _file_lock(path: Path):
             _LOCK_DEPTH[key] = depth
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    handle = path.open("a+")
+    handle = path.open("a+b")
+    locked = False
     try:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        if os.name == "nt":
+            # msvcrt locks bytes at the current offset. Ensure byte zero exists.
+            handle.seek(0)
+            if not handle.read(1):
+                handle.write(b"\0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        locked = True
         _LOCK_DEPTH[key] = 1
         try:
             yield
         finally:
             _LOCK_DEPTH[key] = 0
     finally:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        if locked:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         handle.close()
 
 
@@ -140,7 +166,7 @@ def _config_root(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Path:
 
 def _lock_for_root(root: Path) -> Path:
     digest = hashlib.sha256(str(root).encode()).hexdigest()[:24]
-    return Path("/tmp/dipcatcher-locks") / f"{digest}.lock"
+    return Path(tempfile.gettempdir()) / "dipcatcher-locks" / f"{digest}.lock"
 
 
 def _wrap_root_lock(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -404,91 +430,6 @@ def _install_bench_cache() -> None:
     benches.bench_northset = bench_northset
 
 
-def _clone_cli_result(runner: Any, snapshot: dict[str, Any]) -> Any:
-    from typer.testing import Result
-
-    return Result(
-        runner=runner,
-        stdout_bytes=snapshot["stdout_bytes"],
-        stderr_bytes=snapshot["stderr_bytes"],
-        output_bytes=snapshot["output_bytes"],
-        return_value=snapshot["return_value"],
-        exit_code=snapshot["exit_code"],
-        exception=None,
-        exc_info=None,
-    )
-
-
-def _install_cli_cache() -> None:
-    from typer.testing import CliRunner
-
-    original = CliRunner.invoke
-
-    def invoke(
-        self: Any,
-        app: Any,
-        args: Any = None,
-        input: Any = None,
-        env: Any = None,
-        catch_exceptions: bool = True,
-        color: bool = False,
-        **extra: Any,
-    ) -> Any:
-        if isinstance(args, str):
-            argv: tuple[str, ...] = (args,)
-        elif args is None:
-            argv = ()
-        else:
-            argv = tuple(str(part) for part in args)
-        cacheable = (
-            not cache_disabled()
-            and bool(argv)
-            and argv[0] in _CLI_COMMANDS
-            and input is None
-            and env is None
-            and catch_exceptions is True
-            and color is False
-            and not extra
-            and fingerprint_is_original()
-        )
-        if not cacheable:
-            return original(
-                self,
-                app,
-                args,
-                input=input,
-                env=env,
-                catch_exceptions=catch_exceptions,
-                color=color,
-                **extra,
-            )
-        cached = _CLI_MEMORY.get(argv)
-        if cached is not None:
-            return _clone_cli_result(self, cached)
-        result = original(
-            self,
-            app,
-            args,
-            input=input,
-            env=env,
-            catch_exceptions=catch_exceptions,
-            color=color,
-            **extra,
-        )
-        if result.exit_code == 0 and result.exception is None:
-            _CLI_MEMORY[argv] = {
-                "stdout_bytes": result.stdout_bytes,
-                "stderr_bytes": result.stderr_bytes,
-                "output_bytes": result.output_bytes,
-                "return_value": result.return_value,
-                "exit_code": result.exit_code,
-            }
-        return result
-
-    invoke.__wrapped__ = original  # type: ignore[attr-defined]
-    CliRunner.invoke = invoke  # type: ignore[method-assign]
-
-
 def install() -> None:
     """Install wrappers. Idempotent; safe to call from conftest import."""
     global _INSTALLED, _ORIGINAL_FINGERPRINT
@@ -501,7 +442,6 @@ def install() -> None:
     for name in _FINGERPRINT_MODULES:
         __import__(name)
     _ORIGINAL_FINGERPRINT = _fingerprint()
-    _install_cli_cache()
     _INSTALLED = True
 
 
@@ -509,5 +449,4 @@ def reset_for_tests() -> None:
     """Clear in-process stats. Does not delete the on-disk cache."""
     _BENCH_STATS["hit"] = _BENCH_STATS["miss"] = _BENCH_STATS["bypass"] = 0
     _DATA_STATS["hit"] = _DATA_STATS["miss"] = _DATA_STATS["bypass"] = 0
-    _CLI_MEMORY.clear()
     _BENCH_MEMORY.clear()
