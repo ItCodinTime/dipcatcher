@@ -7,7 +7,7 @@ PR lands. The shim NEVER rewrites the underlying parquet.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,7 +31,7 @@ def _to_pit_frame(frame: pl.DataFrame, *, dataset: str, t: datetime) -> PitFrame
     """Map legacy PIT columns onto the vault contract and apply the filter."""
     if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
         raise PointInTimeError(f"{dataset}: asof timestamp must be timezone-aware (UTC)")
-    t = t.astimezone(timezone.utc)
+    t = t.astimezone(UTC)
     if EVENT_TIME_COL not in frame.columns:
         raise PointInTimeError(
             f"{dataset}: frame lacks 'event_time' — PIT observability cannot be "
@@ -49,13 +49,10 @@ def _to_pit_frame(frame: pl.DataFrame, *, dataset: str, t: datetime) -> PitFrame
     dtype = frame.schema[KNOWN_AT_COL]
     if not isinstance(dtype, pl.Datetime) or dtype.time_zone is None:
         raise PointInTimeError(
-            f"{dataset}: {KNOWN_AT_COL} must be timezone-aware Datetime, got {dtype} — "
-            "fail-closed"
+            f"{dataset}: {KNOWN_AT_COL} must be timezone-aware Datetime, got {dtype} — fail-closed"
         )
     key_cols = (
-        [SECURITY_ID_COL, EVENT_TIME_COL]
-        if SECURITY_ID_COL in frame.columns
-        else [EVENT_TIME_COL]
+        [SECURITY_ID_COL, EVENT_TIME_COL] if SECURITY_ID_COL in frame.columns else [EVENT_TIME_COL]
     )
     sliced = select_asof(
         frame.lazy(),
