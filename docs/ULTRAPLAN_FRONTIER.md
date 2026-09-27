@@ -98,13 +98,25 @@ Each new challenger: causal-only, deterministic seed, honest-NaN on failure,
 added to `BASELINES`/`dip_challengers`, unit-tested against known cases, then
 a `v5_*` fleet column on existing shards' protocol.
 
-Swarm harnesses landed: `research/fleet_eval.py` + `dipcatcher fleet` (six
+Swarm harnesses landed: `research/fleet_eval.py` + `dipcatcher fleet` (nine
 seeded SYNTHETIC shards — iid_gaussian/bimodal_mixture/heavy_tail/left_skew/
-regime_switch/garch_cluster — scoring every registered head with proper
-scores only into sealed receipts), and `research/identity_sweep.py` +
-`dipcatcher verify-identities` (38 curated estimator identities proven over
-seeded SyntheticBundle draws with hash-sealed receipts, exits non-zero on
-any violation).
+regime_switch/garch_cluster + vol_break/gjr_leverage/ar1_lagged_x — scoring
+every registered head with proper scores only into sealed receipts), and
+`research/identity_sweep.py` + `dipcatcher verify-identities` (38 curated
+estimator identities proven over seeded SyntheticBundle draws with
+hash-sealed receipts, exits non-zero on any violation).
+
+Fleet coverage is now the full landed head slate — all 13 registry entries
+(unconditional + conditional/series via fleet adapters) scored on all 9
+shards, sealed in `receipts/fleet_eval_5ddf15b0dc7d3ca1.json` (117 rows,
+0 errors; proper scores only — pinball/CRPS/PIT-KS/coverage; head versions +
+per-shard seeds embedded). This closes every "Fleet cell still open" note
+below. Adapter details: `qar` is scored on its native one-step grid (eval row
+`i` forecasts from the observed lag `y[n_train+i-1]` — frozen coefficients,
+no refit, no lookahead); `hstep` enters as `hstep_t`/`hstep_emp`, the two
+`h=1` construction blocks of `HStepScaledDistribution` — honestly scorable
+on the 1-step trailing slice; the longer-horizon blocks stay outside the
+fleet contract.
 
 - [ ] P1.1 `dip_gmm_k` — Gaussian-mixture density head (K∈{2,3,4}, EM on
       trailing returns, BIC or fixed-K; the "heads not backbones" result
@@ -112,18 +124,23 @@ any violation).
       (Grimit et al. 2006 identity) — no sampling noise.
       Head wired: `train distribution --model gmm` (`GMMDistribution`,
       BIC over K∈{2,3,4} or fixed) + `gaussian_mixture_crps_1d` in
-      `models/mixture.py`. Fleet cell still open.
+      `models/mixture.py`. Fleet cell closed: `gmm` scored on all 9 shards
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.2 `dip_skt` — Hansen/Fernández–Steel skew-t MLE (captures asymmetry
       that symmetric-t misses on crypto).
       Head wired: `train distribution --model skew_t` (`SkewTDistribution`
-      wraps `models/skew_t.py` MLE + ppf). Fleet cell still open.
+      wraps `models/skew_t.py` MLE + ppf). Fleet cell closed: `skew_t` scored
+      on all 9 shards (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.3 `dip_qar` — quantile autoregression (Koenker–Xiao) direct per-τ
       fit; monotone-quantile enforced.
       Head landed: `QARDistribution` in `models/qar.py` — single-series,
       one-step-ahead head (`predict` accepts exactly 1 row; `fit` requires
       an all-finite series). Deliberately NOT in the `train_distribution`
       panel catalog — the panel interface has no honest row-order contract;
-      usable via direct construction. Fleet cell still open.
+      usable via direct construction. Fleet cell closed: `qar` scored on
+      all 9 shards via the `_QarOneStepHead` adapter — per-row forecasts
+      conditioned on the *observed* lag-1 return, frozen coefficients, no
+      refit (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.4 `dip_conf_t` — conformalized Student-t: parametric base +
       weighted-online-conformal recalibration of residuals →
       distribution-free coverage correction (bridges our conformal stack
@@ -131,41 +148,52 @@ any violation).
       Head wired: `train distribution --model conf_t`
       (`ConformalTDistribution` — Hansen skew-t MLE on leading 2/3, CQR
       additive shift per τ on trailing slice, `ceil((n+1)·τ)` order
-      statistic). Fleet cell still open.
+      statistic). Fleet cell closed: `conf_t` scored on all 9 shards
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.5 `dip_regime` — 2-state vol-regime mixture (existing `regime.py`
       HMM or Markov-switching): per-state empirical, state-prob mixed.
       Head wired: `train distribution --model regime`
       (`RegimeDistribution` — filtered `GaussianHMMRegime` posteriors on
       |y|, last-obs weights mixing per-state empirical CDFs via generalized
       inverse; VolThreshold + single-state fallbacks disclosed in
-      metadata). Fleet cell still open.
+      metadata). Fleet cell closed: `regime` scored on all 9 shards incl.
+      the planted-break `vol_break` shard (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.6 `dip_fhs_skew` — FHS variant on skew-filtered residuals + GJR
       asymmetry already present; quantile-level tail check.
       Head wired: `train distribution --model fhs_skew`
       (`FhsSkewDistribution` — fixed-coefficient GJR(1,1) σ-path with
       moment-matched ω, skew-t MLE on standardized residuals, one-step
       σ forecast; `train_distribution` enforces a single strictly-ordered
-      series). Fleet cell still open.
+      series). Fleet cell closed: `fhs_skew` scored on all 9 shards incl.
+      `gjr_leverage` (strong γ + skew-t innovations; receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.7 `dip_isotonic` — isotonic-recalibrated empirical (PIT-based
       recalibration on trailing window; cheap calibration challenger).
       Head wired: `train distribution --model isotonic`
       (`IsotonicPitDistribution` — PIT-quantile map recalibrating a
       Gaussian base; empirical-base variant is vacuous, so the calibrated
-      parametric base carries the challenger role). Fleet cell still open.
+      parametric base carries the challenger role). Fleet cell closed:
+      `isotonic` scored on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.8 `dip_lgbm_q2` — LightGBM quantiles v2: richer causal feature set
       (realized-vol term structure, OHLC range, amount), Dask-free, ≤30
       features; keep warmup disclosure.
       Head wired: `train distribution --model lgbm_q2`
       (`LGBMQ2Distribution` — per-τ `LGBMRegressor(objective="quantile")`
       on the full causal PIT design, rearranged monotone; warmup disclosed
-      in metadata). Fleet cell still open.
+      in metadata). Fleet cell closed: `lgbm_q2` scored on all 9 shards; the
+      `ar1_lagged_x` shard supplies a real causal feature frame
+      (`[y_{t-1}, |y_{t-1}|]`), the rest exercise the inert-x path
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.9 Blend-search policy: `dip_blend` is empirical+parametric concat;
       add `dip_stack` — weights fit by *trailing-window* CRPS minimization
       (causal stacking, no lookahead).
       Head wired: `train distribution --model stack` (`StackedDistribution` —
       per-τ convex weights via SLSQP pinball minimization on the trailing
       slice; empirical + Gaussian + skew-t bases; rearranged monotone).
-      Fleet cell still open.
+      Fleet cell closed: `stack` scored on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.
@@ -175,7 +203,12 @@ any violation).
       strictly chronological series and remains outside the generic
       `train distribution` catalog: that one-step evaluator expects
       `len(taus)` columns, while this head emits separate horizon
-      blocks that need horizon-aligned targets. Fleet cell still open.
+      blocks that need horizon-aligned targets. Fleet cell closed for the
+      1-step slice: `hstep_t`/`hstep_emp` adapters slice the `h=1`
+      `student_t`/`empirical` blocks — the only horizon honestly scorable
+      on the fleet's 1-step trailing slice — on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`). Multi-horizon fleet scoring remains
+      open pending horizon-aligned targets.
 
 ### P2 — New published targets (make the claim harder to dismiss)
 
