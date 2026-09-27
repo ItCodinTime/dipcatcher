@@ -167,6 +167,7 @@ nav:
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Pre-trade risk: PRETRADE_RISK.md
   - fx-1:
       - Overview: FX1.md
       - Architecture: FX1_ARCHITECTURE.md
