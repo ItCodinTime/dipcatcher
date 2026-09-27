@@ -109,3 +109,20 @@ def test_train_distribution_accepts_fhs_skew(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(train_module, "_walk_forward_splits", lambda *a, **k: [])
     with pytest.raises(ValueError, match="no trainable/evaluable fold"):
         train_distribution(cfg, "fhs_skew")
+
+
+def test_train_distribution_rejects_pooled_fhs_series(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    frame = pl.DataFrame(
+        {
+            "event_time": [0, 0],
+            "security_id": ["a", "b"],
+            cfg.train.distribution_target: [0.01, 0.02],
+            "ret_1": [0.0, 0.0],
+        }
+    )
+    monkeypatch.setattr(train_module, "panel", lambda *a, **k: frame)
+    with pytest.raises(ValueError, match="one security"):
+        train_distribution(cfg, "fhs_skew")

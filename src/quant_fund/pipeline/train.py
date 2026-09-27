@@ -829,7 +829,14 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
     set_global_seed(config.train.random_seed)
     label = config.train.distribution_target
     df = panel(config, label=label)
-    x, y, dates, feats, _ = design_matrix(df, label)
+    x, y, dates, feats, ids = design_matrix(df, label)
+    if model_name == "fhs_skew" and (
+        ids.size == 0
+        or np.unique(ids).size != 1
+        or np.unique(dates).size != dates.size
+        or (dates.size > 1 and not np.all(dates[1:] > dates[:-1]))
+    ):
+        raise ValueError("fhs_skew requires one security with strictly increasing event times")
     label_end_times = _aligned_label_end_times(df, label, feats)
     taus = config.quantiles.levels
 

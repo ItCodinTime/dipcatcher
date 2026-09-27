@@ -17,9 +17,11 @@ with v = E[e^2], v_neg = E[e^2 1{e<0}].
 Predictions are unconditional: q_tau = mu + sigma_end * F^{-1}(tau),
 where sigma_end is the one-step GJR variance forecast at the end of the
 fit window (no mean-reversion shrinkage — an honest multi-step horizon is
-not modeled). Fit rows are assumed to arrive in time order (panel order is
-date-major); the sigma path is a recursion over row order, so the
-assumption is load-bearing.
+not modeled). Fit rows must be one security in strict time order. The training
+pipeline rejects pooled panels for this head, because a GJR lag must
+not jump between securities. A fit-window boundary forecast is held
+fixed through its test fold; only the first next observation is a
+literal one-step forecast.
 
 Fail-closed: requires >= 60 finite observations, positive unconditional
 variance, and a finite positive sigma path.
