@@ -13,17 +13,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 from quant_fund.hedge_lab.resources import ram_plan
-from quant_fund.metrics.overfitting import (
-    min_track_record_length,
-    moments_from_returns,
-    probabilistic_sharpe,
-)
 from quant_fund.metrics.returns import (
     annualized_vol,
     cagr,
     calmar_ratio,
     max_drawdown,
     sharpe_ratio,
+    sharpe_ratio_batch,
     sortino_ratio,
     wealth_index,
 )
@@ -44,9 +40,17 @@ def book_economic_scoreboard(
     sr = sharpe_ratio(r, periods_per_year=periods_per_year)
     sharpe = float(sr["sharpe"])
     n = int(r.size)
-    _sig, skew, kurt = moments_from_returns(r)
-    psr = probabilistic_sharpe(sharpe, 0.0, n, float(skew), float(kurt))
-    min_trl = min_track_record_length(sharpe, float(skew), float(kurt))
+    # A1 F1 fix (PROOFCORE W4): PSR/MinTRL now route through the unit-safe
+    # returns-only API, which computes the per-period SR INTERNALLY. The old
+    # code fed the ANNUALIZED Sharpe with a per-day n into probabilistic_
+    # sharpe / min_track_record_length, inflating z by ~sqrt(252) ~ 15.9x.
+    # Diagnostic values change by design; see CHANGELOG.md. The annualized
+    # `sharpe` above is kept for display only. Lazy import per the PROOFCORE
+    # layering contract (existing packages never import reality/ at top level).
+    from quant_fund.reality.psr import min_trl_from_returns, psr_from_returns
+
+    psr = float(psr_from_returns(r, sr_star=0.0, periods_per_year=periods_per_year)["psr"])
+    min_trl = min_trl_from_returns(r, sr_star=0.0, periods_per_year=periods_per_year)
     blob: dict[str, Any] = {
         "catalog": CATALOG,
         "data_source": data_source,
@@ -124,10 +128,11 @@ def moving_block_bootstrap_ci(
             del starts
             paths = r[idx]
             del idx
-            mean = paths.mean(axis=1)
-            std = paths.std(axis=1, ddof=1)
-            with np.errstate(divide="ignore", invalid="ignore"):
-                sharpes = np.where(std > 0, mean / std * np.sqrt(periods_per_year), np.nan)
+            # A2 F4 (PROOFCORE W4): delegate to the canonical Sharpe in
+            # metrics/returns.py — same formula, same NaN policy; the inline
+            # np.where(mean/std*sqrt(ppy)) copy is retired (deprecation: do
+            # not re-inline Sharpe math outside metrics/returns.py).
+            sharpes = sharpe_ratio_batch(paths, periods_per_year=periods_per_year)
             wealth = np.cumprod(1.0 + paths, axis=1)
             del paths
             peak = np.maximum.accumulate(wealth, axis=1)

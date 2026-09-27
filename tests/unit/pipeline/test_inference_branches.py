@@ -123,10 +123,9 @@ def test_bootstrap_sharpe_ci_explicit_block_and_degenerate() -> None:
     lo, hi, point = bootstrap_sharpe_ci(r, n_boot=200, block=7, seed=13)
     assert np.isfinite(lo) and np.isfinite(hi) and np.isfinite(point)
     assert lo <= point <= hi
-    # Zero returns: zero dispersion → Sharpe is exactly zero, not NaN/inf.
+    # All-zero returns have zero variance, so Sharpe is undefined.
     lo_c, hi_c, point_c = bootstrap_sharpe_ci(np.zeros(30), n_boot=50, block=5, seed=1)
-    assert point_c == 0.0
-    assert lo_c == 0.0 and hi_c == 0.0
+    assert math.isnan(lo_c) and math.isnan(hi_c) and math.isnan(point_c)
 
 
 def test_jobson_korkie_memmel_valid_and_degenerate() -> None:

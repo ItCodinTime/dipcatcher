@@ -333,6 +333,8 @@ def test_no_real_network_used(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("real network was touched")
 
     monkeypatch.setattr(urllib.request, "urlopen", _boom)
+    monkeypatch.setattr("quant_fund.data.concurrent_io.pooled_request", _boom)
+    monkeypatch.setattr("quant_fund.data.sources.base.pooled_request", _boom)
     adapter, transport = _adapter({"bars": {"bars": [_bar()]}})
     bars = adapter.get_bars()
     assert bars.height == 1
