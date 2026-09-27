@@ -8,8 +8,88 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.linear_model import LinearRegression
 
+from quant_fund.compute.cache import FitCache
 from quant_fund.models.base import JoblibMixin, ModelMeta
 from quant_fund.models.ranking import _finite
+
+try:
+    from numba import njit
+
+    _HAVE_NUMBA = True
+except Exception:  # pragma: no cover - numba is a required dependency
+    _HAVE_NUMBA = False
+
+    def njit(*_args: Any, **_kwargs: Any) -> Any:  # type: ignore[no-redef]
+        def _deco(fn: Any) -> Any:
+            return fn
+
+        if len(_args) == 1 and callable(_args[0]) and not _kwargs:
+            return _args[0]
+        return _deco
+
+
+@njit(cache=True)
+def _ewma_variance_nb(r: np.ndarray, lam: float) -> np.ndarray:
+    """Same recurrence as the Python loop, including non-finite propagation."""
+    n = r.shape[0]
+    var = np.empty(n, dtype=np.float64)
+    var[0] = r[0] * r[0]
+    one_minus = 1.0 - lam
+    for t in range(1, n):
+        prev = r[t - 1] * r[t - 1]
+        var[t] = lam * var[t - 1] + one_minus * prev
+    return var
+
+
+_GARCH_FIT_CACHE = FitCache(max_entries=64)
+
+
+def _garch_fit_cache_key(model: Any, raw: object) -> str | None:
+    try:
+        values = np.asarray(raw, dtype=float).reshape(-1)
+    except (TypeError, ValueError):
+        return None
+    finite = np.ascontiguousarray(values[np.isfinite(values)], dtype=np.float64)
+    return _GARCH_FIT_CACHE.hash_key(
+        (
+            int(model.p),
+            int(model.q),
+            str(model.dist),
+            str(model.vol),
+            int(model.min_obs),
+            str(model.mean),
+            float(model.power),
+            str(getattr(model, "series_scope", "")),
+        ),
+        (finite,),
+    )
+
+
+def _garch_snapshot(model: Any) -> dict[str, Any]:
+    returns = getattr(model, "_returns_percent", None)
+    copied = None if returns is None else np.array(returns, dtype=float, copy=True)
+    return {
+        "n_obs": int(model.n_obs),
+        "result": model.result,
+        "converged": bool(model.converged),
+        "fit_status": model.fit_status,
+        "fallback_reason": model.fallback_reason,
+        "last_sigma": float(model.last_sigma),
+        "_returns_percent": copied,
+    }
+
+
+def _restore_garch_snapshot(model: Any, snap: dict[str, Any]) -> None:
+    model.n_obs = int(snap["n_obs"])
+    model.result = snap["result"]
+    model.converged = bool(snap["converged"])
+    model.fit_status = snap["fit_status"]
+    model.fallback_reason = snap["fallback_reason"]
+    model.last_sigma = float(snap["last_sigma"])
+    cached = snap["_returns_percent"]
+    model._returns_percent = (
+        np.empty(0, dtype=float) if cached is None else np.array(cached, dtype=float, copy=True)
+    )
 
 
 class RollingVol(JoblibMixin):
@@ -21,9 +101,17 @@ class RollingVol(JoblibMixin):
 
     def predict_from_returns(self, log_returns: NDArray[np.float64]) -> NDArray[np.float64]:
         r = np.asarray(log_returns, dtype=float)
+        window = int(self.window)
+        # Sliding-window std matches the per-slice ``np.std(..., ddof=1)``
+        # bit for bit on a 1-d series (NumPy reduces each window the same way).
+        if r.ndim == 1 and window >= 2 and r.size >= window:
+            out = np.full_like(r, np.nan)
+            view = np.lib.stride_tricks.sliding_window_view(r, window)
+            out[window - 1 :] = np.std(view, axis=1, ddof=1)
+            return out
         out = np.full_like(r, np.nan)
-        for i in range(self.window, r.size + 1):
-            out[i - 1] = np.std(r[i - self.window : i], ddof=1)
+        for i in range(window, r.size + 1):
+            out[i - 1] = np.std(r[i - window : i], ddof=1)
         return out
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -38,9 +126,11 @@ def ewma_variance(log_returns: NDArray[np.float64], lam: float = 0.94) -> NDArra
     """RiskMetrics-style recursive variance. Fail-closed on invalid ``lam`` / empty series."""
     if not np.isfinite(lam) or not 0.0 <= lam <= 1.0:
         raise ValueError("lam must be finite and between 0 and 1")
-    r = np.asarray(log_returns, dtype=float).reshape(-1)
+    r = np.ascontiguousarray(np.asarray(log_returns, dtype=np.float64).reshape(-1))
     if r.size == 0:
         raise ValueError("log_returns must be non-empty")
+    if _HAVE_NUMBA:
+        return np.asarray(_ewma_variance_nb(r, float(lam)), dtype=np.float64)
     var = np.empty_like(r)
     var[0] = r[0] ** 2
     for t in range(1, r.size):
@@ -209,6 +299,20 @@ class GARCHVol(JoblibMixin):
                 "returns= must be supplied explicitly; y may be a forward label and "
                 "cannot be used as a GARCH likelihood input"
             )
+        cache_key = _garch_fit_cache_key(self, kwargs["returns"])
+        if cache_key is not None:
+            cached = _GARCH_FIT_CACHE.get(cache_key)
+            if cached is not None:
+                _restore_garch_snapshot(self, cached)
+                return self
+        self._fit_uncached(x, y, **kwargs)
+        if cache_key is not None:
+            _GARCH_FIT_CACHE.put(cache_key, _garch_snapshot(self))
+        return self
+
+    def _fit_uncached(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> GARCHVol:
         from arch import arch_model
 
         raw = kwargs.pop("returns")
@@ -537,8 +641,12 @@ class HARVol(JoblibMixin):
 
         def trailing_mean(window: int) -> NDArray[np.float64]:
             result = np.full(n, np.nan)
-            for t in range(window, n):
-                result[t] = np.mean(lagged[t - window + 1 : t + 1])
+            if n <= window or window < 1:
+                return result
+            # Index 0 of ``lagged`` is the NaN pad. Windows that start at
+            # index 1 are the same slices the Python loop averaged.
+            view = np.lib.stride_tricks.sliding_window_view(lagged, window)
+            result[window:] = np.mean(view[1:], axis=1)
             return result
 
         return np.column_stack([np.ones(n), lagged, trailing_mean(5), trailing_mean(22)])

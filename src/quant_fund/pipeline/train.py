@@ -1131,6 +1131,52 @@ def _garch_name_row_id(raw: object) -> str:
     return sid
 
 
+def _garch_vol_spec(model: Any) -> dict[str, Any] | None:
+    """Spec dict for a stock ``GARCHVol``. Subclasses and stand-ins stay serial."""
+    if type(model) is not GARCHVol:
+        return None
+    return {
+        "p": int(model.p),
+        "q": int(model.q),
+        "dist": str(model.dist),
+        "vol": str(model.vol),
+        "min_obs": int(model.min_obs),
+        "mean": str(model.mean),
+        "power": float(model.power),
+        "series_scope": str(model.series_scope),
+    }
+
+
+def _garch_origin_task(
+    item: tuple[dict[str, Any], np.ndarray, int, float | None], _seed: int
+) -> tuple[float, str, dict[str, Any]]:
+    """Fit one name-origin and forecast it. ``_seed`` is unused.
+
+    ``forecast`` keeps the historical default seed (``None`` → ``RandomState(0)``
+    for simulated multi-step EGARCH/APARCH). An index-dependent seed would
+    change those paths relative to the serial loop.
+    """
+    spec, historical_returns, label_horizon, origin_return = item
+    model = GARCHVol(**spec)
+    model.fit(
+        np.zeros((0, 1), dtype=float),
+        np.zeros(0, dtype=float),
+        returns=historical_returns,
+    )
+    forecast = model.forecast(horizon=int(label_horizon))
+    cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+    if cumulative.size < int(label_horizon) or not np.isfinite(cumulative[int(label_horizon) - 1]):
+        raise ValueError("GARCH produced an invalid out-of-sample forecast")
+    if origin_return is None:
+        raise ValueError("per-security GARCH one-step density target missing origin ret_1")
+    density = _garch_origin_density_record(model, float(origin_return), forecast)
+    return (
+        float(cumulative[int(label_horizon) - 1]),
+        str(getattr(model, "fit_status", "unknown")),
+        density,
+    )
+
+
 def _garch_name_oos_predictions(
     make_model: Callable[[], Any],
     x: np.ndarray,
@@ -1173,14 +1219,15 @@ def _garch_name_oos_predictions(
     by_key: dict[tuple[str, Any], float] = {}
     density_by_key: dict[tuple[str, Any], dict[str, Any]] = {}
     statuses: list[str] = []
-    dummy_x = np.zeros((0, 1), dtype=float)
-    dummy_y = np.zeros(0, dtype=float)
+    prepared: list[tuple[tuple[str, Any], np.ndarray, float | None]] = []
     for index in test_indices.tolist():
         sid = _garch_name_row_id(id_values.tolist()[int(index)])
         test_date = date_values.tolist()[int(index)]
         key = (sid, test_date)
         if key in by_key:
             raise ValueError("per-security GARCH walk-forward has duplicate security_id/event_time")
+        # Reserve the key before the fit so a later duplicate still fails in input order.
+        by_key[key] = float("nan")
         _hist_dates, historical_returns = _garch_name_return_history(
             return_frame, sid, asof=test_date
         )
@@ -1188,18 +1235,50 @@ def _garch_name_oos_predictions(
             raise ValueError(
                 f"per-security GARCH test origin has no strictly prior returns for {sid!r}"
             )
-        model = make_model()
-        model.fit(dummy_x, dummy_y, returns=historical_returns)
-        forecast = model.forecast(horizon=label_horizon)
-        cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
-        if cumulative.size < label_horizon or not np.isfinite(cumulative[label_horizon - 1]):
-            raise ValueError("GARCH produced an invalid out-of-sample forecast")
-        by_key[key] = float(cumulative[label_horizon - 1])
-        statuses.append(str(getattr(model, "fit_status", "unknown")))
-        if hasattr(model, "log_density") and hasattr(model, "pit"):
-            if key not in origin_returns:
-                raise ValueError("per-security GARCH one-step density target missing origin ret_1")
-            density_by_key[key] = _garch_origin_density_record(model, origin_returns[key], forecast)
+        origin_return = origin_returns.get(key)
+        prepared.append(
+            (
+                key,
+                np.ascontiguousarray(historical_returns, dtype=np.float64),
+                None if origin_return is None else float(origin_return),
+            )
+        )
+
+    spec = _garch_vol_spec(make_model())
+    if spec is None:
+        # Custom factories are not assumed picklable. Keep the original serial fits.
+        dummy_x = np.zeros((0, 1), dtype=float)
+        dummy_y = np.zeros(0, dtype=float)
+        for key, historical_returns, origin_return in prepared:
+            model = make_model()
+            model.fit(dummy_x, dummy_y, returns=historical_returns)
+            forecast = model.forecast(horizon=label_horizon)
+            cumulative = np.asarray(forecast["cumulative_variance"], dtype=float).reshape(-1)
+            if cumulative.size < label_horizon or not np.isfinite(cumulative[label_horizon - 1]):
+                raise ValueError("GARCH produced an invalid out-of-sample forecast")
+            by_key[key] = float(cumulative[label_horizon - 1])
+            statuses.append(str(getattr(model, "fit_status", "unknown")))
+            if hasattr(model, "log_density") and hasattr(model, "pit"):
+                if origin_return is None:
+                    raise ValueError(
+                        "per-security GARCH one-step density target missing origin ret_1"
+                    )
+                density_by_key[key] = _garch_origin_density_record(model, origin_return, forecast)
+    else:
+        # Each origin is an independent fit. A process pool was slower than
+        # this in-process loop on sub-second batches (pool startup dominated
+        # ~10ms GARCH fits), so the sweep stays here. ``_garch_origin_task``
+        # is the same function the pool tests call. The seed is unused.
+        fitted = [
+            _garch_origin_task((spec, hist, int(label_horizon), origin), 0)
+            for _key, hist, origin in prepared
+        ]
+        for (key, _hist, _origin), (prediction, status, density) in zip(
+            prepared, fitted, strict=True
+        ):
+            by_key[key] = prediction
+            statuses.append(status)
+            density_by_key[key] = density
 
     predictions = np.asarray(
         [
