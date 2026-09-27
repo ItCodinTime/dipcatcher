@@ -1,0 +1,20 @@
+{
+  "name": "@dipcatcher/research-api-client",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Typed client for the dipcatcher read-only research API (generated from the committed OpenAPI spec).",
+  "type": "module",
+  "files": [
+    "client.ts",
+    "schema.d.ts",
+    "openapi.json"
+  ],
+  "scripts": {
+    "generate:schema": "openapi-typescript openapi.json -o schema.d.ts",
+    "typecheck": "tsc --noEmit --strict --module nodenext --moduleResolution nodenext --target es2022 --skipLibCheck --allowImportingTsExtensions client.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.6.0"
+  }
+}

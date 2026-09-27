@@ -51,13 +51,10 @@ uv run pytest -q -m "not network" $(tr '\n' ' ' < /tmp/shard.txt)
   and adds its directory to `PATH`. The [GitHub-hosted Windows image](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md)
   lists GCC and MSYS2, while noting that MSYS2 is not on `PATH`; the check
   fails clearly if the image changes.
-- **`chmod(0o000)` does not make a file unreadable on Windows.** Windows
-  permissions are ACL-based; `os.chmod`/`Path.chmod` can only toggle the
-  read-only attribute, and a read-only file still reads fine. Two
-  fail-closed tests that simulate an unreadable research receipt are skipped
-  on Windows (`tests/unit/pipeline/test_api_cov.py`,
-  `test_drift_unreadable_receipt_reports_none_source`,
-  `test_research_latest_unreadable_receipt_is_422`).
+- **`chmod(0o000)` does not make a file unreadable on Windows.** The two
+  fail-closed API tests now inject a targeted `PermissionError` from
+  `Path.read_bytes` on every platform. They still exercise the unreadable
+  receipt handlers on Windows without depending on POSIX mode bits.
 - **Locale encoding.** Windows runners default to cp1252; the repo's text
   artifacts are UTF-8. The workflow sets `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8`
   (PEP 540) so Windows interpreters behave like the POSIX runners. PEP 686

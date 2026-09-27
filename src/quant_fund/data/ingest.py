@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -37,7 +38,12 @@ class PublicMarketProvider:
                 f"cannot configure public source {config.data.source!r}: {exc}"
             ) from exc
 
-    def get_bars(self, start=None, end=None, security_ids=None):
+    def get_bars(
+        self,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        security_ids: list[str] | None = None,
+    ) -> pl.DataFrame:
         source = self.config.data.source
         kwargs: dict[str, object] = {}
         if source in {"binance_public_data", "binance_market_websocket"}:
@@ -61,10 +67,14 @@ class PublicMarketProvider:
             frame = frame.filter(pl.col("security_id").is_in(security_ids))
         return frame
 
-    def get_corporate_actions(self, **_):
+    def get_corporate_actions(
+        self,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> pl.DataFrame:
         return pl.DataFrame()
 
-    def get_security_master(self):
+    def get_security_master(self) -> pl.DataFrame:
         return pl.DataFrame()
 
 

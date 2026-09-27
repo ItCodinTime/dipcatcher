@@ -98,6 +98,14 @@ Each new challenger: causal-only, deterministic seed, honest-NaN on failure,
 added to `BASELINES`/`dip_challengers`, unit-tested against known cases, then
 a `v5_*` fleet column on existing shards' protocol.
 
+Swarm harnesses landed: `research/fleet_eval.py` + `dipcatcher fleet` (six
+seeded SYNTHETIC shards — iid_gaussian/bimodal_mixture/heavy_tail/left_skew/
+regime_switch/garch_cluster — scoring every registered head with proper
+scores only into sealed receipts), and `research/identity_sweep.py` +
+`dipcatcher verify-identities` (38 curated estimator identities proven over
+seeded SyntheticBundle draws with hash-sealed receipts, exits non-zero on
+any violation).
+
 - [ ] P1.1 `dip_gmm_k` — Gaussian-mixture density head (K∈{2,3,4}, EM on
       trailing returns, BIC or fixed-K; the "heads not backbones" result
       predicts +2–4% CRPS in high-vol regimes). Closed-form mixture CRPS
@@ -111,14 +119,33 @@ a `v5_*` fleet column on existing shards' protocol.
       wraps `models/skew_t.py` MLE + ppf). Fleet cell still open.
 - [ ] P1.3 `dip_qar` — quantile autoregression (Koenker–Xiao) direct per-τ
       fit; monotone-quantile enforced.
+      Head landed: `QARDistribution` in `models/qar.py` — single-series,
+      one-step-ahead head (`predict` accepts exactly 1 row; `fit` requires
+      an all-finite series). Deliberately NOT in the `train_distribution`
+      panel catalog — the panel interface has no honest row-order contract;
+      usable via direct construction. Fleet cell still open.
 - [ ] P1.4 `dip_conf_t` — conformalized Student-t: parametric base +
       weighted-online-conformal recalibration of residuals →
       distribution-free coverage correction (bridges our conformal stack
       into the distributional lane).
+      Head wired: `train distribution --model conf_t`
+      (`ConformalTDistribution` — Hansen skew-t MLE on leading 2/3, CQR
+      additive shift per τ on trailing slice, `ceil((n+1)·τ)` order
+      statistic). Fleet cell still open.
 - [ ] P1.5 `dip_regime` — 2-state vol-regime mixture (existing `regime.py`
       HMM or Markov-switching): per-state empirical, state-prob mixed.
+      Head wired: `train distribution --model regime`
+      (`RegimeDistribution` — filtered `GaussianHMMRegime` posteriors on
+      |y|, last-obs weights mixing per-state empirical CDFs via generalized
+      inverse; VolThreshold + single-state fallbacks disclosed in
+      metadata). Fleet cell still open.
 - [ ] P1.6 `dip_fhs_skew` — FHS variant on skew-filtered residuals + GJR
       asymmetry already present; quantile-level tail check.
+      Head wired: `train distribution --model fhs_skew`
+      (`FhsSkewDistribution` — fixed-coefficient GJR(1,1) σ-path with
+      moment-matched ω, skew-t MLE on standardized residuals, one-step
+      σ forecast; `train_distribution` enforces a single strictly-ordered
+      series). Fleet cell still open.
 - [ ] P1.7 `dip_isotonic` — isotonic-recalibrated empirical (PIT-based
       recalibration on trailing window; cheap calibration challenger).
       Head wired: `train distribution --model isotonic`
@@ -128,6 +155,10 @@ a `v5_*` fleet column on existing shards' protocol.
 - [ ] P1.8 `dip_lgbm_q2` — LightGBM quantiles v2: richer causal feature set
       (realized-vol term structure, OHLC range, amount), Dask-free, ≤30
       features; keep warmup disclosure.
+      Head wired: `train distribution --model lgbm_q2`
+      (`LGBMQ2Distribution` — per-τ `LGBMRegressor(objective="quantile")`
+      on the full causal PIT design, rearranged monotone; warmup disclosed
+      in metadata). Fleet cell still open.
 - [ ] P1.9 Blend-search policy: `dip_blend` is empirical+parametric concat;
       add `dip_stack` — weights fit by *trailing-window* CRPS minimization
       (causal stacking, no lookahead).
@@ -138,6 +169,13 @@ a `v5_*` fleet column on existing shards' protocol.
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.
+      Head landed: `HStepScaledDistribution` (per-h unit-variance
+      Student-t iid-sum construction plus empirical overlapping-bootstrap;
+      `2·T·H` column layout disclosed in metadata). It requires one
+      strictly chronological series and remains outside the generic
+      `train distribution` catalog: that one-step evaluator expects
+      `len(taus)` columns, while this head emits separate horizon
+      blocks that need horizon-aligned targets. Fleet cell still open.
 
 ### P2 — New published targets (make the claim harder to dismiss)
 
@@ -229,6 +267,11 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       `hac.py`, `evalues.py`, `conformal.py`, `multiple_testing.py`,
       `cpcv.py`, `purging.py`, `embargo.py`, `walk_forward.py`, `fdr.py`,
       `gates.py`.
+      Partially done: metrics layer audited (`metrics/{inference,snooping,
+      bootstrap,scoring,calibration_tests}.py`) — `docs/AUDIT_P62_STATS.md`
+      + `tests/unit/metrics/test_stats_audit.py` (43 KATs); 3 proven bugs
+      fixed (PW2004 block length, NaN coverage masking, degenerate-sd
+      Sharpe CI). Validation/`purging`/`walk_forward` layers still open.
 - [ ] P6.3 Data integrity: `ingest.py`, `point_in_time.py`, `universe.py`,
       `corporate_actions.py`, `security_master.py`, `sources/`, `lake.py`,
       `calendars.py`.

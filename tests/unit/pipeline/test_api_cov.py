@@ -25,7 +25,6 @@ import asyncio
 import hashlib
 import importlib
 import json
-import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -452,17 +451,24 @@ def _stub_verify(monkeypatch: pytest.MonkeyPatch, fn: Callable[[Path], dict]) ->
     monkeypatch.setattr(verifier, "verify_research_artifact", fn)
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod(0o000) only sets the read-only attribute on Windows; "
-    "the file stays readable, so the unreadable-receipt path cannot be exercised",
-)
+def _deny_receipt_reads(monkeypatch: pytest.MonkeyPatch, target: Path) -> None:
+    """Exercise unreadable-receipt handling on POSIX and Windows alike."""
+    original = Path.read_bytes
+
+    def deny(path: Path) -> bytes:
+        if path == target:
+            raise PermissionError("simulated unreadable research receipt")
+        return original(path)
+
+    monkeypatch.setattr(Path, "read_bytes", deny)
+
+
 def test_drift_unreadable_receipt_reports_none_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, root = _research_cfg_client(tmp_path, monkeypatch)
     latest = _write_receipt(root, "{}")
-    latest.chmod(0o000)
+    _deny_receipt_reads(monkeypatch, latest)
     body = client.get("/monitoring/drift").json()
     assert body["status"] == "UNMEASURED"
     assert body["reason"] == "research artifact could not be read"
@@ -606,17 +612,12 @@ def test_drift_evidence_report_malformed_json_fails_closed(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod(0o000) only sets the read-only attribute on Windows; "
-    "the file stays readable, so the unreadable-receipt path cannot be exercised",
-)
 def test_research_latest_unreadable_receipt_is_422(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client, root = _research_cfg_client(tmp_path, monkeypatch)
     latest = _write_receipt(root, "{}")
-    latest.chmod(0o000)
+    _deny_receipt_reads(monkeypatch, latest)
     response = client.get("/research/latest")
     assert response.status_code == 422
     detail = response.json()["detail"]
