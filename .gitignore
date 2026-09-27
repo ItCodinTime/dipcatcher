@@ -58,3 +58,9 @@ data/hf_ohlcv_1m/
 coverage.xml
 .coverage
 .coverage.*
+
+# Derived wide-panel data — regenerate via data engine, never commit (AGENTS.md).
+data/file_us_wide/**
+# 24x7 derived eval dumps + simulated paper ledgers — evidence text stays tracked.
+.dsh-24x7/eval-full/**
+.dsh-24x7/paper_data/**
