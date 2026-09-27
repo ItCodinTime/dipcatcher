@@ -144,6 +144,7 @@ nav:
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
       - Labels: DATA_SOURCE_LABELS.md
+      - Data lake: DATA_LAKE.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
