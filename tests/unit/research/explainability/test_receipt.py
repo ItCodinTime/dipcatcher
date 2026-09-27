@@ -8,16 +8,13 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+import quant_fund.research.explainability.receipt as receipt_module
 from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     REQUIRED_BENCHMARK_FAMILIES,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
 )
-from quant_fund.research.receipt_schema import unavailable_overfitting_block
-from quant_fund.research.verify import _receipt_digest, verify_research_artifact
-from quant_fund.utils.hashing import hash_bytes, hash_file
-
-import quant_fund.research.explainability.receipt as receipt_module
 from quant_fund.research.explainability import (
     attach_explainability_report,
     attach_explainability_sidecar,
@@ -27,6 +24,9 @@ from quant_fund.research.explainability import (
     verify_explainability_sidecar,
     write_report,
 )
+from quant_fund.research.receipt_schema import unavailable_overfitting_block
+from quant_fund.research.verify import _receipt_digest, verify_research_artifact
+from quant_fund.utils.hashing import hash_bytes, hash_file
 
 from .conftest import FEATURES
 

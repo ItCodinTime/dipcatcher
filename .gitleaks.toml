@@ -1,0 +1,29 @@
+title = "dipcatcher"
+
+[extend]
+useDefault = true
+
+# Keep exceptions bound to the exact documented fixtures. A blanket allowlist
+# for 40- or 64-character hex strings can mask real credential material.
+[[allowlists]]
+description = "Pinned public model revisions"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)src/quant_fund/models/robinhood_plus/constants\.py$''']
+regexTarget = "line"
+regexes = ['''(?i)^\s*"(?:tokenizer_rev|model_rev)":\s*"[0-9a-f]{40}",?\s*$''']
+
+[[allowlists]]
+description = "MkDocs API stability navigation target"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)mkdocs\.yml$''']
+regexTarget = "line"
+regexes = ['''^\s*-\s*API stability:\s*FX1_API_STABILITY\.md\s*$''']
+
+[[allowlists]]
+description = "Synthetic credential-leak regression canary"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(?:^|/)tests/fx1/test_sources\.py$''']
+regexes = ['''^sk-test-SECRET-123$''']

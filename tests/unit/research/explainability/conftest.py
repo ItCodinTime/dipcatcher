@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 from numpy.typing import NDArray
+
 from quant_fund.models.base import ModelMeta
 
 FEATURES = ["mom_20", "reversal_1", "vol_20", "signal_core", "noise_a", "noise_b"]

@@ -11,8 +11,6 @@ import numpy as np
 import polars as pl
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
-from quant_fund.utils.seeds import set_global_seed
 
 from quant_fund.utils.hashing import (
     canonical_frame_fingerprint,
@@ -21,6 +19,8 @@ from quant_fund.utils.hashing import (
     hash_bytes,
     hash_file,
 )
+from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
+from quant_fund.utils.seeds import set_global_seed
 
 # ---------------- hashing ----------------
 
