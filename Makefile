@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench
 
 .DEFAULT_GOAL := help
 
@@ -50,6 +50,18 @@ evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 
 ci: lint typecheck coverage ## Local mirror of the CI gate
 
+formal: ## TLC order-lifecycle check + Z3/conformance/stateful tests
+	bash scripts/run_tlc.sh
+	uv run pytest tests/formal -q
+
+mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
+	uv run pytest tests/unit/mc_engine -q -m "not slow"
+	uv run python -m quant_fund.mc_engine run --paths 1500 --steps 8 --workers 1 \
+		--backend serial --chunk-size 500 --seed 1 --no-progress
+
+pretrade-bench: ## Pre-trade hot-path latency gate (p50 < 5us, p99 < 20us)
+	uv run python -m quant_fund.pretrade.bench --gate
+
 examples: ## Offline examples gallery: ruff, mypy, subprocess runner
 	uv run ruff check examples tests/examples
 	uv run ruff format --check examples tests/examples
@@ -61,6 +73,13 @@ docs: ## Build the documentation site (strict)
 
 docs-serve: ## Serve the documentation site locally
 	uv run --only-group docs --frozen mkdocs serve --dev-addr 127.0.0.1:8000
+
+simtest: ## Bounded deterministic-simulation tests and swarm (CI size)
+	uv run pytest tests/unit/simtest tests/regression/test_simtest_duplicate_bar_order.py -q -m "not slow"
+	MLFLOW_DISABLE_AGENT_HINT=1 uv run python scripts/simtest_swarm.py --seeds 64 --days 5 --base-seed 0
+
+simtest-large: ## Large seeded swarm (workflow_dispatch size; not the PR default)
+	MLFLOW_DISABLE_AGENT_HINT=1 uv run python scripts/simtest_swarm.py --seeds 4000 --days 8 --base-seed 0
 
 # --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
 fx1-test: ## fx-1 test suite
