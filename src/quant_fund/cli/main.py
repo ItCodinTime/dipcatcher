@@ -62,6 +62,18 @@ from quant_fund.cli.data_cmds import (
 from quant_fund.cli.data_cmds import (
     ingest as ingest,
 )
+from quant_fund.cli.lake_cmds import (
+    lake_import as lake_import,
+)
+from quant_fund.cli.lake_cmds import (
+    lake_quality as lake_quality,
+)
+from quant_fund.cli.lake_cmds import (
+    lineage_show as lineage_show,
+)
+from quant_fund.cli.lake_cmds import (
+    lineage_verify as lineage_verify,
+)
 from quant_fund.cli.ops_cmds import (
     api as api,
 )
