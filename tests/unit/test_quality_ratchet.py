@@ -17,7 +17,7 @@ STRICT_MODULE_FLOOR = 393
 # validate_ledger_schema. verify_research_artifact was 196 before the split.
 MCCABE_CEILING = 74
 # `except Exception` handlers under src/quant_fund. This is origin/main's
-# count at 0fdba02 (75). This branch narrows three of them, so the tree is
+# count at 7d2e01e (75). This branch narrows three of them, so the tree is
 # at 72. New handlers that push the total above main fail this test.
 EXCEPT_EXCEPTION_CEILING = 75
 
