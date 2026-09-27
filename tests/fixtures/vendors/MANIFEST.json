@@ -1,0 +1,41 @@
+{
+  "description": "Hand-authored response-body fixtures for the market-data vendor adapters (src/quant_fund/data/vendors/). Each file reproduces the vendor's documented wire format byte-for-byte in shape; OHLCV values are SYNTHETIC (plausible scale, fabricated numbers) written by hand for contract tests and the reconciliation tool. They are NOT captured from live APIs and must not be cited as market evidence.",
+  "provenance": "hand-authored SYNTHETIC cassettes, no live capture, no secrets",
+  "files": {
+    "tiingo/spy_daily.json": {
+      "vendor": "tiingo",
+      "endpoint": "GET https://api.tiingo.com/tiingo/daily/SPY/prices",
+      "symbol": "SPY",
+      "range": "2024-01-02..2024-01-05",
+      "notes": "Tiingo daily prices JSON array; volumes differ slightly from other vendors (within reconcile tolerance) to exercise the tolerance machinery."
+    },
+    "polygon/spy_aggs.json": {
+      "vendor": "polygon",
+      "endpoint": "GET https://api.polygon.io/v2/aggs/ticker/SPY/range/1/day/2024-01-02/2024-01-05",
+      "symbol": "SPY",
+      "range": "2024-01-02..2024-01-05",
+      "notes": "INTENTIONALLY DIVERGENT bar on 2024-01-04: close 467.00 vs 471.09 (~0.9% rel), high 472.10 vs 471.80, volume 75.0M vs 58.9M — used to prove the reconciliation tool flags divergent bars."
+    },
+    "alphavantage/spy_daily.json": {
+      "vendor": "alpha_vantage",
+      "endpoint": "GET https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=SPY",
+      "symbol": "SPY",
+      "range": "2024-01-02..2024-01-05",
+      "notes": "TIME_SERIES_DAILY shape; reverse-chronological keys exercise output sorting."
+    },
+    "stooq/spy_daily.csv": {
+      "vendor": "stooq",
+      "endpoint": "GET https://stooq.com/q/d/l/?s=spy.us&i=d",
+      "symbol": "SPY",
+      "range": "2024-01-02..2024-01-05",
+      "notes": "Date,Open,High,Low,Close,Volume CSV."
+    },
+    "binance/btcusdt_1d.json": {
+      "vendor": "binance_klines",
+      "endpoint": "GET https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d",
+      "symbol": "BTCUSDT",
+      "range": "2024-01-02..2024-01-05",
+      "notes": "Kline arrays [openTime,o,h,l,c,v,closeTime,...]; all closeTimes in the past (no in-progress bar)."
+    }
+  }
+}
