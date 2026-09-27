@@ -54,7 +54,7 @@ class PublicMarketProvider:
             )
         elif source in {"nasdaq_itch", "fi_2010"}:
             kwargs["path"] = self.config.data.source_path
-        elif source not in {"ccxt", "cryptofeed"}:
+        else:
             raise ValueError(
                 f"data source {source!r} is not a bar provider; use the public-source collector for generic observations"
             )
@@ -115,8 +115,6 @@ def make_provider(
         if source in {
             "binance_public_data",
             "binance_market_websocket",
-            "ccxt",
-            "cryptofeed",
             "nasdaq_itch",
             "fi_2010",
         }:
@@ -148,7 +146,9 @@ def ingest(config: AppConfig) -> dict[str, Path]:
     silver = apply_listing_actions(
         silver, actions, include_delisted=config.universe.include_delisted
     )
-    if not master.is_empty() and "sector" in master.columns:
+    # attach_master_attributes self-gates on security_id and known attr cols;
+    # gating on "sector" alone would skip masters carrying only other attrs.
+    if not master.is_empty():
         silver = attach_master_attributes(silver, master)
     timestamps = (
         silver.get_column("event_time").unique().sort().to_list() if not silver.is_empty() else []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -65,9 +66,11 @@ class HttpClient:
                 backoff_s=1.0,
                 max_backoff_s=4.0,
                 jitter=True,
-                retry_on=(OSError,),
+                # http.client transport failures (IncompleteRead, RemoteDisconnected,
+                # BadStatusLine) are not OSError subclasses and must retry too.
+                retry_on=(OSError, http.client.HTTPException),
             )
-        except OSError as exc:
+        except (OSError, http.client.HTTPException) as exc:
             raise SourceError(f"GET failed after retries: {url}") from exc
 
     def get_json(self, url: str, *, headers: dict[str, str] | None = None) -> Any:
@@ -109,9 +112,14 @@ def pit_frame(rows: list[dict[str, Any]], *, source: str, revision_id: str = "v1
     stamped: list[dict[str, Any]] = []
     for original in rows:
         row = dict(original)
-        event = parse_time(row.pop("event_time"))
-        available_raw = row.pop("available_time", None)
-        available = event if available_raw is None else parse_time(available_raw)
+        if "event_time" not in row:
+            raise SourceError("source row is missing event_time")
+        try:
+            event = parse_time(row.pop("event_time"))
+            available_raw = row.pop("available_time", None)
+            available = event if available_raw is None else parse_time(available_raw)
+        except (TypeError, ValueError, OverflowError, OSError) as exc:
+            raise SourceError(f"source row has an unparseable timestamp: {exc}") from exc
         if event > available or available > ingested:
             raise SourceError("impossible event_time/available_time/ingested_time chain")
         stamped.append(

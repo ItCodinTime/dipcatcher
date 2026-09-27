@@ -101,9 +101,9 @@ def validate_feature_frame(frame: pl.DataFrame, decision_time: datetime) -> None
         raise PointInTimeError(
             f"{availability_col} contains null or future values relative to {decision_time}"
         )
-    max_available = (
-        max_available_time(frame)
-        if availability_col == "available_time"
-        else frame[availability_col].max()
-    )
+    # Only the availability column is being validated here; the row-wise
+    # branch above already skipped full PIT-column requirements, so a feature
+    # frame carrying ``available_time`` but not ingest lineage must not die
+    # on a misleading "missing PIT columns" check at this step.
+    max_available = frame[availability_col].max()
     assert_pit_safe(cast(datetime, max_available), decision_time)
