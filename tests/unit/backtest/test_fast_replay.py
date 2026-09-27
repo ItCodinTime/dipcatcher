@@ -1,4 +1,7 @@
-"""Conformance: ``run_backtest_fast`` must reproduce ``run_backtest`` exactly.
+"""Conformance: ``run_backtest_fast`` must reproduce the event loop exactly.
+
+``run_backtest`` dispatches to the fast replay when that replay is complete,
+so these tests call ``_run_backtest_event_loop`` as the reference.
 
 The fast path exists for incumbent-benchmark latency. It is only trustworthy
 if it is the *same* engine semantically — so these tests assert bitwise NAV /
@@ -14,7 +17,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from quant_fund.backtest.engine import StaleValuationError, run_backtest
+from quant_fund.backtest.engine import StaleValuationError, _run_backtest_event_loop
 from quant_fund.backtest.fast_replay import run_backtest_fast
 from quant_fund.config.models import (
     AppConfig,
@@ -172,7 +175,9 @@ def test_small_panel_equivalence():
     bars = _bars(["AAA", "BBB", "CCC"], 80, rng, missing=0.05)
     weights = _weights(["AAA", "BBB", "CCC"], 80, rng)
     cfg = _cfg(commission_bps=10.0)
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_fuzz_random_panels():
@@ -209,7 +214,7 @@ def test_fuzz_random_panels():
             kill="ENABLED" if rng.random() < 0.8 else "HALT_NEW_ORDERS",
         )
         try:
-            ref = run_backtest(bars, weights, cfg)
+            ref = _run_backtest_event_loop(bars, weights, cfg)
         except Exception as e:  # noqa: BLE001 - whatever ref does, fast must do
             with pytest.raises(type(e)):
                 run_backtest_fast(bars, weights, cfg)
@@ -234,7 +239,7 @@ def test_stale_held_position_both_raise():
     weights = _weights(["AAA"], 40, rng, lo=0.8, hi=0.8)
     cfg = _cfg(stale_price_bars=3)
     with pytest.raises(StaleValuationError):
-        run_backtest(bars, weights, cfg)
+        _run_backtest_event_loop(bars, weights, cfg)
     with pytest.raises(StaleValuationError):
         run_backtest_fast(bars, weights, cfg)
 
@@ -256,7 +261,7 @@ def test_unmarked_held_position_parity():
     weights = _weights(["AAA"], 40, rng, lo=0.8, hi=0.8)
     cfg = _cfg(stale_price_bars=3)
     try:
-        ref = run_backtest(bars, weights, cfg)
+        ref = _run_backtest_event_loop(bars, weights, cfg)
     except StaleValuationError:
         with pytest.raises(StaleValuationError):
             run_backtest_fast(bars, weights, cfg)
@@ -288,7 +293,9 @@ def test_kill_switch_halt_parity():
     bars = _bars(["AAA", "BBB"], 60, rng)
     weights = _weights(["AAA", "BBB"], 60, rng, lo=0.4, hi=0.9)
     cfg = _cfg(kill="HALT_NEW_ORDERS")
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_sparse_rebalance_grid():
@@ -301,7 +308,9 @@ def test_sparse_rebalance_grid():
     keep = sorted(set(weights["event_time"].to_list()))[::4]
     weights = weights.filter(pl.col("event_time").is_in(keep))
     cfg = _cfg(commission_bps=5.0)
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_empty_weights():
@@ -315,4 +324,6 @@ def test_empty_weights():
         }
     )
     cfg = _cfg()
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )

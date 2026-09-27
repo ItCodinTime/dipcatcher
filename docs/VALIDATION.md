@@ -35,7 +35,8 @@ trains are skipped (fail-closed). See `validation/cpcv.py` and
 The research notebook includes a `cpcv` integrity family that records the
 observed versus expected fold count and validates date-level train/test
 separation. It is a validation audit, not a performance or profitability
-claim.
+claim. Schema 2 notebooks also stamp PBO, DSR, PSR, MinTRL, and the trial
+counts; how to read them is `docs/BACKTEST_OVERFITTING.md`.
 
 ## Hyperparameters
 

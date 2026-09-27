@@ -7,6 +7,10 @@ evaluation (``fx1.eval``), training (``fx1.train``), serving (``fx1.serve``),
 the flagship bench (``fx1.bench``), the reward model (``fx1.reward``), and
 the harness bridge (``fx1.harness``) through which dipcatcher builds,
 evaluates, and verifies the model. See ``docs/FX1.md``.
+
+``fx1.forecast`` is a separate inference/evaluation harness for an external
+price/return model that is not implemented in this package. See
+``docs/fx1_harness.md``.
 """
 
 __version__ = "0.4.0"

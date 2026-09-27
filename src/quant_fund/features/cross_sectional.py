@@ -30,41 +30,180 @@ def apply_cross_sectional(
     winsor_p: float,
     sector: str | None = None,
 ) -> pl.DataFrame:
-    out = df
+    """Winsorize, robust-z, and percentile-rank each column inside ``event_time``.
+
+    Statistics are group-by reductions joined back onto the rows. That matches
+    the per-column ``over`` window (nulls stay out of the cross-section; ranks
+    are average ranks; MAD falls back to the group standard deviation) without
+    replanning one window query per column.
+    """
+    if not columns:
+        return df
     lo, hi = winsor_p, 1.0 - winsor_p
     eligible = decision_eligible_expr(df)
-    for col in columns:
-        g = pl.col(col)
-        # Late-arriving observations must not influence the cross-section at
-        # their event time.  Nulling them before every aggregate also keeps
-        # the denominator and rank universe PIT-correct.
-        source = pl.when(eligible).then(g).otherwise(None)
-        q_lo = source.quantile(lo).over("event_time")
-        q_hi = source.quantile(hi).over("event_time")
-        clipped_base = source.clip(q_lo, q_hi)
-        clipped = pl.when(eligible).then(clipped_base).otherwise(None)
-        robust_z = _robust_z(clipped_base, eligible, ["event_time"])
-        rank = source.rank("average").over("event_time")
-        n = source.count().over("event_time")
-        pct = pl.when(eligible).then((rank - 0.5) / n).otherwise(None)
-        out = out.with_columns(
-            clipped.alias(f"winsor_{col}"),
-            robust_z.alias(f"cs_z_{col}"),
-            pct.alias(f"cs_pct_{col}"),
+    use_sector = sector is not None and sector in df.columns
+    # Choose a namespace absent from the input. User columns must survive the
+    # intermediate reductions, even when their names start with ``_cs_``.
+    prefix = "_cs_"
+    while any(name.startswith(prefix) for name in df.columns):
+        prefix = "_" + prefix
+    src = [f"{prefix}src_{col}" for col in columns]
+    work = df.with_columns(
+        [
+            pl.when(eligible).then(pl.col(col)).otherwise(None).alias(name)
+            for col, name in zip(columns, src, strict=True)
+        ]
+    )
+    reductions: list[pl.Expr] = []
+    for col, name in zip(columns, src, strict=True):
+        reductions.extend(
+            [
+                pl.col(name).quantile(lo).alias(f"{prefix}lo_{col}"),
+                pl.col(name).quantile(hi).alias(f"{prefix}hi_{col}"),
+            ]
         )
-        if sector is not None and sector in out.columns:
-            out = out.with_columns(
-                _robust_z(clipped_base, eligible, ["event_time", sector]).alias(
-                    f"cs_z_sector_{col}"
-                )
+    work = work.join(
+        work.group_by("event_time").agg(reductions),
+        on="event_time",
+        how="left",
+        maintain_order="left",
+    )
+    clip = [f"{prefix}clip_{col}" for col in columns]
+    work = work.with_columns(
+        [
+            pl.col(name)
+            .clip(pl.col(f"{prefix}lo_{col}"), pl.col(f"{prefix}hi_{col}"))
+            .alias(clipped)
+            for col, name, clipped in zip(columns, src, clip, strict=True)
+        ]
+    )
+    location: list[pl.Expr] = []
+    for col, clipped in zip(columns, clip, strict=True):
+        location.extend(
+            [
+                pl.col(clipped).median().alias(f"{prefix}med_{col}"),
+                pl.col(clipped).std().alias(f"{prefix}sd_{col}"),
+            ]
+        )
+    work = work.join(
+        work.group_by("event_time").agg(location),
+        on="event_time",
+        how="left",
+        maintain_order="left",
+    )
+    dev = [f"{prefix}dev_{col}" for col in columns]
+    work = work.with_columns(
+        [
+            (pl.col(clipped) - pl.col(f"{prefix}med_{col}")).abs().alias(name)
+            for col, clipped, name in zip(columns, clip, dev, strict=True)
+        ]
+    )
+    work = work.join(
+        work.group_by("event_time").agg(
+            [
+                pl.col(name).median().alias(f"{prefix}mad_{col}")
+                for col, name in zip(columns, dev, strict=True)
+            ]
+        ),
+        on="event_time",
+        how="left",
+        maintain_order="left",
+    )
+    work = work.with_columns(
+        [
+            pl.col(name).rank("average").over("event_time").alias(f"{prefix}rk_{col}")
+            for col, name in zip(columns, src, strict=True)
+        ]
+    )
+    if use_sector:
+        assert sector is not None
+        # Null sector labels are their own group. A left join does not match
+        # null keys, so the key is (is_null, filled label) instead of the raw
+        # column the window expression grouped on.
+        work = work.with_columns(
+            pl.col(sector).is_null().alias(f"{prefix}sec_null"),
+            pl.col(sector).cast(pl.Utf8).fill_null("").alias(f"{prefix}sec"),
+        )
+        sec_keys = ["event_time", f"{prefix}sec_null", f"{prefix}sec"]
+        sec_loc: list[pl.Expr] = []
+        for col, clipped in zip(columns, clip, strict=True):
+            sec_loc.extend(
+                [
+                    pl.col(clipped).median().alias(f"{prefix}smed_{col}"),
+                    pl.col(clipped).std().alias(f"{prefix}ssd_{col}"),
+                ]
             )
-    return out
+        work = work.join(
+            work.group_by(sec_keys).agg(sec_loc),
+            on=sec_keys,
+            how="left",
+            maintain_order="left",
+        )
+        sdev = [f"{prefix}sdev_{col}" for col in columns]
+        work = work.with_columns(
+            [
+                (pl.col(clipped) - pl.col(f"{prefix}smed_{col}")).abs().alias(name)
+                for col, clipped, name in zip(columns, clip, sdev, strict=True)
+            ]
+        )
+        work = work.join(
+            work.group_by(sec_keys).agg(
+                [
+                    pl.col(name).median().alias(f"{prefix}smad_{col}")
+                    for col, name in zip(columns, sdev, strict=True)
+                ]
+            ),
+            on=sec_keys,
+            how="left",
+            maintain_order="left",
+        )
+    final: list[pl.Expr] = []
+    for col, clipped in zip(columns, clip, strict=True):
+        z = _robust_z_from_parts(
+            pl.col(clipped),
+            pl.col(f"{prefix}med_{col}"),
+            pl.col(f"{prefix}mad_{col}"),
+            pl.col(f"{prefix}sd_{col}"),
+            eligible,
+        )
+        final.extend(
+            [
+                pl.when(eligible).then(pl.col(clipped)).otherwise(None).alias(f"winsor_{col}"),
+                z.alias(f"cs_z_{col}"),
+                pl.when(eligible)
+                .then(
+                    (pl.col(f"{prefix}rk_{col}") - 0.5)
+                    / pl.col(f"{prefix}src_{col}").count().over("event_time")
+                )
+                .otherwise(None)
+                .alias(f"cs_pct_{col}"),
+            ]
+        )
+        if use_sector:
+            final.append(
+                _robust_z_from_parts(
+                    pl.col(clipped),
+                    pl.col(f"{prefix}smed_{col}"),
+                    pl.col(f"{prefix}smad_{col}"),
+                    pl.col(f"{prefix}ssd_{col}"),
+                    eligible,
+                ).alias(f"cs_z_sector_{col}")
+            )
+    work = work.with_columns(final)
+    drop = [name for name in work.columns if name.startswith(prefix)]
+    return work.drop(drop)
 
 
 _SCALE_FLOOR = 1e-12
 
 
-def _robust_z(value: pl.Expr, eligible: pl.Expr, keys: list[str]) -> pl.Expr:
+def _robust_z_from_parts(
+    value: pl.Expr,
+    med: pl.Expr,
+    mad: pl.Expr,
+    sd: pl.Expr,
+    eligible: pl.Expr,
+) -> pl.Expr:
     """Median / MAD z-score with a standard-deviation fallback when MAD is 0.
 
     More than half of a small cross-section can share one value (names at
@@ -72,11 +211,9 @@ def _robust_z(value: pl.Expr, eligible: pl.Expr, keys: list[str]) -> pl.Expr:
     ``(x - med) / (1.4826 * MAD + 1e-12)`` explode to ~1e10 for every other
     name. Rousseeuw–Croux style fallback: use the group standard deviation
     when MAD is degenerate, and 0 (no dispersion, no information) when both
-    are degenerate. Everything is within-group, so PIT is unchanged.
+    are degenerate. ``med`` / ``mad`` / ``sd`` are already within-group, so
+    PIT is unchanged from the window form of this score.
     """
-    med = value.median().over(keys)
-    mad = (value - med).abs().median().over(keys)
-    sd = value.std().over(keys)
     scale = pl.when(mad > _SCALE_FLOOR).then(1.4826 * mad).otherwise(sd)
     z = pl.when(scale > _SCALE_FLOOR).then((value - med) / scale).otherwise(0.0)
     return pl.when(eligible).then(z).otherwise(None)
