@@ -39,7 +39,7 @@ class ManifestError(VaultError):
     """manifest.json missing, malformed, or hash-mismatched."""
 
 
-class ProofError(ProofError):
+class ProofError(ProofcoreError):
     """Proof bundle construction failure."""
 
 
