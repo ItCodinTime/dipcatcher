@@ -17,7 +17,7 @@ adapters, but strict (a licensed feed breaching its contract is a data
 incident, not a row to skip).
 
 No network at import time. The HTTP layer is an injectable ``Transport``
-callable so tests never touch the network; the default ``urllib`` transport is
+callable so tests never touch the network; the default pooled HTTP transport is
 only built when the caller does not inject one and a request is actually made.
 
 This is still NOT a live data source and confers no vendor entitlement; see
@@ -29,7 +29,6 @@ from __future__ import annotations
 import json
 import os
 import urllib.parse
-import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -125,12 +124,13 @@ class VendorHttpConfig:
 
 
 def _default_transport(timeout_s: float) -> Transport:
-    """Real urllib transport. Built lazily; never invoked at import time."""
+    """Pooled HTTP transport. Built lazily; never invoked at import time."""
+    from quant_fund.data.sources.base import HttpClient
+
+    client = HttpClient(timeout=timeout_s, retries=2)
 
     def _fetch(url: str, headers: Mapping[str, str]) -> bytes:
-        req = urllib.request.Request(url, headers=dict(headers))
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:  # noqa: S310 — licensed HTTPS feed  # nosec B310
-            return bytes(resp.read())
+        return client.get_bytes(url, headers=dict(headers))
 
     return _fetch
 

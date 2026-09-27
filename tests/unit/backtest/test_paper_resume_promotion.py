@@ -17,6 +17,8 @@ from quant_fund.paper.loop import (
     run_paper_loop,
 )
 
+pytestmark = pytest.mark.smoke
+
 
 def _bars(n_days: int = 8):
     rows = []

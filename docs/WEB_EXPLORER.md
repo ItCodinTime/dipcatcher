@@ -91,3 +91,9 @@ cd web && npm ci && npm run build
   not a verdict.
 - No equity series exist for the adaptive-mix allocator/sleeve entries (the
   sealed receipt carries segment stats only); those entries show stats tables.
+
+## Evidence boundaries
+
+Historical profit and loss, NAV, drawdown, and segment diagnostics remain in a collapsed archive panel. These fixtures contain no proper-score evaluation and do not establish model quality or promotion readiness. Carry data provenance is UNVERIFIED when the source artifact does not declare it.
+
+The exporter reads committed Git blobs at HEAD, including receipt copies and parquet inputs. Dirty files, untracked files, and symlinks cannot become committed evidence. Browser hash matches are informational records at the manifest export revision; use the canonical verifier for acceptance. Original sealed receipts are never rewritten.

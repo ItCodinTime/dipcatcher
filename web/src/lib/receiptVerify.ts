@@ -164,8 +164,8 @@ export function runClientChecks(
   const nMatches = hashFields.filter((h) => h.match !== null).length;
   checks.push({
     id: "hash-fields",
-    label: "sha256 fields resolved to checkout",
-    status: hashFields.length === 0 ? "info" : nMatches > 0 ? "pass" : "info",
+    label: "sha256 fields matched at export revision",
+    status: "info",
     detail:
       hashFields.length === 0
         ? "no sha256-format fields in receipt"

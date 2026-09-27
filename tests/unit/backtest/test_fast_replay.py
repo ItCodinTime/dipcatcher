@@ -1,4 +1,7 @@
-"""Conformance: ``run_backtest_fast`` must reproduce ``run_backtest`` exactly.
+"""Conformance: ``run_backtest_fast`` must reproduce the event loop exactly.
+
+``run_backtest`` dispatches to the fast replay when that replay is complete,
+so these tests call ``_run_backtest_event_loop`` as the reference.
 
 The fast path exists for incumbent-benchmark latency. It is only trustworthy
 if it is the *same* engine semantically — so these tests assert bitwise NAV /
@@ -14,11 +17,16 @@ import numpy as np
 import polars as pl
 import pytest
 
-from quant_fund.backtest.engine import StaleValuationError, run_backtest
+from quant_fund.backtest.engine import (
+    StaleValuationError,
+    _run_backtest_event_loop,
+    run_backtest,
+)
 from quant_fund.backtest.fast_replay import run_backtest_fast
 from quant_fund.config.models import (
     AppConfig,
     CostConfig,
+    DataConfig,
     ExecutionConfig,
     FillConvention,
     KillSwitchConfig,
@@ -140,7 +148,7 @@ def _assert_identical(ref, fast) -> None:
     assert ref.fills.height == fast.fills.height
     if ref.fills.height:
         assert ref.fills["security_id"].to_list() == fast.fills["security_id"].to_list()
-        for col in ("quantity", "price", "fee", "spread_cost", "impact_cost"):
+        for col in ("quantity", "price", "fee", "spread_cost", "impact_cost", "turnover_cost"):
             a = np.asarray(ref.fills[col].to_list(), dtype=float)
             b = np.asarray(fast.fills[col].to_list(), dtype=float)
             assert np.array_equal(a, b), f"fill {col} mismatch"
@@ -172,7 +180,9 @@ def test_small_panel_equivalence():
     bars = _bars(["AAA", "BBB", "CCC"], 80, rng, missing=0.05)
     weights = _weights(["AAA", "BBB", "CCC"], 80, rng)
     cfg = _cfg(commission_bps=10.0)
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_fuzz_random_panels():
@@ -209,7 +219,7 @@ def test_fuzz_random_panels():
             kill="ENABLED" if rng.random() < 0.8 else "HALT_NEW_ORDERS",
         )
         try:
-            ref = run_backtest(bars, weights, cfg)
+            ref = _run_backtest_event_loop(bars, weights, cfg)
         except Exception as e:  # noqa: BLE001 - whatever ref does, fast must do
             with pytest.raises(type(e)):
                 run_backtest_fast(bars, weights, cfg)
@@ -234,7 +244,7 @@ def test_stale_held_position_both_raise():
     weights = _weights(["AAA"], 40, rng, lo=0.8, hi=0.8)
     cfg = _cfg(stale_price_bars=3)
     with pytest.raises(StaleValuationError):
-        run_backtest(bars, weights, cfg)
+        _run_backtest_event_loop(bars, weights, cfg)
     with pytest.raises(StaleValuationError):
         run_backtest_fast(bars, weights, cfg)
 
@@ -256,7 +266,7 @@ def test_unmarked_held_position_parity():
     weights = _weights(["AAA"], 40, rng, lo=0.8, hi=0.8)
     cfg = _cfg(stale_price_bars=3)
     try:
-        ref = run_backtest(bars, weights, cfg)
+        ref = _run_backtest_event_loop(bars, weights, cfg)
     except StaleValuationError:
         with pytest.raises(StaleValuationError):
             run_backtest_fast(bars, weights, cfg)
@@ -288,7 +298,9 @@ def test_kill_switch_halt_parity():
     bars = _bars(["AAA", "BBB"], 60, rng)
     weights = _weights(["AAA", "BBB"], 60, rng, lo=0.4, hi=0.9)
     cfg = _cfg(kill="HALT_NEW_ORDERS")
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_sparse_rebalance_grid():
@@ -301,7 +313,9 @@ def test_sparse_rebalance_grid():
     keep = sorted(set(weights["event_time"].to_list()))[::4]
     weights = weights.filter(pl.col("event_time").is_in(keep))
     cfg = _cfg(commission_bps=5.0)
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
 
 
 def test_empty_weights():
@@ -315,4 +329,75 @@ def test_empty_weights():
         }
     )
     cfg = _cfg()
-    _assert_identical(run_backtest(bars, weights, cfg), run_backtest_fast(bars, weights, cfg))
+    _assert_identical(
+        _run_backtest_event_loop(bars, weights, cfg), run_backtest_fast(bars, weights, cfg)
+    )
+
+
+def test_public_run_backtest_matches_event_loop_and_fast():
+    """Supported datetime panels take the matrix path and stay bit-identical."""
+    rng = np.random.default_rng(7)
+    bars = _bars(["AAA", "BBB", "CCC"], 40, rng, missing=0.05)
+    weights = _weights(["AAA", "BBB", "CCC"], 40, rng)
+    cfg = _cfg(commission_bps=5.0)
+    public = run_backtest(bars, weights, cfg)
+    ref = _run_backtest_event_loop(bars, weights, cfg)
+    fast = run_backtest_fast(bars, weights, cfg)
+    _assert_identical(public, ref)
+    _assert_identical(public, fast)
+    assert public.metrics["garch_risk_overlay_dates"] == 0
+    assert public.metrics["realized_garch_risk_overlay_dates"] == 0
+    assert ref.metrics["garch_risk_overlay_dates"] == 0
+    assert ref.metrics["realized_garch_risk_overlay_dates"] == 0
+
+
+def test_close_auction_stays_on_event_loop():
+    rng = np.random.default_rng(3)
+    bars = _bars(["AAA"], 30, rng)
+    weights = _weights(["AAA"], 30, rng, lo=0.5, hi=0.5)
+    cfg = _cfg(fill=FillConvention.NEXT_OPEN, allow_close_auction=True)
+    _assert_identical(
+        run_backtest(bars, weights, cfg),
+        _run_backtest_event_loop(bars, weights, cfg),
+    )
+
+
+def test_public_dispatch_calls_fast_without_artifact(monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA"], 20, rng)
+    weights = _weights(["AAA"], 20, rng, lo=0.3, hi=0.3)
+    cfg = _cfg()
+    called = {"n": 0}
+    real = run_backtest_fast
+
+    def _wrap(*args, **kwargs):
+        called["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _wrap)
+    public = run_backtest(bars, weights, cfg)
+    assert called["n"] == 1
+    _assert_identical(public, _run_backtest_event_loop(bars, weights, cfg))
+
+
+def test_garch_artifact_does_not_dispatch(tmp_path, monkeypatch):
+    rng = np.random.default_rng(4)
+    bars = _bars(["AAA", "BBB"], 24, rng)
+    weights = _weights(["AAA", "BBB"], 24, rng, lo=0.2, hi=0.4)
+    root = tmp_path / "data"
+    (root / "metadata").mkdir(parents=True)
+    (root / "metadata" / "vol_garch.joblib").write_bytes(b"not-a-real-artifact")
+    cfg = _cfg().model_copy(update={"data": DataConfig(root=root)})
+    # The file is enough to refuse the matrix path. Do not load it.
+    monkeypatch.setattr(
+        "quant_fund.backtest.engine.market_risk_overlay_asof",
+        lambda *_args, **_kwargs: (None, None),
+    )
+
+    def _refuse(*_args, **_kwargs):
+        raise AssertionError("fast replay must not run when a GARCH artifact is present")
+
+    monkeypatch.setattr("quant_fund.backtest.fast_replay.run_backtest_fast", _refuse)
+    public = run_backtest(bars, weights, cfg)
+    assert public.metrics["garch_risk_overlay_dates"] == 0
+    assert public.equity.height > 0

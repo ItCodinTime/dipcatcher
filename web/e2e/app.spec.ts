@@ -25,6 +25,9 @@ test.describe("research explorer", () => {
       .click();
     await expect(page).toHaveURL(/#\/strategy\/carry$/);
     await expect(page.getByTestId("strategy-page")).toBeVisible();
+    await expect(page.getByTestId("historical-diagnostics")).not.toHaveAttribute("open");
+    await expect(page.getByText("Model quality and promotion readiness are unmeasured here.", { exact: false })).toBeVisible();
+    await page.getByTestId("historical-diagnostics").locator("summary").click();
     // equity + drawdown charts (svg role=img) with a line path
     const charts = page.getByTestId("line-chart");
     await expect(charts).toHaveCount(2);
@@ -39,6 +42,7 @@ test.describe("research explorer", () => {
     page,
   }) => {
     await page.goto("/#/strategy/amix_adaptive");
+    await page.getByTestId("historical-diagnostics").locator("summary").click();
     await expect(page.getByTestId("no-equity-note")).toBeVisible();
     const stats = page.getByTestId("stats-table");
     await expect(stats).toBeVisible();

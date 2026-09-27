@@ -80,7 +80,7 @@
  "repo_revision": "46517ac92629c6da10f56f1de88b679c804cbdef",
  "strategies": [
   {
-   "data_source": "real",
+   "data_source": "UNVERIFIED",
    "equity_file": "equity/carry.json",
    "has_equity": true,
    "id": "carry",
@@ -94,7 +94,7 @@
    "stats_file": "strategies/carry.json"
   },
   {
-   "data_source": "real",
+   "data_source": "UNVERIFIED",
    "equity_file": "equity/carry_expanded.json",
    "has_equity": true,
    "id": "carry_expanded",

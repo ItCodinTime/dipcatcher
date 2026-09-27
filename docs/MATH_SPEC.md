@@ -601,11 +601,22 @@ Combinatorial purged CV (López de Prado). PBO is the fraction of CSCV splits in
 Implementation note: Dipcatcher's `combinatorial_purged_cv` applies purge+embargo
 **per contiguous test group** (not the union span of all test groups in a fold),
 so intervening train between non-adjacent test blocks is preserved. See
-`docs/VALIDATION.md` § CPCV and Wave 25. Invalid CPCV group counts / empty groups
+[VALIDATION.md](VALIDATION.md) § CPCV and Wave 25. Invalid CPCV group counts / empty groups
 raise ``ValueError``; aggressive purge/embargo may honestly yield fewer folds than
 ``C(n_groups, n_test_groups)`` (including zero). ``probability_of_backtest_overfitting``
 refuses empty / mismatched / too-small / non-finite IS–OOS matrices with NaN
 (never a silent PBO of 0.0 on invalid input). Research-diagnostic only.
+
+Backtest paths (AFML ch. 12): ``N`` groups and ``k`` test groups yield
+``C(N, k)`` splits and ``φ = C(N-1, k-1)`` paths. Each path tests every
+group once; each ``(split, group)`` incidence is used once. See
+``docs/BACKTEST_OVERFITTING.md``.
+
+The research notebook (schema 2) stamps CSCV ``pbo``, ``dsr``, ``psr``,
+``min_trl``, ``n_trials``, and ``n_trials_effective`` on
+``backtest_overfitting``. The effective count clusters trials at Mantegna
+distance ``sqrt((1-ρ)/2)`` with a fixed correlation cut ``ρ = 0.5``.
+Schema 1 receipts omit the block and remain valid.
 
 ## Mean-variance objective
 

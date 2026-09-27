@@ -89,6 +89,15 @@ export function StrategyPage({ entry, index }: StrategyPageProps) {
         <p className="muted provenance">{stats.data.provenance.note}</p>
       )}
 
+      <section className="panel">
+        <h3>Research evidence</h3>
+        <p>No proper-score evaluation is provided by these historical strategy fixtures.
+          Model quality and promotion readiness are unmeasured here.</p>
+      </section>
+      <details className="panel" data-testid="historical-diagnostics">
+        <summary>Historical simulation diagnostics (not research headline evidence)</summary>
+        <p className="muted">Archived values are shown as recorded. They do not establish
+          model quality, fresh out-of-sample performance, or live trading results.</p>
       {entry.has_equity && (
         <section className="panel">
           <h3>Simulated equity (NAV)</h3>
@@ -164,6 +173,8 @@ export function StrategyPage({ entry, index }: StrategyPageProps) {
           </table>
         </section>
       )}
+
+      </details>
 
       <section className="panel">
         <h3>Provenance</h3>

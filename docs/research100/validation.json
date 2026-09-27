@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-24",
+  "python": "3.12.14",
+  "base_commit": "efe3f9d5718691d39b15dd700e5cb744b6b59a4b",
+  "test_runs": [
+    {
+      "scope": "mapped_component_suites",
+      "tests": "786",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "136.554"
+    },
+    {
+      "scope": "focused_new_and_changed",
+      "tests": "146",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "3.882"
+    }
+  ],
+  "counts_overlap": true,
+  "ruff": "passed_changed_files",
+  "mypy": "passed_6_new_or_changed_source_modules",
+  "wheel_build": "passed_offline",
+  "sdist_build": "passed_offline",
+  "installed_wheel_catalog_cli": "passed_in_separate_base_dependency_environment",
+  "catalog_available": 100,
+  "original_studies_reproduced": 0,
+  "market_data_benchmark_run": false,
+  "full_repository_suite_rerun": false,
+  "synthetic_reality_check_p": 0.85,
+  "synthetic_spa_consistent_p": 1.0,
+  "claim": "research_engineering_evidence_only",
+  "promotable": false
+}

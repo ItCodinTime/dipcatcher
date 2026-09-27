@@ -140,7 +140,7 @@ describe("runClientChecks", () => {
     const checks = runClientChecks({ schema: "x" }, hashFields, null);
     const c = checks.find((c) => c.id === "hash-fields")!;
     expect(c.detail).toBe("1/2 digests match a committed file");
-    expect(c.status).toBe("pass");
+    expect(c.status).toBe("info");
   });
 });
 

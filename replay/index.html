@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dipcatcher replay — market replay visualizer</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --bg-panel: #141923;
+    --bg-raised: #1b2230;
+    --border: #2a3344;
+    --fg: #d7dde8;
+    --fg-dim: #8892a6;
+    --up: #26a69a;
+    --down: #ef5350;
+    --accent: #4c9aff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #app {
+    display: grid;
+    grid-template-rows: 36px 1fr 96px;
+    grid-template-columns: 1fr 340px;
+    grid-template-areas:
+      "toolbar toolbar"
+      "charts  side"
+      "timeline timeline";
+    height: 100vh;
+    gap: 1px;
+    background: var(--border);
+  }
+  #toolbar {
+    grid-area: toolbar;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    background: var(--bg-panel);
+    user-select: none;
+  }
+  #toolbar button, #toolbar select {
+    background: var(--bg-raised);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font: inherit;
+    cursor: pointer;
+  }
+  #toolbar button:hover, #toolbar select:hover { border-color: var(--accent); }
+  #toolbar .sep { width: 1px; height: 18px; background: var(--border); }
+  #clock { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--fg); min-width: 190px; }
+  #session-label { color: var(--fg-dim); }
+  #status { margin-left: auto; color: var(--fg-dim); }
+  #charts-pane {
+    grid-area: charts;
+    background: var(--bg);
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+  }
+  #side-pane {
+    grid-area: side;
+    background: var(--bg);
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    min-width: 0;
+    min-height: 0;
+  }
+  #depth-wrap, #tape-wrap { position: relative; min-height: 0; background: var(--bg); }
+  .pane-title {
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    color: var(--fg-dim);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 2;
+  }
+  canvas { display: block; }
+  #charts, #depth, #timeline { width: 100%; height: 100%; }
+  #timeline-pane {
+    grid-area: timeline;
+    background: var(--bg);
+    position: relative;
+    min-width: 0;
+  }
+  #tape {
+    position: absolute;
+    inset: 22px 0 0 0;
+    overflow: hidden;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    padding: 0 4px;
+  }
+  #tape .row {
+    display: grid;
+    grid-template-columns: 64px 44px 72px 64px 1fr;
+    gap: 4px;
+    padding: 1px 4px;
+    white-space: nowrap;
+  }
+  #tape .row.head { color: var(--fg-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
+  #tape .row .side-buy { color: var(--up); }
+  #tape .row .side-sell { color: var(--down); }
+  #bench-out {
+    position: fixed;
+    right: 8px;
+    top: 44px;
+    z-index: 10;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    white-space: pre;
+    display: none;
+    max-width: 420px;
+  }
+  .hint { color: var(--fg-dim); font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <button id="btn-play" title="Space">▶</button>
+    <select id="sel-speed" title="Playback speed (bars per second)">
+      <option value="1">1×</option>
+      <option value="2">2×</option>
+      <option value="5" selected>5×</option>
+      <option value="10">10×</option>
+      <option value="30">30×</option>
+      <option value="60">60×</option>
+    </select>
+    <button id="btn-step-back" title="← step back">−1</button>
+    <button id="btn-step-fwd" title="→ step forward">+1</button>
+    <div class="sep"></div>
+    <button id="btn-zoom-out" title="zoom out">⟷−</button>
+    <button id="btn-zoom-in" title="zoom in">⟷+</button>
+    <div class="sep"></div>
+    <span id="clock">—</span>
+    <span id="session-label"></span>
+    <span class="hint">click chart to focus · wheel to zoom · drag timeline to scrub · space to play</span>
+    <span id="status">loading…</span>
+  </div>
+  <div id="charts-pane">
+    <canvas id="charts"></canvas>
+  </div>
+  <div id="side-pane">
+    <div id="depth-wrap">
+      <canvas id="depth" aria-label="Order book depth heatmap"></canvas>
+    </div>
+    <div id="tape-wrap">
+      <span class="pane-title">trades tape</span>
+      <div id="tape"></div>
+    </div>
+  </div>
+  <div id="timeline-pane">
+    <canvas id="timeline"></canvas>
+  </div>
+</div>
+<pre id="bench-out"></pre>
+<script type="module" src="./dist/main.js"></script>
+</body>
+</html>

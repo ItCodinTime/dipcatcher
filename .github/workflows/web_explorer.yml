@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "tests/unit/web_explorer/**"
+      - "docs/WEB_EXPLORER.md"
       - ".github/workflows/web_explorer.yml"
       - "receipts/**"
       - "artifacts/*.json"
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "tests/unit/web_explorer/**"
+      - "docs/WEB_EXPLORER.md"
       - ".github/workflows/web_explorer.yml"
       - "receipts/**"
       - "artifacts/*.json"
@@ -31,8 +35,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           cache: npm
@@ -46,7 +50,7 @@ jobs:
       - name: Check fixtures are committed
         run: test -f public/fixtures/index.json
       - name: Upload dist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: web-explorer-dist
           path: web/dist/
@@ -60,8 +64,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           cache: npm
@@ -76,7 +80,7 @@ jobs:
         run: npx playwright test
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: web-explorer-playwright-report
           path: web/playwright-report/

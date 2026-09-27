@@ -17,6 +17,7 @@ from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
 )
+from quant_fund.research.receipt_schema import unavailable_overfitting_block
 from quant_fund.research.verify import (
     REQUIRED_BENCHMARK_FAMILIES,
     _receipt_digest,
@@ -83,6 +84,7 @@ def _base_payload(tmp_path: Path) -> dict[str, Any]:
             for name in REQUIRED_BENCHMARK_FAMILIES
         },
         "families": {name: {"executed": True} for name in REQUIRED_BENCHMARK_FAMILIES},
+        "backtest_overfitting": unavailable_overfitting_block(),
         "artifacts": {
             "immutable_json": str(immutable / f"{_RUN_ID}.json"),
             "immutable_markdown": str(immutable / f"{_RUN_ID}.md"),

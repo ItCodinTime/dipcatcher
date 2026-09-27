@@ -20,9 +20,10 @@ Sources are read-only; originals are never modified. Re-run after any
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
-import shutil
+import re
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -97,80 +98,88 @@ def _git_revision() -> str | None:
         return None
 
 
-def _build_hash_index() -> dict[str, str]:
-    """Map sha256 digests to repo paths.
-
-    Matches both raw file bytes and the canonical-JSON re-encoding of ``.json``
-    files (the repo's seal convention), which lets the UI distinguish "hash
-    resolves to a committed file" from "hash refers to sealed bytes not in this
-    checkout".
-    """
-
-    matches: dict[str, str] = {}
-    for root in HASH_SCAN_ROOTS:
-        base = REPO_ROOT / root
-        if not base.is_dir():
+def _committed_files(revision: str = "HEAD") -> dict[str, str]:
+    """Bounded inventory of ordinary blobs at HEAD; never index working-tree bytes."""
+    raw = subprocess.check_output(
+        ["git", "ls-tree", "-r", "-l", "-z", revision, "--", *HASH_SCAN_ROOTS],
+        cwd=REPO_ROOT,
+    )
+    files: dict[str, str] = {}
+    for record in raw.split(b"\0"):
+        if not record:
             continue
-        for path in sorted(base.rglob("*")):
-            if not path.is_file() or path.is_symlink():
-                continue
+        meta, name = record.split(b"\t", 1)
+        mode, kind, oid, size = meta.split()
+        if kind == b"blob" and mode in (b"100644", b"100755") and int(size) <= HASH_SCAN_MAX_BYTES:
+            files[name.decode("utf-8")] = oid.decode("ascii")
+    return files
+
+
+def _committed_bytes(oid: str) -> bytes:
+    return subprocess.check_output(["git", "cat-file", "blob", oid], cwd=REPO_ROOT)
+
+
+def _build_hash_index(files: dict[str, str] | None = None) -> dict[str, str]:
+    """Map digests of committed blobs, including canonical JSON, to repo paths."""
+    matches: dict[str, str] = {}
+    for rel, oid in sorted((files if files is not None else _committed_files()).items()):
+        raw = _committed_bytes(oid)
+        matches.setdefault(hashlib.sha256(raw).hexdigest(), rel)
+        if rel.endswith(".json"):
             try:
-                if path.stat().st_size > HASH_SCAN_MAX_BYTES:
-                    continue
-                raw = path.read_bytes()
-            except OSError:
+                canonical = hashlib.sha256(_canonical_json_bytes(json.loads(raw))).hexdigest()
+            except (ValueError, UnicodeDecodeError):
                 continue
-            rel = path.relative_to(REPO_ROOT).as_posix()
-            matches.setdefault(hashlib.sha256(raw).hexdigest(), rel)
-            if path.suffix == ".json":
-                try:
-                    canonical = hashlib.sha256(_canonical_json_bytes(json.loads(raw))).hexdigest()
-                except (ValueError, UnicodeDecodeError):
-                    continue
-                matches.setdefault(canonical, rel + " (canonical-json)")
+            matches.setdefault(canonical, rel + " (canonical-json)")
     return matches
 
 
 def _key_is_hashy(key: str) -> bool:
     lowered = key.lower()
-    return "sha256" in lowered or "hash" in lowered or lowered.endswith("_sha")
+    return (
+        lowered == "sha256" or lowered.endswith(("_sha256", "_sha", "_hashes")) or "hash" in lowered
+    )
 
 
-def _collect_hashes(value: Any, into: set[str], parent_hashy: bool = False) -> None:
-    """Gather every 64-hex string reachable from a receipt.
-
-    A 64-hex string counts as a digest field when its own key is hash-ish
-    (``script_sha256``) or when it sits directly inside a hash-ish table
-    (``input_hashes.<file>``, ``bar_files_sha256.<file>``) — mirroring the
-    web app's ``extractHashFields`` so index counts match the UI.
-    """
-
+def _collect_hashes(value: Any, into: list[str], parent_hashy: bool = False) -> None:
+    """Collect digest fields, retaining duplicate fields to match the UI count."""
     if isinstance(value, dict):
         for key, sub in value.items():
             hashy = _key_is_hashy(key)
-            if isinstance(sub, str) and len(sub) == 64 and (hashy or parent_hashy):
-                into.add(sub)
+            if (
+                isinstance(sub, str)
+                and re.fullmatch(r"[0-9a-f]{64}", sub)
+                and (hashy or parent_hashy)
+            ):
+                into.append(sub)
             _collect_hashes(sub, into, hashy)
     elif isinstance(value, list):
         for sub in value:
-            _collect_hashes(sub, into, parent_hashy)
+            _collect_hashes(sub, into, False)
 
 
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=1, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
+    )
 
 
-def _export_equity(parquet_path: Path, out_path: Path) -> dict[str, Any]:
+def _export_equity(parquet_path: Path, out_path: Path, raw: bytes) -> dict[str, Any]:
     """Convert an equity parquet to a compact JSON columnar fixture."""
 
     import pandas as pd  # shared env provides pandas/pyarrow
 
-    frame = pd.read_parquet(parquet_path)
+    frame = pd.read_parquet(io.BytesIO(raw))
     required = {"event_time", "nav", "gross", "net", "turnover"}
     missing = required - set(frame.columns)
     if missing:
         raise ValueError(f"{parquet_path.name} missing columns: {sorted(missing)}")
+    if frame.empty or frame["event_time"].isna().any():
+        raise ValueError(f"{parquet_path.name} has empty or invalid timestamps")
+    for column in ("nav", "gross", "net", "turnover"):
+        if not all(math.isfinite(float(v)) for v in frame[column]):
+            raise ValueError(f"{parquet_path.name} has nonfinite {column}")
     frame = frame.sort_values("event_time").reset_index(drop=True)
     points = [
         [
@@ -257,18 +266,26 @@ def main() -> None:
         raise SystemExit("receipts/ missing — run from the repo checkout")
 
     generated_at = datetime.now(UTC).isoformat()
-    hash_index = _build_hash_index()
+    revision = _git_revision()
+    if revision is None:
+        raise SystemExit("committed Git revision is required for evidence export")
+    files = _committed_files(revision)
+    hash_index = _build_hash_index(files)
 
     # ---- receipts: verbatim copies + index rows ---------------------------
     receipt_entries: list[dict[str, Any]] = []
     receipt_hash_matches: dict[str, str] = {}
-    for src in sorted(receipts_dir.glob("*.json")):
+    for name in sorted(files):
+        if not name.startswith("receipts/") or name.count("/") != 1 or not name.endswith(".json"):
+            continue
+        src = REPO_ROOT / name
         rel = f"receipts/{src.name}"
         dst = FIXTURES_DIR / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dst)
-        payload = json.loads(src.read_text())
-        hashes: set[str] = set()
+        raw = _committed_bytes(files[name])
+        dst.write_bytes(raw)
+        payload = json.loads(raw)
+        hashes: list[str] = []
         _collect_hashes(payload, hashes)
         for digest in hashes:
             if digest in hash_index:
@@ -292,18 +309,21 @@ def main() -> None:
 
     for strategy_id, parquet_name, champion_name, display in EQUITY_SOURCES:
         parquet_path = artifacts_dir / parquet_name
-        champion_path = artifacts_dir / champion_name
-        if not parquet_path.is_file() or not champion_path.is_file():
+        if f"artifacts/{parquet_name}" not in files or f"artifacts/{champion_name}" not in files:
             raise SystemExit(f"missing artifacts for {strategy_id}")
         equity_rel = f"equity/{strategy_id}.json"
-        equity_meta = _export_equity(parquet_path, FIXTURES_DIR / equity_rel)
-        raw_stats = json.loads(champion_path.read_text())
+        equity_meta = _export_equity(
+            parquet_path,
+            FIXTURES_DIR / equity_rel,
+            _committed_bytes(files[f"artifacts/{parquet_name}"]),
+        )
+        raw_stats = json.loads(_committed_bytes(files[f"artifacts/{champion_name}"]))
         segments = _normalize_carry_stats(raw_stats)
         entry, _ = _strategy_entry(
             strategy_id,
             display,
             kind="equity_backed",
-            data_source="real",
+            data_source=str(raw_stats.get("data_source", "UNVERIFIED")),
             provenance={
                 "source_files": [
                     f"artifacts/{champion_name}",
@@ -318,9 +338,8 @@ def main() -> None:
         )
         strategies.append(entry)
 
-    adaptive_path = receipts_dir / ADAPTIVE_MIX_RECEIPT
-    if adaptive_path.is_file():
-        receipt = json.loads(adaptive_path.read_text())
+    if f"receipts/{ADAPTIVE_MIX_RECEIPT}" in files:
+        receipt = json.loads(_committed_bytes(files[f"receipts/{ADAPTIVE_MIX_RECEIPT}"]))
         receipt_rel = f"receipts/{ADAPTIVE_MIX_RECEIPT}"
         results = receipt.get("results", {})
         for allocator_id in ("adaptive", "equal"):
@@ -378,7 +397,7 @@ def main() -> None:
     index = {
         "generated_at": generated_at,
         "generator": "web/scripts/export_fixtures.py",
-        "repo_revision": _git_revision(),
+        "repo_revision": revision,
         "honesty": {
             "research_only": True,
             "live_pnl_claim": False,

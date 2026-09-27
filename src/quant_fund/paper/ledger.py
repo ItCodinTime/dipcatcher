@@ -14,7 +14,7 @@ import polars as pl
 
 from quant_fund.execution.simulated_broker import BrokerSnapshot, OrderRecord, SimulatedBroker
 from quant_fund.metrics.analytics import analytics_export_digest, validate_analytics_export
-from quant_fund.utils.hashing import hash_bytes
+from quant_fund.utils.hashing import hash_bytes, receipt_tree
 
 
 def _safe_run_id(run_id: str) -> str:
@@ -31,10 +31,13 @@ def _safe_run_id(run_id: str) -> str:
 
 def _promotion_receipt_digest(receipt: dict[str, Any]) -> str:
     """Canonical self-excluding digest for a paper promotion receipt."""
-    normalized = dict(receipt)
-    normalized.pop("receipt_sha256", None)
+    normalized = receipt_tree(dict(receipt))
+    if isinstance(normalized, dict):
+        normalized.pop("receipt_sha256", None)
     return hash_bytes(
-        json.dumps(normalized, sort_keys=True, separators=(",", ":"), allow_nan=True).encode()
+        json.dumps(
+            normalized, sort_keys=True, separators=(",", ":"), allow_nan=True, default=str
+        ).encode()
     )
 
 
@@ -208,7 +211,15 @@ class PaperLedger:
             fill = rec.fill
             if fill is not None:
                 notional = float(fill.quantity) * float(fill.price)
-                fee_tot = float(fill.fee) + float(fill.spread_cost) + float(fill.impact_cost)
+                # ``slippage`` is adverse drift, not a cash charge. Turnover bps
+                # is deducted from broker cash inside ``total_cost`` and must
+                # be included here or the cash ledger understates the debit.
+                fee_tot = (
+                    float(fill.fee)
+                    + float(fill.spread_cost)
+                    + float(fill.impact_cost)
+                    + float(fill.turnover_cost)
+                )
                 side = str(rec.order.side.value)
                 cash_delta = -notional - fee_tot if side == "buy" else notional - fee_tot
                 self._cash_events.append(

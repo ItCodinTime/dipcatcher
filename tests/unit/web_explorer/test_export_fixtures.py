@@ -95,3 +95,59 @@ def test_strategies_keep_honesty_flags() -> None:
         assert payload["research_only"] is True, path.name
         assert payload["live_pnl_claim"] is False, path.name
         assert payload["segments"], path.name
+
+
+def _exporter():
+    import importlib.util
+
+    path = REPO_ROOT / "web/scripts/export_fixtures.py"
+    spec = importlib.util.spec_from_file_location("web_fixture_export", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_export_hashes_ignore_dirty_untracked_and_symlink_bytes(tmp_path, monkeypatch) -> None:
+    import hashlib
+    import subprocess
+
+    module = _exporter()
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    source = tmp_path / "src/example.py"
+    source.parent.mkdir()
+    committed = b"print('committed')\n"
+    source.write_bytes(committed)
+    (source.parent / "link.py").symlink_to("example.py")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "src"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        check=True,
+    )
+    source.write_bytes(b"dirty\n")
+    (source.parent / "untracked.py").write_bytes(b"untracked\n")
+    matches = module._build_hash_index()
+    assert matches == {hashlib.sha256(committed).hexdigest(): "src/example.py"}
+    files = module._committed_files()
+    assert module._committed_bytes(files["src/example.py"]) == committed
+
+
+def test_export_hash_counts_match_fields_not_distinct_values() -> None:
+    module = _exporter()
+    values: list[str] = []
+    module._collect_hashes(
+        {"a_sha256": "a" * 64, "input_hashes": {"x": "a" * 64, "bad": "z" * 64}}, values
+    )
+    assert values == ["a" * 64, "a" * 64]
