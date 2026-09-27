@@ -23,7 +23,9 @@ SHA256_LEN = 64
 def _load(name: str) -> dict:
     path = FIXTURES / name
     assert path.is_file(), f"missing fixture {name} — re-run export script"
-    return json.loads(path.read_text())
+    payload: object = json.loads(path.read_text())
+    assert isinstance(payload, dict)
+    return payload
 
 
 def test_index_shape_and_references() -> None:
