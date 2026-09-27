@@ -6,6 +6,7 @@ Reading those files does not rewrite them and does not call the broker.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
@@ -74,7 +75,7 @@ def record_paper_directory(ledger: AuditLedger, paper_dir: Path | str) -> list[L
     if not orders_path.is_file():
         raise AuditError(f"simulated orders not found: {orders_path}")
     before = orders_path.read_bytes()
-    frame = pl.read_parquet(orders_path)
+    frame = pl.read_parquet(io.BytesIO(before))
     rows = frame.to_dicts()
     safe_rows = [json_safe(row) for row in rows]
     if not isinstance(safe_rows, list):
