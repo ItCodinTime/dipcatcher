@@ -242,8 +242,11 @@ Only an open strictly after the **observed** close decision can fill orders.
 Each event is exclusively numbered and SHA-256 sealed to the prior event.
 Restart reconstructs the cursor, pending orders and four brokers from the
 whole chain; verifier checks source timing, attestation fields, complete
-frozen-name coverage, skipped dates, orders, fills, rejects, cash events,
-position deltas, participation, costs, NAV and paired net differences.
+frozen-name coverage, skipped dates, and every close decision against the
+frozen strategy, packet and prior broker state. It recomputes target weights,
+intended orders and the entire close-state snapshot, then checks fills,
+rejects, cash events, position deltas, participation, costs, NAV and paired
+net differences.
 `paired_sessions` advances only after both books in both impact scenarios
 complete. The power plan requires **1,400 eligible paired sessions** before
 its single planned analysis; this adapter makes no success or promotion claim.
@@ -277,8 +280,12 @@ general vendor connector. Supplied attestation references and market-closure
 claims are **not independently authenticated** (`external_attestation_verified=false`).
 The local hash chain detects accidental changes but can be resealed by anyone
 who controls all local files unless receipts are anchored outside the run.
-The verifier checks local chronology and ledger arithmetic; it does not
-independently recompute each rank decision or replay every broker rejection.
+Close decisions are deterministically replayed using the same frozen ranking
+implementation as collection. A resealed change to weights, orders, cash or
+positions that conflicts with the packet and prior state is rejected. This is
+not an independent implementation of the strategy
+(`independent_strategy_replay=false`). The verifier does not replay every
+broker risk rejection.
 An external reviewer must verify source timestamps, exchange calendars,
 closures and independently anchored packet hashes before treating a session
 as forward evidence. Neither a valid receipt nor an external anchor

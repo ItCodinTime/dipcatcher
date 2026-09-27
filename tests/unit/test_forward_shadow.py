@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -142,6 +142,8 @@ def test_paired_next_open_costed_books_and_restart(sample: tuple[Path, Path, Pat
     second = fw.execute(run, opening, now=_time(27, 15))
     assert fw.verify(run)["valid"] is True
     assert fw.verify(run)["paired_sessions"] == 1
+    assert fw.verify(run)["deterministic_close_replay"] is True
+    assert fw.verify(run)["independent_strategy_replay"] is False
     assert second["after"]["phase"] == "close"
     for scenario in fw.SCENARIOS:
         for name in fw.BOOKS:
@@ -193,6 +195,22 @@ def test_paired_next_open_costed_books_and_restart(sample: tuple[Path, Path, Pat
     _put(opening, _packet(28, open_price=True))
     fw.execute(run, opening, now=_time(28, 15))
     assert fw.verify(run)["paired_sessions"] == 2
+
+
+def test_equivalent_offset_close_remains_verifiable_after_next_open(
+    sample: tuple[Path, Path, Path],
+) -> None:
+    run, close, opening = sample
+    packet = _packet(24)
+    packet["bars"][0]["event_time"] = "2026-09-25T20:00:00Z"
+    packet["bars"][1]["event_time"] = "2026-09-25T16:00:00-04:00"
+    _put(close, packet)
+    fw.decide(run, close, now=_time(24, 22).astimezone(timezone(timedelta(hours=-4))))
+    assert fw.verify(run)["valid"] is True
+    fw.execute(run, opening, now=_time(27, 15))
+    report = fw.verify(run)
+    assert report["valid"] is True, report["errors"]
+    assert report["paired_sessions"] == 1
 
 
 def test_rejects_backfill_and_mutated_history(sample: tuple[Path, Path, Path]) -> None:
@@ -381,6 +399,39 @@ def test_resealed_open_metrics_and_attestation_fail_verify(sample: tuple[Path, P
     original["packet_sha256"] = fw._packet_hash(original["packet"])
     _put(event, _seal(original))
     assert "external attestation" in fw.verify(run)["errors"][0]
+
+
+@pytest.mark.parametrize(
+    ("tamper", "error"),
+    [
+        ("weights", "weights or decisions"),
+        ("orders", "intended orders"),
+        ("cash", "broker or state"),
+        ("shares", "broker or state"),
+    ],
+)
+def test_resealed_close_decision_and_book_fail_replay(
+    sample: tuple[Path, Path, Path], tamper: str, error: str
+) -> None:
+    run, close, _ = sample
+    fw.decide(run, close, now=_time(24, 22))
+    event = run / "events" / "00000001.json"
+    forged = json.loads(event.read_text())
+    forged.pop("receipt_sha256")
+    key = "momentum_20:configured"
+    if tamper == "weights":
+        forged["decisions"][key]["target_weights"]["A"] += 0.01
+    elif tamper == "orders":
+        forged["intended_orders"][key][0]["requested_quantity"] += 1
+        forged["after"]["pending"][key][0]["requested_quantity"] += 1
+    elif tamper == "cash":
+        forged["after"]["books"][key]["cash"] += 100
+    else:
+        forged["after"]["books"][key]["shares"]["A"] = 100.0
+    _put(event, _seal(forged))
+    report = fw.verify(run)
+    assert report["valid"] is False
+    assert error in report["errors"][0]
 
 
 def test_missing_feed_interruption_is_permanent_and_visible(

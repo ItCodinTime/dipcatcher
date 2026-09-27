@@ -390,11 +390,10 @@ def _state(run: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         _check_event(manifest, previous, item)
         history = previous["history"]
         if item["stage"] == "close":
-            old_days = sorted({row["event_time"] for row in history})
             history = [*history, *item["packet"]["bars"]]
             keep = max(Strategy(**item["strategy"]).required_history, 20) + 1
-            dates = set(sorted({*old_days, item["session"]})[-keep:])
-            history = [row for row in history if row["event_time"] in dates]
+            dates = set(sorted({_dt(row["event_time"]) for row in history})[-keep:])
+            history = [row for row in history if _dt(row["event_time"]) in dates]
         previous = {**after, "history": history, "last_event_sha256": item["receipt_sha256"]}
         if _summary(previous)["history_sha256"] != after["history_sha256"]:
             raise ValueError(f"event {seq}: rolling history digest mismatch")
@@ -730,16 +729,14 @@ def _panel(history: list[dict[str, Any]]) -> Any:
     return panel
 
 
-def decide(run: Path, packet_path: Path, *, now: datetime | None = None) -> dict[str, Any]:
-    """Record decisions using close-time information only; no fill is possible."""
-    manifest, before = _state(run)
-    if before["phase"] != "close":
-        raise ValueError("next-open execution must reconcile before another decision")
-    packet = _read_packet(packet_path)
-    observed_at = now or datetime.now(UTC)
-    bars, event_time = _close_packet(packet, manifest, before, observed_at)
-    if observed_at <= _dt(before["last_observed_at"]):
-        raise ValueError("close observation cannot precede the journal observation cursor")
+def _plan_close(
+    manifest: dict[str, Any],
+    before: dict[str, Any],
+    bars: list[dict[str, Any]],
+    event_time: datetime,
+    observed_at: datetime,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    """Derive a close decision from the prior state and the observed packet bars."""
     history = [*before["history"], *bars]
     panel = _panel(history)
     index = len(panel.dates) - 1
@@ -760,8 +757,8 @@ def decide(run: Path, packet_path: Path, *, now: datetime | None = None) -> dict
         "last_observed_at": observed_at.isoformat(),
         "phase": "open",
     }
-    days = set(sorted({row["event_time"] for row in history})[-(required + 1) :])
-    after["history"] = [row for row in history if row["event_time"] in days]
+    days = set(sorted({_dt(row["event_time"]) for row in history})[-(required + 1) :])
+    after["history"] = [row for row in history if _dt(row["event_time"]) in days]
     plans: dict[str, list[dict[str, Any]]] = {}
     decisions: dict[str, Any] = {}
     updated_books = dict(before["books"])
@@ -824,6 +821,21 @@ def decide(run: Path, packet_path: Path, *, now: datetime | None = None) -> dict
             }
     after["books"] = updated_books
     after["pending"] = plans
+    strategy = next(s for s in spec["trials"] if s["name"] == "momentum_20")
+    return after, decisions, plans, strategy
+
+
+def decide(run: Path, packet_path: Path, *, now: datetime | None = None) -> dict[str, Any]:
+    """Record decisions using close-time information only; no fill is possible."""
+    manifest, before = _state(run)
+    if before["phase"] != "close":
+        raise ValueError("next-open execution must reconcile before another decision")
+    packet = _read_packet(packet_path)
+    observed_at = _dt((now or datetime.now(UTC)).isoformat())
+    bars, event_time = _close_packet(packet, manifest, before, observed_at)
+    if observed_at <= _dt(before["last_observed_at"]):
+        raise ValueError("close observation cannot precede the journal observation cursor")
+    after, decisions, plans, strategy = _plan_close(manifest, before, bars, event_time, observed_at)
     receipt = _append(
         run,
         manifest,
@@ -835,7 +847,7 @@ def decide(run: Path, packet_path: Path, *, now: datetime | None = None) -> dict
             "observed_at": observed_at.isoformat(),
             "packet": packet,
             "packet_sha256": _packet_hash(packet),
-            "strategy": next(s for s in spec["trials"] if s["name"] == "momentum_20"),
+            "strategy": strategy,
             "decisions": decisions,
             "intended_orders": plans,
             "live_pnl_claim": False,
@@ -1098,10 +1110,20 @@ def _check_event(manifest: dict[str, Any], previous: dict[str, Any], item: dict[
         bars, date = _close_packet(item["packet"], manifest, previous, observed)
         if date.isoformat() != item["session"] or previous["phase"] != "close":
             raise ValueError("close event has wrong session or phase")
-        if item["after"]["phase"] != "open" or item["after"]["pending"] != item.get(
-            "intended_orders"
-        ):
-            raise ValueError("close event dropped pending intended orders")
+        expected_after, decisions, orders, strategy = _plan_close(
+            manifest, previous, bars, date, observed
+        )
+        if item.get("strategy") != strategy:
+            raise ValueError("close event strategy differs from the frozen selection")
+        if item.get("decisions") != decisions:
+            raise ValueError("close event weights or decisions differ from replay")
+        if item.get("intended_orders") != orders:
+            raise ValueError("close event intended orders differ from replay")
+        expected_summary = _summary(
+            {**expected_after, "cursor": previous["cursor"] + 1, "last_event_sha256": None}
+        )
+        if item["after"] != expected_summary:
+            raise ValueError("close event broker or state differs from replay")
     elif item.get("stage") == "open":
         if previous["phase"] != "open" or previous["pending"] is None:
             raise ValueError("open event lacks prior decision")
@@ -1316,6 +1338,7 @@ def verify(run: Path) -> dict[str, Any]:
             "paired_sessions": state["paired_sessions"],
             "minimum": manifest["min_paired_sessions"],
             "external_attestation_verified": False,
+            "deterministic_close_replay": True,
             "independent_strategy_replay": False,
             "forward_evidence_accepted": False,
             "research_only": True,

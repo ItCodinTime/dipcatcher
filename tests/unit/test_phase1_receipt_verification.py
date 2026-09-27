@@ -204,11 +204,22 @@ def test_index_verifies_historical_tournament_code_without_current_solver(runs, 
     import quant_fund.research.net_tournament as tournament_module
     import quant_fund.research.phase1_verify as verifier_module
 
-    old_hashes = json.loads((runs / "tournament/manifest.json").read_text())["code_sha256"]
+    manifest = json.loads((runs / "tournament/manifest.json").read_text())
+    old_hashes = manifest["code_sha256"]
+    recorded_runtime = manifest["runtime"]
+    historical_runtime = {
+        **recorded_runtime,
+        "python": ".".join(recorded_runtime["python"].split(".")[:2]),
+    }
     monkeypatch.setattr(
         verifier_module,
         "_committed_code_hashes",
         lambda revision, errors: old_hashes,
+    )
+    monkeypatch.setattr(
+        verifier_module,
+        "_committed_runtime",
+        lambda revision, errors: historical_runtime,
     )
     monkeypatch.setattr(verifier_module, "git_revision", lambda: "0" * 40)
     monkeypatch.setattr(
