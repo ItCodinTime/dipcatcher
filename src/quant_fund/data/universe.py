@@ -8,7 +8,11 @@ from typing import Any, cast
 import polars as pl
 
 from quant_fund.config.models import UniverseConfig
-from quant_fund.data.corporate_actions import delisted_ids_asof, ticker_overrides_asof
+from quant_fund.data.corporate_actions import (
+    delisted_ids_asof,
+    require_valid_ticker_changes,
+    ticker_overrides_asof,
+)
 from quant_fund.data.security_master import snapshot_asof
 from quant_fund.schemas.errors import LeakageError, PointInTimeError
 
@@ -199,7 +203,10 @@ def membership_asof(
     if "security_type" in last.columns:
         last = last.filter(pl.col("security_type").is_in(config.security_types))
     if config.top_n_adv is not None:
-        last = last.sort("adv", descending=True).head(config.top_n_adv)
+        # Deterministic tie-break: post-agg row order is unspecified, so equal
+        # ADV names would be picked nondeterministically and diverge from the
+        # vectorized panel path (which ties break on sorted security_id).
+        last = last.sort(["adv", "security_id"], descending=[True, False]).head(config.top_n_adv)
     overrides = ticker_overrides_asof(listing, when)
     if not overrides.is_empty():
         last = last.join(overrides, on="security_id", how="left")
@@ -351,6 +358,8 @@ def _apply_vectorized_tickers(panel: pl.DataFrame, actions: pl.DataFrame | None)
     changes = actions.filter(pl.col("action_type") == "ticker_change")
     if changes.is_empty() or panel.is_empty():
         return panel
+    # Same contract as the per-timestamp loop: blank/missing new_ticker raises.
+    require_valid_ticker_changes(actions)
     ticker = pl.col("new_ticker").cast(pl.String, strict=False).str.strip_chars()
     right = changes.select(
         "security_id",
