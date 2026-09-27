@@ -154,6 +154,42 @@ def _make_order(
     )
 
 
+def _fast_replay_panel_supported(bars: pl.DataFrame, weights: pl.DataFrame) -> bool:
+    """Clocks the vectorized matrices can ingest without changing results.
+
+    Empty books and non-datetime clocks (string dates included) stay on the
+    event loop. ``run_backtest_fast`` casts ``event_time`` to integer
+    nanoseconds and indexes the last date for the overlay probe.
+    """
+    if bars.height == 0:
+        return False
+    return isinstance(bars.schema.get("event_time"), pl.Datetime) and isinstance(
+        weights.schema.get("event_time"), pl.Datetime
+    )
+
+
+def _fast_replay_is_complete(config: AppConfig, risk_overlay: BookRiskOverlay | None) -> bool:
+    """Whether the vectorized replay matches this event loop, including metrics.
+
+    ``run_backtest_fast`` refuses close-auction execution and book-level risk
+    overlays, and it does not stamp GARCH overlay date counters. When neither
+    overlay artifact exists, every date's market overlay is ``(None, None)``
+    and both counters stay 0, so the fast replay plus those zeros is the same
+    result. A present artifact keeps the event loop, which counts overlay dates
+    and feeds the per-order vol gate.
+    """
+    if risk_overlay is not None or config.execution.allow_close_auction:
+        return False
+    from quant_fund.pipeline.forecast import (
+        _garch_artifact_path,
+        _realized_garch_artifact_path,
+    )
+
+    return not (
+        _garch_artifact_path(config).exists() or _realized_garch_artifact_path(config).exists()
+    )
+
+
 def run_backtest(
     bars: pl.DataFrame,
     weights: pl.DataFrame,
@@ -170,6 +206,38 @@ def run_backtest(
     weights using prior-close NAV only. Names that do not mark today are
     targeted to 0 so the book can exit while a last print still exists.
     """
+    if _fast_replay_panel_supported(bars, weights) and _fast_replay_is_complete(
+        config, risk_overlay
+    ):
+        from quant_fund.backtest.fast_replay import run_backtest_fast
+
+        result = run_backtest_fast(
+            bars,
+            weights,
+            config,
+            initial_nav=initial_nav,
+        )
+        result.metrics["garch_risk_overlay_dates"] = 0
+        result.metrics["realized_garch_risk_overlay_dates"] = 0
+        return result
+    return _run_backtest_event_loop(
+        bars,
+        weights,
+        config,
+        initial_nav=initial_nav,
+        risk_overlay=risk_overlay,
+    )
+
+
+def _run_backtest_event_loop(
+    bars: pl.DataFrame,
+    weights: pl.DataFrame,
+    config: AppConfig,
+    *,
+    initial_nav: float = 1_000_000.0,
+    risk_overlay: BookRiskOverlay | None = None,
+) -> BacktestResult:
+    """Reference event loop. ``run_backtest`` delegates here when the fast replay is incomplete."""
     _validate_target_weight_panel(weights)
     px = bars.select(
         "security_id",
