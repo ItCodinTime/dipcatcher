@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -121,7 +122,9 @@ def commit_snapshot(root: Path, dataset: str, files: list[FileEntry]) -> Snapsho
     snapshot = Snapshot(snapshot_id=snapshot_id, dataset=label, files=ordered)
     path = Path(root) / "snapshots" / f"{snapshot_id}.json"
     body = canonical_json_bytes(snapshot.to_dict())
-    if path.is_file():
+    if path.is_symlink():
+        raise DataContractError(f"snapshot {snapshot_id} is a symlink")
+    if path.exists():
         existing = path.read_bytes()
         if existing != body:
             raise DataContractError(f"snapshot {snapshot_id} already exists with different bytes")
@@ -158,13 +161,19 @@ def put_file(root: Path, source: Path) -> tuple[Path, ContentAddress]:
     """Copy ``source`` into the object store without rewriting its bytes."""
     address = content_address(source)
     destination = Path(root) / object_relpath(address.stored_sha256)
+    if destination.is_symlink():
+        raise DataContractError(f"object {address.stored_sha256} is a symlink")
     if destination.is_file():
         existing = content_address(destination)
         if existing.stored_sha256 != address.stored_sha256:
             raise DataContractError(f"object {address.stored_sha256} exists with different bytes")
         return destination, address
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    fd, temporary_name = tempfile.mkstemp(
+        dir=destination.parent, prefix=destination.name + ".", suffix=".tmp"
+    )
+    os.close(fd)
+    temporary = Path(temporary_name)
     try:
         _copy_exact(source, temporary)
         copied = content_address(temporary)
@@ -173,7 +182,18 @@ def put_file(root: Path, source: Path) -> tuple[Path, ContentAddress]:
             or copied.stored_size != address.stored_size
         ):
             raise DataContractError("copied object bytes do not match the source")
-        os.replace(temporary, destination)
+        try:
+            os.link(temporary, destination)
+        except FileExistsError as exc:
+            if destination.is_symlink() or not destination.is_file():
+                raise DataContractError(
+                    f"object {address.stored_sha256} is not a regular file"
+                ) from exc
+            existing = content_address(destination)
+            if existing.stored_sha256 != address.stored_sha256:
+                raise DataContractError(
+                    f"object {address.stored_sha256} exists with different bytes"
+                ) from exc
     finally:
         temporary.unlink(missing_ok=True)
     return destination, address
@@ -295,13 +315,20 @@ def _copy_exact(source: Path, destination: Path) -> None:
 
 def _atomic_write(path: Path, body: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
+    fd, temporary_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    temporary = Path(temporary_name)
     try:
-        with temporary.open("wb") as handle:
+        with os.fdopen(fd, "wb") as handle:
             handle.write(body)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        try:
+            os.link(temporary, path)
+        except FileExistsError as exc:
+            if path.is_symlink() or not path.is_file() or path.read_bytes() != body:
+                raise DataContractError(
+                    f"immutable lake record {path.name} already exists with different bytes"
+                ) from exc
     finally:
         temporary.unlink(missing_ok=True)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -82,6 +83,20 @@ def test_content_address_hashes_bytes_and_lfs_oid(tmp_path: Path) -> None:
     assert lfs.declared_size == 42
     assert lfs.stored_sha256 == hash_bytes(pointer.read_bytes())
     assert lfs.stored_sha256 != oid
+
+
+def test_concurrent_lake_publish_is_idempotent_and_leaves_no_temp_files(tmp_path: Path) -> None:
+    source = tmp_path / "source.parquet"
+    source.write_bytes(b"same immutable bytes")
+    lake = tmp_path / "lake"
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        objects = list(pool.map(lambda _: put_file(lake, source)[0], range(16)))
+        snapshots = list(pool.map(lambda _: commit_snapshot(lake, "same", []), range(16)))
+    assert len(set(objects)) == 1
+    assert objects[0].read_bytes() == source.read_bytes()
+    assert len({item.snapshot_id for item in snapshots}) == 1
+    assert load_snapshot(lake, snapshots[0].snapshot_id) == snapshots[0]
+    assert not list(lake.rglob("*.tmp"))
 
 
 def test_partitioned_snapshot_is_immutable_and_queryable(tmp_path: Path) -> None:
