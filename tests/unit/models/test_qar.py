@@ -8,14 +8,12 @@ early-raise pattern from test_distribution_challengers.
 from __future__ import annotations
 
 import numpy as np
-import polars as pl
 import pytest
 from scipy.stats import norm
 
 from quant_fund.config import load_config
 from quant_fund.metrics.scoring import mean_pinball
 from quant_fund.models.qar import QARDistribution
-from quant_fund.pipeline import train as train_module
 from quant_fund.pipeline.train import train_distribution
 
 TAUS = [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
@@ -43,8 +41,8 @@ def _assert_ordered(q: np.ndarray) -> None:
 def test_qar_fit_predict_shapes_ordered_finite() -> None:
     y = _ar1()
     m = QARDistribution(TAUS).fit(_x(y.size), y)
-    q = m.predict(_x(7))
-    assert q.shape == (7, len(TAUS))
+    q = m.predict(_x(1))
+    assert q.shape == (1, len(TAUS))
     _assert_ordered(q)
     assert m.metadata().family == "distribution"
     assert m.metadata().name == "qar"
@@ -66,17 +64,19 @@ def test_qar_predict_is_conditional_at_last_y() -> None:
     m = QARDistribution(TAUS).fit(_x(y.size), y)
     assert m.coef_ is not None
     raw = m.coef_[:, 0] + m.coef_[:, 1] * float(y[-1])
-    q = m.predict(_x(4))
+    q = m.predict(_x(1))
     assert np.allclose(np.sort(raw), q[0])
-    assert np.allclose(q, np.tile(q[0], (4, 1)))  # unconditional on x: rows identical
+    with pytest.raises(ValueError, match="exactly one"):
+        m.predict(_x(4))
 
 
-def test_qar_beats_unconditional_on_planted_ar1() -> None:
+def test_qar_coefficients_beat_unconditional_on_independent_planted_ar1() -> None:
     y = _ar1(phi=0.9, sigma=0.01)
+    y_future = _ar1(phi=0.9, sigma=0.01, seed=5)
     m = QARDistribution(TAUS).fit(_x(y.size), y)
     assert m.coef_ is not None
-    y_lag, y_cur = y[:-1], y[1:]
-    emp = np.quantile(y_cur, TAUS)
+    y_lag, y_cur = y_future[:-1], y_future[1:]
+    emp = np.quantile(y, TAUS)
     for j, tau in enumerate(TAUS):
         q_cond = m.coef_[j, 0] + m.coef_[j, 1] * y_lag
         pin_qar = mean_pinball(y_cur, q_cond, tau)
@@ -84,12 +84,12 @@ def test_qar_beats_unconditional_on_planted_ar1() -> None:
         assert pin_qar < pin_emp
 
 
-def test_qar_drops_nonfinite_rows() -> None:
+def test_qar_rejects_nonfinite_gap() -> None:
     y = _ar1()
     y[::97] = np.nan
     y[1] = np.inf
-    m = QARDistribution(TAUS).fit(_x(y.size), y)
-    _assert_ordered(m.predict(_x(3)))
+    with pytest.raises(ValueError, match="all finite"):
+        QARDistribution(TAUS).fit(_x(y.size), y)
 
 
 def test_qar_fail_closed_edges() -> None:
@@ -103,20 +103,8 @@ def test_qar_fail_closed_edges() -> None:
         QARDistribution([0.0, 0.5]).fit(_x(100), _ar1(n=100))
 
 
-def test_train_distribution_accepts_qar(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``qar`` passes _require_model; empty folds then fail closed."""
+def test_train_distribution_rejects_qar_without_series_wiring() -> None:
+    """Generic panel folds cannot supply a one-step single-series origin."""
     cfg = load_config("configs/research.yaml")
-    frame = pl.DataFrame(
-        {
-            "event_time": [0, 1],
-            "security_id": ["a", "a"],
-            cfg.train.distribution_target: [0.01, 0.02],
-            "ret_1": [0.0, 0.0],
-        }
-    )
-    monkeypatch.setattr(train_module, "panel", lambda *a, **k: frame)
-    monkeypatch.setattr(train_module, "_walk_forward_splits", lambda *a, **k: [])
-    with pytest.raises(ValueError, match="no trainable/evaluable fold"):
-        train_distribution(cfg, "qar")
     with pytest.raises(ValueError, match="unknown distribution model"):
-        train_distribution(cfg, "not_a_model")
+        train_distribution(cfg, "qar")

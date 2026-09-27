@@ -80,18 +80,14 @@ class QARDistribution(JoblibMixin):
     """QAR(1) challenger head (Koenker & Xiao 2006).
 
     Per tau, fit ``q_tau(t) = a_tau + b_tau * y_{t-1}`` by
-    Koenker-Bassett quantile regression on consecutive *row* pairs
-    ``(y[t-1], y[t])`` of the fit window. Rows arrive in panel
-    (date-major) order; this head relies on row order as series order,
-    so adjacent rows may pair different securities on a shared date --
-    it pools the lagged cross-section as a distributional challenger,
-    not a per-security model. Non-finite ``y`` rows are dropped before
-    pairing, so a pair may span a dropped gap.
+    Koenker-Bassett quantile regression on consecutive observations from
+    one chronological series. The caller must supply a single-security,
+    ordered series; this standalone model does not accept a mixed panel.
+    Non-finite rows fail closed instead of silently bridging a missing gap.
 
-    ``predict`` is unconditional on ``x``: every row receives the fitted
-    per-tau conditional evaluated at the last finite fitted ``y`` (the
-    one-step-ahead conditional quantile from the window's end),
-    rearranged to be monotone in tau.
+    ``predict`` returns only the one-step-ahead conditional quantiles at
+    the last fitted ``y``. It rejects multirow requests because subsequent
+    origins require observations that are unavailable at fit time.
     """
 
     MIN_OBS = 30
@@ -104,13 +100,14 @@ class QARDistribution(JoblibMixin):
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> QARDistribution:
         yy = np.asarray(y, dtype=float).reshape(-1)
-        yy = yy[np.isfinite(yy)]
         if yy.size < self.MIN_OBS:
-            raise ValueError("QARDistribution requires >= 30 finite observations")
+            raise ValueError("QARDistribution requires >= 30 observations")
+        if not np.isfinite(yy).all():
+            raise ValueError("QARDistribution requires all finite observations")
         if float(np.ptp(yy)) <= 0.0:
             raise ValueError("QARDistribution requires non-constant y")
         tt = np.asarray(self.taus, dtype=float).reshape(-1)
-        if tt.size == 0 or (tt <= 0.0).any() or (tt >= 1.0).any():
+        if tt.size == 0 or not np.isfinite(tt).all() or (tt <= 0.0).any() or (tt >= 1.0).any():
             raise ValueError("taus must lie in (0, 1)")
         y_lag = yy[:-1].reshape(-1, 1)
         y_cur = yy[1:]
@@ -130,9 +127,12 @@ class QARDistribution(JoblibMixin):
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         if self.coef_ is None:
             raise RuntimeError("distribution model has not been fitted")
+        if x.ndim != 2 or x.shape[0] != 1:
+            raise ValueError("QARDistribution predicts exactly one future observation")
         q = self.coef_[:, 0] + self.coef_[:, 1] * self.y_last_
         q = rearrange_quantiles(q.reshape(1, -1))[0]
-        return np.tile(q, (x.shape[0], 1))
+        result: NDArray[np.float64] = np.asarray(q, dtype=np.float64).reshape(1, -1)
+        return result
 
     def metadata(self) -> ModelMeta:
         persistence = self.coef_[:, 1].tolist() if self.coef_ is not None else []
