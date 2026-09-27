@@ -1,0 +1,50 @@
+# Smoke config for the fx-1 inference harness.
+# The forecaster here is dummy-zero, a reference baseline. It is not fx-1.
+# Bars come from the labeled SYNTHETIC adapter. SYNTHETIC output is a
+# correctness check, not market evidence. No orders are placed.
+schema: fx1.harness.config/v1
+data:
+  provider: synthetic
+  symbols: []
+  start: null
+  end: null
+  resample: null
+  synthetic_n_assets: 4
+  synthetic_n_days: 80
+  synthetic_seed: 7
+features:
+  lookbacks: [1, 5]
+  vol_window: 5
+  horizon_bars: 1
+  entrypoint: null
+model:
+  # Plug the external model in with:
+  #   name: fx-1
+  #   entrypoint: your_package.module:YourFx1Model
+  #   checkpoint_path: /path/to/checkpoint
+  #   checkpoint_format: auto
+  # Unsafe pickle/joblib or full-module torch additionally need:
+  #   allow_unsafe_deserialization: true
+  #   trusted_checkpoint_sha256: <64-character lowercase SHA-256 from a trusted source>
+  name: dummy-zero
+  entrypoint: null
+  checkpoint_path: null
+  checkpoint_format: auto
+  trusted_checkpoint_sha256: null
+  allow_unsafe_deserialization: false
+  version: null
+inference:
+  mode: walk_forward
+  output_parquet: data/fx1/forecasts.parquet
+  output_meta: data/fx1/forecasts.meta.json
+signal:
+  # Placeholder score-to-signal map. Not a strategy.
+  mapping: sign
+  threshold: 0.0
+  cost_bps: 5.0
+walk_forward:
+  scheme: expanding
+  train_bars: 20
+  val_bars: 5
+  test_bars: 5
+  embargo_bars: 1

@@ -1,0 +1,46 @@
+{
+  "strategy": {
+    "name": "momentum_20_cost_aware",
+    "family": "momentum",
+    "lookback": 20,
+    "fraction": 0.25,
+    "allocation": {
+      "risk_window": 60,
+      "risk_aversion": 20.0,
+      "uncertainty_aversion": 1.0,
+      "covariance_shrinkage": 0.25,
+      "alpha_scale": 1.0,
+      "turnover_limit": 0.25
+    }
+  },
+  "benchmark": {"name": "equal_weight", "family": "equal_weight"},
+  "execution": {
+    "initial_nav": 100000.0,
+    "gross_limit": 0.95,
+    "max_name_weight": 0.20,
+    "participation_limit": 0.01,
+    "commission_bps": 1.0,
+    "half_spread_bps": 5.0,
+    "impact_y": 0.1,
+    "borrow_apr": 0.03,
+    "funding_apr": 0.06,
+    "cash_apr": 0.0,
+    "max_names": 50,
+    "target_buffer": 0.01
+  },
+  "assets": ["REPLACE_SECURITY_A", "REPLACE_SECURITY_B"],
+  "sessions": [
+    {"signal_time": "REPLACE_FIRST_FUTURE_CLOSE_UTC", "execution_time": "REPLACE_NEXT_OPEN_UTC"},
+    {"signal_time": "REPLACE_FINAL_FUTURE_CLOSE_UTC", "execution_time": "REPLACE_TERMINAL_OPEN_UTC"}
+  ],
+  "source_url": "https://REPLACE_WITH_VERIFIABLE_DATA_PROVENANCE",
+  "price_basis": "raw_price_return",
+  "selection_basis": "REPLACE_WITH_PRE_REGISTERED_SELECTION_AND_UNIVERSE_DISCLOSURES",
+  "lead_seconds": 60,
+  "calibration": {
+    "end_time": "REPLACE_PRE_FREEZE_CALIBRATION_CUTOFF_UTC",
+    "source": "REPLACE_WITH_MATCHED_NET_RETURN_CALIBRATION_PROVENANCE",
+    "net_differences": []
+  },
+  "evidence": {"effect_bps": 5.0, "lag": 10, "alpha": 0.05, "power": 0.8}
+}
