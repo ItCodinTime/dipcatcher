@@ -11,6 +11,8 @@ failure naming each attempted source and why. No path ever fabricates data.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel, Field
 
@@ -106,10 +108,24 @@ def classify_need(question: str) -> str:
     return "quote"
 
 
+_COMPILED_MARKETS: list[tuple[str, re.Pattern[str]]] | None = None
+
+
+def _compiled_markets() -> list[tuple[str, re.Pattern[str]]]:
+    """Compile market patterns on first classification, then reuse them."""
+    global _COMPILED_MARKETS
+    if _COMPILED_MARKETS is None:
+        _COMPILED_MARKETS = [
+            (market, re.compile("|".join(re.escape(pattern) for pattern in patterns)))
+            for market, patterns in _MARKET_PATTERNS
+        ]
+    return _COMPILED_MARKETS
+
+
 def classify_market(question: str) -> str:
     lowered = question.lower()
-    for market, patterns in _MARKET_PATTERNS:
-        if any(re.search(re.escape(p), lowered) for p in patterns):
+    for market, pattern in _compiled_markets():
+        if pattern.search(lowered):
             return market
     return "cn"
 
@@ -136,6 +152,20 @@ class RoutingPlan(BaseModel):
     note: str = ""
 
 
+def probe_names(names: Sequence[str]) -> list[SourceProbe]:
+    """Probe sources concurrently and return probes in input order."""
+
+    def one(name: str) -> SourceProbe:
+        return build_adapter(get_spec(name)).probe()
+
+    ordered = list(names)
+    if len(ordered) <= 1:
+        return [one(name) for name in ordered]
+    workers = min(8, len(ordered))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(one, ordered))
+
+
 def route(
     question: str,
     *,
@@ -146,10 +176,10 @@ def route(
     resolved_need = need or classify_need(question)
     resolved_market = market or classify_market(question)
     names = routing_candidates(resolved_need, resolved_market)
-    candidates: list[Candidate] = []
-    for rank, name in enumerate(names):
-        spec = get_spec(name)
-        candidates.append(Candidate(source=name, probe=build_adapter(spec).probe(), rank=rank))
+    candidates = [
+        Candidate(source=name, probe=probe, rank=rank)
+        for rank, (name, probe) in enumerate(zip(names, probe_names(names), strict=True))
+    ]
     note = (
         ""
         if candidates

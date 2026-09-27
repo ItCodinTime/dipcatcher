@@ -17,7 +17,6 @@ from pathlib import Path
 import typer
 
 from quant_fund.proofcore.contracts import RealityFilterError, TrialLedgerRow
-from quant_fund.reality.report import DISCLAIMER, build_reality_report
 
 reality_app = typer.Typer(
     help="Reality filter: deflated-Sharpe / CSCV-PBO / FDR honesty diagnostics over the trial ledger."
@@ -54,6 +53,8 @@ def trial_report(
     out: Path | None = typer.Option(None, "--out", help="Optional JSONL/JSON export path."),
 ) -> None:
     """Build the RealityReport for a trial ledger and print the verdict."""
+    from quant_fund.reality.report import DISCLAIMER, build_reality_report
+
     try:
         rows = _load_ledger(ledger)
         report = build_reality_report(rows, q=q, s_blocks=s_blocks)
@@ -74,6 +75,8 @@ def ledger_gate(
     s_blocks: int = typer.Option(16, "--s-blocks", help="CSCV block count (even)."),
 ) -> None:
     """Exit 0 iff the ledger's reality verdict is 'pass', else exit 1."""
+    from quant_fund.reality.report import build_reality_report
+
     try:
         rows = _load_ledger(ledger)
         report = build_reality_report(rows, q=q, s_blocks=s_blocks)

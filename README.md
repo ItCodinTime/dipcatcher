@@ -198,8 +198,11 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/FORWARD_SHADOW_RECORD.md` | Local simulated forward decision and settlement journal |
 | `docs/RESEARCH_CENTRE.md` | Benches and research centre |
 | `docs/VALIDATION.md` | Walk-forward, CPCV, multiple-testing, conformal gates |
+| `docs/STRESS.md` | Research stress catalog, scenarios, reverse stress, VaR/ES backtests |
+| `docs/ROBUSTNESS.md` | Strategy robustness certificates, attacks, and receipt stamp |
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
 | `docs/OPERATIONS_RUNBOOK.md` | Operator procedures and incident handling |
+| `docs/FORMAL_VERIFICATION.md` | Order-lifecycle model check, trace conformance, accounting proofs |
 | `docs/NORTHSET.md` | Order-book and candlestick slice |
 | `docs/HF_OHLCV_1M.md` | Hugging Face US 1-minute OHLCV: license, schema, caveats |
 | `docs/FX1.md` | fx-1 package: corpus, honesty contract, intended base model |
