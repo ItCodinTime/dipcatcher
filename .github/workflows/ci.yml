@@ -253,3 +253,21 @@ jobs:
             data/metadata/research/latest.json
             data/metadata/research/latest.md
             data/metadata/research/runs/
+
+  examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Phase-1 verification compares sealed code hashes to the indexed commit.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Examples gallery
+        run: make examples
