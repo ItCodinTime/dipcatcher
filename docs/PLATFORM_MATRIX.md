@@ -42,6 +42,11 @@ uv run pytest -q -m "not network" $(tr '\n' ' ' < /tmp/shard.txt)
 
 ## Known platform quirks found
 
+- **The locked LightGBM macOS wheel needs OpenMP at runtime.** The matrix
+  installs Homebrew `libomp` before collection and checks its dylib exists.
+- **Git Bash passes Windows runner paths to AWK with backslashes.** AWK
+  prints selected paths to stdout; the shell redirects them to the shard
+  file so backslashes are not parsed as AWK string escapes.
 - **`chmod(0o000)` does not make a file unreadable on Windows.** Windows
   permissions are ACL-based; `os.chmod`/`Path.chmod` can only toggle the
   read-only attribute, and a read-only file still reads fine. Two
