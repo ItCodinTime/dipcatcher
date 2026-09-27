@@ -114,6 +114,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    env:
+      HYPOTHESIS_PROFILE: ci
     strategy:
       fail-fast: false
       matrix:
@@ -287,6 +289,44 @@ jobs:
             data/metadata/research/latest.md
             data/metadata/research/runs/
 
+  mc-engine-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Monte Carlo engine unit tests
+        run: uv run pytest tests/unit/mc_engine -q -m "not slow"
+      - name: CLI smoke
+        run: |
+          uv run python -m quant_fund.mc_engine --help
+          uv run python -m quant_fund.mc_engine run \
+            --paths 1500 --steps 8 --workers 2 --backend process \
+            --chunk-size 500 --seed 1 --shock-mode antithetic --no-progress \
+            > mc-engine-smoke.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          doc = json.loads(Path("mc-engine-smoke.json").read_text())
+          if doc.get("research_only") is not True:
+              raise SystemExit("mc-engine smoke is not research-only")
+          if doc.get("live_pnl_claim") is not False:
+              raise SystemExit("mc-engine smoke made a live P&L claim")
+          if doc.get("market_evidence") is not False:
+              raise SystemExit("mc-engine smoke claimed market evidence")
+          if doc.get("status") != "complete":
+              raise SystemExit(f"mc-engine smoke status {doc.get('status')}")
+          if doc.get("n_paths") != 1500:
+              raise SystemExit("mc-engine smoke path count mismatch")
+          print("validated mc-engine smoke", doc["fingerprint"])
+          PY
+
   rust-accel:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -337,6 +377,21 @@ jobs:
       - name: Examples gallery
         run: make examples
 
+  diffbacktest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync JAX extra
+        run: uv sync --frozen --group dev --extra jax
+      - name: CPU differentiable backtest
+        run: JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES="" uv run pytest -q tests/unit/diffbacktest
+
   robustness-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -353,6 +408,27 @@ jobs:
         run: uv run pytest -q tests/unit/robustness tests/property/test_robustness_bounds.py
       - name: Certifier smoke
         run: uv run python -m quant_fund.robustness
+
+  formal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: TLC order-lifecycle model check
+        run: bash scripts/run_tlc.sh
+      - name: SMT proofs, conformance, and stateful tests
+        run: uv run pytest tests/formal -q --tb=short
 
   pretrade-risk:
     runs-on: ubuntu-latest

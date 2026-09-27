@@ -16,7 +16,10 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
+
+from quant_fund.features._kernels import goertzel_powers
 
 Array = NDArray[np.float64]
 
@@ -39,17 +42,9 @@ def goertzel_power(x: Array, period: int) -> float:
         raise ValueError("period must be an integer >= 4")
     if period > v.size // 2:
         raise ValueError("period must be <= len(x)/2")
-    n = v.size
-    omega = 2.0 * math.pi / period
-    coeff = 2.0 * math.cos(omega)
-    s_prev = 0.0
-    s_prev2 = 0.0
-    for xn in v - v.mean():
-        s = xn + coeff * s_prev - s_prev2
-        s_prev2 = s_prev
-        s_prev = s
-    power = s_prev2**2 + s_prev**2 - coeff * s_prev * s_prev2
-    return float(power / (n * n))
+    demeaned = np.ascontiguousarray(v - v.mean(), dtype=np.float64)
+    power = goertzel_powers(demeaned, np.array([float(period)], dtype=np.float64))
+    return float(power[0])
 
 
 def cycle_periodogram(x: Array, periods: Array | None = None) -> tuple[Array, Array]:
@@ -62,7 +57,8 @@ def cycle_periodogram(x: Array, periods: Array | None = None) -> tuple[Array, Ar
     )
     if ps.size < 2 or np.any(ps < 4) or np.any(ps > v.size // 2):
         raise ValueError("periods must be integers in [4, len(x)/2]")
-    power = np.array([goertzel_power(v, int(p)) for p in ps])
+    demeaned = np.ascontiguousarray(v - v.mean(), dtype=np.float64)
+    power = goertzel_powers(demeaned, np.ascontiguousarray(ps, dtype=np.float64))
     return ps.astype(float), power
 
 
@@ -101,10 +97,20 @@ def _ehlers_quadrature(x: Array) -> tuple[Array, Array]:
     v = np.asarray(x, dtype=float)
     n = v.size
     smooth = np.full(n, np.nan)
-    for i in range(3, n):
-        smooth[i] = (4.0 * v[i] + 3.0 * v[i - 1] + 2.0 * v[i - 2] + v[i - 3]) / 10.0
+    # np.convolve flips the kernel. [4, 3, 2, 1] / 10 places
+    # (4*v[i] + 3*v[i-1] + 2*v[i-2] + v[i-3]) / 10 at index i >= 3.
+    if n >= 4:
+        kernel = np.array([4.0, 3.0, 2.0, 1.0]) / 10.0
+        smooth[3:] = np.convolve(v, kernel, mode="valid")
     in_phase = np.full(n, np.nan)
     quad = np.full(n, np.nan)
+    # The 7-tap window includes smooth[i-6], which is finite only for i >= 9
+    # when the series itself is finite (smooth is NaN before index 3).
+    if n > 9 and np.isfinite(v).all():
+        s = smooth
+        quad[9:] = 0.0962 * s[9:] + 0.5769 * s[7:-2] - 0.5769 * s[5:-4] - 0.0962 * s[3:-6]
+        in_phase[9:] = s[6:-3]
+        return in_phase, quad
     for i in range(6, n):
         window = smooth[i - 6 : i + 1]
         if not np.isfinite(window).all():
@@ -130,27 +136,40 @@ def hilbert_instantaneous_frequency(x: Array, smooth: int = 5) -> Array:
         raise ValueError("smooth must be a positive integer")
     in_phase, quad = _ehlers_quadrature(v)
     raw = np.full(v.size, np.nan)
-    prev: float | None = None
-    for i in range(v.size):
-        if not (np.isfinite(in_phase[i]) and np.isfinite(quad[i])):
-            prev = None
-            continue
-        phase = math.atan2(float(quad[i]), float(in_phase[i]))
-        if prev is None:
-            prev = phase
-            continue
-        delta = phase - prev
+    finite = np.isfinite(in_phase) & np.isfinite(quad)
+    idx = np.flatnonzero(finite)
+    contiguous = (
+        idx.size > 0 and int(idx[0]) + idx.size - 1 == int(idx[-1]) and np.all(np.diff(idx) == 1)
+    )
+    if contiguous:
+        phase = np.arctan2(quad[idx], in_phase[idx])
+        delta = np.diff(phase)
         delta = (delta + math.pi) % (2.0 * math.pi) - math.pi
-        prev = phase
-        if abs(delta) > 1e-8:
-            raw[i] = (2.0 * math.pi) / abs(delta)
+        if delta.size:
+            emit = np.abs(delta) > 1e-8
+            raw[idx[1:]] = np.where(emit, (2.0 * math.pi) / np.abs(delta), np.nan)
+    else:
+        prev: float | None = None
+        for i in range(v.size):
+            if not (np.isfinite(in_phase[i]) and np.isfinite(quad[i])):
+                prev = None
+                continue
+            phase_i = math.atan2(float(quad[i]), float(in_phase[i]))
+            if prev is None:
+                prev = phase_i
+                continue
+            delta_i = phase_i - prev
+            delta_i = (delta_i + math.pi) % (2.0 * math.pi) - math.pi
+            prev = phase_i
+            if abs(delta_i) > 1e-8:
+                raw[i] = (2.0 * math.pi) / abs(delta_i)
     if smooth == 1:
         return raw
     out = np.full(v.size, np.nan)
-    for i in range(v.size):
-        seg = raw[i - smooth + 1 : i + 1]
-        if seg.size == smooth and np.isfinite(seg).all():
-            out[i] = float(seg.mean())
+    if v.size >= smooth:
+        view = sliding_window_view(raw, smooth)
+        ok = np.isfinite(view).all(axis=1)
+        out[smooth - 1 :] = np.where(ok, view.sum(axis=1) / smooth, np.nan)
     return out
 
 
