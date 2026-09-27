@@ -62,6 +62,8 @@ coverage.xml
 site/
 .coverage
 .coverage.*
+# TLC download (scripts/run_tlc.sh). The jar is not source.
+.tla/
 # Optional PyO3 extension build tree (regenerate with `make native`).
 rust/quant_core/target/
 
@@ -72,3 +74,7 @@ data/file_us_wide/**
 .dsh-24x7/paper_data/**
 # mutmut work tree (scores are written by scripts/mutation_score.py)
 mutants/
+# PROOFCORE artifacts (DESIGN.md §13): proof bundles + provenance duckdb are
+# host-local evidence — proof-run orchestration is pending.
+proofs/
+leakage-report.json
