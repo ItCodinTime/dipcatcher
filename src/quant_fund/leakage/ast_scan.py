@@ -512,6 +512,8 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
                     module = alias.name
         if module is None or not module.startswith("quant_fund."):
             continue
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
         sub = module.split(".")[1]
         if sub == package:
             continue  # intra-package imports are always fine
