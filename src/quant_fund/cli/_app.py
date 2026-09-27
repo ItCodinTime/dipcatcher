@@ -69,3 +69,16 @@ def _cfg(config: Path):
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")
     return cfg
+
+
+def _collect_param_value(raw: str) -> object:
+    """Coerce a --param value to int/float when it cleanly parses, else str."""
+    text = raw.strip()
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return float(text)
+    except ValueError:
+        return text
