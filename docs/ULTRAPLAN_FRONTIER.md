@@ -219,10 +219,16 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P4.1 Profile `run_backtest` on the 11-asset workload (cProfile +
       allocation trace); classify remaining 5.4× gap: interpreter loop vs
       per-order gate cost vs polars overhead.
-- [ ] P4.2 Implement `run_backtest_fast` vectorized replay path for the
+- [x] P4.2 Implement `run_backtest_fast` vectorized replay path for the
       *matched-workload class* (fixed rules: target-percent orders, next-open,
       no limits/stops) behind an explicit flag; must produce bit-identical
       NAV/fees on the conformance suite before use in any receipt.
+      Landed: `backtest/fast_replay.py` (numba kernel + interpreted
+      fallback), explicit `run_backtest(..., fast=True|False|None)` flag with
+      fail-closed refusal of unsupported workload classes, byte-identical
+      property suite `tests/property/test_fast_replay_byte_identity.py`,
+      scope/gap analysis `docs/FAST_REPLAY_P42.md`, receipt
+      `receipts/fast_replay_p42_conformance_20260927.json`.
 - [ ] P4.3 If fast path can't reach ≤1× honestly, write the argument:
       per-order risk gates + fail-closed semantics are the product; vectorbt
       is a vectorized reducer without them; show latency decomposition
