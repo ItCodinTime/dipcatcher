@@ -9,8 +9,11 @@ martingale, and Ville's inequality bounds the chance it ever reaches 1/α.
 
 WATCH replaces the uniform weights in the p-value with density-ratio weights
 once a parallel covariate martingale (the X-CTM) crosses an adaptation
-threshold, so a correctly specified covariate shift does not by itself raise
-the label martingale (their Theorem 3.1 and Eq. 17). Root-cause labels follow
+threshold. The current paper's Theorem 3.3 requires bag sufficiency and
+exact oracle weights for independent uniform online p-values. This module
+freezes the calibration bag after adaptation (the paper's practical Eq. 18)
+and defaults to estimated Gaussian weights; post-adaptation alarms are
+diagnostics, not a guaranteed Ville-level false-alarm rate. Root-cause labels follow
 Section 4.4: label alarm without an X alarm is a concept shift; both alarms
 are an extreme covariate shift; adaptation without a label alarm is a benign
 covariate shift.
@@ -18,11 +21,14 @@ covariate shift.
 The betting capital is the simple jumper of Vovk (2021), arXiv:2105.08669
 Algorithm 1, averaged over a grid of jump rates that includes J=1 (the mean
 jumper: one component is identically 1, so the average never falls below
-1/|J|). Ties in the p-value use the conservative indicator 1{v_i ≥ v_test}
-(u=1 in their Eq. 9), which keeps the capital a supermartingale. The density
-ratio defaults to a diagonal-Gaussian plugin on the calibration versus
-post-adaptation covariates. That plugin is not the paper's neural classifier;
-pass ``weight_fn`` to supply oracle or estimated weights. No Sharpe / P&L.
+1/|J|). The standalone p-value utility uses conservative ties by default;
+the online monitor randomizes ties. Conservative p-values alone are not valid
+inputs to both sides of this betting rule: constant scores would make the
+positive-epsilon bet grow under an exchangeable null. The density-ratio
+defaults to a diagonal-Gaussian plugin on the calibration versus
+post-adaptation covariates. That estimated plugin is diagnostic, not an
+anytime-valid guarantee; validity under covariate shift needs correctly
+specified likelihood-ratio weights. No Sharpe / P&L.
 """
 
 from __future__ import annotations
@@ -132,11 +138,15 @@ def weighted_conformal_pvalue(
     scores: Array,
     weights: Array | None = None,
     test_index: int = -1,
+    tie_breaker: float = 1.0,
 ) -> float:
-    """Conservative weighted conformal p-value (Prinster et al. 2025, Eq. 9, u=1).
+    """Weighted conformal p-value (Prinster et al. 2025, Eq. 9).
 
-    p = Σ_i w̃_i 1{v_i ≥ v_test} with w̃ summing to 1. Uniform weights recover
-    the rank p-value. The test score must be one of ``scores``.
+    p = Σ_i w̃_i 1{v_i > v_test} + u Σ_i w̃_i 1{v_i = v_test}, with
+    normalized weights and ``u=tie_breaker``. The default u=1 is conservative
+    for a standalone p-value. A two-sided test martingale needs independent
+    uniform tie breakers, supplied by ``WATCHMonitor``. The test score must
+    be one of ``scores``.
     """
     vals = np.asarray(scores, dtype=float).reshape(-1)
     if vals.size == 0 or not np.all(np.isfinite(vals)):
@@ -146,6 +156,9 @@ def weighted_conformal_pvalue(
         idx = vals.size + idx
     if idx < 0 or idx >= vals.size:
         raise ValueError("test_index is out of range")
+    u = float(tie_breaker)
+    if not np.isfinite(u) or not 0.0 <= u <= 1.0:
+        raise ValueError("tie_breaker must be finite and in [0, 1]")
     if weights is None:
         raw = np.ones(vals.size, dtype=np.float64)
     else:
@@ -158,7 +171,8 @@ def weighted_conformal_pvalue(
     if not np.isfinite(total) or total <= 0.0:
         raise ValueError("weights must have positive finite sum")
     test = float(vals[idx])
-    return float(raw[vals >= test].sum() / total)
+    # Summing a weighted tie can round a mathematically exact 1 just above 1.
+    return float(np.clip((raw[vals > test].sum() + u * raw[vals == test].sum()) / total, 0, 1))
 
 
 def nearest_neighbor_scores(x: Array) -> Array:
@@ -280,8 +294,9 @@ class WATCHMonitor:
     are already stored, those scores and covariates freeze as the calibration
     bag (Eq. 17). Later label p-values use ``weight_fn(x_cal, x_test)`` or the
     Gaussian plugin. Alarms are sticky: a martingale that later falls does not
-    clear Ville's crossing. ``adapt_threshold`` defaults to ``1/sqrt(α)``, a
-    lab default below the Ville level ``1/α``, not a constant from the paper.
+    clear the threshold crossing. Once adapted, the fixed calibration bag and
+    estimated weights make the alarm diagnostic. ``adapt_threshold`` defaults
+    to ``1/sqrt(α)``, a lab default below ``1/α``, not a constant from the paper.
     """
 
     def __init__(
@@ -292,6 +307,7 @@ class WATCHMonitor:
         weight_fn: WeightFn | None = None,
         min_calibration: int = 20,
         weight_cap: float = 1e6,
+        seed: int = 0,
     ) -> None:
         self.alpha = _check_alpha(alpha)
         if adapt_threshold is None:
@@ -311,6 +327,7 @@ class WATCHMonitor:
         self.min_calibration = cal
         self.weight_cap = cap
         self.weight_fn = weight_fn
+        self._rng = np.random.default_rng(seed)
         self._y_jumper = CompositeJumper(jump_rates)
         self._x_jumper = CompositeJumper(jump_rates)
         self._y: list[float] = []
@@ -370,9 +387,11 @@ class WATCHMonitor:
 
     def _x_pvalue(self) -> float:
         if len(self._x) == 1:
-            return 1.0
+            return float(self._rng.uniform())
         mat = np.stack(self._x, axis=0)
-        return weighted_conformal_pvalue(nearest_neighbor_scores(mat))
+        return weighted_conformal_pvalue(
+            nearest_neighbor_scores(mat), tie_breaker=float(self._rng.uniform())
+        )
 
     def _maybe_adapt(self, m_x: float) -> None:
         if self._adapted:
@@ -388,7 +407,12 @@ class WATCHMonitor:
     def _y_pvalue(self, score: float) -> tuple[float, bool]:
         if not self._adapted:
             self._y.append(score)
-            return weighted_conformal_pvalue(np.asarray(self._y, dtype=float)), False
+            return (
+                weighted_conformal_pvalue(
+                    np.asarray(self._y, dtype=float), tie_breaker=float(self._rng.uniform())
+                ),
+                False,
+            )
         assert self._cal_y is not None and self._cal_x is not None
         self._test_x.append(self._x[-1].copy())
         x_test = np.stack(self._test_x, axis=0)
@@ -407,4 +431,7 @@ class WATCHMonitor:
         out_of_support = bool(np.max(w_test) > self.weight_cap or np.max(w_cal) > self.weight_cap)
         scores = np.concatenate([self._cal_y, np.asarray([score], dtype=float)])
         weights = np.concatenate([w_cal, np.asarray([w_test[-1]], dtype=float)])
-        return weighted_conformal_pvalue(scores, weights), out_of_support
+        return (
+            weighted_conformal_pvalue(scores, weights, tie_breaker=float(self._rng.uniform())),
+            out_of_support,
+        )

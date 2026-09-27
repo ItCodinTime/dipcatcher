@@ -22,6 +22,19 @@ def test_uniform_pvalue_is_the_upper_rank() -> None:
     # Ties are counted (conservative u=1): two 3s, test is the last 3.
     tied = np.array([3.0, 1.0, 3.0])
     assert weighted_conformal_pvalue(tied, test_index=-1) == pytest.approx(2.0 / 3.0)
+    assert weighted_conformal_pvalue(tied, test_index=-1, tie_breaker=0.25) == pytest.approx(
+        1.0 / 6.0
+    )
+
+
+def test_constant_exchangeable_stream_does_not_force_a_watch_alarm() -> None:
+    # Conservative p=1 on every tied observation makes the positive-epsilon
+    # jumper grow exponentially, even under this null. Online ties are smoothed.
+    monitor = WATCHMonitor(alpha=0.05, adapt_threshold=1e6, min_calibration=500, seed=0)
+    steps = [monitor.update(0.0, 0.0) for _ in range(40)]
+    assert all(0.0 < step.p_y < 1.0 and 0.0 < step.p_x < 1.0 for step in steps)
+    assert not steps[-1].alarm
+    assert not steps[-1].x_alarm
 
 
 def test_weights_reweight_the_rank() -> None:
@@ -201,6 +214,8 @@ def test_fail_closed_edges() -> None:
         SimpleJumper(jump_rate=0.0)
     with pytest.raises(ValueError):
         weighted_conformal_pvalue(np.array([1.0, np.nan]))
+    with pytest.raises(ValueError, match="tie_breaker"):
+        weighted_conformal_pvalue(np.ones(2), tie_breaker=float("nan"))
     with pytest.raises(ValueError):
         nearest_neighbor_scores(np.array([1.0]))
     monitor = WATCHMonitor()
@@ -212,14 +227,19 @@ def test_fail_closed_edges() -> None:
     with pytest.raises(ValueError):
         shiryaev_roberts(np.array([1.0]))
 
+    return_bad_shape = False
+
     def bad(x_cal: np.ndarray, x_test: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if float(np.max(x_test)) > 1.0:
+        if return_bad_shape:
             return np.ones(x_cal.shape[0] + 1), np.ones(x_test.shape[0])
         return np.ones(x_cal.shape[0]), np.ones(x_test.shape[0])
 
-    broken = WATCHMonitor(alpha=0.2, adapt_threshold=1.5, min_calibration=2, weight_fn=bad)
-    for _ in range(6):
-        broken.update(0.0, 0.0)
+    broken = WATCHMonitor(alpha=0.2, adapt_threshold=1.05, min_calibration=2, weight_fn=bad)
+    for k in range(40):
+        broken.update(0.0, float(2**k))
+        if broken.adapted:
+            break
     assert broken.adapted
+    return_bad_shape = True
     with pytest.raises(ValueError, match="wrong shape"):
         broken.update(0.0, 5.0)
