@@ -108,6 +108,10 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tasklist:
       custom_checkbox: true
+  - pymdownx.snippets:
+      base_path:
+        - .
+      check_paths: true
   - pymdownx.arithmatex:
       generic: true
       inline_syntax:
@@ -126,6 +130,8 @@ extra_javascript:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Examples gallery: examples.md
+  - Evidence: evidence/index.md
   - Concepts:
       - Architecture: ARCHITECTURE.md
       - Data contracts: DATA_CONTRACTS.md

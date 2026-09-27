@@ -36,6 +36,8 @@ SYNTHETIC evidence cannot take a champion or live alias. The full rules are in [
 ## Where to go
 
 - [Getting started](getting-started.md) — install, doctor, a SYNTHETIC research smoke, and this site
+- [Examples gallery](examples.md) — runnable scripts, each labeled SYNTHETIC or tracked snapshot
+- [Evidence](evidence/index.md) — numbers copied from sealed receipts
 - [Architecture](ARCHITECTURE.md) — package layout and the decision clock
 - [Data contracts](DATA_CONTRACTS.md) — point-in-time fields and lake tables
 - [Validation](VALIDATION.md) — walk-forward, purge, embargo, CPCV
