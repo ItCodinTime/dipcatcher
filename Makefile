@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify
 
 .DEFAULT_GOAL := help
 
@@ -66,6 +66,13 @@ docs: ## Build the documentation site (strict)
 
 docs-serve: ## Serve the documentation site locally
 	uv run --only-group docs --frozen mkdocs serve --dev-addr 127.0.0.1:8000
+
+simtest: ## Bounded deterministic-simulation tests and swarm (CI size)
+	uv run pytest tests/unit/simtest tests/regression/test_simtest_duplicate_bar_order.py -q -m "not slow"
+	MLFLOW_DISABLE_AGENT_HINT=1 uv run python scripts/simtest_swarm.py --seeds 64 --days 5 --base-seed 0
+
+simtest-large: ## Large seeded swarm (workflow_dispatch size; not the PR default)
+	MLFLOW_DISABLE_AGENT_HINT=1 uv run python scripts/simtest_swarm.py --seeds 4000 --days 8 --base-seed 0
 
 # --- fx-1 (the model) lifecycle — dipcatcher is the harness ---------------
 fx1-test: ## fx-1 test suite

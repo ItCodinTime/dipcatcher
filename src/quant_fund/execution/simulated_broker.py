@@ -7,6 +7,7 @@ kill switch and ``check_order`` risk gate before cash moves.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -81,6 +82,9 @@ class SimulatedBroker:
     initial_cash: float = 1_000_000.0
     slot: str = "champion"
     allow_capital: bool = True
+    # None keeps uuid4 ids (default paper/shadow behaviour). A simulation
+    # runtime may inject a deterministic factory; it is not persisted.
+    id_factory: Callable[[str], str] | None = None
     cash: float = field(init=False)
     shares: dict[str, float] = field(default_factory=dict)
     open_orders: dict[str, Order] = field(default_factory=dict)
@@ -101,6 +105,15 @@ class SimulatedBroker:
         self.kill = KillSwitch(self.config.kill_switch)
         if not self.allow_capital:
             self.slot = self.slot or "shadow"
+
+    def _mint_id(self, kind: str) -> str:
+        """Order and fill ids. Default format is unchanged when no factory is set."""
+        factory = self.id_factory
+        if factory is not None:
+            return factory(kind)
+        if kind == "fill":
+            return f"fill-{uuid4().hex[:12]}"
+        return f"{self.slot}-{uuid4().hex[:10]}"
 
     def nav(self, prices: dict[str, float] | None = None) -> float:
         px = prices or self.last_marks
@@ -487,7 +500,7 @@ class SimulatedBroker:
             signed_drift = (float(price) - dec) * exec_qty
             drift_slippage = max(0.0, signed_drift)
         fill = Fill(
-            fill_id=f"fill-{uuid4().hex[:12]}",
+            fill_id=self._mint_id("fill"),
             order_id=order.order_id,
             security_id=order.security_id,
             quantity=abs(exec_qty),
@@ -546,7 +559,7 @@ class SimulatedBroker:
             side = OrderSide.BUY if delta > 0 else OrderSide.SELL
             orders.append(
                 Order(
-                    order_id=f"{self.slot}-{uuid4().hex[:10]}",
+                    order_id=self._mint_id("order"),
                     security_id=sid,
                     symbol=sid,
                     side=side,

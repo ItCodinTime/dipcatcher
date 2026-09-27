@@ -176,6 +176,7 @@ nav:
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Deterministic simulation: DETERMINISTIC_SIMULATION.md
   - fx-1:
       - Overview: FX1.md
       - Forecast harness: fx1_harness.md
