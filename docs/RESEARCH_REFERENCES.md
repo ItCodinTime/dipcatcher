@@ -144,10 +144,11 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 | Citation | Why it matters | Repo map |
 |----------|----------------|----------|
-| López de Prado, *Advances in Financial Machine Learning* (2018), ch. 7 & 12 | Combinatorial purged CV, purge + embargo | CPCV implementation + per-group purge (Wave 25+) |
-| Bailey, Borwein, López de Prado & Zhu, *The Probability of Backtest Overfitting*, J. Computational Finance 20(4) (2017); PDF: davidhbailey.com/dhbpapers/backtest-prob.pdf | PBO via CSCV; PBO>0.5 stop sign | PBO / TrialLedger / DSR paths |
-| Bailey & López de Prado, Deflated Sharpe / PSR | Multiple-testing Sharpe adjustment | PSR/DSR fixtures (Wave 8) |
-| Bailey & López de Prado, MinTRL (minimum track-record length) | Samples needed for PSR ≥ conf | `min_track_record_length` (Day Wave 2); `min_trl_from_returns` → `book_diagnostics["min_trl"]` smoke (Day Wave 5) |
+| López de Prado, *Advances in Financial Machine Learning* (2018), ch. 7 & 12 | Combinatorial purged CV, purge + embargo; ``φ = C(N-1, k-1)`` backtest paths | `validation/cpcv.py` (`cpcv_path_assignments`, `combinatorial_purged_indices`); `docs/BACKTEST_OVERFITTING.md` |
+| Bailey, Borwein, López de Prado & Zhu, *The Probability of Backtest Overfitting*, J. Computational Finance 20(4) (2017); PDF: davidhbailey.com/dhbpapers/backtest-prob.pdf | PBO via CSCV; noise rate 1/2 | `cscv_performance` + `probability_of_backtest_overfitting`; notebook `backtest_overfitting.pbo` |
+| Bailey & López de Prado, *The Deflated Sharpe Ratio*, J. Portfolio Management 40(5) (2014) | DSR numerical example: SR0≈0.1132, DSR≈0.9004 (N=100); 0.9505 at N=46 and at Normal N=88 | `deflated_sharpe` / `expected_max_sharpe`; `tests/unit/research/test_backtest_overfitting.py` |
+| Bailey & López de Prado, *The Sharpe Ratio Efficient Frontier*, J. Risk 15(2) (2012) | PSR and MinTRL; 2.73/2.83/3.24-year normal table; 4.99-year HFR moment pair | `probabilistic_sharpe`, `min_track_record_length` |
+| Mantegna, *Hierarchical structure in financial markets*, Eur. Phys. J. B (1999) | Distance `sqrt((1-ρ)/2)` used to cluster correlated trials at a fixed `ρ=0.5` | `effective_n_trials`; receipt `n_trials_effective` |
 
 ## Proper scoring rules (Gneiting)
 

@@ -1,0 +1,43 @@
+name: Adversarial properties
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  adversarial-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Hypothesis adversarial suite (bounded CI profile)
+        env:
+          HYPOTHESIS_PROFILE: ci
+          MLFLOW_DISABLE_AGENT_HINT: "1"
+        run: |
+          set -o pipefail
+          start=$(uv run python -c 'import time; print(time.time())')
+          uv run pytest -q --durations=20 -p no:cacheprovider \
+            tests/property/test_adversarial_costs.py \
+            tests/property/test_adversarial_returns_and_sizing.py \
+            tests/property/test_adversarial_backtest.py \
+            tests/property/test_adversarial_lookahead.py \
+            tests/property/test_adversarial_resample_and_sources.py \
+            tests/property/test_adversarial_receipts.py
+          uv run python -c "import time; print('ELAPSED_SEC {:.3f}'.format(time.time() - float('${start}')))"
