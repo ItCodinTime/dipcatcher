@@ -6,6 +6,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from quant_fund.utils.hashing import hash_bytes
@@ -272,6 +273,55 @@ def _file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(_HASH_CHUNK), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+@dataclass(frozen=True)
+class ContentAddress:
+    """Real-file content identity, including a Git LFS pointer's object id.
+
+    ``content_sha256`` is the hash of the file bytes. When the worktree file
+    is an LFS pointer, that hash is the pointer's ``oid`` (the real object),
+    not the hash of the pointer text. ``stored_sha256`` is always the hash of
+    the bytes on disk, so a pointer and its smudged payload stay distinct.
+    """
+
+    content_sha256: str
+    stored_sha256: str
+    stored_size: int
+    declared_size: int
+    kind: str
+
+
+def content_address(path: Path) -> ContentAddress:
+    """Hash a file with the same chunked SHA-256 used for worktree fingerprints.
+
+    A Git LFS pointer yields ``kind="lfs_pointer"`` and ``content_sha256``
+    equal to the oid inside the pointer. Any other file yields ``kind="blob"``
+    and both hashes equal ``_file_sha256``.
+    """
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise FileNotFoundError(file_path)
+    stored_size = file_path.stat().st_size
+    stored_sha256 = _file_sha256(file_path)
+    if stored_size <= _LFS_POINTER_MAX_BYTES:
+        parsed = _parse_lfs_pointer(file_path.read_bytes())
+        if parsed is not None:
+            oid, declared_size = parsed
+            return ContentAddress(
+                content_sha256=oid,
+                stored_sha256=stored_sha256,
+                stored_size=stored_size,
+                declared_size=declared_size,
+                kind="lfs_pointer",
+            )
+    return ContentAddress(
+        content_sha256=stored_sha256,
+        stored_sha256=stored_sha256,
+        stored_size=stored_size,
+        declared_size=stored_size,
+        kind="blob",
+    )
 
 
 def _fingerprint(tracked: list[tuple[bytes, bytes]], additions: bytes) -> str:

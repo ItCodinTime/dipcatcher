@@ -323,6 +323,11 @@ def verify_research_artifact(path: Path) -> dict[str, Any]:
         value = provenance.get(key)
         if not _is_sha256(value):
             errors.append(f"invalid_{key}")
+    # Optional. Existing receipts omit it. When a lake snapshot is cited, the
+    # id must be the content hash of that immutable manifest.
+    snapshot_id = provenance.get("data_snapshot_id")
+    if snapshot_id is not None and not _is_sha256(snapshot_id):
+        errors.append("invalid_data_snapshot_id")
     for key in ("row_count", "column_count"):
         value = provenance.get(key)
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
