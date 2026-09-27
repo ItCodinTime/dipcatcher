@@ -58,9 +58,11 @@ def test_self_hash_and_signing_payload(tmp_path) -> None:
     # any committed field IS identity:
     mutated = dict(payload, seed=payload["seed"] + 1)
     assert compute_bundle_id(mutated) != bundle.bundle_id
-    # signing payload drops only the signature field
+    # signing payload drops the signature field AND created_utc (ADVERSARIAL
+    # §2-R: created_utc is wall-clock evidence, not signed identity)
     unsigned = json.loads(signing_payload_bytes(payload))
     assert "signature" not in unsigned
+    assert "created_utc" not in unsigned
     assert unsigned["bundle_id"] == bundle.bundle_id
 
 
@@ -86,6 +88,19 @@ def test_hmac_signed_bundle(tmp_path) -> None:
     assert bundle.signature.key_id == signer.key_id
     payload = json.loads((bundle_dir / "bundles" / f"{bundle.bundle_id}.json").read_bytes())
     assert signer.verify(signing_payload_bytes(payload), bundle.signature.value)
+
+
+def test_signature_excludes_created_utc(tmp_path) -> None:
+    """ADVERSARIAL §2-R: mutating created_utc must NOT break the signature
+    (replay re-mints with a fresh wall clock), while mutating any attested
+    field still fails the HMAC check."""
+    signer = HmacSha256Signer(b"ci-key")
+    bundle, bundle_dir = mint_synthetic_bundle(tmp_path, signer=signer)
+    payload = json.loads((bundle_dir / "bundles" / f"{bundle.bundle_id}.json").read_bytes())
+    mutated_clock = dict(payload, created_utc="1999-01-01T00:00:00+00:00")
+    assert signer.verify(signing_payload_bytes(mutated_clock), bundle.signature.value)
+    tampered = dict(payload, seed=payload["seed"] + 1)
+    assert not signer.verify(signing_payload_bytes(tampered), bundle.signature.value)
 
 
 def test_bundle_bytes_canonical_roundtrip(tmp_path) -> None:
@@ -134,6 +149,7 @@ def test_round_floats_policy() -> None:
 def test_manifest_recorder_empty_run(tmp_path) -> None:
     # direct build_bundle with zero reads: merkle root = sha256 of empty string
     from quant_fund.proof.bundle import build_bundle
+    from tests.unit.proof_fake_vault import synthetic_trade_log
 
     recorder = InMemoryRecorder()
     summary = recorder.manifest_summary()
@@ -143,13 +159,40 @@ def test_manifest_recorder_empty_run(tmp_path) -> None:
         config_dump={"a": 1},
         seed=0,
         signal_log=pl.DataFrame(schema={"decision_time": pl.Datetime("us", "UTC")}),
-        trade_log=pl.DataFrame(schema={"fill_time": pl.Datetime("us", "UTC"), "nav": pl.Float64}),
+        trade_log=synthetic_trade_log(),
         engine_metrics={},
         bundle_dir=tmp_path,
         signer=NullSigner(),
     )
     assert bundle.data_manifest.merkle_root == sha256_hex_bytes(b"")
     assert bundle.prev_bundle_hash == GENESIS_HASH
+
+
+def test_mint_fails_closed_on_nan_metrics(tmp_path) -> None:
+    """ADVERSARIAL §2-H: a degenerate run (empty trade log -> NaN Sharpe) must
+    raise ProofBundleError at MINT time instead of producing a bundle the
+    verifier rejects with schema:invalid."""
+    from quant_fund.proof.bundle import build_bundle
+    from quant_fund.proofcore.contracts import ProofBundleError
+
+    recorder = InMemoryRecorder()
+    recorder.record(make_read_record("silver/bars", T0, rows=90, content_sha256="0" * 64))
+    with pytest.raises(ProofBundleError, match="metrics contain NaN"):
+        build_bundle(
+            run_kind="backtest",
+            data_manifest=recorder.manifest_summary(),
+            config_dump={"a": 1},
+            seed=0,
+            signal_log=pl.DataFrame(schema={"decision_time": pl.Datetime("us", "UTC")}),
+            trade_log=pl.DataFrame(
+                schema={"fill_time": pl.Datetime("us", "UTC"), "nav": pl.Float64}
+            ),
+            engine_metrics={},
+            bundle_dir=tmp_path,
+            signer=NullSigner(),
+        )
+    # fail-closed means nothing was persisted
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_make_read_record_used_by_fake_vault(tmp_path) -> None:

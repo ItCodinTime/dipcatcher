@@ -16,7 +16,16 @@ the ``bundle_id``, ``signature`` **and** ``created_utc`` fields. ``created_utc``
 is excluded so the double-run identity (DESIGN.md §5.7/§8.1: "identical
 bundle_id minus created_utc") is well-defined; wall-clock time is evidence,
 not identity. The signature covers the canonical bundle bytes minus the
-``signature`` field (``bundle_id`` included).
+``signature`` **and** ``created_utc`` fields (``bundle_id`` included).
+
+DESIGN deviation note (ADVERSARIAL §2-R fix): the HMAC preimage originally
+included ``created_utc``, so a deterministic replay — which re-mints with a
+fresh wall clock — could never reproduce a signed bundle's signature, making
+``verify --replay`` fail on every pristine signed bundle. ``created_utc`` is
+now excluded from BOTH the self-hash and the signature preimage; it is
+unattested wall-clock evidence only. All attested content (config, data
+manifest, sidecar hashes, metrics, seed, chain link) remains inside the
+signature preimage, so tampering still fails the HMAC check.
 
 Trade-log schema: the engine fills frame plus a ``nav`` column carrying the
 last mark-to-market NAV at or before each fill (join-asof backward over the
@@ -28,6 +37,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
 import platform
 import shutil
@@ -47,6 +57,7 @@ from quant_fund.proofcore.contracts import (
     CodeFingerprint,
     DataManifestSummary,
     EnvFingerprint,
+    ProofBundleError,
     ProofBundleV1,
     SignatureBlock,
     canonical_json_bytes,
@@ -84,6 +95,11 @@ METRIC_KEYS = ("sharpe_periodic", "sharpe_annualized", "total_return", "max_draw
 
 #: Fields excluded from the bundle_id self-hash preimage.
 SELF_HASH_EXCLUDED_FIELDS = frozenset({"bundle_id", "signature", "created_utc"})
+
+#: Fields excluded from the HMAC signing preimage. ``created_utc`` is
+#: wall-clock evidence, not identity (ADVERSARIAL §2-R): excluding it lets a
+#: deterministic replay reproduce a signed bundle byte-for-byte.
+SIGNING_EXCLUDED_FIELDS = frozenset({"signature", "created_utc"})
 
 _PACKAGE_NAMES = ("dipcatcher", "numpy", "polars", "scipy", "pydantic")
 
@@ -217,8 +233,18 @@ def compute_bundle_id(unsigned_payload: dict[str, Any]) -> str:
 
 
 def signing_payload_bytes(bundle_payload: dict[str, Any]) -> bytes:
-    """Canonical bundle bytes minus the signature field (HMAC preimage)."""
-    payload = {key: value for key, value in bundle_payload.items() if key != "signature"}
+    """Canonical bundle bytes minus signature + created_utc (HMAC preimage).
+
+    ``created_utc`` is excluded (SIGNING_EXCLUDED_FIELDS) so the replayed
+    re-mint of a signed run reproduces the recorded signature — the
+    ``verify --replay`` path compares identity modulo ``created_utc``
+    (§8.1), and the signature must obey the same equivalence.
+    """
+    payload = {
+        key: value
+        for key, value in bundle_payload.items()
+        if key not in SIGNING_EXCLUDED_FIELDS
+    }
     return canonical_json_bytes(payload)
 
 
@@ -315,7 +341,13 @@ def build_bundle(
     """Mint, sign, chain, and persist a ProofBundleV1 (DESIGN.md §5.2 steps 5-7).
 
     ``created_utc`` is injectable ONLY for tests; production callers leave it
-    None (wall clock). It is evidence, excluded from the self-hash preimage.
+    None (wall clock). It is evidence, excluded from the self-hash preimage
+    and from the signing preimage (ADVERSARIAL §2-R).
+
+    Fail-closed mint policy (ADVERSARIAL §2-H): if the recomputed headline
+    metrics contain NaN/inf (degenerate run, e.g. an empty trade log), minting
+    raises ``ProofBundleError`` instead of emitting a bundle the verifier
+    would reject with ``schema:invalid``.
     """
     signer = signer if signer is not None else NullSigner()
     bundle_dir = Path(bundle_dir)
@@ -324,6 +356,22 @@ def build_bundle(
     trade_bytes = _parquet_bytes(trade_log)
     metrics_bytes = canonical_json_bytes(round_floats(engine_metrics))
     config_bytes = canonical_json_bytes(round_floats(config_dump))
+
+    # Fail closed at MINT time (ADVERSARIAL §2-H): canonical JSON encodes
+    # NaN/inf as null, which the bundle schema (`metrics_recompute:
+    # dict[str, float]`) then rejects — a degenerate run (e.g. empty trade
+    # log) would otherwise mint a bundle its own verifier cannot parse.
+    metrics_recompute = recompute_headline_metrics(trade_log)
+    non_finite = sorted(
+        key for key, value in metrics_recompute.items() if not math.isfinite(value)
+    )
+    if non_finite:
+        raise ProofBundleError(
+            "metrics contain NaN or non-finite values "
+            f"({', '.join(non_finite)}); the run is degenerate (e.g. empty "
+            "trade log) and no verifiable bundle can be minted — fix the run "
+            "instead of notarizing it"
+        )
 
     unsigned: dict[str, Any] = {
         "schema_version": "proofcore/1",
@@ -337,7 +385,7 @@ def build_bundle(
         "signal_log_sha256": sha256_hex_bytes(signal_bytes),
         "trade_log_sha256": sha256_hex_bytes(trade_bytes),
         "metrics_sha256": sha256_hex_bytes(metrics_bytes),
-        "metrics_recompute": recompute_headline_metrics(trade_log),
+        "metrics_recompute": metrics_recompute,
         "prev_bundle_hash": chain_head(bundle_dir),
     }
     bundle_id = compute_bundle_id(unsigned)
