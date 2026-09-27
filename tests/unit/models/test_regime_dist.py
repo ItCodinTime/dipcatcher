@@ -159,3 +159,42 @@ def test_train_distribution_accepts_regime(
         train_distribution(cfg, "regime")
     with pytest.raises(ValueError, match="unknown distribution model"):
         train_distribution(cfg, "not_a_model")
+
+
+def test_regime_propagates_filtered_state_to_next_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    y = _regime_switch(n_lo=100, n_hi=100)
+    probs = np.zeros((y.size, 2))
+    probs[:100] = [0.9, 0.1]
+    probs[100:] = [0.1, 0.9]
+    probs[-1] = [0.25, 0.75]
+    transition = np.array([[0.9, 0.1], [0.3, 0.7]])
+
+    def _states(self: RegimeDistribution, yy: np.ndarray) -> np.ndarray:
+        self.transition_ = transition
+        self.state_estimator_ = "synthetic_stub"
+        return probs
+
+    monkeypatch.setattr(RegimeDistribution, "_state_probs", _states)
+    m = RegimeDistribution(TAUS).fit(_x(y.size), y)
+    np.testing.assert_allclose(m.mix_weights_, probs[-1] @ transition)
+    assert m.metadata().extra["p_high_vol_next"] == pytest.approx(0.55)
+    assert m.metadata().extra["p_high_vol_last_filtered"] == pytest.approx(0.75)
+
+
+def test_train_distribution_rejects_pooled_regime_series(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = load_config("configs/research.yaml")
+    frame = pl.DataFrame(
+        {
+            "event_time": [0, 0],
+            "security_id": ["a", "b"],
+            cfg.train.distribution_target: [0.01, 0.02],
+            "ret_1": [0.0, 0.0],
+        }
+    )
+    monkeypatch.setattr(train_module, "panel", lambda *a, **k: frame)
+    with pytest.raises(ValueError, match="one security"):
+        train_distribution(cfg, "regime")
