@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,7 +39,7 @@ class ManifestError(VaultError):
     """manifest.json missing, malformed, or hash-mismatched."""
 
 
-class ProofError(ProofcoreError):
+class ProofError(ProofError):
     """Proof bundle construction failure."""
 
 
