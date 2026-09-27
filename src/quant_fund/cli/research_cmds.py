@@ -311,9 +311,64 @@ def fleet(
     typer.echo(f"receipt={path}")
 
 
+@app.command()
+def rankic(
+    panels: str | None = typer.Option(
+        None, help="Comma-separated panel names (default: all synthetic panels)."
+    ),
+    challengers: str | None = typer.Option(
+        None, help="Comma-separated challenger names (default: all transforms)."
+    ),
+    n_assets: int = typer.Option(32, help="Assets per date."),
+    n_dates: int = typer.Option(96, help="Panel length in dates."),
+    horizons: str = typer.Option("1,5,20", help="Comma-separated forward horizons."),
+    seed: int = typer.Option(11, help="Base seed for the synthetic panels."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Cross-sectional rank-IC bench on SYNTHETIC planted-signal panels (P3.4).
+
+    Per-date Spearman rank-IC between each challenger transform and h-step
+    forward returns, summarized with a Newey-West mean-IC t-stat. Proper-score
+    framing only — never a P&L or live-trading claim.
+    """
+    from quant_fund.research.cross_sectional import (
+        format_rankic_table,
+        resolve_panels,
+        run_cross_sectional_bench,
+        write_rankic_receipt,
+    )
+
+    def _names(raw: str | None) -> list[str] | None:
+        if raw is None:
+            return None
+        return [piece.strip() for piece in raw.split(",") if piece.strip()]
+
+    try:
+        resolved = resolve_panels(_names(panels))
+        horizon_tuple = tuple(int(piece.strip()) for piece in horizons.split(",") if piece.strip())
+        if not horizon_tuple:
+            raise typer.BadParameter("--horizons must be nonempty")
+        frame, receipt = run_cross_sectional_bench(
+            resolved,
+            challengers=_names(challengers),
+            horizons=horizon_tuple,
+            n_assets=n_assets,
+            n_dates=n_dates,
+            seed=seed,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_rankic_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo("SYNTHETIC")
+    typer.echo(format_rankic_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "execution_sensitivity_cmd",
     "fleet",
+    "rankic",
     "research",
     "verify_identities",
 ]

@@ -19,7 +19,7 @@ from quant_fund.metrics.conformal_martingale import WatchMonitor
 from quant_fund.metrics.e_detectors import EDetectorGaussian, run_detector
 from quant_fund.metrics.energy_score import energy_score
 from quant_fund.metrics.scoring import crps_gaussian
-from quant_fund.models.enbpi import EnbPI
+from quant_fund.models.enbpi import EnbPI, EnbPIResult
 from quant_fund.models.ngboost_lite import NGBoostGaussian
 from quant_fund.models.qrf import QuantileRegressionForest
 from quant_fund.validation.leakage_redteam import (
