@@ -1,0 +1,105 @@
+{
+  "baseline_recovery": {
+    "12m": 0.7443181818181818,
+    "1m": 0.2159090909090909,
+    "3m": 0.5113636363636364,
+    "6m": 0.5511363636363636
+  },
+  "climatology_forecast": {
+    "definition": "P(recovery) = unconditional baseline frequency (in-sample, descriptive \u2014 not a signal)",
+    "metrics": {
+      "brier_12m": 0.19030862603305784,
+      "brier_1m": 0.16929235537190082,
+      "brier_3m": 0.24987086776859505,
+      "brier_6m": 0.24738507231404958,
+      "brier_overall": 0.21421423037190082,
+      "ece_12m": 0.0,
+      "ece_1m": 0.0,
+      "ece_3m": 0.0,
+      "ece_6m": 0.0,
+      "log_loss_12m": 0.5684916008392015,
+      "log_loss_1m": 0.5216812528716921,
+      "log_loss_3m": 0.6928888938590295,
+      "log_loss_6m": 0.6879081696988175,
+      "n_12m": 176.0,
+      "n_1m": 176.0,
+      "n_3m": 176.0,
+      "n_6m": 176.0
+    }
+  },
+  "data": "historical 1d bars (real market data; descriptive research)",
+  "disclaimer": "Research/backtest evidence on historical data, not live performance. The climatology forecaster is an in-sample descriptive baseline; it is not a tradeable signal and authorizes nothing.",
+  "generated_at": "2026-09-25T14:18:53.413467+00:00",
+  "inputs_sha256": {
+    "adausdt_1d.parquet": "59b5ec1a9076065bbedc3e14e49e59ee5f3781646721710dffca0aeab093a3f2",
+    "avaxusdt_1d.parquet": "40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359",
+    "bnbusdt_1d.parquet": "822ec14bb30fda27bd14b4ab2a99070ae2d78858794c08444f8c0adbf75a80c1",
+    "btcusdt_1d.parquet": "4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6",
+    "dogeusdt_1d.parquet": "a8a8005ee958a265c313ac6ee3da9f0dacf1e1d7be95b7496bb5a58d687bf7c7",
+    "ethusdt_1d.parquet": "6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250",
+    "linkusdt_1d.parquet": "e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512",
+    "ltcusdt_1d.parquet": "ce5bd0ab9540792895940afae9e0934db0eaf0e221bf3ae7bd3d1e89ce361b3a",
+    "solusdt_1d.parquet": "bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb",
+    "trxusdt_1d.parquet": "9eb8c62328057e0eef19013be9e435b585d880a9ebe14a6f59bc1cc14427d3f3",
+    "xrpusdt_1d.parquet": "d03430a83a62632adaa02878069c6124f9855247238fc2f635d19b0c6bf91f30"
+  },
+  "live_pnl_claim": false,
+  "n_events": 176,
+  "params": {
+    "horizons_bars": {
+      "12m": 252,
+      "1m": 21,
+      "3m": 63,
+      "6m": 126
+    },
+    "threshold": 0.1
+  },
+  "per_asset": {
+    "ADAUSDT": {
+      "bars": 999,
+      "events": 9
+    },
+    "AVAXUSDT": {
+      "bars": 999,
+      "events": 9
+    },
+    "BNBUSDT": {
+      "bars": 999,
+      "events": 21
+    },
+    "BTCUSDT": {
+      "bars": 999,
+      "events": 25
+    },
+    "DOGEUSDT": {
+      "bars": 999,
+      "events": 12
+    },
+    "ETHUSDT": {
+      "bars": 999,
+      "events": 17
+    },
+    "LINKUSDT": {
+      "bars": 999,
+      "events": 14
+    },
+    "LTCUSDT": {
+      "bars": 999,
+      "events": 23
+    },
+    "SOLUSDT": {
+      "bars": 999,
+      "events": 22
+    },
+    "TRXUSDT": {
+      "bars": 999,
+      "events": 9
+    },
+    "XRPUSDT": {
+      "bars": 999,
+      "events": 15
+    }
+  },
+  "research_only": true,
+  "schema": "fx1.dip_bench/v1"
+}

@@ -163,9 +163,15 @@ leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory o
 		echo "tests/leakage_fixtures not present yet (W3 lands separately); skipped"; \
 	fi
 
-reality-gate: ## Reality-filter gate: export trial ledger from provenance DB + ledger-gate
-	uv run quant proofcore export --db $(PROOFCORE_DB) --out $(PROOFCORE_LEDGER)
-	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER)
+reality-gate: ## Reality-filter gate: score trials; absent DB or empty export skips
+	uv run quant reality preflight --db $(PROOFCORE_DB); code=$$?; \
+	if [ $$code -eq 3 ]; then exit 0; fi; \
+	if [ $$code -ne 0 ]; then exit $$code; fi; \
+	uv run quant proofcore export --db $(PROOFCORE_DB) --out $(PROOFCORE_LEDGER); \
+	uv run quant reality preflight --ledger $(PROOFCORE_LEDGER); code=$$?; \
+	if [ $$code -eq 3 ]; then exit 0; fi; \
+	if [ $$code -ne 0 ]; then exit $$code; fi; \
+	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER) && \
 	uv run quant reality ledger-gate --ledger $(PROOFCORE_LEDGER)
 
 receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending

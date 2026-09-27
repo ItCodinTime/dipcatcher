@@ -1,0 +1,31 @@
+{
+ "data_source": "binance_usdtm_perp",
+ "equity_file": null,
+ "extras": {},
+ "id": "amix_sleeve_fade",
+ "kind": "receipt_stats",
+ "live_pnl_claim": false,
+ "name": "Adaptive mix sleeve \u2014 fade",
+ "provenance": {
+  "note": "Paper-sleeve segment stats recorded in sealed receipt; diagnostic only, no equity series exported.",
+  "pointer": "paper_sleeves.fade",
+  "receipt": "receipts/adaptive_mix_20asset_1d_20260922.json"
+ },
+ "research_only": true,
+ "segments": {
+  "development": {
+   "cagr": -0.018747281400395388,
+   "max_drawdown": -0.12347201732005986,
+   "n": 2055,
+   "net_return": -0.1010058568098029,
+   "sharpe": -0.30339714045456
+  },
+  "historical_tail_exploratory": {
+   "cagr": 0.010137772432946779,
+   "max_drawdown": -0.015142390623816837,
+   "n": 514,
+   "net_return": 0.014295825918295924,
+   "sharpe": 0.41305846455513373
+  }
+ }
+}
