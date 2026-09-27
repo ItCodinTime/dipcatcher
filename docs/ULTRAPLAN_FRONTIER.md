@@ -131,6 +131,10 @@ a `v5_*` fleet column on existing shards' protocol.
 - [ ] P1.9 Blend-search policy: `dip_blend` is empirical+parametric concat;
       add `dip_stack` — weights fit by *trailing-window* CRPS minimization
       (causal stacking, no lookahead).
+      Head wired: `train distribution --model stack` (`StackedDistribution` —
+      per-τ convex weights via SLSQP pinball minimization on the trailing
+      slice; empirical + Gaussian + skew-t bases; rearranged monotone).
+      Fleet cell still open.
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.

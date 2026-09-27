@@ -15,6 +15,7 @@ from quant_fund.models.distribution import (
     GMMDistribution,
     IsotonicPitDistribution,
     SkewTDistribution,
+    StackedDistribution,
 )
 from quant_fund.models.mixture import (
     fit_gaussian_mixture,
@@ -219,8 +220,54 @@ def test_train_distribution_accepts_new_model_names(
     )
     monkeypatch.setattr(train_module, "panel", lambda *a, **k: frame)
     monkeypatch.setattr(train_module, "_walk_forward_splits", lambda *a, **k: [])
-    for name in ("skew_t", "gmm", "isotonic"):
+    for name in ("skew_t", "gmm", "isotonic", "stack"):
         with pytest.raises(ValueError, match="no trainable/evaluable fold"):
             train_distribution(cfg, name)
     with pytest.raises(ValueError, match="unknown distribution model"):
         train_distribution(cfg, "not_a_model")
+
+
+def test_stack_weights_simplex_and_ordered() -> None:
+    y = _bimodal()
+    m = StackedDistribution(TAUS).fit(_x(y.size), y)
+    assert m.q_bases_ is not None and m.w_ is not None
+    assert m.q_bases_.shape[1] >= 2
+    assert np.allclose(m.w_.sum(axis=1), 1.0, atol=1e-6)
+    assert np.all(m.w_ >= -1e-9)
+    q = m.predict(_x(4))
+    assert q.shape == (4, len(TAUS))
+    _assert_ordered(q)
+    assert m.metadata().name == "stack"
+
+
+def test_stack_matches_or_beats_bases_on_bimodal() -> None:
+    y = _bimodal(seed=11)
+    x = _x(y.size)
+    m = StackedDistribution(TAUS).fit(x, y)
+    q = m.predict(x)
+    # convex blend ⇒ stack pinball no worse than the worst of its own bases
+    assert m.q_bases_ is not None
+    for j, tau in enumerate(TAUS):
+        pin_s = mean_pinball(y, q[:, j], tau)
+        base_worst = max(
+            mean_pinball(y, np.full(y.size, m.q_bases_[j, b]), tau)
+            for b in range(m.q_bases_.shape[1])
+        )
+        assert pin_s <= base_worst + 1e-6
+
+
+def test_stack_concentrates_on_dominant_base() -> None:
+    rng = np.random.default_rng(12)
+    y = rng.normal(0.02, 0.01, 3000)  # well-specified Gaussian
+    m = StackedDistribution(TAUS).fit(_x(y.size), y)
+    assert m.q_bases_ is not None and m.w_ is not None
+    # Gaussian base should carry most weight at the median tau
+    gauss_col = 1  # cols = [empirical, gaussian, (skew_t)]
+    assert m.w_[MID, gauss_col] > 0.3
+
+
+def test_stack_fail_closed_edges() -> None:
+    with pytest.raises(ValueError, match=">= 60"):
+        StackedDistribution(TAUS).fit(_x(30), np.linspace(0, 1, 30))
+    with pytest.raises(RuntimeError, match="not been fitted"):
+        StackedDistribution(TAUS).predict(_x(2))
