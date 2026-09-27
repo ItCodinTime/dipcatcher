@@ -82,6 +82,7 @@ from quant_fund.models.distribution import (
     StackedDistribution,
     TreeQuantileDistribution,
 )
+from quant_fund.models.hstep import HStepScaledDistribution
 from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.ranking import (
     CompositeRanker,
@@ -819,6 +820,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "lightgbm",
             "skew_t",
             "gmm",
+            "hstep",
             "isotonic",
             "stack",
         },
@@ -840,6 +842,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
             "skew_t": SkewTDistribution(taus),
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
+            "hstep": HStepScaledDistribution(taus),
             "isotonic": IsotonicPitDistribution(taus),
             "stack": StackedDistribution(taus, seed=config.train.random_seed),
         }
