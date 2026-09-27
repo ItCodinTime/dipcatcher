@@ -159,6 +159,7 @@ def test_panel_cache_key_missing_universe_is_uncacheable(tmp_path) -> None:
 
 
 def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeypatch) -> None:
+    """A stable inode watch allows a cache hit; a stat change still rehashes."""
     features, labels = _write_cache_key_artifacts(
         tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
     )
@@ -170,6 +171,10 @@ def test_panel_cache_key_reuses_digest_until_file_stat_changes(tmp_path, monkeyp
         calls.append(str(path))
         return real_hash_file(path)
 
+    # Exercise the watched fast path on every platform, including macOS where
+    # the production implementation safely rehashes without Linux inotify.
+    monkeypatch.setattr(dataset_module._ARTIFACT_WATCH, "arm", lambda path: True)
+    monkeypatch.setattr(dataset_module._ARTIFACT_WATCH, "stable", lambda path: True)
     monkeypatch.setattr(dataset_module, "hash_file", counting_hash_file)
     first = _panel_cache_key(tmp_path, features, labels)
     second = _panel_cache_key(tmp_path, features, labels)

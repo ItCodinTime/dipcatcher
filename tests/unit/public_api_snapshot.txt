@@ -70,8 +70,6 @@ class AppConfig
 
 [BacktestMetrics]
 class BacktestMetrics
-  total_return: float
-  sharpe: float
   n: int
   risk_gate_rejects: int
   cash_rejects: int
@@ -80,18 +78,15 @@ class BacktestMetrics
   research_only: bool
   live_pnl_claim: bool
   data_source: str
+  claim: Literal['execution_diagnostic_only']
+  turnover_bps_cost: float
   garch_risk_overlay_dates: int
   realized_garch_risk_overlay_dates: int
-  max_drawdown: NotRequired[float]
   mean_turnover: NotRequired[float]
   commission: NotRequired[float]
   spread: NotRequired[float]
   impact: NotRequired[float]
-  flag_high_sharpe: NotRequired[bool]
-  analytics: NotRequired[dict[str, object]]
-  analytics_export: NotRequired[dict[str, object]]
   label: NotRequired[str]
-  book_risk_overlay: NotRequired[dict[str, object]]
 
 [BacktestRun]
 class BacktestRun
