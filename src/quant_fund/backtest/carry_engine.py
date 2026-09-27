@@ -233,6 +233,10 @@ def run_carry_backtest(
         for sid in set(close_perp) & set(close_spot):
             if sid not in marked:
                 next_ages[sid] = next_ages.get(sid, 0) + 1
+        # Marks knowable at execution time: before this bar's close prints.
+        # Non-executing names valued at this bar's close would leak future
+        # prices into pair sizing and the leverage cap.
+        prev_spot, prev_perp = last_spot, last_perp
         last_spot, last_perp, mark_ages = close_spot, close_perp, next_ages
         stale_held = {
             sid: mark_ages.get(sid)
@@ -244,8 +248,8 @@ def run_carry_backtest(
             raise StaleValuationError("held carry pair valuation stale beyond limit: " + details)
 
         # --- execute pending pair orders at this bar's opens ---
-        mark_p = {**last_perp, **exec_perp}
-        mark_s = {**last_spot, **exec_spot}
+        mark_p = {**prev_perp, **exec_perp}
+        mark_s = {**prev_spot, **exec_spot}
         traded_turn = 0.0
         due = [sid for sid, idx in pending_exec_at.items() if idx <= i]
         for sid in sorted(due):
@@ -267,14 +271,21 @@ def run_carry_backtest(
                 delta = min(delta, affordable)
                 if delta * so < 1.0:
                     continue
-            # leverage cap on the perp leg (gross notional vs equity)
+            # leverage cap on the perp leg (projected gross notional vs
+            # equity): clamp the resulting position to the headroom left
+            # after other pairs — capping |delta| on top of existing gross
+            # would block deleveraging and trap an over-cap book.
             gross_now = book.perp_gross(mark_p)
             cap = perp_cfg.max_leverage * equity
-            if gross_now + abs(delta) * po > cap and cap > gross_now:
-                delta = np.sign(delta) * max(0.0, (cap - gross_now)) / po
-            elif gross_now + abs(delta) * po > cap:
-                margin_reject_count += 1
-                continue
+            others_gross = gross_now - abs(current) * po
+            projected = current + delta
+            room_qty = max(0.0, cap - others_gross) / po
+            if abs(projected) > room_qty:
+                capped_delta = np.sign(projected) * room_qty - current
+                if capped_delta == 0.0 or np.sign(capped_delta) != np.sign(delta):
+                    margin_reject_count += 1
+                    continue
+                delta = capped_delta
             if abs(delta) * po < 1.0:
                 continue
             costs_p = total_cost(
@@ -367,7 +378,9 @@ def run_carry_backtest(
             u = book.units.get(sid, 0.0)
             if abs(u) < 1e-12:
                 continue
-            mark = mark_p.get(sid) or last_perp.get(sid)
+            # Funding accrues at the bar's close mark, matching the perp
+            # engine's convention (exec opens in mark_p are not close marks).
+            mark = last_perp.get(sid)
             if mark is None:
                 continue
             flow = u * mark * rate  # short perp: positive rate → receive
