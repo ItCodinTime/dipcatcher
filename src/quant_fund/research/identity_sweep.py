@@ -237,7 +237,11 @@ def _col(frame: pl.DataFrame, name: str) -> Array:
 def _max_abs_diff(a: Array, b: Array) -> float:
     if a.size != b.size:
         raise ValueError("identity operands must align")
-    mask = np.isfinite(a) & np.isfinite(b)
+    left_finite = np.isfinite(a)
+    right_finite = np.isfinite(b)
+    if not np.array_equal(left_finite, right_finite):
+        raise ValueError("identity operands have mismatched finite rows")
+    mask = left_finite
     if int(mask.sum()) == 0:
         raise ValueError("no aligned finite rows to prove identity on")
     return float(np.max(np.abs(a[mask] - b[mask])))
@@ -1052,10 +1056,10 @@ def run_identity_sweep(
     names = [spec.name for spec in specs]
     if len(set(names)) != len(names):
         raise ValueError("identity registry names must be unique")
-    if any(spec.tolerance < 0.0 for spec in specs):
-        raise ValueError("identity tolerances must be >= 0")
-    if int(n_trials) < 1:
-        raise ValueError("n_trials must be >= 1")
+    if any(not math.isfinite(spec.tolerance) or spec.tolerance < 0.0 for spec in specs):
+        raise ValueError("identity tolerances must be finite and >= 0")
+    if isinstance(n_trials, bool) or not isinstance(n_trials, int) or n_trials < 1:
+        raise ValueError("n_trials must be a positive integer")
     factory = bundle_factory or make_synthetic_bundle
 
     residuals: dict[str, list[float]] = {name: [] for name in names}
@@ -1064,7 +1068,9 @@ def run_identity_sweep(
         bundle = factory(int(seed) * 1009 + trial)
         for spec in specs:
             try:
-                value = abs(float(spec.evaluate(bundle)))
+                value = float(spec.evaluate(bundle))
+                if not math.isfinite(value) or value < 0.0:
+                    raise ValueError("identity residual must be finite and non-negative")
             except Exception as exc:  # fail-closed: record, never fabricate a pass
                 residuals[spec.name].append(float("nan"))
                 errors[spec.name].append(f"{type(exc).__name__}: {exc}")
@@ -1141,11 +1147,30 @@ def format_identity_table(receipt: dict[str, Any]) -> str:
 
 
 def write_identity_receipt(path: Path, receipt: dict[str, Any]) -> Path:
-    """Atomically publish the JSON receipt (temp file + fsync + os.replace)."""
+    """Atomically publish an immutable, hash-verified SYNTHETIC receipt."""
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if (
+        receipt.get("kind") != "identity_sweep"
+        or receipt.get("schema_version") != IDENTITY_SWEEP_SCHEMA_VERSION
+        or receipt.get("synthetic") is not True
+        or receipt.get("data_source") != "SYNTHETIC"
+        or receipt.get("claim") != "research_only"
+        or not family_blob_forbidden_metrics_absent(receipt)
+    ):
+        raise ValueError("identity receipt violates its synthetic research contract")
+    unsigned = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    expected_digest = hash_bytes(canonical_json_bytes(unsigned))
+    if receipt.get("receipt_sha256") != expected_digest:
+        raise ValueError("identity receipt hash mismatch")
     canonical = json.loads(canonical_json_bytes(receipt))
     content = json.dumps(canonical, indent=2, sort_keys=True) + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise FileExistsError(f"receipt path is a symlink: {path}")
+    if path.exists():
+        if path.read_text(encoding="utf-8") != content:
+            raise FileExistsError(f"receipt already exists with different content: {path}")
+        return path
     temporary_path: Path | None = None
     try:
         with NamedTemporaryFile(
@@ -1160,7 +1185,13 @@ def write_identity_receipt(path: Path, receipt: dict[str, Any]) -> Path:
             temporary.write(content)
             temporary.flush()
             os.fsync(temporary.fileno())
-        os.replace(temporary_path, path)
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            if path.is_symlink() or path.read_text(encoding="utf-8") != content:
+                raise FileExistsError(
+                    f"receipt already exists with different content: {path}"
+                ) from None
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)

@@ -12,6 +12,7 @@ import math
 from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 import pytest
 from typer.testing import CliRunner
@@ -22,7 +23,9 @@ from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.research.identity_sweep import (
     IDENTITY_REGISTRY,
     IDENTITY_SWEEP_SCHEMA_VERSION,
+    IdentitySpec,
     SyntheticBundle,
+    _max_abs_diff,
     catalog_identity_families,
     enumerate_catalog_identity_pairs,
     format_identity_table,
@@ -150,6 +153,12 @@ def test_write_identity_receipt_atomic_json(tmp_path: Path) -> None:
     assert len(payload["identities"]) == len(IDENTITY_REGISTRY)
     # No temp files left behind.
     assert list((tmp_path / "nested").glob("*.tmp")) == []
+    assert write_identity_receipt(out, receipt) == out
+    out.write_text("tampered\n")
+    with pytest.raises(FileExistsError, match="different content"):
+        write_identity_receipt(out, receipt)
+    with pytest.raises(ValueError, match="hash mismatch"):
+        write_identity_receipt(tmp_path / "forged.json", {**receipt, "n_passed": 999})
 
 
 def test_registry_completeness_vs_catalog_guards() -> None:
@@ -191,9 +200,31 @@ def test_sweep_rejects_degenerate_args() -> None:
     with pytest.raises(ValueError):
         run_identity_sweep(n_trials=0)
     with pytest.raises(ValueError):
+        run_identity_sweep(n_trials=1.5)
+    with pytest.raises(ValueError):
+        run_identity_sweep(n_trials=True)
+    with pytest.raises(ValueError):
         run_identity_sweep(registry=[])
+    invalid_tolerance = IdentitySpec(
+        "invalid", "test", "bad tolerance", float("nan"), lambda b: 0.0
+    )
+    with pytest.raises(ValueError, match="tolerances must be finite"):
+        run_identity_sweep(registry=[invalid_tolerance])
     with pytest.raises(ValueError):
         make_synthetic_bundle(1, n_days=5)
+
+
+def test_negative_residual_fails_instead_of_being_absorbed() -> None:
+    spec = IdentitySpec("negative", "test", "negative residual is invalid", 1.0, lambda b: -0.1)
+    receipt = run_identity_sweep(n_trials=1, registry=[spec])
+    assert receipt["all_passed"] is False
+    assert receipt["identities"][0]["verdict"] == "fail"
+    assert "non-negative" in receipt["identities"][0]["errors"][0]
+
+
+def test_identity_comparison_rejects_mismatched_missing_rows() -> None:
+    with pytest.raises(ValueError, match="mismatched finite rows"):
+        _max_abs_diff(np.array([1.0, np.nan]), np.array([1.0, 2.0]))
 
 
 def test_format_identity_table() -> None:
