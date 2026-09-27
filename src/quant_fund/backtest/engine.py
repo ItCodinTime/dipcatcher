@@ -199,6 +199,7 @@ def run_backtest(
     *,
     initial_nav: float = 1_000_000.0,
     risk_overlay: BookRiskOverlay | None = None,
+    fast: bool | None = None,
 ) -> BacktestResult:
     """`weights` columns: event_time, security_id, target_weight.
 
@@ -207,21 +208,35 @@ def run_backtest(
     row. The optional ``risk_overlay`` may scale or flatten those carried
     weights using prior-close NAV only. Names that do not mark today are
     targeted to 0 so the book can exit while a last print still exists.
+
+    ``fast`` pins the engine. ``None`` (default) auto-dispatches to the
+    vectorized ``run_backtest_fast`` replay only when it is semantically
+    complete for the workload. ``fast=True`` is the explicit contract: the
+    vectorized path runs or the call fails closed with ``ValueError`` —
+    an unsupported workload never silently degrades to the event loop.
+    ``fast=False`` pins the reference event loop for audit runs.
     """
-    if _fast_replay_panel_supported(bars, weights) and _fast_replay_is_complete(
-        config, risk_overlay
-    ):
+    if fast is not False:
         from quant_fund.backtest.fast_replay import run_backtest_fast
 
-        result = run_backtest_fast(
-            bars,
-            weights,
-            config,
-            initial_nav=initial_nav,
-        )
-        result.metrics["garch_risk_overlay_dates"] = 0
-        result.metrics["realized_garch_risk_overlay_dates"] = 0
-        return result
+        # fast=True skips the completeness probes: run_backtest_fast carries
+        # the same checks and fails closed with ValueError when the workload
+        # is outside the class it reproduces bit-identically — it never
+        # degrades silently to the event loop on an explicit request.
+        if fast is True or (
+            _fast_replay_panel_supported(bars, weights)
+            and _fast_replay_is_complete(config, risk_overlay)
+        ):
+            result = run_backtest_fast(
+                bars,
+                weights,
+                config,
+                initial_nav=initial_nav,
+                risk_overlay=risk_overlay,
+            )
+            result.metrics["garch_risk_overlay_dates"] = 0
+            result.metrics["realized_garch_risk_overlay_dates"] = 0
+            return result
     return _run_backtest_event_loop(
         bars,
         weights,
