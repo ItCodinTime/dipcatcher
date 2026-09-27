@@ -110,4 +110,4 @@ def dfm_forecast(fit: dict[str, Array | float]) -> Array:
     lam = np.asarray(fit["loadings"], dtype=float)
     a = np.asarray(fit["A"], dtype=float)
     f_last = np.asarray(fit["factors"], dtype=float)[-1]
-    return lam @ (a @ f_last)
+    return np.asarray(lam @ (a @ f_last), dtype=float)

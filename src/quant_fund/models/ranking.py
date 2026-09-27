@@ -171,7 +171,7 @@ class RidgeRanker(JoblibMixin):
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         x = np.where(np.isfinite(x), x, 0.0)
-        return self.model.predict(self.scaler.transform(x))
+        return np.asarray(self.model.predict(self.scaler.transform(x)), dtype=float)
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(
@@ -236,7 +236,7 @@ class NeuralRanker(RidgeRanker):
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         x = np.where(np.isfinite(x), x, 0.0)
-        return self.model.predict(self.scaler.transform(x))
+        return np.asarray(self.model.predict(self.scaler.transform(x)), dtype=float)
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(family="ranking", name="neural", version="v1", extra={"seed": self.seed})

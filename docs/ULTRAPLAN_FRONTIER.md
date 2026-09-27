@@ -1,8 +1,8 @@
 # ULTRAPLAN — Frontier upgrades for dipcatcher
 
 **Status:** active. **Created:** 2026-09-22. **Owner lane:** frontier expansion —
-supersedes nothing; absorbs the open tails of `MEGAPLAN_SOTA.md` (phases A–G),
-`MEGAPLAN_SHARPE5.md` (performance lane), and the `.dsh-24x7` industry-grade bar
+supersedes nothing; absorbs the open tails of [MEGAPLAN_SOTA.md](MEGAPLAN_SOTA.md) (phases A–G),
+[MEGAPLAN_SHARPE5.md](MEGAPLAN_SHARPE5.md) (performance lane), and the `.dsh-24x7` industry-grade bar
 into one ordered program.
 
 ## Mission
@@ -80,7 +80,7 @@ receipts/progress. ✅/🔄/⬜ track state; ❌ = attempted, honestly failed.
       v4-daily + h4f cells; assert challenger/target non-TimesFM columns
       bit-identical; archive pre-splice matrices.
 - [ ] P0.3 Contract-v2 re-merge all cells (`--bars-root data/raw/sources`),
-      n_boot 2000, fresh receipts; update `EVAL_REPORT_SOTA.md` §4.1 table.
+      n_boot 2000, fresh receipts; update [EVAL_REPORT_SOTA.md](EVAL_REPORT_SOTA.md) §4.1 table.
 - [ ] P0.4 Native-protocol crossover merge (`sota_eval_native.py --merge-parts
       .dsh-24x7/native/nd_*`) → §4.3 ordering table (path RankIC, H-step
       RankIC, vol MAE/R²) with disclosed deviations.
@@ -102,8 +102,13 @@ a `v5_*` fleet column on existing shards' protocol.
       trailing returns, BIC or fixed-K; the "heads not backbones" result
       predicts +2–4% CRPS in high-vol regimes). Closed-form mixture CRPS
       (Grimit et al. 2006 identity) — no sampling noise.
+      Head wired: `train distribution --model gmm` (`GMMDistribution`,
+      BIC over K∈{2,3,4} or fixed) + `gaussian_mixture_crps_1d` in
+      `models/mixture.py`. Fleet cell still open.
 - [ ] P1.2 `dip_skt` — Hansen/Fernández–Steel skew-t MLE (captures asymmetry
       that symmetric-t misses on crypto).
+      Head wired: `train distribution --model skew_t` (`SkewTDistribution`
+      wraps `models/skew_t.py` MLE + ppf). Fleet cell still open.
 - [ ] P1.3 `dip_qar` — quantile autoregression (Koenker–Xiao) direct per-τ
       fit; monotone-quantile enforced.
 - [ ] P1.4 `dip_conf_t` — conformalized Student-t: parametric base +
@@ -116,12 +121,20 @@ a `v5_*` fleet column on existing shards' protocol.
       asymmetry already present; quantile-level tail check.
 - [ ] P1.7 `dip_isotonic` — isotonic-recalibrated empirical (PIT-based
       recalibration on trailing window; cheap calibration challenger).
+      Head wired: `train distribution --model isotonic`
+      (`IsotonicPitDistribution` — PIT-quantile map recalibrating a
+      Gaussian base; empirical-base variant is vacuous, so the calibrated
+      parametric base carries the challenger role). Fleet cell still open.
 - [ ] P1.8 `dip_lgbm_q2` — LightGBM quantiles v2: richer causal feature set
       (realized-vol term structure, OHLC range, amount), Dask-free, ≤30
       features; keep warmup disclosure.
 - [ ] P1.9 Blend-search policy: `dip_blend` is empirical+parametric concat;
       add `dip_stack` — weights fit by *trailing-window* CRPS minimization
       (causal stacking, no lookahead).
+      Head wired: `train distribution --model stack` (`StackedDistribution` —
+      per-τ convex weights via SLSQP pinball minimization on the trailing
+      slice; empirical + Gaussian + skew-t bases; rearranged monotone).
+      Fleet cell still open.
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.
@@ -207,7 +220,7 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 ### P6 — Full code audit ("every file can be made better" — verify or fix)
 
 Audit order = blast radius. Each finding → fix + regression test, or written
-waiver in the audit log. Output: `docs/AUDIT_FRONTIER.md` ledger.
+waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
 
 - [ ] P6.1 Money paths: `simulated_broker.py`, `carry_engine.py`,
       `perp_engine.py`, `engine.py`, `sleeves.py`, `risk_gate.py`,
@@ -227,9 +240,11 @@ waiver in the audit log. Output: `docs/AUDIT_FRONTIER.md` ledger.
 - [ ] P6.6 Infra: `paper/*` (ledger atomicity, resume), `registry/`,
       `monitoring/` (drift, kill_switch), `api/app.py`, `cli/main.py`,
       `reporting/tearsheet.py`, `utils/*` (hashing, seeds, reproducibility).
-- [ ] P6.7 Scale hygiene: `research/catalog.py` is 10.7k LOC — assess
-      generated-vs-handwritten, dead code, duplication across
-      `metrics/*`/`models/*` overlaps.
+- [x] P6.7 Scale hygiene: `research/catalog.py` was 10.7k LOC — split into
+      the `research/catalog/` package by theme (`_helpers`, `constants`,
+      `predicates`, `session`/`candle`/`kyle`/`northset` honesty checkers,
+      `consistency`, `families`); `__init__.py` re-exports all 444 public
+      names so `from quant_fund.research.catalog import X` is unchanged.
 - [ ] P6.8 Perf sweep: cProfile top-20 hot paths across engine, features,
       scoring; fix only where semantics bit-identical.
 - [ ] P6.9 Test-quality audit: mutation spot-checks on money-path

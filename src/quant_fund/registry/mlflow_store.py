@@ -44,7 +44,7 @@ def log_run(
         mlflow.set_tags(tags)
         if artifact_dir is not None and Path(artifact_dir).exists():
             mlflow.log_artifacts(str(artifact_dir))
-        return run.info.run_id
+        return str(run.info.run_id)
 
 
 def set_alias(run_id: str, alias: str, *, promotion: dict[str, Any] | None = None) -> None:

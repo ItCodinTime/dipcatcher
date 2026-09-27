@@ -1,0 +1,38 @@
+{
+  "kind": "phase1_evidence_index",
+  "schema_version": 1,
+  "created_at": "2026-09-25T06:51:44.931677+00:00",
+  "git_revision": "c564646b14849d72c5891a90034d8e26361fe0f5",
+  "git_worktree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "benchmark_catalog_version": 2,
+  "runs": [
+    {
+      "kind": "real_benchmark",
+      "path": "../real_benchmark/us_wide_20260925",
+      "config_path": "../../../configs/real_benchmark_us_wide.json",
+      "config_sha256": "2eb3a9e979121b6c749612278269386fb5a82cfc8a3fba3b839110361bb736b5",
+      "manifest_sha256": "a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384",
+      "validation_sha256": "84af6ddc95a59a11452ea5eddad00d5ab4224dc67eb3de3e75b10707d021f93b",
+      "test_sha256": "d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01"
+    },
+    {
+      "kind": "net_tournament",
+      "path": "../net_tournament/us_wide_20260925",
+      "config_path": "../../../configs/net_tournament.json",
+      "config_sha256": "b5aa826c080914c8f57360f2973d2492aed9113c0765038bdef7eab1f5e571aa",
+      "manifest_sha256": "4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13",
+      "validation_sha256": "c2be98ce3e855af08819d7273b7df6b5c087a7b5107b57535ad8437a07d692c7",
+      "test_sha256": "a7ea519e504eee2b2239fec69d163e7d8bbcd9b57bcbb2ddc49b74ea2211dbbc"
+    },
+    {
+      "kind": "net_tournament",
+      "path": "../cost_aware_tournament/us_wide_20260925",
+      "config_path": "../../../configs/cost_aware_tournament.json",
+      "config_sha256": "4538d4a67d5dbca91b14d98b41e0450b7a9e7a307d2708d67f2da9b7e5741c52",
+      "manifest_sha256": "7dab6ee1eb6b39c47e85f048c8f9584d5c6b08f214ef3c6a4cb908228be7ca90",
+      "validation_sha256": "972af75021460e68c463f6d02fbdd879a0f053a4beb15ff800569e1fda35cc71",
+      "test_sha256": null
+    }
+  ],
+  "receipt_sha256": "0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204"
+}

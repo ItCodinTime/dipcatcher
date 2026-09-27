@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import numpy as np
 import pandas as pd
@@ -235,4 +235,7 @@ def load_local_predictor(
     model = Kronos.from_pretrained(str(model_dir), local_files_only=True)
     model.eval()
     tokenizer.eval()
-    return UpstreamPredictor(model, tokenizer, device=device, max_context=max_context, clip=clip)
+    return cast(
+        KronosPredictor,
+        UpstreamPredictor(model, tokenizer, device=device, max_context=max_context, clip=clip),
+    )

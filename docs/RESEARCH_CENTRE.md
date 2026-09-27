@@ -45,7 +45,7 @@ BH-FDR is **not** one table. **Calibration** (H4, H4b, H7, H8, H9, H11, H12): fa
 
 ## Data labels
 
-See [`docs/DATA_SOURCE_LABELS.md`](DATA_SOURCE_LABELS.md) for SYNTHETIC vs public/file labeling and fail-closed promotion rules.
+See [DATA_SOURCE_LABELS.md](DATA_SOURCE_LABELS.md) for SYNTHETIC vs public/file labeling and fail-closed promotion rules.
 
 ## Overnight honesty (2026-09-15 → 16)
 

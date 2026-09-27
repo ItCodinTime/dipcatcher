@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from quant_fund.metrics.liquidity_extra import hui_heubel_ratio, martin_ratio, ulcer_index
+from quant_fund.metrics.liquidity_extra import (
+    hui_heubel_ratio,
+    martin_ratio,
+    ulcer_index,
+)
 
 
 def test_hui_heubel_decreases_with_volume() -> None:
@@ -31,3 +35,25 @@ def test_fail_closed() -> None:
         hui_heubel_ratio(np.array([100.0]), np.array([1.0]), 1e6)  # too short
     with pytest.raises(ValueError):
         martin_ratio(0.01 + np.zeros(50))  # no drawdown -> undefined
+
+
+def test_ulcer_includes_starting_wealth_and_martin_uses_percent_units() -> None:
+    returns = np.array([-0.10, 1.0 / 9.0])
+    assert ulcer_index(returns) == pytest.approx(10.0 / np.sqrt(2.0))
+    annual_excess_pct = 100.0 * returns.mean() * 252.0
+    assert martin_ratio(returns) == pytest.approx(
+        annual_excess_pct / ulcer_index(returns)
+    )
+
+
+def test_liquidity_and_drawdown_invalid_inputs_rejected() -> None:
+    prices = np.array([100.0, 101.0])
+    volume = np.array([1000.0, 1000.0])
+    for shares in (float("nan"), float("inf")):
+        with pytest.raises(ValueError):
+            hui_heubel_ratio(prices, volume, shares)
+    for returns in (np.array([-1.0, 0.1]), np.array([-1.1, 0.1])):
+        with pytest.raises(ValueError):
+            ulcer_index(returns)
+    with pytest.raises(ValueError):
+        martin_ratio(np.array([-0.01, 0.02]), periods_per_year=0.0)

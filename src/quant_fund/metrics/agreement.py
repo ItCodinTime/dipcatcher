@@ -25,13 +25,15 @@ def _confusion(y1: IntArray, y2: IntArray) -> tuple[Array, Array]:
     b = np.asarray(y2).ravel()
     if a.size != b.size or a.size < 2:
         raise ValueError("y1 and y2 must be aligned with >= 2 observations")
+    if a.dtype.kind not in "iub" or b.dtype.kind not in "iub":
+        raise ValueError("labels must be finite integer or boolean categories")
     cats = np.unique(np.concatenate([a, b]))
     idx = {c: i for i, c in enumerate(cats)}
     k = cats.size
     conf = np.zeros((k, k))
     for x, y in zip(a, b, strict=True):
         conf[idx[x], idx[y]] += 1.0
-    return conf / conf.sum(), cats.astype(float)
+    return conf / conf.sum(), cats
 
 
 def cohen_kappa(y1: IntArray, y2: IntArray) -> float:

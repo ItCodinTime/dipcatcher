@@ -260,4 +260,4 @@ def ets_forecast(fit: ETSFit, h: int) -> Array:
     m = fit.period
     # Seasonal state is indexed by phase ``t % m``; continue from the last obs.
     seas = np.array([fit.season[(fit.n_obs - 1 + int(k)) % m] for k in steps], dtype=float)
-    return base * seas if fit.seasonal == "mul" else base + seas
+    return np.asarray(base * seas if fit.seasonal == "mul" else base + seas, dtype=float)

@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import optimize as opt
 from scipy.special import digamma, gammaln, logsumexp
+from scipy.stats import norm
 
 Array = NDArray[np.float64]
 
@@ -40,7 +41,7 @@ def _log_norm_pdf(x: Array, mu: Array, cov: Array) -> Array:
         raise ValueError("covariance not positive definite")
     diff = x - mu
     quad = np.einsum("ij,jk,ik->i", diff, np.linalg.pinv(cov), diff)
-    return -0.5 * (d * math.log(2 * math.pi) + logdet + quad)
+    return np.asarray(-0.5 * (d * math.log(2 * math.pi) + logdet + quad), dtype=float)
 
 
 def _log_t_pdf(x: Array, mu: Array, cov: Array, nu: float) -> Array:
@@ -50,11 +51,12 @@ def _log_t_pdf(x: Array, mu: Array, cov: Array, nu: float) -> Array:
         raise ValueError("covariance not positive definite")
     diff = x - mu
     quad = np.einsum("ij,jk,ik->i", diff, np.linalg.pinv(cov), diff)
-    return (
+    return np.asarray(
         gammaln((nu + d) / 2.0)
         - gammaln(nu / 2.0)
         - 0.5 * (d * math.log(nu * math.pi) + logdet)
-        - 0.5 * (nu + d) * np.log1p(quad / nu)
+        - 0.5 * (nu + d) * np.log1p(quad / nu),
+        dtype=float,
     )
 
 
@@ -174,10 +176,12 @@ def fit_t_mixture(
             nk, lu, ub = float(n_k[j]), log_u_bar, u_bar
 
             def nu_obj(nu: float, nk: float = nk, lu: float = lu, ub: float = ub) -> float:
-                return -(
-                    -nk * gammaln(nu / 2.0)
-                    + nk * (nu / 2.0) * math.log(nu / 2.0)
-                    + (nu / 2.0) * nk * (lu - ub)
+                return float(
+                    -(
+                        -nk * gammaln(nu / 2.0)
+                        + nk * (nu / 2.0) * math.log(nu / 2.0)
+                        + (nu / 2.0) * nk * (lu - ub)
+                    )
                 )
 
             res = opt.minimize_scalar(nu_obj, bounds=(3.0, 300.0), method="bounded")
@@ -209,7 +213,7 @@ def mixture_bic(fit: dict[str, Array], n: int, diag: bool = False) -> float:
     if "nus" in fit:
         p += k
     ll = float(fit["loglik"][-1])
-    return -2.0 * ll + p * math.log(n)
+    return float(-2.0 * ll + p * math.log(n))
 
 
 def select_mixture_k(
@@ -261,3 +265,74 @@ def mixing_density_stats(fit: dict[str, Array]) -> dict[str, float]:
         "mean_gap": float(np.mean(gaps)) if gaps else 0.0,
         "resp_entropy": ent,
     }
+
+
+def gaussian_mixture_cdf_1d(fit: dict[str, Array], x: Array) -> Array:
+    """CDF of a fitted univariate Gaussian mixture evaluated at ``x``."""
+    w, mu, sd = _mixture_params_1d(fit)
+    xx = np.asarray(x, dtype=float).reshape(-1)
+    z = (xx[:, None] - mu[None, :]) / sd[None, :]
+    out: Array = (norm.cdf(z) * w[None, :]).sum(axis=1)
+    return np.asarray(out, dtype=float)
+
+
+def gaussian_mixture_ppf_1d(fit: dict[str, Array], taus: Array) -> Array:
+    """Quantiles of a fitted univariate Gaussian mixture by CDF inversion."""
+    w, mu, sd = _mixture_params_1d(fit)
+    tt = np.asarray(taus, dtype=float).reshape(-1)
+    if tt.size == 0 or (tt <= 0.0).any() or (tt >= 1.0).any():
+        raise ValueError("taus must lie in (0, 1)")
+    span = max(12.0 * float(sd.max()), 1e-3)
+    lo, hi = float(mu.min() - span), float(mu.max() + span)
+    out = np.empty(tt.size)
+    for i, t in enumerate(tt):
+
+        def obj(v: float, tau: float = float(t)) -> float:
+            return float(gaussian_mixture_cdf_1d(fit, np.array([v]))[0] - tau)
+
+        out[i] = float(opt.brentq(obj, lo, hi, xtol=1e-10))
+    return out
+
+
+def _norm_abs_dev(y: Array, mu: Array, sd: Array) -> Array:
+    """E|X - y| for X ~ N(mu, sd^2), vectorized over (mu, sd) x y."""
+    yy = np.asarray(y, dtype=float).reshape(-1)
+    mu_v = np.asarray(mu, dtype=float).reshape(-1)
+    sd_v = np.maximum(np.asarray(sd, dtype=float).reshape(-1), 1e-12)
+    delta = (yy[:, None] - mu_v[None, :]) / sd_v[None, :]
+    per: Array = sd_v[None, :] * (
+        math.sqrt(2.0 / math.pi) * np.exp(-0.5 * delta**2) + delta * (2.0 * norm.cdf(delta) - 1.0)
+    )
+    return np.asarray(per, dtype=float)
+
+
+def gaussian_mixture_crps_1d(fit: dict[str, Array], y: Array) -> Array:
+    """Closed-form CRPS of a univariate Gaussian mixture (Grimit et al. 2006).
+
+    CRPS(F, y) = sum_i w_i E|X_i - y| - 0.5 sum_ij w_i w_j E|X_i - X_j'|,
+    where for normals each term is the standard E|X - y| kernel evaluated
+    at (mu_i - mu_j, sqrt(sd_i^2 + sd_j^2), y=0).
+    """
+    w, mu, sd = _mixture_params_1d(fit)
+    yy = np.asarray(y, dtype=float).reshape(-1)
+    if not np.isfinite(yy).all():
+        raise ValueError("y must be finite")
+    first = _norm_abs_dev(yy, mu, sd) @ w
+    sd_pair = np.maximum(np.sqrt(sd[:, None] ** 2 + sd[None, :] ** 2), 1e-12)
+    delta = (mu[None, :] - mu[:, None]) / sd_pair
+    second_pair = sd_pair * (
+        math.sqrt(2.0 / math.pi) * np.exp(-0.5 * delta**2) + delta * (2.0 * norm.cdf(delta) - 1.0)
+    )
+    half = 0.5 * float(w @ second_pair @ w)
+    return first - half
+
+
+def _mixture_params_1d(fit: dict[str, Array]) -> tuple[Array, Array, Array]:
+    w = np.asarray(fit["weights"], dtype=float).reshape(-1)
+    mu = np.asarray(fit["means"], dtype=float).reshape(-1)
+    sd = np.sqrt(np.asarray(fit["covs"], dtype=float).reshape(w.size, -1)[:, 0])
+    if w.size != mu.size or w.size == 0:
+        raise ValueError("malformed mixture fit")
+    if (w < 0).any() or abs(float(w.sum()) - 1.0) > 1e-3:
+        raise ValueError("mixture weights must be nonnegative and sum to 1")
+    return w, mu, np.maximum(sd, 1e-12)

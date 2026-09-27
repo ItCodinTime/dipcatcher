@@ -2403,7 +2403,7 @@ def _apply_forecast_interval_caps(
             low = mid
         else:
             high = mid
-    return nearest + low * (capped - nearest)
+    return np.asarray(nearest + low * (capped - nearest), dtype=float)
 
 
 def optimize_asof(

@@ -50,11 +50,11 @@ def max_sharpe_weights(mu: Array, cov: Array, long_only: bool = True) -> Array:
         var = float(w @ c @ w)
         if var <= 0.0:
             return 0.0
-        return -float(w @ m) / np.sqrt(var)
+        return float(-float(w @ m) / np.sqrt(var))
 
     res = minimize(neg_sharpe, x0, method="SLSQP", bounds=_bounds(n, long_only), constraints=cons)
     w = np.asarray(res.x, dtype=float)
-    return w / w.sum()
+    return np.asarray(w / w.sum(), dtype=float)
 
 
 def min_variance_weights(cov: Array, long_only: bool = True) -> Array:
@@ -72,7 +72,7 @@ def min_variance_weights(cov: Array, long_only: bool = True) -> Array:
         constraints=cons,
     )
     w = np.asarray(res.x, dtype=float)
-    return w / w.sum()
+    return np.asarray(w / w.sum(), dtype=float)
 
 
 def resampled_weights(

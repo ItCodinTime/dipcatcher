@@ -31,3 +31,12 @@ def test_fail_closed() -> None:
         sharpe_difference_test(np.ones(10), np.ones(10))  # too short
     with pytest.raises(ValueError):
         sharpe_difference_test(np.zeros(50), np.zeros(50))  # degenerate variance
+
+
+@pytest.mark.parametrize("lag", [-1, 50, 1.5, True])
+def test_invalid_hac_lag_rejected(lag: object) -> None:
+    rng = np.random.default_rng(3)
+    a = rng.normal(size=50)
+    b = rng.normal(size=50)
+    with pytest.raises(ValueError, match="lag"):
+        sharpe_difference_test(a, b, lag=lag)  # type: ignore[arg-type]

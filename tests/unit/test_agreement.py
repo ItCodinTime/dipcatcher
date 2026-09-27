@@ -36,3 +36,13 @@ def test_fail_closed() -> None:
         cohen_kappa(np.array([1]), np.array([1]))  # too few
     with pytest.raises(ValueError):
         weighted_kappa(np.array([0, 1, 2]), np.array([0, 1, 2]), weights="cubic")
+
+
+@pytest.mark.parametrize(
+    "invalid", [np.array([0.0, 1.5]), np.array([0.0, np.nan]), np.array([0.0, np.inf])]
+)
+def test_invalid_numeric_labels_rejected(invalid: np.ndarray) -> None:
+    with pytest.raises(ValueError, match="labels"):
+        cohen_kappa(np.array([0, 1]), invalid)
+    with pytest.raises(ValueError, match="labels"):
+        weighted_kappa(np.array([0, 1]), invalid)

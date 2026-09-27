@@ -88,7 +88,7 @@ def fit_svi(
         b = abs(b)
         rho = np.clip(rho, -0.999, 0.999)
         sig = max(float(sig), 1e-4)
-        return svi_total_variance(kk, a, b, rho, m, sig) - w
+        return np.asarray(svi_total_variance(kk, a, b, rho, m, sig) - w, dtype=float)
 
     bounds = ([-1.0, 0.0, -0.999, -2.0, 1e-4], [2.0, 5.0, 0.999, 2.0, 5.0])
     sol = least_squares(resid, np.asarray(x0, dtype=float), bounds=bounds, max_nfev=400)

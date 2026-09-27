@@ -79,7 +79,7 @@ def _predict_meta(
         beta += step
         if float(np.linalg.norm(step)) < 1e-8:
             break
-    return 1.0 / (1.0 + np.exp(-np.clip(query @ beta, -30, 30)))
+    return np.asarray(1.0 / (1.0 + np.exp(-np.clip(query @ beta, -30, 30))), dtype=float)
 
 
 def metalabel_multiplier(

@@ -6,13 +6,24 @@ modeled costs to choose target weights. It can keep cash or leave positions
 unchanged when the expected benefit of trading is too small.
 
 This is an engineering implementation, not measured market uplift. The tracked
-real-price Parquet snapshot remains unavailable in this workspace. Generated
-price tests verify mechanics; they do not establish profitability. The existing
-vendor universe also has survivorship bias and an already-inspected holdout.
+real-price Parquet snapshot can be recovered from a normal Git checkout.
+Generated-price tests verify mechanics; they do not establish profitability.
+The existing vendor universe has survivorship bias and an already-inspected
+holdout. A rejected CLARABEL solve records its status, iteration count and
+solve time when available, with `weights_accepted=false`. The allocator tries
+only mathematically equivalent formulations and never substitutes rejected or
+merely feasible weights for an optimal solve.
+
+The 2026-09-25 frozen snapshot run is a blocked validation: both cost-aware
+variants returned `optimal_inaccurate`. Its sealed failure and control ledgers
+are in `data/metadata/research/phase1_20260925.md`, linked by
+`data/metadata/research/phase1_evidence_index.json`. There is no selected
+candidate and no test receipt. The test command below applies only after a
+new frozen run has selected a validation candidate.
 
 ## Run a matched comparison
 
-After preparing the benchmark manifest as described in REAL_DATA_BENCHMARK.md:
+After preparing the benchmark manifest as described in [REAL_DATA_BENCHMARK.md](REAL_DATA_BENCHMARK.md):
 
 ```bash
 PYTHONPATH=src python -m quant_fund.research.net_tournament prepare \
@@ -91,7 +102,9 @@ training provenance for those inputs remain the caller's responsibility.
   the problem infeasible, it fails without relaxing limits or substituting
   target/previous weights.
 - CLARABEL must return `optimal`. Returned weights are checked against every
-  constraint with a maximum absolute residual of `1e-7` NAV fraction. Tiny
+  original constraint with a maximum absolute residual of `1e-7` NAV fraction.
+  The solver's own constraint expressions and the unscaled objective are checked
+  again after accepting a candidate. Tiny
   changes below `1e-8` are snapped to previous weights and rechecked. These are
   numerical tolerances, not an economic minimum-order policy.
 - Next-open prices can differ from planning prices. Replay still caps fills and
@@ -109,6 +122,28 @@ status and constraint residual. Tournament receipts hash allocator code and
 record CVXPY, CLARABEL and SciPy versions in addition to the prior runtime stamp.
 Old receipts require their original code/runtime; create a new run for this
 implementation.
+
+## Numerical solve protocol
+
+The frozen September 25 receipt remains a failed run. The later numerical repair
+tries these formulations in this fixed order, with fresh CVXPY variables and
+CLARABEL gap and feasibility tolerances of `1e-8` on every attempt:
+
+| Formulation | Exact change from the original model |
+|---|---|
+| `original` | Original objective scaled by 100. |
+| `bounded_capacity` | Limit each nonnegative trade variable by `min(capacity, turnover_limit)` and scale the objective by 1. `sum(delta) <= turnover_limit` already implies each bound. |
+| `factored_risk` | Write the same PSD quadratic risk as a squared eigenfactor norm. |
+| `scaled_cost` | Express the same transaction-cost epigraph in units 10,000 times larger, then divide it in the objective and constraints. |
+
+Only an `optimal` status may supply weights. The returned weights must satisfy
+the original capacity, turnover, buffered exposure, and cash limits when costs
+are recomputed in NAV fractions. The recomputed objective must agree with the
+solver objective within `1e-7`. Failed attempts, solver statuses, and selected
+formulation are recorded in each allocation diagnostic. No risk, cost, or
+feasibility threshold is relaxed. Four market-derived numerical fixtures in
+`tests/fixtures/cost_allocation/` exercise the previously failing decisions;
+their success measures solver reliability, not a market edge.
 
 ## Validation and research basis
 

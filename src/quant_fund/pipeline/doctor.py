@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
+import os
 import re
 from pathlib import Path
 
@@ -16,7 +18,14 @@ from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION, BENCHMARK_FAM
 from quant_fund.research.verify import verify_research_artifact
 
 _REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver", "universe"})
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_SHA256: re.Pattern[str] | None = None
+
+
+def _sha256_pattern() -> re.Pattern[str]:
+    global _SHA256
+    if _SHA256 is None:
+        _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+    return _SHA256
 
 
 def doctor(config_path: str | None = None) -> dict[str, object]:
@@ -80,7 +89,9 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
                         inside_root = path.resolve().is_relative_to(root_resolved)
                     except OSError:
                         inside_root = False
-                    valid = valid and inside_root and _SHA256.fullmatch(digest) is not None
+                    valid = (
+                        valid and inside_root and _sha256_pattern().fullmatch(digest) is not None
+                    )
                     valid = (
                         valid and isinstance(rows, int) and not isinstance(rows, bool) and rows >= 0
                     )
@@ -120,4 +131,8 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
     status["robinhood_plus_sizes_book"] = bool(
         cfg.robinhood_plus.enabled and cfg.robinhood_plus.blend_weight > 0.0
     )
+    # fx-1 harness status — presence flags only, never secret values.
+    status["fx1_package"] = "ok" if importlib.util.find_spec("fx1") else "missing"
+    status["fx1_moonshot_key"] = "set" if os.environ.get("MOONSHOT_API_KEY") else "unset"
+    status["fx1_signing_key"] = "set" if os.environ.get("FX1_SIGNING_KEY") else "unset"
     return status
