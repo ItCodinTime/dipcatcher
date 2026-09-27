@@ -41,6 +41,8 @@ def test_synth_and_verify() -> None:
     assert candle_ofi_qp_slope_ic_implies_mean_honesty_errors(receipt) == []
     src = Path("src/quant_fund/research/verify.py").read_text(encoding="utf-8")
     assert "candle_all_finite_rate_prefix_honesty_errors" in src
-    assert "ic_bid_log_price_slope" in Path("src/quant_fund/research/catalog.py").read_text(
-        encoding="utf-8"
+    catalog_src = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(Path("src/quant_fund/research/catalog").glob("*.py"))
     )
+    assert "ic_bid_log_price_slope" in catalog_src
