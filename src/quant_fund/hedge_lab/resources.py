@@ -72,33 +72,47 @@ def assert_disk_budget(extra_bytes: int = 0, *, root: Path | None = None) -> dic
 
 def physical_memory() -> tuple[int, int]:
     """Return ``(total_bytes, available_bytes)`` for physical RAM."""
-    try:
-        import ctypes
-
-        class MemoryStatusEx(ctypes.Structure):
-            _fields_ = [
-                ("dwLength", ctypes.c_ulong),
-                ("dwMemoryLoad", ctypes.c_ulong),
-                ("ullTotalPhys", ctypes.c_ulonglong),
-                ("ullAvailPhys", ctypes.c_ulonglong),
-                ("ullTotalPageFile", ctypes.c_ulonglong),
-                ("ullAvailPageFile", ctypes.c_ulonglong),
-                ("ullTotalVirtual", ctypes.c_ulonglong),
-                ("ullAvailVirtual", ctypes.c_ulonglong),
-                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
-            ]
-
-        status = MemoryStatusEx()
-        status.dwLength = ctypes.sizeof(MemoryStatusEx)
-        windll = getattr(ctypes, "windll", None)
-        if windll is not None and windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-            return int(status.ullTotalPhys), int(status.ullAvailPhys)
-    except Exception:
-        pass
+    windows = _windows_physical_memory()
+    if windows is not None:
+        return windows
     page = int(os.sysconf("SC_PAGE_SIZE")) if hasattr(os, "sysconf") else 4096
     phys = int(os.sysconf("SC_PHYS_PAGES")) if hasattr(os, "sysconf") else 0
     total = page * phys
     return total, total
+
+
+def _windows_physical_memory() -> tuple[int, int] | None:
+    """Read physical RAM via GlobalMemoryStatusEx. ``None`` when that API is absent."""
+    try:
+        import ctypes
+    except ImportError:
+        return None
+    windll = getattr(ctypes, "windll", None)
+    if windll is None:
+        return None
+
+    class MemoryStatusEx(ctypes.Structure):
+        _fields_ = [
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+    status = MemoryStatusEx()
+    status.dwLength = ctypes.sizeof(MemoryStatusEx)
+    try:
+        ok = bool(windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)))
+    except (OSError, AttributeError, TypeError, ValueError, ctypes.ArgumentError):
+        return None
+    if not ok:
+        return None
+    return int(status.ullTotalPhys), int(status.ullAvailPhys)
 
 
 def ram_plan() -> dict[str, int | float]:
@@ -186,10 +200,9 @@ def cap_blas_threads(fraction: float = 0.6) -> int:
         os.environ[key] = str(n)
     try:
         import torch
-
-        torch.set_num_threads(n)
-    except Exception:
-        pass
+    except ImportError:
+        return n
+    torch.set_num_threads(n)
     return n
 
 
