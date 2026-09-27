@@ -1,0 +1,202 @@
+{
+ "generated_at": "2026-09-27T10:58:40.156720+00:00",
+ "generator": "web/scripts/export_fixtures.py",
+ "hash_matches": {
+  "54d2687facc424c40db20205e3d6ea19f0ad6bf25abce0233eeb322cac3f4c99": "src/quant_fund/metrics/returns.py"
+ },
+ "honesty": {
+  "live_pnl_claim": false,
+  "note": "All fixtures are verbatim copies or mechanical exports of committed research evidence. The app renders stored fields; it makes no performance or live-trading claims.",
+  "research_only": true
+ },
+ "receipts": [
+  {
+   "created_at": "2026-09-22T15:44:07.498331+00:00",
+   "evidence_level": "historical_exploratory_tail_reused",
+   "file": "receipts/adaptive_mix_20asset_1d_20260922.json",
+   "id": "adaptive_mix_20asset_1d_20260922",
+   "live_pnl_claim": false,
+   "n_hash_matches": 1,
+   "n_hashes": 46,
+   "research_only": true,
+   "schema": "adaptive_mix_replay.v1"
+  },
+  {
+   "created_at": "2026-09-22T15:44:08.787931+00:00",
+   "evidence_level": "historical_development_only",
+   "file": "receipts/adaptive_mix_band_search_20asset_1d_20260922.json",
+   "id": "adaptive_mix_band_search_20asset_1d_20260922",
+   "live_pnl_claim": false,
+   "n_hash_matches": 1,
+   "n_hashes": 46,
+   "research_only": true,
+   "schema": "adaptive_mix_band_search.v1"
+  },
+  {
+   "created_at": "2026-09-22T15:43:37.776452+00:00",
+   "evidence_level": "historical_development_only",
+   "file": "receipts/basis_pair_candidate_20asset_1d_20260922.json",
+   "id": "basis_pair_candidate_20asset_1d_20260922",
+   "live_pnl_claim": false,
+   "n_hash_matches": 1,
+   "n_hashes": 64,
+   "research_only": true,
+   "schema": "basis_pair_candidate.v1"
+  },
+  {
+   "created_at": "2026-09-22T15:37:20.535305+00:00",
+   "evidence_level": "development_pre_cost_diagnostic",
+   "file": "receipts/basis_reversion_screen_20asset_1d_20260922.json",
+   "id": "basis_reversion_screen_20asset_1d_20260922",
+   "live_pnl_claim": false,
+   "n_hash_matches": 0,
+   "n_hashes": 41,
+   "research_only": true,
+   "schema": "basis_reversion_screen.v1"
+  },
+  {
+   "created_at": "2026-09-25T14:18:53.413467+00:00",
+   "evidence_level": null,
+   "file": "receipts/dip_bench_crypto_1d_20260925.json",
+   "id": "dip_bench_crypto_1d_20260925",
+   "live_pnl_claim": false,
+   "n_hash_matches": 0,
+   "n_hashes": 11,
+   "research_only": true,
+   "schema": "fx1.dip_bench/v1"
+  },
+  {
+   "created_at": null,
+   "evidence_level": null,
+   "file": "receipts/incumbent_bench_qlib.json",
+   "id": "incumbent_bench_qlib",
+   "live_pnl_claim": false,
+   "n_hash_matches": 0,
+   "n_hashes": 4,
+   "research_only": true,
+   "schema": "incumbent_bench.v1"
+  }
+ ],
+ "repo_revision": "46517ac92629c6da10f56f1de88b679c804cbdef",
+ "strategies": [
+  {
+   "data_source": "real",
+   "equity_file": "equity/carry.json",
+   "has_equity": true,
+   "id": "carry",
+   "kind": "equity_backed",
+   "name": "Carry champion",
+   "segments": [
+    "dev",
+    "full",
+    "holdout"
+   ],
+   "stats_file": "strategies/carry.json"
+  },
+  {
+   "data_source": "real",
+   "equity_file": "equity/carry_expanded.json",
+   "has_equity": true,
+   "id": "carry_expanded",
+   "kind": "equity_backed",
+   "name": "Carry champion (expanded universe)",
+   "segments": [
+    "dev",
+    "full",
+    "holdout"
+   ],
+   "stats_file": "strategies/carry_expanded.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_adaptive",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix replay \u2014 adaptive allocator",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_adaptive.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_equal",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix replay \u2014 equal allocator",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_equal.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_sleeve_carry",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix sleeve \u2014 carry",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_sleeve_carry.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_sleeve_fade",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix sleeve \u2014 fade",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_sleeve_fade.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_sleeve_momentum",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix sleeve \u2014 momentum",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_sleeve_momentum.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_sleeve_sweep",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix sleeve \u2014 sweep",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_sleeve_sweep.json"
+  },
+  {
+   "data_source": "binance_usdtm_perp",
+   "equity_file": null,
+   "has_equity": false,
+   "id": "amix_sleeve_trend",
+   "kind": "receipt_stats",
+   "name": "Adaptive mix sleeve \u2014 trend",
+   "segments": [
+    "development",
+    "historical_tail_exploratory"
+   ],
+   "stats_file": "strategies/amix_sleeve_trend.json"
+  }
+ ]
+}

@@ -1,0 +1,64 @@
+{
+ "data_source": "real",
+ "equity_file": "equity/carry.json",
+ "extras": {},
+ "id": "carry",
+ "kind": "equity_backed",
+ "live_pnl_claim": false,
+ "name": "Carry champion",
+ "provenance": {
+  "equity": {
+   "first_date": "2020-01-01",
+   "last_date": "2026-09-21",
+   "nav_final": 3706248.575703,
+   "rows": 2456
+  },
+  "note": "Committed research artifact; simulated NAV path, not live trading performance.",
+  "source_files": [
+   "artifacts/carry_champion.json",
+   "artifacts/carry_equity_full.parquet"
+  ]
+ },
+ "research_only": true,
+ "segments": {
+  "dev": {
+   "cagr": 0.2976985029076864,
+   "funding_events_dropped": 0,
+   "funding_net": 2866199.1728540817,
+   "liquidation_count": 0,
+   "margin_rejects": 0,
+   "max_drawdown": -0.011363994886583462,
+   "mean_turnover": 0.02360243543541068,
+   "n": 1826,
+   "risk_gate_rejects": 0,
+   "sharpe": 8.14839034798606,
+   "total_return": 2.6795232782363625
+  },
+  "full": {
+   "cagr": 0.21519212343103056,
+   "funding_events_dropped": 0,
+   "funding_net": 3038760.2879906017,
+   "liquidation_count": 0,
+   "margin_rejects": 0,
+   "max_drawdown": -0.014847266795056435,
+   "mean_turnover": 0.024658971246547638,
+   "n": 2455,
+   "risk_gate_rejects": 0,
+   "sharpe": 6.8764345551029145,
+   "total_return": 2.7062485757028907
+  },
+  "holdout": {
+   "cagr": 0.020608053191244702,
+   "funding_events_dropped": 0,
+   "funding_net": 77767.22244682207,
+   "liquidation_count": 0,
+   "margin_rejects": 0,
+   "max_drawdown": -0.012993204422082516,
+   "mean_turnover": 0.03089819931125755,
+   "n": 628,
+   "risk_gate_rejects": 0,
+   "sharpe": 2.043030859504863,
+   "total_return": 0.03569501449773882
+  }
+ }
+}
