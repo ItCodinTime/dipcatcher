@@ -83,6 +83,10 @@ jobs:
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -99,6 +103,15 @@ jobs:
           uv pip install --python .venv/bin/python --no-deps dist/*.whl
           .venv/bin/fx1 --help
           .venv/bin/dipcatcher --help
+      - name: Attest build provenance (SLSA)
+        # Main pushes only: fork PRs cannot mint id-tokens, and provenance
+        # matters at release boundaries, not per-PR.
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
 
   container:
     runs-on: ubuntu-latest
