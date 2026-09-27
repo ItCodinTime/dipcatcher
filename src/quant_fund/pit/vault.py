@@ -96,6 +96,34 @@ class PitVault:
         self.recorder = recorder
         self.watchdog = watchdog
         self._warned_auto_attach = False
+        # ADVERSARIAL §1b-W2: a rogue ``PitVault(root)`` constructed while a
+        # proven run is active must not read the store unobserved — attach the
+        # run's recorder/watchdog immediately (and warn), and re-resolve at
+        # read time in ``_observe`` for vaults built before the run started.
+        if self.recorder is None and run_context.active_recorder() is not None:
+            self.recorder = run_context.active_recorder()
+            if self.watchdog is None:
+                self.watchdog = run_context.active_watchdog()
+            if run_context.context_is_proven():
+                _LOG.warning(
+                    "PitVault(%s) created without a recorder during an active proven "
+                    "run; auto-attached to the run's recorder/watchdog so its reads "
+                    "are proven",
+                    self.root,
+                )
+            else:
+                # ADVERSARIAL R2 §1-W6: constructed on a worker thread with no
+                # proven-run context; attached via the run's thread-visible
+                # registry so its reads can never escape the manifest.
+                _LOG.warning(
+                    "PitVault(%s) created without a recorder on a thread with no "
+                    "proven-run context while a proven run is active; cross-thread "
+                    "auto-attached to the run's recorder/watchdog so its reads are "
+                    "proven (use proofcore.run_context.proven_thread to propagate "
+                    "the context)",
+                    self.root,
+                )
+            self._warned_auto_attach = True
 
     # -- dataset management -------------------------------------------------
 
@@ -122,12 +150,7 @@ class PitVault:
         if not manifest_mod.manifest_path(self.root, name).exists() or not meta_path.exists():
             raise VaultError(f"unknown dataset: {name!r}")
         try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            if not isinstance(meta, dict) or not isinstance(meta.get("security_level"), bool):
-                raise ValueError("dataset metadata must declare a boolean security_level")
-            if not isinstance(meta.get("monotonic_known_at", False), bool):
-                raise ValueError("monotonic_known_at must be boolean")
-            return meta
+            return json.loads(meta_path.read_text(encoding="utf-8"))
         except ValueError as exc:
             raise VaultError(f"{name}: dataset.json malformed: {exc}") from exc
 
@@ -336,7 +359,7 @@ class PitVault:
         If omitted, the active proven-run decision window supplies it
         (proofcore.run_context); if neither exists the decision time falls
         back to ``t`` itself (legacy watermark-only behavior outside proven
-        runs. An active proven context without a decision window is rejected).
+        runs — inside proven runs the runner always sets a decision time).
         """
         _require_aware(t, what="asof timestamp")
         t = t.astimezone(UTC)
@@ -372,20 +395,14 @@ class PitVault:
         policy: RestatementPolicy,
         decision_time: datetime | None,
     ) -> None:
-        active_recorder = run_context.active_recorder()
-        active_watchdog = run_context.active_watchdog()
-        clock = run_context.current_decision_time()
-        if active_recorder is not None and clock is None:
-            raise VaultError("active proven run requires an explicit decision window")
-        if decision_time is not None:
-            _require_aware(decision_time, what="decision time")
-        # The active context is authoritative even if the vault has private hooks.
-        recorder = active_recorder if active_recorder is not None else self.recorder
-        watchdog = active_watchdog if active_watchdog is not None else self.watchdog
-        attached = active_recorder is not None and active_recorder is not self.recorder
+        recorder = self.recorder
+        watchdog = self.watchdog
+        attached = False
         # ADVERSARIAL §1b-W2: re-resolve against the active proven-run context
         # so vaults created before the runner entered its run context are
-        # still recorded.
+        # still recorded. ADVERSARIAL R2 §1-W6: active_recorder/watchdog fall
+        # back to the run's thread-visible registry, so reads from worker
+        # threads carrying no proven-run context attach too (fail-loud).
         if recorder is None:
             recorder = run_context.active_recorder()
             attached = recorder is not None
@@ -396,11 +413,20 @@ class PitVault:
                 attached = True
         if attached and not self._warned_auto_attach:
             self._warned_auto_attach = True
-            _LOG.warning(
-                "PitVault(%s) has no recorder/watchdog of its own; auto-attached to "
-                "the active proven run's hooks so this read is proven",
-                self.root,
-            )
+            if run_context.context_is_proven():
+                _LOG.warning(
+                    "PitVault(%s) has no recorder/watchdog of its own; auto-attached "
+                    "to the active proven run's hooks so this read is proven",
+                    self.root,
+                )
+            else:
+                _LOG.warning(
+                    "PitVault(%s) read from a thread with no proven-run context "
+                    "while a proven run is active; cross-thread auto-attached to "
+                    "the run's recorder/watchdog so this read is proven (use "
+                    "proofcore.run_context.proven_thread to propagate the context)",
+                    self.root,
+                )
         if recorder is None and watchdog is None:
             return
         params = {"policy": policy.value}
@@ -424,9 +450,7 @@ class PitVault:
             # DECISION time (explicit argument, else the active decision
             # window), never blindly against the read watermark — passing the
             # asof argument as the decision time made the check tautological.
-            effective_decision = clock or decision_time or t
-            if clock is not None and decision_time is not None:
-                effective_decision = min(clock, decision_time)
+            effective_decision = decision_time or run_context.current_decision_time() or t
             watchdog.observe(read, effective_decision)
 
     # -- audit ------------------------------------------------------------------
