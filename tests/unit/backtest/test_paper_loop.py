@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import polars as pl
+import pytest
 
 from quant_fund.config.loader import load_config
 from quant_fund.execution.simulated_broker import SimulatedBroker
@@ -13,6 +14,8 @@ from quant_fund.paper.loop import (
     _require_valuation_marks,
     run_paper_loop,
 )
+
+pytestmark = pytest.mark.smoke
 
 
 def test_bounded_valuation_marks_expire_stale_carry_forward(tmp_path) -> None:

@@ -154,6 +154,7 @@ markers = [
     "network: tests that require internet (disabled by default)",
     "slow: longer integration tests",
     "synthetic: uses synthetic market data",
+    "smoke: paper ledger and analytics tests collected by the CI smoke job",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

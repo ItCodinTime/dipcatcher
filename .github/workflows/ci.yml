@@ -151,14 +151,7 @@ jobs:
       - name: Sync
         run: uv sync --frozen --all-groups
       - name: Collect paper and analytics tests
-        run: |
-          uv run pytest --collect-only -q \
-            tests/unit/test_ledger_schema.py \
-            tests/unit/test_wave6_analytics.py \
-            tests/property/test_nav_resume_identity.py \
-            tests/unit/test_paper_loop.py \
-            tests/unit/test_paper_resume_promotion.py \
-            tests/unit/test_analytics.py
+        run: uv run pytest --collect-only -q -m smoke
       - name: Synthetic research smoke
         run: uv run dipcatcher research --config configs/research.yaml
       - name: Data lineage health
