@@ -136,6 +136,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
+      - Receipt v2: RECEIPT_V2.md
       - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
       - Formal verification: FORMAL_VERIFICATION.md

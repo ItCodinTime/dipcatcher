@@ -49,6 +49,7 @@ from quant_fund.cli.research_cmds import (
     research,
     execution_sensitivity_cmd,
     verify_identities,
+    verify_receipt_cmd,
     fleet,
 )
 from quant_fund.cli.book_cmds import (
@@ -161,6 +162,7 @@ __all__ = [
     "research",
     "execution_sensitivity_cmd",
     "verify_identities",
+    "verify_receipt_cmd",
     "fleet",
     "session_book_cmd",
     "vendor_book_map_cmd",

@@ -273,6 +273,11 @@ def fleet(
         None, help="Base seed (default: train.random_seed from config)."
     ),
     out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = fleet_eval.v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """Run the SYNTHETIC distribution-challenger fleet and write a receipt.
 
@@ -305,10 +310,34 @@ def fleet(
         seed=base_seed,
         taus=cfg.quantiles.levels,
     )
-    path = write_fleet_receipt(receipt, out_dir)
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_fleet_receipt(receipt, out_dir, receipt_version=receipt_version)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
+
+
+@app.command("verify-receipt")
+def verify_receipt_cmd(
+    path: Path = typer.Argument(..., help="Receipt JSON file to verify."),
+) -> None:
+    """Verify a sealed receipt: structure plus hash consistency.
+
+    ``receipt.v2`` envelopes are validated against the pydantic schema and
+    their sealed digest, environment fingerprint, code-map digest, and (for
+    known kinds) dataset/params digests are re-derived. Older v1 receipts get
+    a ``receipt_sha256`` seal check (canonical or strict JSON convention);
+    ``fleet_eval.v1`` payloads get their writer's contract too. Exits non-zero
+    on any violation — fail-closed.
+    """
+    import json
+
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    result = verify_receipt_file(path)
+    typer.echo(json.dumps(result, indent=2))
+    raise typer.Exit(code=0 if result["valid"] else 1)
 
 
 __all__ = [
@@ -316,4 +345,5 @@ __all__ = [
     "fleet",
     "research",
     "verify_identities",
+    "verify_receipt_cmd",
 ]
