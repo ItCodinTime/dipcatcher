@@ -228,6 +228,15 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P2.7 Classical neural baselines: N-BEATS / N-HiTS / DLinear via a small
       harness (Darts or direct) — closes the "only foundation models"
       objection.
+      Heads landed: `NBeatsDistribution` / `NHiTsDistribution` in
+      `models/nbeats.py` — direct deterministic CPU torch implementations
+      (no Darts), doubly-residual N-BEATS blocks and multi-rate N-HiTS
+      pooling, pinball loss on the scoring tau grid, seeded + single-thread.
+      Wired into `FLEET_HEAD_REGISTRY` (`fleet --models nbeats,nhits`);
+      predict emits the last-window one-step quantile vector tiled per row,
+      warmup (`lookback`) disclosed in metadata. DLinear already exists as
+      `models/dlinear.py` (sota_protocol path baseline). Fleet cell still
+      open.
 - [ ] P2.8 Patch-Transformer reference line per arXiv:2602.06909 finding
       (generic transformer ~SOTA when pretrained at scale) — likely
       infeasible to pretrain; document as bounded.

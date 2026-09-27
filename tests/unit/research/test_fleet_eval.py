@@ -407,6 +407,8 @@ def test_fleet_registry_covers_default_heads() -> None:
         "conf_t",
         "hstep_t",
         "hstep_emp",
+        "nbeats",
+        "nhits",
     }
     for factory in factories.values():
         assert factory().metadata().family == "distribution"
