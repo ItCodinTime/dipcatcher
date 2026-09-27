@@ -543,6 +543,65 @@ def corpus_ingest_source(
     )
 
 
+@app.command("infer")
+def infer_cmd(
+    config: Path = typer.Option(..., "--config", help="Harness YAML or JSON config."),
+) -> None:
+    """Run batch or walk-forward inference and write a forecast parquet.
+
+    The fx-1 forecaster is external: ``model.name=fx-1`` requires
+    ``model.entrypoint``. Reference names ``dummy-zero`` and ``dummy-momentum``
+    are not fx-1. This command does not train and does not place orders.
+    """
+    from fx1.forecast.config import load_harness_config
+    from fx1.forecast.runner import run_inference
+
+    result = run_inference(load_harness_config(config))
+    typer.echo(
+        json.dumps(
+            {
+                "forecasts": str(result.parquet_path),
+                "metadata": str(result.meta_path),
+                "n_rows": result.n_rows,
+                "model_name": result.metadata["model_name"],
+                "model_role": result.metadata["model_role"],
+                "data_label": result.metadata["data_label"],
+                "research_only": True,
+                "live_pnl_claim": False,
+            },
+            indent=2,
+        )
+    )
+
+
+@app.command("backtest")
+def backtest_cmd(
+    config: Path = typer.Option(..., "--config", help="Harness YAML or JSON config."),
+    forecasts: Path | None = typer.Option(
+        None,
+        "--forecasts",
+        help="Forecast parquet. Defaults to inference.output_parquet in the config.",
+    ),
+) -> None:
+    """Score forecasts and a placeholder signal map.
+
+    Reports forecast scores (IC, rank IC, hit rate, MAE, RMSE) and research
+    diagnostics of the placeholder mapping. Does not place orders. Run
+    ``fx1 infer`` first when the forecast parquet is not already on disk.
+    """
+    from fx1.forecast.config import load_harness_config
+    from fx1.forecast.runner import run_signal_evaluation
+
+    cfg = load_harness_config(config)
+    frame = None
+    if forecasts is not None:
+        import polars as pl
+
+        frame = pl.read_parquet(forecasts)
+    report = run_signal_evaluation(cfg, forecasts=frame)
+    typer.echo(json.dumps(report, indent=2))
+
+
 @app.command("doctor")
 def doctor(root: Path = typer.Option(Path("."), help="Repo root to inspect.")) -> None:
     """fx-1 readiness status (presence flags only — never secret values)."""
