@@ -142,6 +142,7 @@ nav:
       - Research references: RESEARCH_REFERENCES.md
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
+      - Data lake: DATA_LAKE.md
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
   - Research:
@@ -169,6 +170,7 @@ nav:
       - Paper and shadow: PAPER_SHADOW.md
   - fx-1:
       - Overview: FX1.md
+      - Forecast harness: fx1_harness.md
       - Architecture: FX1_ARCHITECTURE.md
       - Training: FX1_TRAINING.md
       - Data: FX1_DATA.md
