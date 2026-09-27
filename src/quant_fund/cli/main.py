@@ -96,6 +96,9 @@ from quant_fund.cli.research_cmds import (
     validate as validate,
 )
 from quant_fund.cli.research_cmds import (
+    verify_identities as verify_identities,
+)
+from quant_fund.cli.research_cmds import (
     verify_research as verify_research,
 )
 from quant_fund.cli.train_cmds import (
