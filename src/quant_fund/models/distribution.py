@@ -605,3 +605,97 @@ class IsotonicPitDistribution(JoblibMixin):
             version="v1",
             extra={"mu": self.mu_, "sig": self.sig_},
         )
+
+
+class StackedDistribution(JoblibMixin):
+    """Causal stacked blend of base distribution quantiles (dip_stack).
+
+    Per-tau convex weights minimize mean pinball loss on the trailing slice
+    of the fit window: bases are fit on the leading slice, weights are fit
+    on the trailing slice, so no row influences both the base quantiles and
+    its own weight-fitting loss. Bases that fail to fit are dropped; if
+    fewer than two remain the head falls back to the surviving base's
+    quantiles. Output is rearranged to enforce monotone quantiles.
+    """
+
+    def __init__(self, taus: list[float], seed: int = 0) -> None:
+        self.taus = taus
+        self.seed = seed
+        self.q_bases_: NDArray[np.float64] | None = None  # (n_taus, n_bases)
+        self.w_: NDArray[np.float64] | None = None  # (n_taus, n_bases)
+        self.q_: NDArray[np.float64] | None = None
+
+    def _base_quantiles(self, yy: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Stack unconditional base quantile vectors as (n_taus, n_bases)."""
+        from scipy.stats import norm
+
+        cols = [np.quantile(yy, self.taus)]
+        mu, sig = float(yy.mean()), float(yy.std(ddof=1))
+        if np.isfinite(sig) and sig > 0.0:
+            cols.append(mu + sig * norm.ppf(np.asarray(self.taus, dtype=float)))
+        try:
+            p = skew_t_fit(yy)
+            cols.append(
+                np.array([skew_t_ppf(t, p["nu"], p["lam"], p["mu"], p["sigma"]) for t in self.taus])
+            )
+        except (ValueError, RuntimeError):
+            pass
+        return np.stack(cols, axis=1)
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> StackedDistribution:
+        from scipy.optimize import minimize
+
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        if yy.size < 60:
+            raise ValueError("StackedDistribution requires >= 60 finite observations")
+        n_cal = max(int(0.34 * yy.size), 16)
+        y_base, y_cal = yy[:-n_cal], yy[-n_cal:]
+        q_bases = self._base_quantiles(y_base)
+        n_bases = q_bases.shape[1]
+        if n_bases == 1:
+            self.q_bases_ = q_bases
+            self.w_ = np.ones((len(self.taus), 1))
+            self.q_ = q_bases[:, 0]
+            return self
+        tt = np.asarray(self.taus, dtype=float)
+        w = np.empty((tt.size, n_bases))
+        for j, tau in enumerate(tt):
+            qj = q_bases[j, :]
+
+            def obj(
+                v: NDArray[np.float64], tau: float = float(tau), qj: NDArray[np.float64] = qj
+            ) -> float:
+                e = y_cal - float(v @ qj)
+                return float(np.mean(np.maximum(tau * e, (tau - 1.0) * e)))
+
+            res = minimize(
+                obj,
+                np.full(n_bases, 1.0 / n_bases),
+                method="SLSQP",
+                bounds=[(0.0, 1.0)] * n_bases,
+                constraints=[{"type": "eq", "fun": lambda v: float(v.sum()) - 1.0}],
+            )
+            wj = np.asarray(res.x if res.success else np.full(n_bases, 1.0 / n_bases))
+            s = float(wj.sum())
+            w[j] = wj / s if s > 0.0 else np.full(n_bases, 1.0 / n_bases)
+        q = (w * q_bases).sum(axis=1)
+        self.q_bases_ = q_bases
+        self.w_ = w
+        self.q_ = rearrange_quantiles(q.reshape(1, -1))[0]
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.q_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        return np.tile(self.q_, (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="distribution",
+            name="stack",
+            version="v1",
+            extra={"n_bases": 0 if self.q_bases_ is None else int(self.q_bases_.shape[1])},
+        )

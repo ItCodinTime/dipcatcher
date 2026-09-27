@@ -79,6 +79,7 @@ from quant_fund.models.distribution import (
     IsotonicPitDistribution,
     LinearQuantileDistribution,
     SkewTDistribution,
+    StackedDistribution,
     TreeQuantileDistribution,
 )
 from quant_fund.models.quantile_bandit import QuantileThompson
@@ -819,6 +820,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "skew_t",
             "gmm",
             "isotonic",
+            "stack",
         },
         "distribution",
     )
@@ -839,6 +841,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "skew_t": SkewTDistribution(taus),
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
             "isotonic": IsotonicPitDistribution(taus),
+            "stack": StackedDistribution(taus, seed=config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")
