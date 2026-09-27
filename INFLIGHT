@@ -106,3 +106,15 @@ canon wave 8 (anytime-valid + calibration + multivariate scores, 2026-09-27):
     rates (Zaffran et al. 2022 ICML/NeurIPS).
   108 tests green (7+12+40+27+22); ruff + ruff-format + mypy clean on all 10 files.
   No commits. Research/infrastructure only — no live broker / vendor MD / live_pnl_claim.
+
+canon wave 9 (EnbPI + WATCH, 2026-09-27):
+  next slice of docs/SOTA_CANON_ROADMAP_2026_09.md. NGBoost/QRF, leaky-oracle
+  red-team, and the regime gate stay open.
+  - models/enbpi.py: Xu & Xie (ICML 2021 / TPAMI 2023, arXiv:2010.09107) ensemble
+    batch prediction intervals. LOO aggregate, β-optimized signed-residual
+    quantiles, batch residual slide, non-overlapping block bootstrap.
+  - metrics/watch.py: Prinster, Han, Liu & Saria (ICML 2025, arXiv:2505.04608)
+    weighted conformal test martingales. Vovk simple/mean jumper, conservative
+    weighted p-values, NN X-CTM, Gaussian density-ratio plugin (not the paper's
+    neural classifier), sticky Ville alarms, concept / benign / extreme labels.
+  Research/infrastructure only — no live broker / vendor MD / live_pnl_claim.
