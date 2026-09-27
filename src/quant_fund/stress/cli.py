@@ -8,8 +8,6 @@ from pathlib import Path
 import typer
 
 from quant_fund.stress.catalog import CRISIS_CATALOG
-from quant_fund.stress.report import build_stress_report, render_html, render_markdown
-from quant_fund.stress.strategy import load_return_panel, load_strategy
 
 stress_app = typer.Typer(
     help="Research stress and scenario engine. Simulation only. Does not submit orders."
@@ -41,6 +39,11 @@ def report_cmd(
     n_boot: int = typer.Option(200, help="Bootstrap draws for VaR intervals."),
 ) -> None:
     """Write a stress report for one research strategy."""
+    # Report construction pulls numpy, scipy, and sklearn. Keep that off the
+    # ``dipcatcher --help`` import path; the crises command only needs the catalog.
+    from quant_fund.stress.report import build_stress_report, render_html, render_markdown
+    from quant_fund.stress.strategy import load_return_panel, load_strategy
+
     loaded = load_strategy(strategy)
     panel_path = returns
     if panel_path is None and loaded.returns_csv:
