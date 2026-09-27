@@ -29,7 +29,7 @@ import json
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import NotRequired, TypedDict, cast
+from typing import Literal, NotRequired, TypedDict, cast
 
 import polars as pl
 
@@ -83,14 +83,13 @@ class IngestPaths(TypedDict):
 
 
 class BacktestMetrics(TypedDict):
-    """Metrics attached to a research backtest.
+    """Execution and control diagnostics from a simulated replay.
 
-    Nested diagnostic maps stay mappings of plain objects. Scalar keys are
-    the stable contract. ``live_pnl_claim`` is always false.
+    These are not proper research scores or evidence of trading performance.
+    The engine's accounting frames remain available on :class:`BacktestRun`;
+    performance summaries are deliberately absent from this public mapping.
     """
 
-    total_return: float
-    sharpe: float
     n: int
     risk_gate_rejects: int
     cash_rejects: int
@@ -99,18 +98,15 @@ class BacktestMetrics(TypedDict):
     research_only: bool
     live_pnl_claim: bool
     data_source: str
+    claim: Literal["execution_diagnostic_only"]
+    turnover_bps_cost: float
     garch_risk_overlay_dates: int
     realized_garch_risk_overlay_dates: int
-    max_drawdown: NotRequired[float]
     mean_turnover: NotRequired[float]
     commission: NotRequired[float]
     spread: NotRequired[float]
     impact: NotRequired[float]
-    flag_high_sharpe: NotRequired[bool]
-    analytics: NotRequired[dict[str, object]]
-    analytics_export: NotRequired[dict[str, object]]
     label: NotRequired[str]
-    book_risk_overlay: NotRequired[dict[str, object]]
 
 
 class ResearchReceipt(TypedDict):
@@ -154,8 +150,8 @@ class ResearchVerification(TypedDict):
 class BacktestRun:
     """Research backtest output.
 
-    ``equity`` and ``fills`` are the engine frames. ``metrics`` is that
-    run's metrics mapping after the research-only contract is checked.
+    ``equity`` and ``fills`` are the engine's accounting frames. ``metrics``
+    contains execution and control diagnostics, not research scores.
     Equality is disabled because frame ``==`` is not a boolean.
     """
 
@@ -484,17 +480,17 @@ def _research_run(notebook: ResearchNotebook) -> ResearchRun:
 
 
 def _as_backtest_metrics(raw: object) -> BacktestMetrics:
-    """Check the research-only metrics contract and return the same mapping."""
+    """Expose only execution and control diagnostics from engine metrics."""
     if not isinstance(raw, dict):
         raise TypeError("backtest metrics must be a dict")
-    if raw.get("research_only") is not True:
+    if not all(isinstance(key, str) for key in raw):
+        raise TypeError("backtest metric keys must be strings")
+    values = cast(dict[str, object], raw)
+    if values.get("research_only") is not True:
         raise ValueError("backtest metrics must set research_only=True")
-    if raw.get("live_pnl_claim") is not False:
+    if values.get("live_pnl_claim") is not False:
         raise ValueError("backtest metrics must set live_pnl_claim=False")
-    for key in ("total_return", "sharpe"):
-        value = raw.get(key)
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise TypeError(f"backtest metrics {key} must be a number")
+    counts: dict[str, int] = {}
     for key in (
         "n",
         "risk_gate_rejects",
@@ -503,13 +499,49 @@ def _as_backtest_metrics(raw: object) -> BacktestMetrics:
         "garch_risk_overlay_dates",
         "realized_garch_risk_overlay_dates",
     ):
-        value = raw.get(key)
+        value = values.get(key)
         if isinstance(value, bool) or not isinstance(value, int):
             raise TypeError(f"backtest metrics {key} must be an int")
-    if not isinstance(raw.get("implementation_shortfall"), dict):
+        counts[key] = value
+    shortfall = values.get("implementation_shortfall")
+    if not isinstance(shortfall, dict) or not all(isinstance(key, str) for key in shortfall):
         raise TypeError("implementation_shortfall must be a dict")
-    if not isinstance(raw.get("data_source"), str):
+    data_source = values.get("data_source")
+    if not isinstance(data_source, str):
         raise TypeError("data_source must be a str")
-    # The engine mapping is the runtime object. The checks above are the
-    # boundary between that mapping and the public TypedDict.
-    return cast(BacktestMetrics, raw)
+    turnover_bps_cost = values.get("turnover_bps_cost")
+    if isinstance(turnover_bps_cost, bool) or not isinstance(turnover_bps_cost, (int, float)):
+        raise TypeError("turnover_bps_cost must be a number")
+    diagnostics: BacktestMetrics = {
+        "n": counts["n"],
+        "risk_gate_rejects": counts["risk_gate_rejects"],
+        "cash_rejects": counts["cash_rejects"],
+        "kill_switch_halts": counts["kill_switch_halts"],
+        "implementation_shortfall": cast(dict[str, object], dict(shortfall)),
+        "research_only": True,
+        "live_pnl_claim": False,
+        "data_source": data_source,
+        "claim": "execution_diagnostic_only",
+        "turnover_bps_cost": float(turnover_bps_cost),
+        "garch_risk_overlay_dates": counts["garch_risk_overlay_dates"],
+        "realized_garch_risk_overlay_dates": counts["realized_garch_risk_overlay_dates"],
+    }
+    for key in ("mean_turnover", "commission", "spread", "impact"):
+        if key in values:
+            number = values[key]
+            if isinstance(number, bool) or not isinstance(number, (int, float)):
+                raise TypeError(f"backtest metrics {key} must be a number")
+            if key == "mean_turnover":
+                diagnostics["mean_turnover"] = float(number)
+            elif key == "commission":
+                diagnostics["commission"] = float(number)
+            elif key == "spread":
+                diagnostics["spread"] = float(number)
+            else:
+                diagnostics["impact"] = float(number)
+    if "label" in values:
+        label = values["label"]
+        if not isinstance(label, str):
+            raise TypeError("backtest metrics label must be a str")
+        diagnostics["label"] = label
+    return diagnostics

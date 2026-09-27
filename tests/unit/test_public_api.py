@@ -302,7 +302,12 @@ def test_run_backtest_matches_engine_frames(tmp_path: Path) -> None:
     assert published.source_note == engine.source_note
     assert published.metrics["research_only"] is True
     assert published.metrics["live_pnl_claim"] is False
-    assert published.metrics["total_return"] == engine.metrics["total_return"]
+    assert published.metrics["claim"] == "execution_diagnostic_only"
+    assert published.metrics["turnover_bps_cost"] == engine.metrics["turnover_bps_cost"]
+    assert not {"sharpe", "total_return", "max_drawdown", "flag_high_sharpe"} & set(
+        published.metrics
+    )
+    assert "total_return" in engine.metrics
     assert published.equity["nav"][0] == 110_000.0
 
 
