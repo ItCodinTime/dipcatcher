@@ -21,8 +21,13 @@ class Lake:
         frame.write_parquet(path)
         return path
 
-    def read_parquet(self, rel: str) -> pl.DataFrame:
-        return pl.read_parquet(self.root / rel)
+    def read_parquet(self, rel: str, columns: list[str] | None = None) -> pl.DataFrame:
+        """Memory-map a lake parquet file.
+
+        ``columns`` projects before the frame is materialized. Omit it to read
+        every stored column, which is what existing callers do.
+        """
+        return pl.read_parquet(self.root / rel, columns=columns, memory_map=True)
 
     def exists(self, rel: str) -> bool:
         return (self.root / rel).exists()

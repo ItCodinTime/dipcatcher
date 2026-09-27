@@ -146,6 +146,7 @@ nav:
   - Data sources:
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
+      - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
       - Northset: NORTHSET.md
@@ -153,6 +154,7 @@ nav:
       - Real-data benchmark: REAL_DATA_BENCHMARK.md
       - Net-return tournament: NET_RETURN_TOURNAMENT.md
       - Cost-aware construction: COST_AWARE_CONSTRUCTION.md
+      - Differentiable backtest: DIFFBACKTEST.md
       - GARCH benchmark: GARCH_BENCHMARK.md
       - Evaluation report: EVAL_REPORT_SOTA.md
       - Prospective journal: PROSPECTIVE_SOTA.md
@@ -171,11 +173,14 @@ nav:
       - Model cards: MODEL_CARDS.md
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
+      - Scenario Monte Carlo: MC_ENGINE.md
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Deterministic simulation: DETERMINISTIC_SIMULATION.md
   - fx-1:
       - Overview: FX1.md
+      - Forecast harness: fx1_harness.md
       - Architecture: FX1_ARCHITECTURE.md
       - Training: FX1_TRAINING.md
       - Data: FX1_DATA.md
@@ -220,6 +225,7 @@ nav:
       - "ADR-035: Discrete HMM": decisions/035-discrete-hmm-slp3.md
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
+      - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
   - API reference:
       - api/index.md
       - Data: api/data.md
@@ -227,6 +233,9 @@ nav:
       - Validation: api/validation.md
       - Metrics: api/metrics.md
       - research.verify: api/research_verify.md
+  - Proofcore:
+      - Overview: proofcore/README.md
+      - Migration: proofcore/MIGRATION.md
   - Archive:
       - archive.md
       - Implementation plan: IMPLEMENTATION_PLAN.md
