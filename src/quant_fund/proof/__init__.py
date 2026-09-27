@@ -1,10 +1,8 @@
-"""Proof-carrying backtester (PROOFCORE W2, DESIGN.md §5).
+"""Proof bundle construction and verification primitives (PROOFCORE W2).
 
-Every proven run emits a signed, hash-chained proof bundle; the independent
-verifier re-derives every hash AND recomputes headline metrics from the
-trade-log bytes (A1 F2 fix). Heavy dependencies (backtest engine, metrics)
-stay behind ``__getattr__`` so ``import quant_fund.proof`` stays cheap and
-acyclic (§1.3 layering contract).
+The runner and deterministic replay fail closed until explicit decision-time
+vault reads exist. Heavy dependencies stay behind ``__getattr__`` so importing
+this package remains cheap and acyclic.
 """
 
 from __future__ import annotations
@@ -14,7 +12,6 @@ from typing import Any
 from quant_fund.proofcore.contracts import ProofError, ProofVerificationError
 
 __all__ = [
-    "ASOF_SENTINEL",
     "DataAccessRecorder",
     "HmacSha256Signer",
     "InMemoryRecorder",
@@ -33,7 +30,6 @@ __all__ = [
 ]
 
 _LAZY = {
-    "ASOF_SENTINEL": ("quant_fund.proof.runner", "ASOF_SENTINEL"),
     "DataAccessRecorder": ("quant_fund.proof.recorder", "DataAccessRecorder"),
     "HmacSha256Signer": ("quant_fund.proof.sign", "HmacSha256Signer"),
     "InMemoryRecorder": ("quant_fund.proof.recorder", "InMemoryRecorder"),

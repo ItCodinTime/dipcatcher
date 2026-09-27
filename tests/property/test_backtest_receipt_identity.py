@@ -1,8 +1,7 @@
-"""A3 #6 / §5.7: double-run bundle identity + tamper evasion.
+"""Synthetic bundle identity and tamper-evasion correctness checks.
 
-Same config + same data + same seed ⇒ identical bundle_id and byte-identical
-canonical bundles except ``created_utc``. Any tampering with committed bytes
-makes verification fail loudly with the correct machine-readable reason.
+Same inputs and seed yield the same bundle identity. These bundle-builder
+tests do not claim a causal historical run; that runner fails closed.
 """
 
 from __future__ import annotations
@@ -12,35 +11,15 @@ import json
 import time
 
 import polars as pl
-import pytest
 
-from quant_fund.config.models import AppConfig
 from quant_fund.proof.bundle import canonical_bundle_bytes, sidecar_paths
-from quant_fund.proof.recorder import InMemoryRecorder
-from quant_fund.proof.runner import run_backtest_proven
 from quant_fund.proof.verify import verify_bundle
-from tests.unit.proof_fake_vault import make_fake_vault, mint_synthetic_bundle
+from tests.unit.proof_fake_vault import mint_synthetic_bundle
 
 
 def _run(tmp_path, *, seed: int = 123):
-    """One proven run in a fresh tmp dir; returns (bundle, bundle_dir).
-
-    Engine-coupled: the engine import chain needs the full repo env (mlflow).
-    """
-    pytest.importorskip("mlflow")
-    pytest.importorskip("pyarrow")
-    recorder = InMemoryRecorder()
-    vault = make_fake_vault(recorder)
-    bundle_dir = tmp_path / "proofs"
-    bundle = run_backtest_proven(
-        AppConfig(),
-        seed=seed,
-        pit_root=tmp_path / "pit",
-        bundle_dir=bundle_dir,
-        vault=vault,
-        recorder=recorder,
-    )
-    return bundle, bundle_dir
+    """Build one synthetic bundle in a fresh directory."""
+    return mint_synthetic_bundle(tmp_path, seed=seed)
 
 
 def _canon(path) -> dict:
@@ -50,9 +29,8 @@ def _canon(path) -> dict:
 def test_double_run_bundle_identity(tmp_path_factory) -> None:
     """Same config + same data + same seed => identical bundle_id.
 
-    Runs run_backtest_proven twice in fresh tmp dirs (seeds pinned, synthetic
-    vault fixture), asserts byte-identical canonical bundles except
-    created_utc, and identical metrics_recompute.
+    Builds the same synthetic inputs twice, with a pinned seed, and compares
+    canonical bundle bytes apart from created_utc.
     """
     bundle_a, dir_a = _run(tmp_path_factory.mktemp("run-a"))
     time.sleep(0.01)  # force a distinct wall clock; identity must survive it
@@ -136,30 +114,18 @@ def test_tamper_recorded_read_fails(tmp_path) -> None:
     assert "bundle_id:self_hash_mismatch" in result.reasons
 
 
-def test_replay_identity(tmp_path) -> None:
-    """--replay: re-run with the recorded seed/config -> identical identity."""
-    pytest.importorskip("mlflow")
-    pytest.importorskip("pyarrow")
+def test_replay_fails_closed_without_causal_runner(tmp_path) -> None:
+    """A bundle hash check never masquerades as historical replay evidence."""
     from quant_fund.proof.replay import replay_bundle
 
-    recorder = InMemoryRecorder()
-    vault = make_fake_vault(recorder)
-    bundle_dir = tmp_path / "proofs"
-    bundle = run_backtest_proven(
-        AppConfig(),
-        seed=777,
-        pit_root=tmp_path / "pit",
-        bundle_dir=bundle_dir,
-        vault=vault,
-        recorder=recorder,
-    )
+    bundle, bundle_dir = _run(tmp_path, seed=777)
     ok, detail = replay_bundle(
         bundle_dir / "bundles" / f"{bundle.bundle_id}.json",
         bundle_dir=bundle_dir,
         pit_root=tmp_path / "pit",
-        vault=make_fake_vault(InMemoryRecorder()),
     )
-    assert ok, detail
+    assert not ok
+    assert detail == "runner_unavailable:per_decision_asof_not_implemented"
 
 
 def test_signal_and_trade_logs_parse(tmp_path) -> None:

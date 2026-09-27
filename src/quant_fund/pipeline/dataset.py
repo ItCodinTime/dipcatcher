@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime
 from pathlib import Path
@@ -26,14 +27,36 @@ from quant_fund.schemas.errors import PointInTimeError
 from quant_fund.utils.hashing import hash_file
 
 # Process-local cache: avoid re-reading gold parquet on every asof date. The
-# cache key includes content digests, not only mtimes, so an in-place artifact
-# replacement cannot silently reuse stale research inputs. File metadata is a
-# cheap first-level guard; a full digest is recomputed only after metadata moves.
+# cache key is a full content digest. Stat fields plus a bounded head/tail
+# sample decide when that digest is recomputed, so a same-size rewrite that
+# leaves st_mtime_ns unchanged cannot reuse a stale research input when the
+# sampled bytes change. Unchanged artifacts stay off the full-file hash.
 _PANEL_CACHE: dict[tuple[str, str, str, str], pl.DataFrame] = {}
-_FILE_DIGEST_CACHE: dict[Path, tuple[tuple[int, int, int, int, int], str]] = {}
+_FileSignature = tuple[int, int, int, int, int, str]
+_FILE_DIGEST_CACHE: dict[Path, tuple[_FileSignature, str]] = {}
+# Files at or below this size are covered in full. Larger artifacts sample
+# both ends (parquet footers sit in the tail) so the hot path does not reread
+# the whole gold file on every panel lookup.
+_CONTENT_SAMPLE_BYTES = 65_536
 
 
-def _file_signature(path: Path) -> tuple[int, int, int, int, int]:
+def _cheap_content_digest(path: Path, *, size: int) -> str:
+    """Hash at most 64KiB from each end of ``path``.
+
+    The result is a cache invalidator, not the published artifact digest.
+    """
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        head = handle.read(_CONTENT_SAMPLE_BYTES)
+        digest.update(head)
+        if size > _CONTENT_SAMPLE_BYTES:
+            handle.seek(max(size - _CONTENT_SAMPLE_BYTES, len(head)))
+            digest.update(handle.read(_CONTENT_SAMPLE_BYTES))
+    digest.update(int(size).to_bytes(8, "little", signed=False))
+    return digest.hexdigest()
+
+
+def _file_signature(path: Path) -> _FileSignature:
     metadata = os.stat(path)
     return (
         metadata.st_dev,
@@ -41,6 +64,7 @@ def _file_signature(path: Path) -> tuple[int, int, int, int, int]:
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
+        _cheap_content_digest(path, size=metadata.st_size),
     )
 
 
