@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from quant_fund.market_sim.book import OrderBook
 from quant_fund.market_sim.native import core_version
 

@@ -37,7 +37,7 @@ def northset_shape_and_session_l2_floors_honesty_errors(blob: object) -> list[st
         if val is None:
             continue
         try:
-            x = float(val)  # type: ignore[arg-type]
+            x = float(val)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue

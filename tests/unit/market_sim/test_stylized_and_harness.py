@@ -7,6 +7,7 @@ from dataclasses import replace
 import numpy as np
 import polars as pl
 import pytest
+
 from quant_fund.market_sim.config import EcologyConfig
 from quant_fund.market_sim.harness import (
     lightspeed_momentum_weight,

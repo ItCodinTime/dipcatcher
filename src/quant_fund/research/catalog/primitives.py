@@ -6,6 +6,7 @@ Split out of the original module. Import the parent path; it re-exports these na
 from __future__ import annotations
 
 import math
+from typing import Any
 
 
 def _finite_scalar(value: object) -> bool:
@@ -19,7 +20,7 @@ def _finite_scalar(value: object) -> bool:
 
 
 def _ic_pack_honesty_errors(
-    blob: dict,
+    blob: dict[str, Any],
     *,
     mean_ic_key: str,
     rank_ic_key: str | None,

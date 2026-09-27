@@ -6,9 +6,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+
 from quant_fund.config.loader import load_config
 from quant_fund.config.models import AppConfig
-
 from quant_fund.parity.session import Bar, MarketSession
 from quant_fund.parity.strategy import FixedWeightStrategy
 

@@ -85,9 +85,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fx1", "src/quant_fund"]
 
-# The H.15/H.10 extract is data, not a Python module. Force it into the wheel
-# so an installed dipcatcher can replay the public-domain windows.
+# py.typed is the PEP 561 marker (contents: "partial"). The H.15/H.10 extract
+# is data, not a Python module. Force both into the wheel.
 [tool.hatch.build.targets.wheel.force-include]
+"src/quant_fund/py.typed" = "quant_fund/py.typed"
 "src/quant_fund/stress/public_domain/fred_h10_h15.json" = "quant_fund/stress/public_domain/fred_h10_h15.json"
 
 # Default sdist = every VCS-tracked file (data/, notebooks, host symlinks —
@@ -126,18 +127,148 @@ ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 [tool.mypy]
 python_version = "3.12"
 strict = false
+# Strictness ratchet. Do not loosen a module once it is listed, and do not
+# silence a module with ignore_errors or a blanket disable_error_code.
+#
+# Tier strict — the public facade and the modules that implement it
+# (config, ingest, backtest engine and metrics, research entry, receipt
+# verify, and their direct imports). These pass mypy --strict.
+# The override below spells out the --strict flags (a `strict = true`
+# override is applied to the whole run by this mypy, so it is not used).
+# CI and `make typecheck` also run
+# `mypy --strict --follow-imports=silent` on the facade:
+#   quant_fund            package root, lazy re-exports
+#   quant_fund.public     load_config, ingest, run_backtest, run_research,
+#                         read_research_receipt, verify_research
+# `typings/cvxpy` is a narrow stub for atom factories that cvxpy re-exports
+# with `import *` (invisible when implicit re-exports are off) and for
+# `Problem.solve`, which is untyped upstream.
+# Promote another module by adding its name to that override only after
+# `mypy --strict --follow-imports=silent` is clean for that file, with no
+# new ignore comments. Do not add quant_fund.* — other engines stay on
+# the gradual tier.
+#
+# Tier checked — every other quant_fund module, via the global flags:
+# check_untyped_defs and warn_return_any. disallow_untyped_defs stays off
+# until a module is promoted. py.typed is marked partial for this reason.
+#
 # Ratcheted 2026-09-16: checks untyped bodies (verified 0 errors at 133 files).
 # 2026-09-17: warn_return_any + warn_unused_ignores enforced per-module.
 # 2026-09-25: warn_return_any is GLOBAL and clean — the 66-module debt list
 # was fixed in one sweep (np.asarray/float/cast wraps, behavior-preserving).
 # warn_unused_ignores remains enforced only on the originally-ratcheted
-# modules below. Do not loosen ratcheted modules.
+# modules below.
 check_untyped_defs = true
 warn_return_any = true
 disallow_untyped_defs = false
 packages = ["fx1", "quant_fund"]
 ignore_missing_imports = true
 warn_unused_ignores = false
+mypy_path = "typings"
+
+# Public library surface and the modules behind it. These are the per-module
+# flags that make up `mypy --strict` (mypy applies a literal `strict = true`
+# override to the whole run, so the flags are spelled out here). CI also runs
+# `mypy --strict --follow-imports=silent` on the facade files.
+[[tool.mypy.overrides]]
+module = [
+    "quant_fund",
+    "quant_fund.public",
+    "quant_fund.backtest.engine",
+    "quant_fund.config.loader",
+    "quant_fund.config.models",
+    "quant_fund.data.adapters.hf_ohlcv_1m",
+    "quant_fund.data.adapters.parquet",
+    "quant_fund.data.adapters.synthetic",
+    "quant_fund.data.corporate_actions",
+    "quant_fund.data.ingest",
+    "quant_fund.data.lake",
+    "quant_fund.data.security_master",
+    "quant_fund.data.sources",
+    "quant_fund.data.sources.adapters",
+    "quant_fund.data.sources.base",
+    "quant_fund.data.sources.normalize",
+    "quant_fund.data.sources.registry",
+    "quant_fund.data.sources.storage",
+    "quant_fund.data.universe",
+    "quant_fund.execution.costs",
+    "quant_fund.metrics.analytics",
+    "quant_fund.metrics.inference",
+    "quant_fund.metrics.returns",
+    "quant_fund.metrics.risk",
+    "quant_fund.models.crc",
+    "quant_fund.monitoring.kill_switch",
+    "quant_fund.northset.benches",
+    "quant_fund.pipeline",
+    "quant_fund.pipeline.dataset",
+    "quant_fund.pipeline.forecast",
+    "quant_fund.pipeline.forecast.artifacts",
+    "quant_fund.pipeline.forecast.conformal",
+    "quant_fund.pipeline.forecast.covariance",
+    "quant_fund.pipeline.forecast.decide",
+    "quant_fund.pipeline.forecast.garch",
+    "quant_fund.pipeline.forecast.history",
+    "quant_fund.pipeline.forecast.realized",
+    "quant_fund.pipeline.forecast.state",
+    "quant_fund.pipeline.forecast.wrappee",
+    "quant_fund.portfolio.optimizer",
+    "quant_fund.portfolio.risk_gate",
+    "quant_fund.reporting.report",
+    "quant_fund.research.agent",
+    "quant_fund.research.benches",
+    "quant_fund.research.benches.common",
+    "quant_fund.research.benches.families",
+    "quant_fund.research.benches.intervals",
+    "quant_fund.research.benches.ranking",
+    "quant_fund.research.benches_extra",
+    "quant_fund.research.catalog",
+    "quant_fund.research.catalog.batteries",
+    "quant_fund.research.catalog._helpers",
+    "quant_fund.research.catalog.candle",
+    "quant_fund.research.catalog.consistency",
+    "quant_fund.research.catalog.constants",
+    "quant_fund.research.catalog.dispatch",
+    "quant_fund.research.catalog.families",
+    "quant_fund.research.catalog.hypotheses",
+    "quant_fund.research.catalog.ic_packs",
+    "quant_fund.research.catalog.kyle",
+    "quant_fund.research.catalog.never_equate",
+    "quant_fund.research.catalog.never_equate_gap",
+    "quant_fund.research.catalog.northset",
+    "quant_fund.research.catalog.predicates",
+    "quant_fund.research.catalog.primitives",
+    "quant_fund.research.catalog.rates",
+    "quant_fund.research.catalog.receipt",
+    "quant_fund.research.catalog.registry",
+    "quant_fund.research.catalog.session",
+    "quant_fund.research.catalog.sweep",
+    "quant_fund.research.cost_allocation",
+    "quant_fund.research.verify",
+    "quant_fund.risk.overlay",
+    "quant_fund.risk.pyrisk",
+    "quant_fund.risk.pyriskmgmt",
+    "quant_fund.schemas.errors",
+    "quant_fund.schemas.forecast",
+    "quant_fund.schemas.orders",
+    "quant_fund.utils.hashing",
+    "quant_fund.utils.reproducibility",
+    "quant_fund.utils.seeds",
+]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+# warn_redundant_casts is part of --strict but this mypy rejects it in a
+# per-module section. The CI `mypy --strict --follow-imports=silent` run
+# covers it for these two files.
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
 
 # Public-source adapters intentionally expose explicit per-source fetch kwargs
 # (series_id, cik, path, ...) instead of an untyped **kwargs signature, so the

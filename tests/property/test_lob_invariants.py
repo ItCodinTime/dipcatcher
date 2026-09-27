@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
+
 from quant_fund.market_sim.book import OrderBook
 
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
-from quant_fund.config.models import AppConfig
 
+from quant_fund.config.models import AppConfig
 from quant_fund.parity.checker import attribute_pair
 from quant_fund.parity.replay import ReplayOptions
 from quant_fund.parity.session import MarketSession

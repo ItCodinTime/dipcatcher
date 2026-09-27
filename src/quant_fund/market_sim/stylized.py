@@ -10,11 +10,11 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from scipy import stats
+
 from quant_fund.market_sim.config import EVIDENCE, EcologyConfig, validation_config
 from quant_fund.market_sim.impact import measure_impact
 from quant_fund.market_sim.simulator import SimResult, run_ecology
-from scipy import stats
-
 from quant_fund.metrics.fractal import dfa_hurst
 from quant_fund.metrics.serial import autocorrelation, engle_arch_lm, jarque_bera, ljung_box
 

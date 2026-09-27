@@ -5,6 +5,8 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .candle import (
     candle_structure_finite_rate_covers_companions_honesty_errors,
     northset_candle_body_ret_ic_pack_honesty_errors,
@@ -174,7 +176,7 @@ from .sweep import (
     sweep_reject_signed_mean_ic_honesty_errors,
 )
 
-NORTHSET_RECEIPT_HONESTY_HELPERS: tuple = (
+NORTHSET_RECEIPT_HONESTY_HELPERS: tuple[Callable[..., list[str]], ...] = (
     mean_book_age_seconds_honesty_errors,
     book_age_seconds_honesty_errors,
     mean_microprice_minus_mid_honesty_errors,
