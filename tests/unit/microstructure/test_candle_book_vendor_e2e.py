@@ -12,7 +12,7 @@ from quant_fund.microstructure.candle_book_features import attach_candle_book_fe
 from quant_fund.microstructure.vendor_book_map import remap_vendor_quotes_to_panel
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 
-_FIX = Path(__file__).resolve().parents[1] / "fixtures" / "northset"
+_FIX = Path(__file__).resolve().parents[2] / "fixtures" / "northset"
 
 
 def test_vendor_panel_fuse_bench_e2e() -> None:

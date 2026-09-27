@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-_CLI = Path("src/quant_fund/cli/main.py")
+_CLI = Path("src/quant_fund/cli/book_cmds.py")
 
 
 def _northset_echo_block() -> str:

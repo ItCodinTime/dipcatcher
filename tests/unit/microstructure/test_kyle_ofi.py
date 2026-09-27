@@ -216,7 +216,7 @@ def test_fuse_fail_closed_empty_join() -> None:
 
 
 def test_bench_vendor_fixture_stamps_book_source() -> None:
-    fx = Path(__file__).resolve().parents[1] / "fixtures" / "northset"
+    fx = Path(__file__).resolve().parents[2] / "fixtures" / "northset"
     bars = pl.read_parquet(fx / "bars_aligned.parquet")
     book = pl.read_parquet(fx / "alpaca_remapped_panel.parquet")
     # Drop benchmark-only names if any mismatch leaves sparse cross-section
@@ -240,7 +240,7 @@ def test_bench_vendor_fixture_stamps_book_source() -> None:
 def test_bench_polygon_fixture_remap_path() -> None:
     from quant_fund.microstructure.vendor_book_map import remap_vendor_quotes_to_panel
 
-    fx = Path(__file__).resolve().parents[1] / "fixtures" / "northset"
+    fx = Path(__file__).resolve().parents[2] / "fixtures" / "northset"
     bars = pl.read_parquet(fx / "bars_aligned.parquet")
     raw = pl.read_parquet(fx / "polygon_quotes.parquet")
     book = remap_vendor_quotes_to_panel(raw, vendor="polygon")

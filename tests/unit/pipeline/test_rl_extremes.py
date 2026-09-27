@@ -109,7 +109,7 @@ def test_topk_k_gt_n_in_panel_runs() -> None:
 
 
 def test_module_and_trace_have_no_sharpe_keys() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     text = (root / "src/quant_fund/models/rl.py").read_text(encoding="utf-8")
     assert "sharpe" not in text.lower()
     rng = np.random.default_rng(0)

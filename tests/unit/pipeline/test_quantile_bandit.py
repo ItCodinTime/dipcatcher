@@ -58,6 +58,6 @@ def test_run_panel_updates_without_future_dates() -> None:
 
 
 def test_module_text_has_no_sharpe() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     text = (root / "src/quant_fund/models/quantile_bandit.py").read_text(encoding="utf-8")
     assert "sharpe" not in text.lower()

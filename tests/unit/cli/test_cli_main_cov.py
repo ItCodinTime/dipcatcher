@@ -27,7 +27,6 @@ import polars as pl
 import pytest
 from typer.testing import CliRunner
 
-from quant_fund.cli import main as cli_main
 from quant_fund.cli.main import _collect_param_value, app
 
 # The package re-exports a function named ``ingest``, shadowing the submodule
@@ -147,7 +146,7 @@ def test_collect_param_value_coercion(raw: str, expected: object) -> None:
 def test_ingest_synthetic_echoes_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _data_config(tmp_path)
     monkeypatch.setattr(ingest_mod, "ingest", lambda c: {"bars": tmp_path / "bars.parquet"})
-    monkeypatch.setattr(cli_main, "get_logger", _stub_logger)
+    monkeypatch.setattr("quant_fund.cli.data_cmds.get_logger", _stub_logger)
     result = runner.invoke(app, ["ingest", "--config", str(cfg)])
     assert result.exit_code == 0, result.output
     assert "SYNTHETIC ingest complete" in result.output
@@ -157,7 +156,7 @@ def test_ingest_synthetic_echoes_paths(tmp_path: Path, monkeypatch: pytest.Monke
 def test_ingest_non_synthetic_skips_banner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _data_config(tmp_path, source="file")
     monkeypatch.setattr(ingest_mod, "ingest", lambda c: {"bars": tmp_path / "b.parquet"})
-    monkeypatch.setattr(cli_main, "get_logger", _stub_logger)
+    monkeypatch.setattr("quant_fund.cli.data_cmds.get_logger", _stub_logger)
     result = runner.invoke(app, ["ingest", "--config", str(cfg)])
     assert result.exit_code == 0, result.output
     assert "SYNTHETIC ingest complete" not in result.output
@@ -214,7 +213,7 @@ def test_train_family_dispatch(
         calls.append((fam, mdl))
         return f"trained {fam}"
 
-    monkeypatch.setattr(cli_main, "train_family", fake)
+    monkeypatch.setattr("quant_fund.cli.train_cmds.train_family", fake)
     result = runner.invoke(app, ["train", family, "--config", str(_data_config(tmp_path))])
     assert result.exit_code == 0, result.output
     assert calls == [(family, expected_model)]
@@ -224,8 +223,7 @@ def test_train_family_dispatch(
 def test_train_model_option_forwarded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, object]] = []
     monkeypatch.setattr(
-        cli_main,
-        "train_family",
+        "quant_fund.cli.train_cmds.train_family",
         lambda cfg, fam, mdl: calls.append((fam, mdl)) or "ok",
     )
     result = runner.invoke(
