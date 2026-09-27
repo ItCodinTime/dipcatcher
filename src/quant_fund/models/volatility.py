@@ -50,6 +50,14 @@ def _garch_fit_cache_key(model: Any, raw: object) -> str | None:
     except (TypeError, ValueError):
         return None
     finite = np.ascontiguousarray(values[np.isfinite(values)], dtype=np.float64)
+    # The fitter identity is part of the key so a patched ``arch.arch_model``
+    # cannot reuse a real fit, and a real fit cannot reuse a patched one.
+    try:
+        import arch
+
+        fitter_id = id(arch.arch_model)
+    except Exception:
+        fitter_id = 0
     return _GARCH_FIT_CACHE.hash_key(
         (
             int(model.p),
@@ -60,6 +68,7 @@ def _garch_fit_cache_key(model: Any, raw: object) -> str | None:
             str(model.mean),
             float(model.power),
             str(getattr(model, "series_scope", "")),
+            int(fitter_id),
         ),
         (finite,),
     )
