@@ -42,10 +42,9 @@ _TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.]{0,6}$")
 # ticker regex; match case-insensitively.
 _TICKER_CI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,6}$")
 # ADVERSARIAL §1a-E6: `normalizer`/`preprocessor` attribute names evaded the
-# Scaler-name regex. `normali` covers Normalizer/normalize. A bare `norm`
-# token also matches scipy.stats.norm.fit and stats.lognorm.fit, which
-# estimate a distribution and are not feature scalers.
-_SCALER_NAME_RE = re.compile(r"scal|rank_gauss|normali|preproc", re.IGNORECASE)
+# scaler-name regex. `norm` also matches scipy.stats.norm.fit; that receiver
+# is excluded in `_check_lh003` because it is a distribution MLE.
+_SCALER_NAME_RE = re.compile(r"scal|rank_gauss|norm|preproc", re.IGNORECASE)
 _FOLD_FUNC_RE = re.compile(r"fold", re.IGNORECASE)
 _PSR_CALL_NAMES = frozenset({"probabilistic_sharpe", "min_track_record_length", "deflated_sharpe"})
 _SHARPE_CALL_NAMES = frozenset({"sharpe_ratio"})
@@ -293,6 +292,21 @@ def _fit_consumes_fold_param(node: ast.Call, func: ast.FunctionDef | ast.AsyncFu
     return bool(names & params)
 
 
+def _is_scipy_stats_distribution(receiver: ast.AST) -> bool:
+    """True for ``stats.norm`` / ``scipy.stats.lognorm`` (distribution MLE, not a scaler)."""
+    if not isinstance(receiver, ast.Attribute):
+        return False
+    base = receiver.value
+    if isinstance(base, ast.Name) and base.id == "stats":
+        return True
+    return (
+        isinstance(base, ast.Attribute)
+        and base.attr == "stats"
+        and isinstance(base.value, ast.Name)
+        and base.value.id == "scipy"
+    )
+
+
 def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
     out: list[_Finding] = []
     parents = _build_parent_map(tree)
@@ -310,6 +324,11 @@ def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
         elif isinstance(receiver, ast.Attribute):
             recv_name = receiver.attr
         if not _SCALER_NAME_RE.search(recv_name):
+            continue
+        # ``norm`` in the scaler pattern also matches scipy.stats.norm.fit.
+        if _is_scipy_stats_distribution(receiver) and not re.search(
+            r"scal|rank_gauss|preproc", recv_name, re.IGNORECASE
+        ):
             continue
         fors, funcs = _enclosing_scopes(node, parents)
         in_fold_loop = any(
