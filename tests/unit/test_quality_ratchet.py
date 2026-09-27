@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import hashlib
 import re
+import runpy
 import tomllib
 from pathlib import Path
 
 import pytest
-import scripts.check_mypy_strict_allowlist as strict_checker
 
 ROOT = Path(__file__).resolve().parents[2]
 ALLOWLIST = ROOT / "quality" / "mypy_strict_modules.txt"
 BASELINE = ROOT / "quality" / "mypy_strict_baseline.txt"
+CHECKER = runpy.run_path(str(ROOT / "scripts" / "check_mypy_strict_allowlist.py"))
+strict_entries = CHECKER["_entries"]
+strict_allowlisted = CHECKER["allowlisted"]
 # Initial set of strict-clean modules. Add to the allowlist; never remove these.
 STRICT_MODULE_FLOOR = 397
 STRICT_BASELINE_SHA256 = "452034ec90dbc11dc2a8ca78f22d950c591ae0fd67b3ecbfabe08d5906f7cdcd"
@@ -29,8 +32,8 @@ EXCEPT_EXCEPTION_CEILING = 75
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
-    lines = strict_checker._entries(ALLOWLIST)
-    baseline = strict_checker._entries(BASELINE)
+    lines = strict_entries(ALLOWLIST)
+    baseline = strict_entries(BASELINE)
     assert lines == sorted(set(lines))
     assert baseline == sorted(set(baseline))
     assert hashlib.sha256("\n".join(baseline).encode()).hexdigest() == STRICT_BASELINE_SHA256
@@ -53,10 +56,10 @@ def test_allowlist_parser_ignores_indented_comments(
     listing.write_text(f"  # comment\n{module}\n")
     baseline = tmp_path / "baseline.txt"
     baseline.write_text(f"{module}\n")
-    monkeypatch.setattr(strict_checker, "ROOT", tmp_path)
-    monkeypatch.setattr(strict_checker, "ALLOWLIST", listing)
-    monkeypatch.setattr(strict_checker, "BASELINE", baseline)
-    assert strict_checker.allowlisted() == [module]
+    monkeypatch.setitem(strict_allowlisted.__globals__, "ROOT", tmp_path)
+    monkeypatch.setitem(strict_allowlisted.__globals__, "ALLOWLIST", listing)
+    monkeypatch.setitem(strict_allowlisted.__globals__, "BASELINE", baseline)
+    assert strict_allowlisted() == [module]
 
 
 def test_allowlist_rejects_dropped_baseline_member(
@@ -66,11 +69,11 @@ def test_allowlist_rejects_dropped_baseline_member(
     baseline.write_text("src/quant_fund/pinned.py\n")
     listing = tmp_path / "allowlist.txt"
     listing.write_text("src/quant_fund/replacement.py\n")
-    monkeypatch.setattr(strict_checker, "ROOT", tmp_path)
-    monkeypatch.setattr(strict_checker, "ALLOWLIST", listing)
-    monkeypatch.setattr(strict_checker, "BASELINE", baseline)
+    monkeypatch.setitem(strict_allowlisted.__globals__, "ROOT", tmp_path)
+    monkeypatch.setitem(strict_allowlisted.__globals__, "ALLOWLIST", listing)
+    monkeypatch.setitem(strict_allowlisted.__globals__, "BASELINE", baseline)
     with pytest.raises(SystemExit):
-        strict_checker.allowlisted()
+        strict_allowlisted()
 
 
 def test_mccabe_ceiling_not_raised() -> None:
