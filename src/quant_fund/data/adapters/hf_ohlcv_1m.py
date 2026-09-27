@@ -285,11 +285,13 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
     """Flag missing regular-session minutes. Does not insert bars.
 
     Each observed America/New_York session date is compared with the 390
-    minute starts from 09:30 through 15:59. Early closes and holidays inside
-    a name's span show up as gaps: the weekday calendar has no holiday set,
-    and this report does not invent one. ``n_missing_weekdays`` counts
-    weekdays between a name's first and last observed session date that have
-    no print at all.
+    minute starts from 09:30 through 15:59. Counts are distinct minute starts,
+    so a duplicated print does not fill a gap or drive ``n_rth_missing``
+    negative. A row labeled ``rth`` outside that window is not a regular-session
+    minute. Early closes and holidays inside a name's span show up as gaps:
+    the weekday calendar has no holiday set, and this report does not invent
+    one. ``n_missing_weekdays`` counts weekdays between a name's first and last
+    observed session date that have no print at all.
     """
     if bars.is_empty():
         return empty_quality()
@@ -308,12 +310,21 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
             + pl.col("_start").dt.minute().cast(pl.Int32)
         ).alias("_mod"),
     )
-    base = work.group_by(["security_id", "session_date"]).agg(
-        (pl.col("session") == "rth").sum().cast(pl.Int64).alias("n_rth"),
-        (pl.col("session") == "ext").sum().cast(pl.Int64).alias("n_ext"),
-        (pl.col("session") == "off").sum().cast(pl.Int64).alias("n_off"),
+    in_rth_clock = (
+        (pl.col("session") == "rth")
+        & (pl.col("_mod") >= RTH_OPEN_MOD)
+        & (pl.col("_mod") < RTH_CLOSE_MOD)
     )
-    rth = work.filter(pl.col("session") == "rth").sort(["security_id", "session_date", "_mod"])
+    base = work.group_by(["security_id", "session_date"]).agg(
+        pl.col("_mod").filter(in_rth_clock).n_unique().cast(pl.Int64).alias("n_rth"),
+        pl.col("_mod").filter(pl.col("session") == "ext").n_unique().cast(pl.Int64).alias("n_ext"),
+        pl.col("_mod").filter(pl.col("session") == "off").n_unique().cast(pl.Int64).alias("n_off"),
+    )
+    rth = (
+        work.filter(in_rth_clock)
+        .unique(subset=["security_id", "session_date", "_mod"], keep="first")
+        .sort(["security_id", "session_date", "_mod"])
+    )
     if rth.is_empty():
         steps = pl.DataFrame(
             schema={
