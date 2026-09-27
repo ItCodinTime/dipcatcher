@@ -11,7 +11,15 @@ from typing import Any
 
 
 def hash_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+    """SHA-256 hex digest.
+
+    Uses the optional ``quant_core`` extension when that module was selected
+    at import (``QUANT_FUND_NATIVE``). The digest matches ``hashlib`` either way,
+    so receipt fingerprints do not move.
+    """
+    from quant_fund.native import hash_bytes as native_hash_bytes
+
+    return native_hash_bytes(data)
 
 
 def hash_file(path: Path) -> str:
