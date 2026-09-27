@@ -53,7 +53,7 @@ def fetch_yahoo_chart(
     timeout: float = 30.0,
     retries: int = 3,
     backoff_s: float = 2.0,
-) -> dict:
+) -> dict[str, object]:
     url = CHART_URL.format(
         symbol=symbol,
         start=int(start.timestamp()),
@@ -77,7 +77,9 @@ def fetch_yahoo_chart(
     return payload
 
 
-def parse_yahoo_chart(payload: dict, *, security_id: str, yahoo_symbol: str) -> pl.DataFrame:
+def parse_yahoo_chart(
+    payload: dict[str, object], *, security_id: str, yahoo_symbol: str
+) -> pl.DataFrame:
     chart = payload.get("chart") if isinstance(payload, dict) else None
     if not isinstance(chart, dict):
         return pl.DataFrame()

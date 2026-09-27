@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import typer
 
 from quant_fund.config import dump_resolved, load_config
+from quant_fund.config.models import AppConfig
 from quant_fund.hmm.cli import hmm_app
 from quant_fund.lightspeed.cli import ls_app
 from quant_fund.quant_models.cli import qm_app
@@ -18,7 +20,7 @@ def format_data_label(*, synthetic: bool, data_source: str) -> str:
     return f"DATA_LABEL={'SYNTHETIC' if synthetic else data_source}"
 
 
-def format_fdr_families(hypotheses: list) -> str:
+def format_fdr_families(hypotheses: Sequence[object]) -> str:
     """BH-FDR family split summary — calibration/discovery/bound never pooled."""
     cal_n = sum(1 for h in hypotheses if getattr(h, "family", None) == "calibration")
     disc_n = sum(1 for h in hypotheses if getattr(h, "family", None) == "discovery")
@@ -53,7 +55,7 @@ app.add_typer(ls_app, name="ls")
 app.add_typer(qm_app, name="qm")
 
 
-def _cfg(config: Path):
+def _cfg(config: Path) -> AppConfig:
     cfg = load_config(config)
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")

@@ -49,13 +49,13 @@ def _quasi_diag(link: np.ndarray) -> list[int]:
     return [int(x) for x in sort_ix.tolist()]
 
 
-def _cluster_var(cov: pd.DataFrame, items: list) -> float:
+def _cluster_var(cov: pd.DataFrame, items: list[object]) -> float:
     sub = cov.loc[items, items]
     w = inverse_variance_weights(sub.to_numpy()).reshape(-1, 1)
     return float((w.T @ sub.to_numpy() @ w)[0, 0])
 
 
-def _rec_bipart(cov: pd.DataFrame, sort_ix: list) -> pd.Series:
+def _rec_bipart(cov: pd.DataFrame, sort_ix: list[object]) -> pd.Series:
     w = pd.Series(1.0, index=sort_ix)
     clusters = [sort_ix]
     while clusters:

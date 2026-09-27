@@ -26,7 +26,7 @@ def _date_keys(dates: NDArray[Any] | list[object] | Array) -> list[str]:
         if isinstance(d, np.datetime64):
             keys.append(str(d))
         elif hasattr(d, "isoformat"):
-            keys.append(d.isoformat())  # type: ignore[no-untyped-call]
+            keys.append(d.isoformat())
         else:
             keys.append(str(d))
     return keys

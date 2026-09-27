@@ -53,7 +53,7 @@ class DiscreteHMM:
     def n_obs(self) -> int:
         return int(self.B.shape[1])
 
-    def as_dict(self) -> dict[str, list]:
+    def as_dict(self) -> dict[str, list[float]]:
         return {
             "A": self.A.tolist(),
             "B": self.B.tolist(),

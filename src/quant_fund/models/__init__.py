@@ -81,7 +81,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Load the Lightspeed adapter lazily to avoid a package cycle.
 
     ``lightspeed.ranker`` subclasses ``ClassicRanker`` from ``cs_papers``.

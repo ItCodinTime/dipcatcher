@@ -15,6 +15,7 @@ References:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -101,7 +102,7 @@ def fit_t_copula(u: Array, nu_grid: Array | None = None) -> tuple[float, float]:
         raise ValueError("nu_grid must be a finite vector with values > 2")
     from scipy.special import gammaln
 
-    def _make_nll(z: Array, nu: float, const: float, marg: float):
+    def _make_nll(z: Array, nu: float, const: float, marg: float) -> Callable[[float], float]:
         n_obs = z.shape[0]
 
         def _nll(r: float) -> float:

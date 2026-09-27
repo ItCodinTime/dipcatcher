@@ -9,6 +9,7 @@ Research diagnostic only — never a live P&L claim.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -79,7 +80,7 @@ class TrialLedger:
     def n_series(self) -> int:
         return len(self.series)
 
-    def dsr_for(self, returns, name: str | None = None) -> float:
+    def dsr_for(self, returns: Array | Sequence[float], name: str | None = None) -> float:
         """Deflated Sharpe given the recorded trial budget.
 
         Empty ledger → NaN (honest: no trials means no DSR bound).

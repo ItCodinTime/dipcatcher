@@ -241,8 +241,8 @@ def bench_localized_cqr(
     if any(a is not None for a in panel_args):
         if any(a is None for a in panel_args):
             raise ValueError("pass all panel cal/test arrays or none")
-        y_c, lo_c, hi_c, x_c = y_cal, lo_cal, hi_cal, x_cal  # type: ignore[assignment]
-        y_t, lo_t, hi_t, x_t = y_test, lo_test, hi_test, x_test  # type: ignore[assignment]
+        y_c, lo_c, hi_c, x_c = y_cal, lo_cal, hi_cal, x_cal
+        y_t, lo_t, hi_t, x_t = y_test, lo_test, hi_test, x_test
         dgp_label = dgp or "panel"
     else:
         y_c, lo_c, hi_c, x_c, y_t, lo_t, hi_t, x_t = _synthetic_het_vol(n_cal, n_test, seed)
