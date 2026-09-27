@@ -200,6 +200,11 @@ def test_smudged_lfs_file_matching_pointer_is_clean(
     pointer = _git(repo, "cat-file", "blob", "HEAD:payload.bin").stdout
     assert pointer.startswith(b"version https://git-lfs.github.com/spec/v1\n")
     assert payload.read_bytes() == original
+    # ``git add`` records the worktree stat next to the pointer oid. A later
+    # commit second is not racily clean, so an untouched file matches that
+    # cache and a filter-off diff stays empty. Touching forces the recheck
+    # this assertion is about; the bytes are unchanged.
+    payload.touch()
     dirty = subprocess.run(
         [
             "git",
