@@ -80,6 +80,15 @@ class ProofVerificationError(ProofError):
         self.reasons: list[str] = list(reasons or [])
 
 
+class ProofBundleError(ProofError):
+    """Bundle mint failed closed (inputs would produce an unverifiable bundle).
+
+    Raised at MINT time, never at verify time — e.g. degenerate runs whose
+    recomputed headline metrics are NaN (canonical JSON encodes NaN as null,
+    which the bundle schema then rejects; ADVERSARIAL §2-H).
+    """
+
+
 class SignatureUnavailableError(ProofError):
     """No signing key configured; signature cannot be produced or checked."""
 
@@ -342,7 +351,7 @@ class PitManifest(_Strict):
 
 
 class LeakageFinding(_Strict):
-    rule_id: str = Field(pattern=r"^LH0(0[1-9]|1[0-2])$")
+    rule_id: str = Field(pattern=r"^LH0(0[1-9]|1[0-4])$")
     severity: Literal["error", "warning"]
     path: str
     line: int = Field(ge=1)
