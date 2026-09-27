@@ -1,6 +1,6 @@
 # Research references
 
-Methodological anchors. Implementations may differ; deviations are in `MATH_SPEC.md`.
+Methodological anchors. Implementations may differ; deviations are in [MATH_SPEC.md](MATH_SPEC.md).
 
 ## Cross-sectional asset pricing / ML
 
@@ -144,10 +144,11 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 | Citation | Why it matters | Repo map |
 |----------|----------------|----------|
-| López de Prado, *Advances in Financial Machine Learning* (2018), ch. 7 & 12 | Combinatorial purged CV, purge + embargo | CPCV implementation + per-group purge (Wave 25+) |
-| Bailey, Borwein, López de Prado & Zhu, *The Probability of Backtest Overfitting*, J. Computational Finance 20(4) (2017); PDF: davidhbailey.com/dhbpapers/backtest-prob.pdf | PBO via CSCV; PBO>0.5 stop sign | PBO / TrialLedger / DSR paths |
-| Bailey & López de Prado, Deflated Sharpe / PSR | Multiple-testing Sharpe adjustment | PSR/DSR fixtures (Wave 8) |
-| Bailey & López de Prado, MinTRL (minimum track-record length) | Samples needed for PSR ≥ conf | `min_track_record_length` (Day Wave 2); `min_trl_from_returns` → `book_diagnostics["min_trl"]` smoke (Day Wave 5) |
+| López de Prado, *Advances in Financial Machine Learning* (2018), ch. 7 & 12 | Combinatorial purged CV, purge + embargo; ``φ = C(N-1, k-1)`` backtest paths | `validation/cpcv.py` (`cpcv_path_assignments`, `combinatorial_purged_indices`); `docs/BACKTEST_OVERFITTING.md` |
+| Bailey, Borwein, López de Prado & Zhu, *The Probability of Backtest Overfitting*, J. Computational Finance 20(4) (2017); PDF: davidhbailey.com/dhbpapers/backtest-prob.pdf | PBO via CSCV; noise rate 1/2 | `cscv_performance` + `probability_of_backtest_overfitting`; notebook `backtest_overfitting.pbo` |
+| Bailey & López de Prado, *The Deflated Sharpe Ratio*, J. Portfolio Management 40(5) (2014) | DSR numerical example: SR0≈0.1132, DSR≈0.9004 (N=100); 0.9505 at N=46 and at Normal N=88 | `deflated_sharpe` / `expected_max_sharpe`; `tests/unit/research/test_backtest_overfitting.py` |
+| Bailey & López de Prado, *The Sharpe Ratio Efficient Frontier*, J. Risk 15(2) (2012) | PSR and MinTRL; 2.73/2.83/3.24-year normal table; 4.99-year HFR moment pair | `probabilistic_sharpe`, `min_track_record_length` |
+| Mantegna, *Hierarchical structure in financial markets*, Eur. Phys. J. B (1999) | Distance `sqrt((1-ρ)/2)` used to cluster correlated trials at a fixed `ρ=0.5` | `effective_n_trials`; receipt `n_trials_effective` |
 
 ## Proper scoring rules (Gneiting)
 
@@ -244,7 +245,7 @@ Concrete citations for SOTA methods used or targeted by this repo. Map each to `
 
 ## Repo honesty anchors
 
-- `docs/MATH_SPEC.md`, `docs/VALIDATION.md`, `docs/DATA_SOURCE_LABELS.md`
+- [MATH_SPEC.md](MATH_SPEC.md), [VALIDATION.md](VALIDATION.md), [DATA_SOURCE_LABELS.md](DATA_SOURCE_LABELS.md)
 - `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent` (no Sharpe/Sortino/Calmar/pnl/nav in **research family** headlines; paper `analytics_export` may nest equity/stress pnl/nav under `live_pnl_claim=false`)
 - Paper/validate: `would_promote_live=false` on SYNTHETIC; `live_pnl_claim=false`
 
@@ -525,3 +526,28 @@ Pairs selection - quant_fund.models.pairs:
 - Mantel (1966). "Evaluation of survival data and two new rank order statistics." *Cancer Chemo. Reports* 50 — log-rank.
 - Cox (1972). "Regression models and life-tables." *JRSS-B* 34 — proportional hazards.
 - Greenwood (1926): variance of the survival estimator.
+
+### SOTA canon wave 8 — anytime-valid inference, calibration, multivariate scores (2026-09-27)
+- Székely (2003), InterStat; Gneiting & Raftery (2007), *JASA* 102 — energy score strict propriety. `metrics/energy_score.py`.
+- Gneiting & Ranjan (2013), *Electron. J. Statist.* 7 — threshold/kernel weighting of scoring rules.
+- Gneiting, Balabdaoui & Raftery (2007), *JRSS-B* 69 — calibration principle for distributional forecasts.
+- Thorarinsdottir & Gneiting (2010), *JRSS-A* 173 — variance scaling. `models/posthoc_calibration.py`.
+- Déqué (2007), *Global Planet. Change* 57 — quantile mapping.
+- Chernozhukov, Fernández-Val & Galichon (2010), *Econometrica* 78 — rearrangement for non-crossing quantiles.
+- Zadrozny & Elkan (2002), *KDD*; Meinshausen (2006), *JMLR* 7 — quantile regression / distribution recovery.
+- Wang & Ramdas (2022), *JRSS-B* 84 — e-BH: FDR control on e-values under arbitrary dependence. `metrics/anytime_fdr.py`.
+- Wang, Dandapanthula & Ramdas (2025), *Statist. Probab. Lett.* — stopped e-BH under optional stopping (arXiv:2502.08539).
+- Xu & Ramdas (2024), AISTATS — online FDR with e-values (e-LOND) (arXiv:2311.06412).
+- Shin, Ramdas & Rinaldo (2023), *Ann. Statist.* 51 — e-detectors: anytime-valid sequential change detection (arXiv:2203.03532). `metrics/e_detectors.py`.
+- Howard, Ramdas, McAuliffe & Sekhon (2021), *Ann. Statist.* 49 — time-uniform concentration; Ville (1939).
+- Hoeffding (1963), *JASA* 58 — bounded e-values. Shiryaev (1963) — geometric-prior mixture.
+- Zaffran et al. (2022), ICML — AgACI (arXiv:2202.07282); Zaffran et al. (2022), NeurIPS — FACI aggregation under distribution shift. `models/agaci.py`.
+- Gibbs & Candès (2021), NeurIPS 34 — ACI; Koenker & Bassett (1978) — pinball; Cesa-Bianchi & Lugosi (2006) — EG updates; Gaillard, Stoltz & Van Erven (2014), COLT — ML-OGD.
+
+### SOTA canon wave 9 — distributional forecasts and change monitoring (2026-09-27)
+- Prinster, Han, Liu & Saria (2025). "WATCH: Adaptive Monitoring for AI Deployments via Weighted-Conformal Martingales." *ICML*, PMLR 267, arXiv:2505.04608. `metrics/watch.py`.
+- Tibshirani, Foygel Barber, Candès & Ramdas (2019), NeurIPS — conformal prediction under covariate shift (density-ratio weights).
+- Xu & Xie (2021), ICML, PMLR 139; Xu & Xie (2023), *IEEE TPAMI* 45(10) — EnbPI: ensemble bootstrap conformal intervals for time series, signed-residual width-minimising band (arXiv:2010.09107); Politis & Romano (1992) — circular block bootstrap. `models/enbpi.py`.
+- Meinshausen (2006), *JMLR* 7 — quantile regression forests (leaf-weight conditional CDF). `models/qrf.py`.
+- Duan et al. (2020), ICML — NGBoost: natural gradient boosting for probabilistic prediction (arXiv:1910.03225); Amari (1998) — natural gradient. `models/ngboost_lite.py`.
+- Vovk, Gammerman & Shafer (2005), *Algorithmic Learning in a Random World* — conformal test martingales; Vovk et al. (2021), COPA — Simple Jumper / retrain-on-alarm (arXiv:2012.14246); Fedorova et al. (2012), ICML — plug-in martingales; Ville (1939) — 1/α anytime alarm. `metrics/conformal_martingale.py`.

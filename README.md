@@ -195,6 +195,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 |---|---|
 | `docs/ARCHITECTURE.md` | Pipeline, packages, runtime modes, point-in-time rules |
 | `docs/RECEIPT_VERIFICATION.md` | Sealed phase-1 runs and blocked tournaments |
+| `docs/FORWARD_SHADOW_RECORD.md` | Local simulated forward decision and settlement journal |
 | `docs/RESEARCH_CENTRE.md` | Benches and research centre |
 | `docs/VALIDATION.md` | Walk-forward, CPCV, multiple-testing, conformal gates |
 | `docs/INSTITUTIONAL_READINESS.md` | Evidence-gated readiness conditions |
@@ -212,3 +213,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 
 *fx-1 and the dipcatcher harness produce research, backtest, or simulated
 evidence only. Nothing here is investment advice or a promise of live profit.*
+
+## Evidence
+
+Sealed benchmark results, including negative and failed runs, are rendered only from committed receipts into [docs/evidence/index.md](docs/evidence/index.md). Regenerate with `make evidence`.

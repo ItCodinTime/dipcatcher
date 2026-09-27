@@ -285,11 +285,13 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
     """Flag missing regular-session minutes. Does not insert bars.
 
     Each observed America/New_York session date is compared with the 390
-    minute starts from 09:30 through 15:59. Early closes and holidays inside
-    a name's span show up as gaps: the weekday calendar has no holiday set,
-    and this report does not invent one. ``n_missing_weekdays`` counts
-    weekdays between a name's first and last observed session date that have
-    no print at all.
+    minute starts from 09:30 through 15:59. Counts are distinct minute starts,
+    so a duplicated print does not fill a gap or drive ``n_rth_missing``
+    negative. A row labeled ``rth`` outside that window is not a regular-session
+    minute. Early closes and holidays inside a name's span show up as gaps:
+    the weekday calendar has no holiday set, and this report does not invent
+    one. ``n_missing_weekdays`` counts weekdays between a name's first and last
+    observed session date that have no print at all.
     """
     if bars.is_empty():
         return empty_quality()
@@ -308,12 +310,21 @@ def minute_gap_report(bars: pl.DataFrame) -> pl.DataFrame:
             + pl.col("_start").dt.minute().cast(pl.Int32)
         ).alias("_mod"),
     )
-    base = work.group_by(["security_id", "session_date"]).agg(
-        (pl.col("session") == "rth").sum().cast(pl.Int64).alias("n_rth"),
-        (pl.col("session") == "ext").sum().cast(pl.Int64).alias("n_ext"),
-        (pl.col("session") == "off").sum().cast(pl.Int64).alias("n_off"),
+    in_rth_clock = (
+        (pl.col("session") == "rth")
+        & (pl.col("_mod") >= RTH_OPEN_MOD)
+        & (pl.col("_mod") < RTH_CLOSE_MOD)
     )
-    rth = work.filter(pl.col("session") == "rth").sort(["security_id", "session_date", "_mod"])
+    base = work.group_by(["security_id", "session_date"]).agg(
+        pl.col("_mod").filter(in_rth_clock).n_unique().cast(pl.Int64).alias("n_rth"),
+        pl.col("_mod").filter(pl.col("session") == "ext").n_unique().cast(pl.Int64).alias("n_ext"),
+        pl.col("_mod").filter(pl.col("session") == "off").n_unique().cast(pl.Int64).alias("n_off"),
+    )
+    rth = (
+        work.filter(in_rth_clock)
+        .unique(subset=["security_id", "session_date", "_mod"], keep="first")
+        .sort(["security_id", "session_date", "_mod"])
+    )
     if rth.is_empty():
         steps = pl.DataFrame(
             schema={
@@ -472,6 +483,39 @@ def security_master_from_bars(bars: pl.DataFrame, *, clock: Clock | None = None)
     if bars.is_empty():
         return pl.DataFrame(schema=_MASTER_SCHEMA)
     now = _require_clock(clock or utc_now)
+    event_dtype = bars.schema["event_time"]
+    if not isinstance(event_dtype, pl.Datetime):
+        return _security_master_by_scan(bars, now)
+    firsts = (
+        bars.group_by("security_id")
+        .agg(pl.col("event_time").min().alias("valid_from"))
+        .sort("security_id")
+    )
+    missing = firsts.filter(pl.col("valid_from").is_null())
+    if missing.height:
+        security_id = missing["security_id"][0]
+        raise OhlcvQualityError(f"security {security_id} has no event_time")
+    ingested = pl.lit(now).cast(pl.Datetime("us", "UTC"))
+    return firsts.select(
+        pl.col("security_id").cast(pl.String),
+        pl.col("security_id").cast(pl.String).alias("ticker"),
+        pl.col("security_id").cast(pl.String).alias("name"),
+        pl.lit("UNKNOWN").alias("exchange"),
+        pl.lit("USD").alias("currency"),
+        pl.lit("Unknown").alias("sector"),
+        pl.lit("Unknown").alias("industry"),
+        pl.lit("unknown").alias("security_type"),
+        pl.col("valid_from").cast(pl.Datetime("us", "UTC")),
+        pl.lit(None).cast(pl.Datetime("us", "UTC")).alias("valid_to"),
+        pl.col("valid_from").cast(pl.Datetime("us", "UTC")).alias("available_time"),
+        ingested.alias("ingested_time"),
+        pl.lit(SOURCE_NAME).alias("source"),
+        pl.lit(REVISION_ID).alias("revision_id"),
+    )
+
+
+def _security_master_by_scan(bars: pl.DataFrame, now: datetime) -> pl.DataFrame:
+    """Row scan for non-datetime clocks. Preserves the original error text."""
     rows: list[dict[str, object]] = []
     for security_id in bars["security_id"].unique().sort().to_list():
         name_bars = bars.filter(pl.col("security_id") == security_id)

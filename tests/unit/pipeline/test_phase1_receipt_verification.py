@@ -200,6 +200,59 @@ def test_index_rejects_nonexistent_git_revision(runs):
     assert any("does not identify a local commit" in e for e in verify_phase1_index(path)["errors"])
 
 
+def test_historical_code_hashes_resolve_real_git_blobs(tmp_path, monkeypatch):
+    import quant_fund.research.phase1_verify as verifier_module
+
+    root = tmp_path / "historical_source_repo"
+    modules = (
+        verifier_module.real_benchmark,
+        verifier_module.net_tournament,
+        verifier_module.net_tournament.net_replay,
+        verifier_module.net_tournament.cost_allocation,
+        verifier_module.net_tournament.inference,
+        verifier_module.net_tournament.snooping,
+    )
+    expected = {}
+    changed_source = None
+    for module in modules:
+        relative = Path("src/quant_fund/research") / Path(module.__file__).name
+        source = root / relative
+        source.parent.mkdir(parents=True, exist_ok=True)
+        content = f"archived {relative.as_posix()}\n".encode()
+        source.write_bytes(content)
+        expected[source.name] = hashlib.sha256(content).hexdigest()
+        monkeypatch.setattr(module, "__file__", str(source))
+        changed_source = source
+    locator = root / "src/quant_fund/research/phase1_verify.py"
+    locator.write_text("# locate historical source repo\n")
+    monkeypatch.setattr(verifier_module, "__file__", str(locator))
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "src"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Receipt Test",
+            "-c",
+            "user.email=receipt-test@example.com",
+            "commit",
+            "-qm",
+            "archive source",
+        ],
+        check=True,
+    )
+    revision = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    assert changed_source is not None
+    changed_source.write_text("uncommitted later solver code\n")
+    errors = []
+    assert verifier_module._committed_code_hashes(revision, errors) == expected
+    assert errors == []
+
+
 def test_index_verifies_historical_tournament_code_without_current_solver(runs, monkeypatch):
     import quant_fund.research.net_tournament as tournament_module
     import quant_fund.research.phase1_verify as verifier_module
