@@ -169,11 +169,13 @@ any violation).
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.
-      Head wired: `train distribution --model hstep`
-      (`HStepScaledDistribution` — per-h unit-variance Student-t iid-sum
-      construction plus empirical overlapping-bootstrap; `2·T·H` column
-      layout disclosed in metadata; date-major row-order assumption
-      documented). Fleet cell still open.
+      Head landed: `HStepScaledDistribution` (per-h unit-variance
+      Student-t iid-sum construction plus empirical overlapping-bootstrap;
+      `2·T·H` column layout disclosed in metadata; date-major row-order
+      assumption documented) — deliberately NOT in the `train
+      distribution` catalog, like `qar` on P1.3: the generic evaluator is
+      one-step and expects exactly `len(taus)` columns, while this head
+      emits per-horizon blocks. Fleet cell still open.
 
 ### P2 — New published targets (make the claim harder to dismiss)
 
