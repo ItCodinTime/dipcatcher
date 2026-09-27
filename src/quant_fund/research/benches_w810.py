@@ -12,15 +12,16 @@ detection delays), or ``{}`` if its synthetic setup cannot be constructed.
 from __future__ import annotations
 
 import numpy as np
+from sklearn.tree import DecisionTreeRegressor
 
 from quant_fund.metrics.anytime_fdr import ELond, e_bh, stopped_e_bh
+from quant_fund.metrics.conformal_martingale import WatchMonitor
 from quant_fund.metrics.e_detectors import EDetectorGaussian, run_detector
 from quant_fund.metrics.energy_score import energy_score
 from quant_fund.metrics.scoring import crps_gaussian
 from quant_fund.models.enbpi import EnbPI
-from quant_fund.models.ngboost_lite import NGBoostLite
-from quant_fund.models.quantile_forest import QuantileRegressionForest
-from quant_fund.models.watch import run_watch
+from quant_fund.models.ngboost_lite import NGBoostGaussian
+from quant_fund.models.qrf import QuantileRegressionForest
 from quant_fund.validation.leakage_redteam import (
     run_leaky_oracle_study,
     structural_lookahead_audit,
@@ -124,41 +125,71 @@ def bench_energy_score() -> dict[str, float]:
         return {}
 
 
+def _ar1_stream(seed: int, t_total: int, sigma_break: float | None) -> np.ndarray:
+    """SYNTHETIC AR(1) stream (phi=0.6), optional mid-stream volatility break."""
+    rng = np.random.default_rng(seed)
+    eps = rng.standard_normal(t_total)
+    sigma = np.ones(t_total)
+    if sigma_break is not None:
+        sigma[t_total // 2 :] = sigma_break
+    y = np.zeros(t_total)
+    for t in range(1, t_total):
+        y[t] = 0.6 * y[t - 1] + sigma[t] * eps[t]
+    return y
+
+
+def _enbpi_online(y: np.ndarray, *, split: int, alpha: float) -> EnbPIResult:
+    """EnbPI on the lagged-level design (predict y_t from y_{t-1}, y_{t-2}).
+
+    A shallow tree keeps the battery about the conformal layer rather than
+    about base-learner strength.
+    """
+    idx = np.arange(2, y.size)
+    features = np.column_stack([y[idx - 1], y[idx - 2]])
+    target = y[idx]
+    model = EnbPI(
+        lambda: DecisionTreeRegressor(max_depth=3, random_state=0),
+        n_estimators=20,
+        alpha=alpha,
+        seed=7,
+    )
+    model.fit(features[:split], target[:split])
+    return model.predict_online(features[split:], target[split:])
+
+
 def bench_ts_conformal() -> dict[str, float]:
-    """Time-series conformal battery (waves 9-10): EnbPI coverage on an
-    AR(1) volatility-regime stream (Xu & Xie 2021/2023) and WATCH
-    exchangeability monitoring on a mid-stream conformity shift
-    (Prinster, Han & Saria 2025)."""
+    """Time-series conformal battery (waves 9-10).
+
+    Two EnbPI readings on SYNTHETIC AR(1) streams (Xu & Xie 2021/2023): the
+    marginal-coverage guarantee is asserted on a stationary stream, and the
+    same measurement is repeated after a mid-stream volatility break, where
+    the paper's mixing assumption no longer holds and coverage is expected to
+    degrade — reported as a diagnostic, never asserted to hold. Plus WATCH
+    exchangeability monitoring on a mid-stream conformity shift (Prinster,
+    Han & Saria 2025).
+    """
     try:
-        rng = np.random.default_rng(_SEED)
+        alpha = 0.2  # central 80% interval
+        nominal = 1.0 - alpha
+        split = 318
         t_total = 520
-        eps = rng.standard_normal(t_total)
-        sigma = np.where(np.arange(t_total) < t_total // 2, 1.0, 2.5)
-        y = np.zeros(t_total)
-        for t in range(1, t_total):
-            y[t] = 0.6 * y[t - 1] + sigma[t] * eps[t]
-        train, test = y[:320], y[320:]
-        levels = np.linspace(0.1, 0.9, 9)
-        enbpi = EnbPI(quantile_levels=levels, n_bootstraps=10, random_state=7)
-        enbpi.fit(train)
-        hits = 0
-        n_test = test.size
-        for val in test:
-            grid = enbpi.update(float(val))
-            lo, hi = grid[0], grid[-1]
-            hits += int(lo <= val <= hi)
-        coverage = hits / n_test
+        stationary = _enbpi_online(_ar1_stream(_SEED, t_total, None), split=split, alpha=alpha)
+        broken = _enbpi_online(_ar1_stream(_SEED + 1, t_total, 2.5), split=split, alpha=alpha)
         # WATCH: conformity scores, scale doubles mid-stream
+        rng = np.random.default_rng(_SEED + 2)
         s = np.abs(rng.standard_normal(800))
         s[500:] *= 2.5
-        watch = run_watch(s, alpha=0.05)
+        watch = WatchMonitor(alpha=0.05).run(s)
+        alarm_time = float(watch.alarms[0]) if watch.alarms else -1.0
         return {
-            "enbpi_nominal_central": 0.8,
-            "enbpi_central_coverage": float(coverage),
-            "enbpi_abs_coverage_error": float(abs(coverage - 0.8)),
-            "enbpi_n_test": float(n_test),
-            "watch_detected": 1.0 if watch.alarm_time is not None else 0.0,
-            "watch_alarm_time": float(watch.alarm_time if watch.alarm_time is not None else -1.0),
+            "enbpi_nominal_central": nominal,
+            "enbpi_central_coverage": float(stationary.coverage),
+            "enbpi_abs_coverage_error": float(abs(stationary.coverage - nominal)),
+            "enbpi_vol_break_coverage_error": float(abs(broken.coverage - nominal)),
+            "enbpi_mean_width": float(stationary.mean_width),
+            "enbpi_n_test": float(t_total - 2 - split),
+            "watch_detected": 1.0 if watch.alarms else 0.0,
+            "watch_alarm_time": alarm_time,
         }
     except (ValueError, RuntimeError, FloatingPointError):
         return {}
@@ -224,16 +255,14 @@ def bench_distributional_ml() -> dict[str, float]:
         mu = np.sin(3.0 * x[:, 0]) + 0.5 * x[:, 1]
         sig = 0.3 + 0.4 * np.abs(x[:, 2])
         y = mu + sig * rng.standard_normal(n)
-        model = NGBoostLite(n_estimators=80, max_depth=2, random_state=3).fit(x, y)
+        model = NGBoostGaussian(n_estimators=80, max_depth=2, seed=3, score="crps").fit(x, y)
         mu_hat, sig_hat = model.predict_params(x)
         ngboost_crps = float(np.mean(crps_gaussian(y, mu_hat, sig_hat)))
         base_crps = float(np.mean(crps_gaussian(y, np.full(n, y.mean()), np.full(n, y.std()))))
         n2 = 300
         x2 = rng.uniform(0.0, 1.0, (n2, 2))
         y2 = 2.0 * x2[:, 0] + rng.standard_normal(n2) * (0.2 + x2[:, 1])
-        qrf = QuantileRegressionForest(n_estimators=40, min_samples_leaf=5, random_state=5).fit(
-            x2, y2
-        )
+        qrf = QuantileRegressionForest(n_estimators=40, min_samples_leaf=5, seed=5).fit(x2, y2)
         med = qrf.predict_quantiles(x2, np.array([0.5]))[:, 0]
         corr = float(np.corrcoef(med, 2.0 * x2[:, 0])[0, 1])
         return {
