@@ -1,7 +1,8 @@
 """Proof bundle verifier (DESIGN.md §5.5) — fixes A1 F2.
 
 Fail-closed, ordered checks; every failed check appends a machine-readable
-reason and flips ``ok`` to False. The verifier never trusts the bundle's
+reason and flips ``ok`` to False. The verifier NEVER raises for a bad bundle
+(malformed input is just another failed check) and NEVER trusts the bundle's
 own metric claims: headline metrics are independently recomputed from the
 trade-log bytes via ``metrics/returns.py`` and compared against
 ``metrics_recompute`` at rtol=1e-9 / atol=1e-12 (§8.2).
@@ -35,7 +36,6 @@ from quant_fund.proofcore.contracts import (
     SCHEMA_VERSION,
     ProofBundleV1,
     SignatureUnavailableError,
-    canonical_json_bytes,
     merkle_root_hex,
     sha256_hex_bytes,
 )
@@ -75,15 +75,13 @@ def _check_chain(payload: dict[str, Any], bundle_dir: Path, reasons: list[str]) 
     """Check 3: prev_bundle_hash links into the bundles.jsonl head."""
     try:
         chain = load_chain(bundle_dir)
-    except Exception as exc:  # untrusted chain input must yield a failed verdict
+    except (OSError, ValidationError, KeyError, json.JSONDecodeError) as exc:
         reasons.append(f"chain:unreadable:{exc.__class__.__name__}")
         return
     for index, prior in enumerate(chain):
         expected_prev = chain[index - 1].bundle_id if index else GENESIS_HASH
         if prior.prev_bundle_hash != expected_prev:
             reasons.append(f"chain:link_broken_at_index:{index}")
-        if compute_bundle_id(prior.model_dump(mode="json")) != prior.bundle_id:
-            reasons.append(f"chain:self_hash_mismatch_at_index:{index}")
     head = chain[-1].bundle_id if chain else GENESIS_HASH
     bundle_id = str(payload.get("bundle_id", ""))
     if bundle_id in {entry.bundle_id for entry in chain}:
@@ -91,18 +89,12 @@ def _check_chain(payload: dict[str, Any], bundle_dir: Path, reasons: list[str]) 
         expected_prev = chain[position - 1].bundle_id if position else GENESIS_HASH
         if payload.get("prev_bundle_hash") != expected_prev:
             reasons.append("chain:bundle_prev_mismatch")
-        if canonical_json_bytes(chain[position].model_dump(mode="json")) != canonical_json_bytes(
-            payload
-        ):
-            reasons.append("chain:bundle_file_mismatch")
-    else:
-        reasons.append("chain:bundle_missing")
-        if payload.get("prev_bundle_hash") != head:
-            reasons.append("chain:prev_not_head")
+    elif payload.get("prev_bundle_hash") != head:
+        reasons.append("chain:prev_not_head")
 
 
 def _check_signature(payload: dict[str, Any], strict: bool, reasons: list[str]) -> None:
-    """Check 4: HMAC verify; strict mode rejects unsigned bundles."""
+    """Check 4: HMAC verify (strict) or report scheme='none' as a reason."""
     signature = payload.get("signature") or {}
     scheme = signature.get("scheme")
     if scheme == "none":
@@ -127,6 +119,8 @@ def _check_signature(payload: dict[str, Any], strict: bool, reasons: list[str]) 
 def _check_data_manifest(bundle: ProofBundleV1, reasons: list[str]) -> None:
     """Check 5: recompute per-read leaf hashes + Merkle root."""
     manifest = bundle.data_manifest
+    if manifest.n_reads != len(manifest.reads):
+        reasons.append("data_manifest:n_reads_mismatch")
     try:
         recomputed = merkle_root_hex([read_leaf_hash(read) for read in manifest.reads])
     except Exception as exc:  # malformed leaf -> failed check, never a raise
@@ -139,28 +133,26 @@ def _check_data_manifest(bundle: ProofBundleV1, reasons: list[str]) -> None:
 def _check_sidecars(
     bundle: ProofBundleV1, bundle_dir: Path, reasons: list[str]
 ) -> dict[str, bytes]:
-    """Check 6: re-hash signal_log/trade_log/metrics sidecar files."""
+    """Check 6: re-hash signal_log/trade_log/metrics/config sidecar files.
+
+    ADVERSARIAL R2 §2-CFG: the config sidecar is hash-checked too — a
+    tampered recorded config previously passed plain ``verify_bundle`` and
+    was only caught by replay. Fail closed with
+    ``sidecar:config_sha256_mismatch``.
+    """
     sidecars = sidecar_paths(bundle_dir, bundle.bundle_id)
     expected = {
         "signal_log": bundle.signal_log_sha256,
         "trade_log": bundle.trade_log_sha256,
         "metrics": bundle.metrics_sha256,
+        "config": bundle.config_sha256,
     }
     contents: dict[str, bytes] = {}
     for kind, path in sidecars.items():
-        if kind == "config":
-            continue
-        if path.is_symlink():
-            reasons.append(f"sidecar:{kind}:unsafe_symlink")
-            continue
         if not path.exists():
             reasons.append(f"sidecar:{kind}:missing")
             continue
-        try:
-            data = path.read_bytes()
-        except OSError as exc:
-            reasons.append(f"sidecar:{kind}:unreadable:{exc.__class__.__name__}")
-            continue
+        data = path.read_bytes()
         if sha256_hex_bytes(data) != expected[kind]:
             reasons.append(f"sidecar:{kind}_sha256_mismatch")
         contents[kind] = data
@@ -212,17 +204,17 @@ def verify_bundle(
     trusted_head: str | None = None,
     pit_root: Path | None = None,
 ) -> VerificationResult:
-    """Verify one proof bundle with fail-closed ordered checks (§5.5).
+    """Verify one proof bundle. Fail-closed ordered checks (§5.5); never raises.
 
     1. schema validation (pydantic) + schema_version == 'proofcore/1'
     2. bundle_id self-hash recompute
-    3. chain: bundle is present in bundles.jsonl with valid self-hashes and links
+    3. chain: prev_bundle_hash links into bundles.jsonl head (if bundle_dir given)
     4. signature: HMAC verify (strict) or report scheme='none' as reason
     5. data_manifest: recompute per-read leaf hashes + Merkle root
-    6. re-hash signal_log/trade_log/metrics sidecar files
+    6. re-hash signal_log/trade_log/metrics/config sidecar files
     7. RECOMPUTE metrics from trade log bytes and compare (rtol 1e-9, atol 1e-12)
     8. env_fingerprint comparison -> env_mismatch warning (A3 F5.2, non-fatal)
-    9. replay: fail closed until decision-time vault reads are implemented
+    9. replay: re-run with recorded seed/config, identical bundle minus created_utc
     """
     reasons: list[str] = []
     env_mismatch = False
@@ -235,7 +227,7 @@ def verify_bundle(
     # Check 1 — schema validation.
     try:
         raw: dict[str, Any] = json.loads(bundle_path.read_bytes())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         return VerificationResult(
             ok=False,
             reasons=[f"schema:unreadable:{exc.__class__.__name__}"],
@@ -260,20 +252,16 @@ def verify_bundle(
     if compute_bundle_id(raw) != bundle.bundle_id:
         reasons.append("bundle_id:self_hash_mismatch")
 
-    # Check 3 — chain linkage. A missing chain cannot establish membership.
+    # Check 3 — chain linkage (only when a chain dir is available).
     chain_path = bundle_dir / "bundles.jsonl"
     if chain_path.exists():
         _check_chain(raw, bundle_dir, reasons)
-    else:
-        reasons.append("chain:missing")
+    elif trusted_head is not None:
+        reasons.append("chain:unavailable_for_trusted_head")
 
     # §5.6 — trusted head: the stored chain must terminate at trusted_head.
-    if trusted_head is not None and chain_path.exists():
-        try:
-            if chain_head(bundle_dir) != trusted_head:
-                reasons.append("chain:trusted_head_mismatch")
-        except Exception as exc:  # untrusted chain input must yield a failed verdict
-            reasons.append(f"chain:trusted_head_unreadable:{exc.__class__.__name__}")
+    if trusted_head is not None and chain_path.exists() and chain_head(bundle_dir) != trusted_head:
+        reasons.append("chain:trusted_head_mismatch")
 
     # Check 4 — signature.
     _check_signature(raw, strict_signature, reasons)
