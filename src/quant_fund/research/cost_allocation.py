@@ -62,6 +62,54 @@ def _failed_solve_diagnostic(problem: cp.Problem, status: str) -> dict[str, Any]
     }
 
 
+def _candidate_checks(
+    weights: np.ndarray,
+    *,
+    alpha: np.ndarray,
+    covariance: np.ndarray,
+    uncertainty: np.ndarray,
+    previous: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    capacity: np.ndarray,
+    impact: np.ndarray,
+    config: AllocationConfig,
+    linear_cost: float,
+    gross_limit: float,
+    name_limit: float,
+    cash_buffer: float,
+    borrow_cost: float,
+    funding_cost: float,
+    cash_return: float,
+) -> tuple[float, float, float, float]:
+    """Check the original unscaled economics and limits, independent of CVXPY."""
+    change = np.abs(weights - previous)
+    cost = float(linear_cost * change.sum() + impact @ change**1.5)
+    holding = float(
+        borrow_cost * np.maximum(-weights, 0).sum()
+        + cash_return * weights.sum()
+        + (funding_cost - cash_return) * max(float(weights.sum()) - 1, 0)
+    )
+    objective = float(
+        alpha @ weights
+        - config.risk_aversion * (weights @ covariance @ weights)
+        - config.uncertainty_aversion * (uncertainty @ np.abs(weights))
+        - cost
+        - holding
+    )
+    violations = [
+        float(np.max(lower - weights)),
+        float(np.max(weights - upper)),
+        float(np.max(change - capacity)),
+        float(change.sum() - config.turnover_limit),
+        float(np.abs(weights).sum() + gross_limit * cost - gross_limit),
+        float(np.max(np.abs(weights) + name_limit * cost - name_limit)),
+    ]
+    if gross_limit <= 1:
+        violations.append(float(weights.sum() + cost - (1 - cash_buffer)))
+    return max(0.0, *violations), objective, cost, holding
+
+
 def allocate(
     alpha: np.ndarray,
     covariance: np.ndarray,
@@ -119,75 +167,143 @@ def allocate(
     ):
         raise ValueError("invalid exposure or cash limits")
 
-    w = cp.Variable(a.size)
-    delta = cp.Variable(a.size, nonneg=True)
-    trade_cost = cp.Variable(nonneg=True)
-    estimated_cost = linear_cost * cp.sum(delta) + (
-        imp[imp > 0] @ cp.power(delta[imp > 0], 1.5) if np.any(imp > 0) else cp.Constant(0)
+    # These four representations have the same feasible weights and unscaled
+    # objective. Rebuild the conic problem for each attempt so CVXPY/CLARABEL
+    # cannot reuse an inaccurate iterate. No solver status except optimal is
+    # accepted, and every returned weight vector is checked in original units.
+    formulations = (
+        ("original", False, False, 1.0, 100.0),
+        ("bounded_capacity", True, False, 1.0, 1.0),
+        ("factored_risk", True, True, 1.0, 1.0),
+        ("scaled_cost", True, True, 10_000.0, 1.0),
     )
-    # Cash opportunity cost + incremental debt spread is convex even with leverage.
-    holding_cost = (
-        borrow_cost * cp.sum(cp.pos(-w))
-        + cash_return * cp.sum(w)
-        + (funding_cost - cash_return) * cp.pos(cp.sum(w) - 1)
-    )
-    objective = (
-        a @ w
-        - config.risk_aversion * cp.quad_form(w, cp.psd_wrap(cov))
-        - config.uncertainty_aversion * (u @ cp.abs(w))
-        - trade_cost
-        - holding_cost
-    )
-    constraints = [
-        delta >= w - prev,
-        delta >= prev - w,
-        trade_cost >= estimated_cost,
-        w >= lo,
-        w <= hi,
-        delta <= cap,
-        cp.sum(delta) <= config.turnover_limit,
-        cp.norm1(w) + gross_limit * trade_cost <= gross_limit,
-        cp.abs(w) + name_limit * trade_cost <= name_limit,
-    ]
-    if gross_limit <= 1:
-        constraints.append(cp.sum(w) + trade_cost <= 1 - cash_buffer)
-    # Positive objective scaling improves conditioning without changing the optimum.
-    problem = cp.Problem(cp.Maximize(100 * objective), constraints)
-    try:
-        problem.solve(solver="CLARABEL", tol_gap_abs=1e-8, tol_feas=1e-8, tol_gap_rel=1e-8)
-    except cp.error.SolverError as exc:
-        raise AllocationFailure(
-            f"allocation solver failed: {exc}",
-            _failed_solve_diagnostic(problem, "solver_error"),
-        ) from exc
-    if problem.status != cp.OPTIMAL or w.value is None:
-        raise AllocationFailure(
-            f"allocation failed: {problem.status}",
-            _failed_solve_diagnostic(problem, str(problem.status)),
+    risk_factor = np.sqrt(np.maximum(eigenvalues, 0))[:, None] * eigenvectors.T
+    attempts: list[dict[str, Any]] = []
+    accepted: tuple[np.ndarray, dict[str, Any], float, float, float, float] | None = None
+    for formulation, bound_capacity, factor_risk, cost_scale, objective_scale in formulations:
+        w = cp.Variable(a.size)
+        delta = cp.Variable(a.size, nonneg=True)
+        trade_cost_variable = cp.Variable(nonneg=True)
+        trade_cost = trade_cost_variable if cost_scale == 1 else trade_cost_variable / cost_scale
+        estimated_cost = linear_cost * cp.sum(delta) + (
+            imp[imp > 0] @ cp.power(delta[imp > 0], 1.5) if np.any(imp > 0) else cp.Constant(0)
         )
-    result = np.asarray(w.value, dtype=float).reshape(-1)
-    if not np.isfinite(result).all():
-        raise ValueError("allocation solver returned nonfinite weights")
-    # Suppress numerical dust around no-trade, then recheck every constraint.
-    result[np.abs(result - prev) < 1e-8] = prev[np.abs(result - prev) < 1e-8]
-    result[np.abs(result) < 1e-10] = 0.0
-    w.value = result
-    delta.value = np.abs(result - prev)
-    trade_cost.value = float(linear_cost * delta.value.sum() + imp @ delta.value**1.5)
-    violation = max(float(np.max(c.violation())) for c in constraints)
-    if not np.isfinite(violation) or violation > 1e-7:
-        raise ValueError(f"allocation constraint residual {violation} exceeds tolerance")
+        risk = cp.sum_squares(risk_factor @ w) if factor_risk else cp.quad_form(w, cp.psd_wrap(cov))
+        holding_cost = (
+            borrow_cost * cp.sum(cp.pos(-w))
+            + cash_return * cp.sum(w)
+            + (funding_cost - cash_return) * cp.pos(cp.sum(w) - 1)
+        )
+        objective = (
+            a @ w
+            - config.risk_aversion * risk
+            - config.uncertainty_aversion * (u @ cp.abs(w))
+            - trade_cost
+            - holding_cost
+        )
+        constraints = [
+            delta >= w - prev,
+            delta >= prev - w,
+            trade_cost_variable
+            >= (estimated_cost if cost_scale == 1 else cost_scale * estimated_cost),
+            w >= lo,
+            w <= hi,
+            # Since delta >= 0 and sum(delta) <= turnover_limit, this bound
+            # removes redundant huge NAV-fraction capacities exactly.
+            delta <= np.minimum(cap, config.turnover_limit) if bound_capacity else delta <= cap,
+            cp.sum(delta) <= config.turnover_limit,
+            cp.norm1(w) + gross_limit * trade_cost <= gross_limit,
+            cp.abs(w) + name_limit * trade_cost <= name_limit,
+        ]
+        if gross_limit <= 1:
+            constraints.append(cp.sum(w) + trade_cost <= 1 - cash_buffer)
+        problem = cp.Problem(cp.Maximize(objective_scale * objective), constraints)
+        try:
+            problem.solve(solver="CLARABEL", tol_gap_abs=1e-8, tol_feas=1e-8, tol_gap_rel=1e-8)
+        except cp.error.SolverError as exc:
+            failed = _failed_solve_diagnostic(problem, "solver_error")
+            attempts.append({**failed, "formulation": formulation, "error": str(exc)})
+            continue
+        diagnostic = {
+            **_failed_solve_diagnostic(problem, str(problem.status)),
+            "formulation": formulation,
+        }
+        attempts.append(diagnostic)
+        if problem.status in {cp.INFEASIBLE, cp.UNBOUNDED}:
+            raise AllocationFailure(f"allocation failed: {problem.status}", diagnostic)
+        if problem.status != cp.OPTIMAL or w.value is None:
+            continue
+        result = np.asarray(w.value, dtype=float).reshape(-1).copy()
+        if not np.isfinite(result).all() or problem.value is None:
+            diagnostic["status"] = "nonfinite_solution"
+            continue
+        solver_objective = float(problem.value) / objective_scale
+        # Keep the original no-trade dust policy, then verify both the model
+        # constraints and the original unscaled formulas before acceptance.
+        result[np.abs(result - prev) < 1e-8] = prev[np.abs(result - prev) < 1e-8]
+        result[np.abs(result) < 1e-10] = 0.0
+        primal, exact_objective, actual_cost, actual_holding = _candidate_checks(
+            result,
+            alpha=a,
+            covariance=cov,
+            uncertainty=u,
+            previous=prev,
+            lower=lo,
+            upper=hi,
+            capacity=cap,
+            impact=imp,
+            config=config,
+            linear_cost=linear_cost,
+            gross_limit=gross_limit,
+            name_limit=name_limit,
+            cash_buffer=cash_buffer,
+            borrow_cost=borrow_cost,
+            funding_cost=funding_cost,
+            cash_return=cash_return,
+        )
+        w.value = result
+        delta.value = np.abs(result - prev)
+        trade_cost_variable.value = cost_scale * actual_cost
+        conic = max(float(np.max(c.violation())) for c in constraints)
+        violation = max(primal, conic)
+        objective_gap = abs(solver_objective - exact_objective)
+        diagnostic.update(
+            {
+                "max_constraint_violation": violation,
+                "solver_objective_gap": objective_gap,
+            }
+        )
+        if (
+            np.isfinite([violation, exact_objective, objective_gap]).all()
+            and violation <= 1e-7
+            and objective_gap <= 1e-7
+        ):
+            diagnostic["weights_accepted"] = True
+            accepted = (result, diagnostic, violation, exact_objective, actual_cost, actual_holding)
+            break
+        diagnostic["status"] = "independent_check_failed"
+    if accepted is None:
+        failure = {**attempts[-1], "attempts": attempts, "weights_accepted": False}
+        if all(attempt["status"] == "solver_error" for attempt in attempts):
+            raise AllocationFailure("allocation solver failed: no accepted solution", failure)
+        raise AllocationFailure("allocation failed: no accepted solution", failure)
+    result, selected, violation, exact_objective, _, actual_holding = accepted
     d = np.abs(result - prev)
     return result, {
-        "status": problem.status,
+        "status": cp.OPTIMAL,
         "solver": "CLARABEL",
-        "objective": float(objective.value),
+        "formulation": selected["formulation"],
+        "solve_attempts": [
+            {key: value for key, value in attempt.items() if key != "solve_time_seconds"}
+            for attempt in attempts
+        ],
+        "objective": exact_objective,
         "expected_return_proxy": float(a @ result),
         "predicted_variance": float(result @ cov @ result),
         "uncertainty_penalty": float(config.uncertainty_aversion * (u @ np.abs(result))),
         "predicted_linear_cost": float(linear_cost * d.sum()),
         "predicted_impact_cost": float(imp @ d**1.5),
-        "predicted_holding_cost": float(holding_cost.value),
+        "predicted_holding_cost": actual_holding,
         "turnover": float(d.sum()),
         "max_constraint_violation": violation,
         "previous_weights": prev.tolist(),

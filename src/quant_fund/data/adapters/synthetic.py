@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
 import polars as pl
@@ -16,7 +16,7 @@ TZ = UTC
 SECTORS = ["Tech", "Health", "Finance", "Energy"]
 
 
-def _close_ts(d) -> datetime:
+def _close_ts(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, 16, 0, tzinfo=TZ)
 
 
@@ -89,7 +89,7 @@ class SyntheticMarketProvider:
         volumes = rng.integers(200_000, 800_000, size=(t, n)).astype(float)
         ingested = datetime.now(tz=TZ)
 
-        bar_rows: list[dict] = []
+        bar_rows: list[dict[str, object]] = []
         for j in range(n):
             sid = "SEC_MKT" if j == 0 else f"SEC_{j:04d}"
             sym = "MKT" if j == 0 else f"S{j:04d}"

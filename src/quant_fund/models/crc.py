@@ -1,6 +1,6 @@
 """Conformal Risk Control for monotone tail losses. No Sharpe.
 
-Angelopoulos, Bates, Malik, Jordan (2022): choose the smallest threshold λ
+Angelopoulos, Bates, Fisch, Lei, Schuster (2022; ICLR 2024): choose the smallest threshold λ
 such that the finite-sample CRC statistic is at most α,
 
     (n * L̂_n(λ) + B) / (n + 1) ≤ α,

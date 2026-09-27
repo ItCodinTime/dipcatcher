@@ -1,6 +1,6 @@
 # Funding-carry universe expansion — 2026-09-23
 
-Follow-up to `carry_research_2026_09.md`. Goal: raise net returns by widening the
+Follow-up to [carry_research_2026_09.md](carry_research_2026_09.md). Goal: raise net returns by widening the
 Binance carry universe and/or adding venues. Net result: a new champion with
 record returns, plus a mapped "no-go" region of configs that look great on the
 continuous universe but die on the realistic one.

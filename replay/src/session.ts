@@ -40,13 +40,41 @@ function f64(a: number[]): Float64Array {
   return Float64Array.from(a);
 }
 
+function numericColumn(values: number[], length: number, name: string, nonnegative = false): void {
+  if (!Array.isArray(values) || values.length !== length ||
+      values.some((v) => !Number.isFinite(v) || (nonnegative && (v < 0 || !Number.isFinite(Math.fround(v)))))) {
+    throw new Error(`invalid ${name} column`);
+  }
+}
+
+function timeColumn(times: number[]): void {
+  if (!Array.isArray(times)) throw new Error("missing timestamps");
+  numericColumn(times, times.length, "timestamp");
+  if (times.some((t, i) => !Number.isFinite(new Date(t).getTime()) || (i > 0 && t < times[i - 1]!))) {
+    throw new Error("timestamps must be valid and sorted");
+  }
+}
+
 function decodeBars(j: BarsJson): SymbolBars {
+  timeColumn(j.event_time);
+  if (j.event_time.length === 0) throw new Error("bars must not be empty");
+  for (const key of ["open", "high", "low", "close", "volume"] as const) {
+    numericColumn(j[key], j.event_time.length, key, true);
+  }
+  if (j.high.some((h, i) => h < Math.max(j.open[i]!, j.close[i]!, j.low[i]!) ||
+      j.low[i]! > Math.min(j.open[i]!, j.close[i]!))) throw new Error("inconsistent OHLC bars");
   return { t: f64(j.event_time), o: f32(j.open), h: f32(j.high), l: f32(j.low), c: f32(j.close), v: f32(j.volume) };
 }
 
 function decodeBook(j: BooksJson): SymbolBook {
+  timeColumn(j.event_time);
   const n = j.event_time.length;
   const d = j.depth;
+  if (!Number.isInteger(d) || d < 1 || d > 100) throw new Error("invalid book depth");
+  for (const key of ["bid_price", "ask_price", "bid_size", "ask_size"] as const) {
+    if (!Array.isArray(j[key]) || j[key].length !== n) throw new Error(`invalid ${key} rows`);
+    for (const values of j[key]) numericColumn(values, d, key, true);
+  }
   const bidPx = new Float32Array(n * d);
   const bidSz = new Float32Array(n * d);
   const askPx = new Float32Array(n * d);
@@ -67,14 +95,29 @@ function decodeBook(j: BooksJson): SymbolBook {
 }
 
 function decodeTrades(j: TradesJson): SymbolTrades {
+  timeColumn(j.event_time);
+  numericColumn(j.price, j.event_time.length, "trade price", true);
+  numericColumn(j.quantity, j.event_time.length, "trade quantity", true);
+  if (!Array.isArray(j.side) || j.side.length !== j.event_time.length ||
+      j.side.some((side) => side !== "buy" && side !== "sell")) throw new Error("invalid trade side");
   const side = new Uint8Array(j.side.length);
   for (let i = 0; i < j.side.length; i++) side[i] = j.side[i] === "sell" ? 1 : 0;
   return { t: f64(j.event_time), px: f32(j.price), qty: f32(j.quantity), side };
 }
 
 export function decodeSession(json: SessionJson): Session {
+  if (json.format !== "dipcatcher.replay.session" || json.format_version !== 1) {
+    throw new Error("unsupported session format");
+  }
+  if (!Array.isArray(json.symbols) || !json.symbols.length || !Array.isArray(json.markers)) {
+    throw new Error("session must contain symbols and markers");
+  }
+  if (!Number.isFinite(json.bar_interval_seconds) || json.bar_interval_seconds <= 0) {
+    throw new Error("invalid bar interval");
+  }
   const symIndex = new Map<string, number>();
   const symbols = json.symbols.map((s, i) => {
+    if (typeof s.symbol !== "string" || !s.symbol || symIndex.has(s.symbol)) throw new Error("invalid or duplicate symbol");
     symIndex.set(s.symbol, i);
     return { ...s, index: i };
   });

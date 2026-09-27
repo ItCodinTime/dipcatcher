@@ -32,7 +32,7 @@ from quant_fund.pipeline.forecast import (
     MARKET_RISK_OVERLAY_REALIZED_GARCH,
     market_risk_overlay_asof,
 )
-from quant_fund.portfolio.risk_gate import check_order
+from quant_fund.portfolio.risk_gate import check_order, funded
 from quant_fund.risk.overlay import BookRiskOverlay
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
@@ -46,7 +46,7 @@ class StaleValuationError(RuntimeError):
 class BacktestResult:
     equity: pl.DataFrame
     fills: pl.DataFrame
-    metrics: dict[str, float | str | int | bool | dict]
+    metrics: dict[str, float | str | int | bool | dict[str, Any]]
     frictionless: bool
     source_note: str
 
@@ -154,6 +154,44 @@ def _make_order(
     )
 
 
+def _fast_replay_panel_supported(bars: pl.DataFrame, weights: pl.DataFrame) -> bool:
+    """Clocks the vectorized matrices can ingest without changing results.
+
+    Empty books, non-datetime clocks, mismatched datetime units, and duplicate
+    bar keys stay on the event loop. The vectorized matrices use raw integer
+    timestamps and replace repeated bar cells, unlike the reference loop.
+    """
+    if bars.height == 0:
+        return False
+    bar_clock = bars.schema.get("event_time")
+    weight_clock = weights.schema.get("event_time")
+    if not isinstance(bar_clock, pl.Datetime) or bar_clock != weight_clock:
+        return False
+    return not bool(bars.select("event_time", "security_id").is_duplicated().any())
+
+
+def _fast_replay_is_complete(config: AppConfig, risk_overlay: BookRiskOverlay | None) -> bool:
+    """Whether the vectorized replay matches this event loop, including metrics.
+
+    ``run_backtest_fast`` refuses close-auction execution and book-level risk
+    overlays, and it does not stamp GARCH overlay date counters. When neither
+    overlay artifact exists, every date's market overlay is ``(None, None)``
+    and both counters stay 0, so the fast replay plus those zeros is the same
+    result. A present artifact keeps the event loop, which counts overlay dates
+    and feeds the per-order vol gate.
+    """
+    if risk_overlay is not None or config.execution.allow_close_auction:
+        return False
+    from quant_fund.pipeline.forecast import (
+        _garch_artifact_path,
+        _realized_garch_artifact_path,
+    )
+
+    return not (
+        _garch_artifact_path(config).exists() or _realized_garch_artifact_path(config).exists()
+    )
+
+
 def run_backtest(
     bars: pl.DataFrame,
     weights: pl.DataFrame,
@@ -170,6 +208,38 @@ def run_backtest(
     weights using prior-close NAV only. Names that do not mark today are
     targeted to 0 so the book can exit while a last print still exists.
     """
+    if _fast_replay_panel_supported(bars, weights) and _fast_replay_is_complete(
+        config, risk_overlay
+    ):
+        from quant_fund.backtest.fast_replay import run_backtest_fast
+
+        result = run_backtest_fast(
+            bars,
+            weights,
+            config,
+            initial_nav=initial_nav,
+        )
+        result.metrics["garch_risk_overlay_dates"] = 0
+        result.metrics["realized_garch_risk_overlay_dates"] = 0
+        return result
+    return _run_backtest_event_loop(
+        bars,
+        weights,
+        config,
+        initial_nav=initial_nav,
+        risk_overlay=risk_overlay,
+    )
+
+
+def _run_backtest_event_loop(
+    bars: pl.DataFrame,
+    weights: pl.DataFrame,
+    config: AppConfig,
+    *,
+    initial_nav: float = 1_000_000.0,
+    risk_overlay: BookRiskOverlay | None = None,
+) -> BacktestResult:
+    """Reference event loop. ``run_backtest`` delegates here when the fast replay is incomplete."""
     _validate_target_weight_panel(weights)
     px = bars.select(
         "security_id",
@@ -187,7 +257,7 @@ def run_backtest(
     # Pre-index rows by timestamp once: per-date frame scans inside the loop
     # are O(rows x dates) and dominate wall time on wide books. Dict lookup
     # keeps identical iteration order (input row order preserved per date).
-    day_rows_map: dict[datetime, list[dict]] = {}
+    day_rows_map: dict[datetime, list[dict[str, Any]]] = {}
     for row in px.iter_rows(named=True):
         day_rows_map.setdefault(row["event_time"], []).append(row)
     # The panel-level validation above already rejects duplicate
@@ -200,9 +270,9 @@ def run_backtest(
         )
     dates = sorted(day_rows_map)
     book = Book(cash=initial_nav)
-    navs: list[dict] = []
-    fill_rows: list[dict] = []
-    cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+    navs: list[dict[str, Any]] = []
+    fill_rows: list[dict[str, Any]] = []
+    cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
     last_marks: dict[str, float] = {}
     mark_ages: dict[str, int] = {}
     synthetic = (
@@ -386,7 +456,7 @@ def run_backtest(
             total_trade_cost = float(costs["total"])
             # Match live/paper execution semantics: a buy is rejected rather
             # than allowing the research book to enter an impossible overdraft.
-            if delta > 0 and book.cash < notional + total_trade_cost:
+            if delta > 0 and not funded(book.cash, notional + total_trade_cost):
                 cash_reject_count += 1
                 continue
             book.cash -= notional + total_trade_cost
@@ -394,8 +464,9 @@ def run_backtest(
             # Turnover is based on executed notional, not the requested target
             # change; participation caps can make those materially different.
             traded_turn += abs(notional) / max(nav, 1e-12)
-            for k in ("commission", "spread", "impact"):
-                cost_sum[k] += float(costs[k])
+            for k in ("commission", "spread", "impact", "turnover_bps"):
+                bucket = "turnover" if k == "turnover_bps" else k
+                cost_sum[bucket] += float(costs[k])
             fill_rows.append(
                 {
                     "fill_time": exec_dt,
@@ -406,6 +477,7 @@ def run_backtest(
                     "fee": costs["commission"],
                     "spread_cost": costs["spread"],
                     "impact_cost": costs["impact"],
+                    "turnover_cost": costs["turnover_bps"],
                     "decision_price": decision_marks.get(sid),
                 }
             )
@@ -454,8 +526,8 @@ def run_backtest(
 
 def _build_result(
     *,
-    navs: list[dict],
-    fill_rows: list[dict],
+    navs: list[dict[str, Any]],
+    fill_rows: list[dict[str, Any]],
     cost_sum: dict[str, float],
     reject_count: int,
     cash_reject_count: int,
@@ -488,6 +560,7 @@ def _build_result(
             )
 
             is_summary = aggregate_shortfall(shortfall_frame(scored))
+    turnover_bps_cost = float(cost_sum.get("turnover", 0.0))
     if eq.height >= 2:
         rets = eq["nav"].pct_change().drop_nulls().to_numpy()
         sr = sharpe_ratio(rets)
@@ -513,13 +586,14 @@ def _build_result(
                 "commission": cost_sum["commission"],
                 "spread": cost_sum["spread"],
                 "impact": cost_sum["impact"],
+                "turnover_bps_cost": turnover_bps_cost,
                 "flag_high_sharpe": sr["flag_high_sharpe"],
                 "risk_gate_rejects": reject_count,
                 "cash_rejects": cash_reject_count,
                 "kill_switch_halts": halt_count,
             },
         )
-        metrics: dict[str, float | str | int | bool | dict] = {
+        metrics: dict[str, float | str | int | bool | dict[str, Any]] = {
             "total_return": navs_list[-1] / float(initial_nav) - 1.0,
             "sharpe": sr["sharpe"],
             "n": sr["n"],
@@ -528,6 +602,7 @@ def _build_result(
             "commission": cost_sum["commission"],
             "spread": cost_sum["spread"],
             "impact": cost_sum["impact"],
+            "turnover_bps_cost": turnover_bps_cost,
             "flag_high_sharpe": sr["flag_high_sharpe"],
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
@@ -539,12 +614,18 @@ def _build_result(
             "live_pnl_claim": False,
         }
     else:
-        # Empty / short panel: no equity path long enough for returns.
-        # Still force research-only labeling (never a live P&L claim).
+        # No pct_change sample (zero or one equity row). A single mark still
+        # has a level return against starting capital; an empty path does not.
+        # Sharpe stays undefined. Research-only labeling is unchanged.
+        if eq.height == 1:
+            total_return = float(eq["nav"][0]) / float(initial_nav) - 1.0
+        else:
+            total_return = 0.0
         metrics = {
-            "total_return": 0.0,
+            "total_return": total_return,
             "sharpe": float("nan"),
             "n": 0,
+            "turnover_bps_cost": turnover_bps_cost,
             "risk_gate_rejects": reject_count,
             "cash_rejects": cash_reject_count,
             "kill_switch_halts": halt_count,

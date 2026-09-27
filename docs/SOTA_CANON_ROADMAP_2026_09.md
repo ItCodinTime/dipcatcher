@@ -23,11 +23,11 @@ generic. They are listed below with citations, ranked by leverage.
 | Method | Citation | Status |
 |---|---|---|
 | E-processes (single hypotheses, betting) | Shafer–Vovk; Ramdas et al. 2023 (arXiv:2210.01948) | EXISTS `metrics/evalues.py` |
-| **e-BH** (FDR on e-values) | Wang & Ramdas, JRSS-B 2022 | **MISSING** |
-| **Stopped e-BH** (anytime-valid FDR under optional stopping) | Wang & Ramdas 2025 (arXiv:2502.08539) | **MISSING** |
-| **Online FDR with e-values** (e-LOND / e-SAFFRON) | Xu & Ramdas 2024 | **MISSING** |
-| **E-detectors** (anytime-valid changepoint alarms) | Shin, Ramdas, Rinaldo 2023 (arXiv:2203.03532) | **MISSING** |
-| Conformal test martingales (WATCH) | Prinster et al. 2025 (arXiv:2505.04608) | MISSING (future wave) |
+| **e-BH** (FDR on e-values) | Wang & Ramdas, JRSS-B 2022 | EXISTS `metrics/anytime_fdr.py` |
+| **Stopped e-BH** (anytime-valid FDR under optional stopping) | Wang & Ramdas 2025 (arXiv:2502.08539) | EXISTS `metrics/anytime_fdr.py` |
+| **Online FDR with e-values** (e-LOND / e-SAFFRON) | Xu & Ramdas 2024 | PARTIAL: `ELond` in `metrics/anytime_fdr.py`; e-SAFFRON absent |
+| **E-detectors** (anytime-valid changepoint alarms) | Shin, Ramdas, Rinaldo 2023 (arXiv:2203.03532) | EXISTS `metrics/e_detectors.py` |
+| Conformal test martingales (WATCH) | Prinster et al. 2025 (arXiv:2505.04608) | EXISTS `metrics/watch.py` (practical Gaussian plugin; post-adaptation alarms diagnostic) |
 
 Leverage: the `TrialLedger` runs RC/SPA/StepM/MCS per research day but has
 no FDR control valid under **optional stopping** — exactly what a sequential
@@ -39,11 +39,11 @@ time-uniform error control; natural fit for `monitoring/` and the paper loop.
 | Method | Citation | Status |
 |---|---|---|
 | CRPS-from-quantiles / energy-consistent scoring | Gneiting & Raftery 2007 | EXISTS `metrics/scoring.py` |
-| **Energy score** (multivariate proper score) | Székely 2003; Gneiting & Raftery 2007 | **MISSING** (variogram exists in `calibration2.py`) |
-| Post-hoc distributional calibration (variance scaling, quantile mapping, isotonic-on-quantiles) | Gneiting et al. 2007; calibration literature | **MISSING** (`models/calibration.py` is classification-only) |
-| **AgACI / FACI** (multi-expert ACI, dominates scalar ACI) | Zaffran et al., ICML 2022 (arXiv:2202.07282) | **MISSING** (scalar `AdaptiveConformal` only) |
-| **NGBoost-lite / QRF** (tree-based distributional boosting) | Duan et al., ICML 2020; Meinshausen 2006 | MISSING (future wave — needs tree infra decision) |
-| EnbPI (residual-bootstrap TS conformal) | Xu & Xie, TPAMI 2023 | MISSING (future wave) |
+| **Energy score** (multivariate proper score) | Székely 2003; Gneiting & Raftery 2007 | EXISTS `metrics/energy_score.py` |
+| Post-hoc distributional calibration (variance scaling, quantile mapping, isotonic-on-quantiles) | Gneiting et al. 2007; calibration literature | EXISTS `models/posthoc_calibration.py` |
+| **AgACI / FACI** (multi-expert ACI) | Zaffran et al., ICML 2022 (arXiv:2202.07282) | EXISTS `models/agaci.py` |
+| **NGBoost-lite / QRF** (tree-based distributional boosting) | Duan et al., ICML 2020; Meinshausen 2006 | EXISTS `models/ngboost_lite.py`, `models/qrf.py` |
+| EnbPI (residual-bootstrap TS conformal) | Xu & Xie, TPAMI 2023 | EXISTS `models/enbpi.py` |
 
 ### 2.3 Search-aware evaluation (LLM-era) — STRATEGIC GAP
 
@@ -105,6 +105,9 @@ data-procurement items, not code items.
   - `metrics/conformal_martingale.py` — smoothed/weighted conformal p-values,
     power/mixture/Simple-Jumper test martingales, Ville alarm, WATCH-style
     reset monitor.
+  - `metrics/watch.py` — covariate-aware WATCH extension. Randomized online ties;
+    the practical frozen-bag Gaussian plugin is a diagnostic, not a proven
+    anytime-valid alarm after adaptation.
 - **Wave 10 candidates:** leaky-oracle red-team protocol; regime-conditional
   evaluation gate in `validation/gates.py`; QRF/NGBoost vs. existing quantile
   baselines on the research catalog (proper-score comparison only).

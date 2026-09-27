@@ -95,3 +95,38 @@ test("bench mode reports frame stats on a 390-bar x 8-symbol synthetic day", asy
   const shot = await page.screenshot({ path: "test-results/replay-bench.png" });
   await testInfo.attach("replay-bench", { body: shot, contentType: "image/png" });
 });
+
+test("imported symbol text cannot create executable markup", async ({ page }) => {
+  const hostile = '<img src=x onerror="window.__injected=1">';
+  await page.route("**/public/fixtures/session.synthetic.json", async (route) => {
+    const response = await route.fetch();
+    const fixture = await response.json();
+    const original = fixture.symbols[0].symbol;
+    fixture.symbols[0].symbol = hostile;
+    for (const field of ["bars", "books", "trades"]) {
+      fixture[field][hostile] = fixture[field][original];
+      delete fixture[field][original];
+    }
+    for (const marker of fixture.markers) {
+      if (marker.symbol === original) marker.symbol = hostile;
+    }
+    await route.fulfill({ json: fixture });
+  });
+  await page.goto("/");
+  await expect(page.locator("#status")).toContainText("ready");
+  await expect(page.locator("#tape")).toContainText(hostile);
+  await expect(page.locator("#tape img")).toHaveCount(0);
+  expect(await page.evaluate(() => "__injected" in window)).toBe(false);
+});
+
+test("out-of-order session timestamps fail before rendering", async ({ page }) => {
+  await page.route("**/public/fixtures/session.synthetic.json", async (route) => {
+    const response = await route.fetch();
+    const fixture = await response.json();
+    const times = fixture.bars[fixture.symbols[0].symbol].event_time;
+    [times[0], times[1]] = [times[1], times[0]];
+    await route.fulfill({ json: fixture });
+  });
+  await page.goto("/");
+  await expect(page.locator("#status")).toContainText("timestamps must be valid and sorted");
+});
