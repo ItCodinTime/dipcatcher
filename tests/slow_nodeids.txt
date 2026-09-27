@@ -1,0 +1,5 @@
+# Node ids excluded from the PR gate (`-m "not network and not slow"`).
+# The scheduled CI workflow and `make test-full` still run them.
+# One node id per line. Empty (comments only) means the PR gate runs the
+# full offline suite. Populate from a measured `--durations` run, and only
+# keep a node id here when coverage of the fast subset does not fall.

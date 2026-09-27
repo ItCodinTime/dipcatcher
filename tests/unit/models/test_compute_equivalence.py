@@ -355,7 +355,7 @@ def test_process_map_propagates_task_errors() -> None:
 
 
 def test_garch_origin_tasks_match_across_processes() -> None:
-    from quant_fund.pipeline.train import _garch_origin_task
+    from quant_fund.pipeline.train.volatility import _garch_origin_task
 
     rng = np.random.default_rng(10)
     spec = {

@@ -27,7 +27,9 @@ PROOFCORE_PACKAGES = ("pit", "proof", "leakage", "reality", "proofcore")
 TOP_LEVEL_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset({"proofcore"}),
     "pit": frozenset({"pit", "proofcore", "schemas", "utils", "data"}),
-    "proof": frozenset({"proof", "proofcore", "schemas", "utils"}),
+    # Adjudicated edge (LH011 whitelist in leakage/rules.py): proof -> config
+    # top-level is allowed — config is layer-0, so the edge stays acyclic.
+    "proof": frozenset({"proof", "proofcore", "schemas", "utils", "config"}),
     "leakage": frozenset({"leakage", "proofcore", "schemas"}),
     "reality": frozenset({"reality", "proofcore", "metrics", "validation"}),
 }
@@ -37,7 +39,11 @@ TOP_LEVEL_WHITELIST: dict[str, frozenset[str]] = {
 LAZY_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset(),
     "pit": frozenset(),
-    "proof": frozenset({"backtest", "metrics", "pit", "cli"}),
+    # Adjudicated lazy edges (LH011_LAZY_WHITELIST in leakage/rules.py):
+    # proof lazily reaches pit (W1 vault seam), leakage (W3 watchdog), and
+    # metrics (A1 F2 headline recompute); none import proof back, so the lazy
+    # edges cannot create a cycle.
+    "proof": frozenset({"backtest", "cli", "leakage", "metrics", "pit"}),
     "leakage": frozenset({"pit", "cli", "config", "utils", "research"}),
     "reality": frozenset({"cli"}),
 }
