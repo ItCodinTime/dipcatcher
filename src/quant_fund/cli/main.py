@@ -20,6 +20,15 @@ from quant_fund.cli._app import (
 from quant_fund.cli._app import (
     train_app as train_app,
 )
+from quant_fund.cli.audit_cmds import (
+    audit_record as audit_record,
+)
+from quant_fund.cli.audit_cmds import (
+    audit_trace as audit_trace,
+)
+from quant_fund.cli.audit_cmds import (
+    verify_ledger_cmd as verify_ledger_cmd,
+)
 from quant_fund.cli.book_cmds import (
     book_panel_cmd as book_panel_cmd,
 )
@@ -131,6 +140,21 @@ from quant_fund.cli.train_cmds import (
 from quant_fund.cli.train_cmds import (
     train_volatility as train_volatility,
 )
+
+
+def _maybe_install_observation_hooks() -> None:
+    """Wrap pipeline entry points only when the operator opted in."""
+    import os
+
+    flag = os.environ.get("DIPCATCHER_OBSERVE", "").strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return
+    from quant_fund.observe.install import install_passive_hooks
+
+    install_passive_hooks()
+
+
+_maybe_install_observation_hooks()
 
 if __name__ == "__main__":
     app()

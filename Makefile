@@ -1,4 +1,4 @@
-.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
+.PHONY: help test coverage lint typecheck doctor sync fmt security audit ci examples evidence audit-obs fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate
 
 .DEFAULT_GOAL := help
 
@@ -30,6 +30,10 @@ typecheck: ## mypy on the harness
 
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+
+audit-obs: ## Audit ledger and observability tests
+	uv run pytest tests/unit/audit tests/unit/observe -q
+	uv run mypy src/quant_fund/audit src/quant_fund/observe
 
 audit: ## Locked-deps vulnerability audit (pip-audit)
 	uv export --format requirements.txt --no-hashes --no-emit-project --all-extras --all-groups \
