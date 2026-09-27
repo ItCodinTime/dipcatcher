@@ -9,12 +9,11 @@ name: Platform Matrix
 # ceiling is 3.14, the newest stable CPython; wheel coverage for locked deps on
 # cp314 is verified here rather than assumed.
 #
-# Sharding: pytest-xdist is not in the lockfile, so each (os, python) combo is
-# split into NUM_SHARDS jobs. A shard job re-runs `pytest --collect-only -q`
-# (which prints "<path>: <count>" per file) and greedy-assigns files to shards
-# by test count — deterministic because the inventory is LC_ALL=C sorted. This
-# is ~5.9k tests over ~680 files, balanced by count rather than directory so
-# the flat 270-file tests/unit/microstructure spreads evenly.
+# Sharding: each (os, python) combo is split into NUM_SHARDS jobs. A shard
+# job re-runs `pytest --collect-only -q` (which prints "<path>: <count>" per
+# file) and greedy-assigns files by test count. The assignment is deterministic
+# because the inventory is LC_ALL=C sorted. These file shards avoid launching
+# nested xdist workers within every platform job.
 
 on:
   pull_request:
@@ -67,6 +66,17 @@ jobs:
         run: |
           brew install libomp
           test -f "$(brew --prefix libomp)/lib/libomp.dylib"
+      - name: Verify Windows GCC for native C parity
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $command = Get-Command gcc -ErrorAction SilentlyContinue
+          $compiler = if ($command) { $command.Source } else { 'C:\msys64\mingw64\bin\gcc.exe' }
+          if (-not (Test-Path $compiler)) {
+            throw 'GCC is unavailable; native C parity cannot run on Windows'
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $compiler)
+          & $compiler --version
       - name: Sync locked environment
         run: uv sync --frozen --all-groups --all-extras
       - name: Select balanced test-file shard

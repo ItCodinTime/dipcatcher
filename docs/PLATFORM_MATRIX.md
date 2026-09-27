@@ -47,6 +47,10 @@ uv run pytest -q -m "not network" $(tr '\n' ' ' < /tmp/shard.txt)
 - **Git Bash passes Windows runner paths to AWK with backslashes.** AWK
   prints selected paths to stdout; the shell redirects them to the shard
   file so backslashes are not parsed as AWK string escapes.
+- **Native C parity on Windows requires GCC.** The matrix checks the compiler
+  and adds its directory to `PATH`. The [GitHub-hosted Windows image](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md)
+  lists GCC and MSYS2, while noting that MSYS2 is not on `PATH`; the check
+  fails clearly if the image changes.
 - **`chmod(0o000)` does not make a file unreadable on Windows.** Windows
   permissions are ACL-based; `os.chmod`/`Path.chmod` can only toggle the
   read-only attribute, and a read-only file still reads fine. Two
