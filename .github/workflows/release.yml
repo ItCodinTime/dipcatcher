@@ -1,0 +1,183 @@
+name: Release
+
+# Tag push (v1.2.3, v1.2.3-rc1, …) builds the sdist and wheel, writes a
+# CycloneDX SBOM, signs the distributions with Sigstore, and emits SLSA
+# build provenance. Nothing is published to PyPI until the owner turns the
+# gate on. This file does not store a PyPI token.
+#
+# Gate (all three are required before an upload happens):
+#   1. The event is a tag push matching v*.*.* (pull requests and
+#      workflow_dispatch only build and attest).
+#   2. Repository variable PYPI_TRUSTED_PUBLISHING is exactly "true".
+#   3. GitHub Environment "pypi" is a Trusted Publisher on the fx-1 PyPI
+#      project for this workflow. OIDC is the only credential.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, SBOM, sign, attest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Build sdist and wheel
+        run: uv build --out-dir dist
+
+      - name: Smoke-test the wheel
+        run: |
+          set -euo pipefail
+          uv sync --frozen --all-groups --no-install-project
+          uv pip install --python .venv/bin/python --no-deps dist/*.whl
+          .venv/bin/fx1 --help
+          .venv/bin/dipcatcher --help
+
+      - name: CycloneDX SBOM from the locked runtime set
+        run: |
+          set -euo pipefail
+          # Default install plus optional extras (including nn). Dev group
+          # excluded. uv writes CycloneDX 1.5 from uv.lock; no extra tool.
+          uv export --format cyclonedx1.5 --frozen --no-dev --all-extras \
+            --no-emit-project --output-file dist/sbom.cdx.json >/dev/null
+          python - << 'PY'
+          import json
+          from pathlib import Path
+
+          doc = json.loads(Path("dist/sbom.cdx.json").read_text())
+          if doc.get("bomFormat") != "CycloneDX" or doc.get("specVersion") != "1.5":
+              raise SystemExit(f"unexpected SBOM header: {doc.get('bomFormat')} {doc.get('specVersion')}")
+          components = doc.get("components") or []
+          if not components:
+              raise SystemExit("SBOM has no components")
+          print(f"CycloneDX {doc['specVersion']} components={len(components)}")
+          PY
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          sha256sum -- *.whl *.tar.gz sbom.cdx.json > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Sign distributions with Sigstore
+        # setup-uv exports VIRTUAL_ENV. uvx with those variables unset uses
+        # its own environment. sigstore 4.5 has no --oidc switch; on Actions
+        # it takes the ambient OIDC token (id-token: write). The certificate
+        # identity is the workflow file at GITHUB_REF, including pull_request
+        # merge refs. Bundles land next to each file as <name>.sigstore.json.
+        run: |
+          set -euo pipefail
+          unset VIRTUAL_ENV UV_PYTHON UV_PROJECT_ENVIRONMENT
+          shopt -s nullglob
+          dists=(dist/*.whl dist/*.tar.gz)
+          if [ "${#dists[@]}" -eq 0 ]; then
+            echo "no distributions to sign" >&2
+            exit 1
+          fi
+          uvx --from sigstore==4.5.0 sigstore sign "${dists[@]}"
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
+          echo "verifying certificate identity ${identity}"
+          uvx --from sigstore==4.5.0 sigstore verify identity \
+            --cert-identity "${identity}" \
+            --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${dists[@]}"
+
+      - name: SLSA build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/sbom.cdx.json
+            dist/SHA256SUMS
+
+      - name: Attest the SBOM
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
+          sbom-path: dist/sbom.cdx.json
+
+      - name: Record the PyPI gate
+        env:
+          PYPI_TRUSTED_PUBLISHING: ${{ vars.PYPI_TRUSTED_PUBLISHING }}
+        run: |
+          set -euo pipefail
+          echo "event=${GITHUB_EVENT_NAME}"
+          echo "ref=${GITHUB_REF}"
+          if [ "${PYPI_TRUSTED_PUBLISHING}" = "true" ]; then
+            echo "PYPI_TRUSTED_PUBLISHING=true"
+          else
+            echo "PYPI_TRUSTED_PUBLISHING=not-enabled"
+          fi
+          echo "PyPI upload runs only on a v*.*.* tag push when the variable is true."
+          echo "No PyPI token is stored in this repository."
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dists
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.PYPI_TRUSTED_PUBLISHING == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/fx-1/
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dists
+          path: dist
+
+      - name: Keep only sdist and wheel
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          cp dist/*.whl dist/*.tar.gz publish/
+          find publish -type f ! -name '*.whl' ! -name '*.tar.gz' -print >&2
+          find publish -type f ! -name '*.whl' ! -name '*.tar.gz' -exec false {} +
+
+      - name: Publish with Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: publish
+          attestations: true
+          print-hash: true
+          skip-existing: false

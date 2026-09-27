@@ -1,9 +1,16 @@
-"""Leakage Hunter rule registry (LH001..LH012) and path allowlists.
+"""Leakage Hunter rule registry (LH001..LH014) and path allowlists.
 
 RULE_REGISTRY is the ONLY source of rule metadata (DESIGN.md §6.1). Rule IDs
 are permanent; new rules append with new IDs. Allowlists are per-rule
 frozensets of path globs; every entry carries a comment citing why the
 existing site is legitimate (or which audit finding / follow-up owns it).
+
+Residual ceiling (ADVERSARIAL §1a, pinned by the documented-negative fixtures
+in tests/leakage_fixtures/adv_*.py): numpy/pandas index arithmetic, dict
+lookups at ``dates[i+1]``, lone numbers beyond the proximity window, manual
+Sharpe algebra without a ``sharpe_ratio`` call, and cross-file/multi-level
+helper indirection remain uncaught. The pack is a tripwire; the runtime
+watchdog + proof layer are the barrier.
 """
 
 from __future__ import annotations
@@ -114,6 +121,27 @@ RULE_REGISTRY: dict[str, RuleSpec] = {
         "Unparseable file",
         "`ast.parse` raised SyntaxError; the file was not scanned. Fix the "
         "syntax so the linter can check it.",
+    ),
+    "LH013": RuleSpec(
+        "LH013",
+        "warning",
+        "Headline metric claim in a comment/docstring/f-string/spelled-out form",
+        "ADVERSARIAL section 1a hardening: the forbidden-headline channel is "
+        "not limited to digit-bearing plain string literals — comments and "
+        "docstrings render into published docs, f-string templates disclose "
+        "runtime numbers, and spelled-out numerals ('exceeded two') evade "
+        "the digit matcher. WARNING-only: prose mentions of metric names are "
+        "legitimate; a human reviews these.",
+    ),
+    "LH014": RuleSpec(
+        "LH014",
+        "warning",
+        "Call to a helper that trips a leakage rule",
+        "ADVERSARIAL section 1a hardening: leaky logic hidden in a helper "
+        "function is still leaky when strategy code calls the helper. "
+        "Single-level, single-file summary pass: flags call sites of "
+        "functions whose own body produced a finding. Cross-file and "
+        "multi-level indirection are the documented residual ceiling.",
     ),
 }
 

@@ -1,0 +1,9 @@
+name: dipcatcher
+paths:
+  - src
+  - tests
+  - scripts
+paths-ignore:
+  - third_party
+  - data
+  - .dsh-24x7
