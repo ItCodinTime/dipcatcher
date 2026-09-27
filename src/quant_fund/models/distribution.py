@@ -16,7 +16,13 @@ from quant_fund.metrics.scoring import (
     rearrange_quantiles,
 )
 from quant_fund.models.base import JoblibMixin, ModelMeta
+from quant_fund.models.mixture import (
+    fit_gaussian_mixture,
+    gaussian_mixture_ppf_1d,
+    select_mixture_k,
+)
 from quant_fund.models.ranking import _finite
+from quant_fund.models.skew_t import skew_t_fit, skew_t_ppf
 
 NU_MIN = 3.0
 NU_MAX = 30.0
@@ -471,3 +477,225 @@ class TreeQuantileDistribution(JoblibMixin):
 
     def metadata(self) -> ModelMeta:
         return ModelMeta(family="distribution", name=f"{self.backend}_quantile", version="v1")
+
+
+class SkewTDistribution(JoblibMixin):
+    """Hansen/Fernández-Steel skew-t density head (MLE on y).
+
+    Captures return asymmetry that a symmetric Student-t misses; quantiles
+    are the fitted skew-t ppf at each tau. Unconditional like
+    ``EmpiricalDistribution`` — the misspecification-sensitive challenger.
+    """
+
+    def __init__(self, taus: list[float]) -> None:
+        self.taus = taus
+        self.params_: dict[str, float] | None = None
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> SkewTDistribution:
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        self.params_ = skew_t_fit(yy)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.params_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        p = self.params_
+        q = np.array([skew_t_ppf(t, p["nu"], p["lam"], p["mu"], p["sigma"]) for t in self.taus])
+        return np.tile(q, (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="distribution",
+            name="skew_t",
+            version="v1",
+            extra={k: float(v) for k, v in (self.params_ or {}).items() if k != "loglik"},
+        )
+
+
+class GMMDistribution(JoblibMixin):
+    """Gaussian-mixture density head: EM on y, mixture-CDF-inverted quantiles.
+
+    ``k=None`` selects K in {2, 3, 4} by BIC (P1.1 head); an int fixes K.
+    Unconditional — mixture shape is learned on the trailing window.
+    """
+
+    def __init__(self, taus: list[float], k: int | None = None, seed: int = 0) -> None:
+        self.taus = taus
+        self.k = k
+        self.seed = seed
+        self.k_: int = 0
+        self.q_: NDArray[np.float64] | None = None
+
+    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> GMMDistribution:
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        if yy.size < 30:
+            raise ValueError("GMMDistribution requires >= 30 finite observations")
+        col = yy[:, None]
+        if self.k is None:
+            sel = select_mixture_k(col, range(2, 5), seed=self.seed)
+            self.k_ = int(np.asarray(sel["best_k"]).ravel()[0])
+        else:
+            self.k_ = int(self.k)
+        fit = fit_gaussian_mixture(col, self.k_, seed=self.seed)
+        self.q_ = gaussian_mixture_ppf_1d(fit, np.asarray(self.taus, dtype=float))
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.q_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        return np.tile(self.q_, (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="distribution",
+            name="gmm",
+            version="v1",
+            extra={"k": self.k_},
+        )
+
+
+class IsotonicPitDistribution(JoblibMixin):
+    """PIT-isotonic recalibration of a Gaussian base distribution.
+
+    On train, u_i = F_base(y_i). The recalibration map m(tau) = empirical
+    tau-quantile of {u_i} is isotone by construction (a base whose PIT is
+    uniform yields m ~= identity). Predicted quantile q'_tau = mu +
+    sigma * Phi^-1(m(tau)). Cheap calibration challenger (dip_isotonic).
+    """
+
+    def __init__(self, taus: list[float]) -> None:
+        self.taus = taus
+        self.mu_ = 0.0
+        self.sig_ = 1.0
+        self.u_: NDArray[np.float64] | None = None
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> IsotonicPitDistribution:
+        from scipy.stats import norm
+
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        if yy.size < 16:
+            raise ValueError("IsotonicPitDistribution requires >= 16 finite observations")
+        self.mu_ = float(yy.mean())
+        s = float(yy.std(ddof=1))
+        self.sig_ = s if np.isfinite(s) and s > 0.0 else 1.0
+        self.u_ = norm.cdf((yy - self.mu_) / self.sig_)
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        from scipy.stats import norm
+
+        if self.u_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        m = np.quantile(self.u_, np.asarray(self.taus, dtype=float))
+        m = np.clip(m, 1e-6, 1.0 - 1e-6)
+        q = self.mu_ + self.sig_ * norm.ppf(m)
+        return np.tile(np.asarray(q, dtype=float), (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="distribution",
+            name="isotonic",
+            version="v1",
+            extra={"mu": self.mu_, "sig": self.sig_},
+        )
+
+
+class StackedDistribution(JoblibMixin):
+    """Causal stacked blend of base distribution quantiles (dip_stack).
+
+    Per-tau convex weights minimize mean pinball loss on the trailing slice
+    of the fit window: bases are fit on the leading slice, weights are fit
+    on the trailing slice, so no row influences both the base quantiles and
+    its own weight-fitting loss. Bases that fail to fit are dropped; if
+    fewer than two remain the head falls back to the surviving base's
+    quantiles. Output is rearranged to enforce monotone quantiles.
+    """
+
+    def __init__(self, taus: list[float], seed: int = 0) -> None:
+        self.taus = taus
+        self.seed = seed
+        self.q_bases_: NDArray[np.float64] | None = None  # (n_taus, n_bases)
+        self.w_: NDArray[np.float64] | None = None  # (n_taus, n_bases)
+        self.q_: NDArray[np.float64] | None = None
+
+    def _base_quantiles(self, yy: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Stack unconditional base quantile vectors as (n_taus, n_bases)."""
+        from scipy.stats import norm
+
+        cols = [np.quantile(yy, self.taus)]
+        mu, sig = float(yy.mean()), float(yy.std(ddof=1))
+        if np.isfinite(sig) and sig > 0.0:
+            cols.append(mu + sig * norm.ppf(np.asarray(self.taus, dtype=float)))
+        try:
+            p = skew_t_fit(yy)
+            cols.append(
+                np.array([skew_t_ppf(t, p["nu"], p["lam"], p["mu"], p["sigma"]) for t in self.taus])
+            )
+        except (ValueError, RuntimeError):
+            pass
+        return np.stack(cols, axis=1)
+
+    def fit(
+        self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any
+    ) -> StackedDistribution:
+        from scipy.optimize import minimize
+
+        yy = np.asarray(y, dtype=float).reshape(-1)
+        yy = yy[np.isfinite(yy)]
+        if yy.size < 60:
+            raise ValueError("StackedDistribution requires >= 60 finite observations")
+        n_cal = max(int(0.34 * yy.size), 16)
+        y_base, y_cal = yy[:-n_cal], yy[-n_cal:]
+        q_bases = self._base_quantiles(y_base)
+        n_bases = q_bases.shape[1]
+        if n_bases == 1:
+            self.q_bases_ = q_bases
+            self.w_ = np.ones((len(self.taus), 1))
+            self.q_ = q_bases[:, 0]
+            return self
+        tt = np.asarray(self.taus, dtype=float)
+        w = np.empty((tt.size, n_bases))
+        for j, tau in enumerate(tt):
+            qj = q_bases[j, :]
+
+            def obj(
+                v: NDArray[np.float64], tau: float = float(tau), qj: NDArray[np.float64] = qj
+            ) -> float:
+                e = y_cal - float(v @ qj)
+                return float(np.mean(np.maximum(tau * e, (tau - 1.0) * e)))
+
+            res = minimize(
+                obj,
+                np.full(n_bases, 1.0 / n_bases),
+                method="SLSQP",
+                bounds=[(0.0, 1.0)] * n_bases,
+                constraints=[{"type": "eq", "fun": lambda v: float(v.sum()) - 1.0}],
+            )
+            wj = np.asarray(res.x if res.success else np.full(n_bases, 1.0 / n_bases))
+            s = float(wj.sum())
+            w[j] = wj / s if s > 0.0 else np.full(n_bases, 1.0 / n_bases)
+        q = (w * q_bases).sum(axis=1)
+        self.q_bases_ = q_bases
+        self.w_ = w
+        self.q_ = rearrange_quantiles(q.reshape(1, -1))[0]
+        return self
+
+    def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
+        if self.q_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        return np.tile(self.q_, (x.shape[0], 1))
+
+    def metadata(self) -> ModelMeta:
+        return ModelMeta(
+            family="distribution",
+            name="stack",
+            version="v1",
+            extra={"n_bases": 0 if self.q_bases_ is None else int(self.q_bases_.shape[1])},
+        )
