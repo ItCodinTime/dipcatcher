@@ -175,6 +175,7 @@ nav:
       - Scenario Monte Carlo: MC_ENGINE.md
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
+      - Audit ledger and observability: AUDIT_OBSERVABILITY.md
       - Paper and shadow: PAPER_SHADOW.md
       - Backtest-to-live parity: BACKTEST_LIVE_PARITY.md
       - Deterministic simulation: DETERMINISTIC_SIMULATION.md

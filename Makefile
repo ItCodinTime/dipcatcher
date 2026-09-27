@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke
 
 .DEFAULT_GOAL := help
 
@@ -42,6 +42,10 @@ diffbacktest: ## Differentiable backtest (optional JAX extra, CPU)
 
 security: ## Bandit static security analysis on src/
 	uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+
+audit-obs: ## Audit ledger and observability tests
+	uv run pytest tests/unit/audit tests/unit/observe -q
+	uv run mypy src/quant_fund/audit src/quant_fund/observe
 
 audit: ## Locked-deps vulnerability audit (pip-audit)
 	uv export --format requirements.txt --no-hashes --no-emit-project --all-extras --all-groups \

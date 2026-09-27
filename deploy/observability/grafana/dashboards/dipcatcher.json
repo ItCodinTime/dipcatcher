@@ -1,0 +1,111 @@
+{
+  "annotations": {"list": []},
+  "description": "Operational telemetry for dipcatcher. Simulation P&L and exposure gauges are simulation-only. They are not research scores and they are not a live P&L claim.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, stage) (rate(dipcatcher_stage_latency_seconds_bucket[5m])))",
+          "legendFormat": "{{stage}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage latency p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [
+        {
+          "expr": "dipcatcher_data_freshness_seconds",
+          "legendFormat": "freshness",
+          "refId": "A"
+        }
+      ],
+      "title": "Data freshness",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum by (stage) (rate(dipcatcher_errors_total[5m]))",
+          "legendFormat": "{{stage}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Error rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Simulation mark-to-market gauge. Not a live P&L claim and not a research score.",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "targets": [
+        {
+          "expr": "dipcatcher_simulation_pnl",
+          "legendFormat": "simulation pnl",
+          "refId": "A"
+        }
+      ],
+      "title": "Simulation P&L",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Simulated gross exposure. Not a live trading position.",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 5,
+      "targets": [
+        {
+          "expr": "dipcatcher_simulation_gross_exposure",
+          "legendFormat": "gross",
+          "refId": "A"
+        }
+      ],
+      "title": "Simulation gross exposure",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Simulated net exposure. Not a live trading position.",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 6,
+      "targets": [
+        {
+          "expr": "dipcatcher_simulation_net_exposure",
+          "legendFormat": "net",
+          "refId": "A"
+        }
+      ],
+      "title": "Simulation net exposure",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["dipcatcher", "simulation"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "utc",
+  "title": "Dipcatcher audit observability",
+  "uid": "dipcatcher-audit-obs",
+  "version": 1
+}
