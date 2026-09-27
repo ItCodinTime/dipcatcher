@@ -31,6 +31,7 @@ import numpy as np
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.metrics.returns import sharpe_ratio
 from quant_fund.paper.loop import PaperLoopResult, run_paper_loop
 from quant_fund.paper.quantile_signals import (
     DEFAULT_TAUS,
@@ -78,11 +79,11 @@ def _equity_stats(equity: pl.DataFrame, bars_per_year: float) -> dict[str, Any]:
     ann_vol = (
         float(np.std(rets, ddof=1) * np.sqrt(bars_per_year)) if rets.size > 1 else float("nan")
     )
-    sharpe = (
-        float(np.mean(rets) / np.std(rets, ddof=1) * np.sqrt(bars_per_year))
-        if (rets.size > 1 and np.std(rets, ddof=1) > 0)
-        else float("nan")
-    )
+    # A2 F4 (PROOFCORE W4): delegate to the canonical fail-closed Sharpe in
+    # metrics/returns.py — same formula, same NaN policy (rets.size < 2 or
+    # zero vol -> NaN); the inline copy is retired (deprecation: do not
+    # re-inline Sharpe math outside metrics/returns.py).
+    sharpe = float(sharpe_ratio(rets, periods_per_year=bars_per_year)["sharpe"])
     return {
         "status": "ok",
         "n_marks": int(nav.size),
