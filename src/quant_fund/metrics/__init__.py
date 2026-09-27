@@ -31,9 +31,14 @@ from quant_fund.metrics.inference import (
     stationary_bootstrap_indices,
 )
 from quant_fund.metrics.overfitting import (
+    CORRELATED_TRIAL_MIN_RHO,
+    choose_cscv_slices,
+    cscv_performance,
     deflated_sharpe,
+    effective_n_trials,
     min_track_record_length,
     min_trl_from_returns,
+    overfitting_diagnostics,
     probabilistic_sharpe,
     probability_of_backtest_overfitting,
 )
@@ -55,6 +60,7 @@ from quant_fund.metrics.returns import (
     drawdown_series,
     max_drawdown,
     sharpe_ratio,
+    sharpe_ratio_batch,
     sortino_ratio,
     turnover,
     wealth_index,
@@ -87,6 +93,10 @@ from quant_fund.metrics.scoring import (
     rank_ic,
     rearrange_quantiles,
 )
+
+# A2 F4 (PROOFCORE W4): explicit-name re-export of the scoring.py IC-based
+# information ratio so consumers stop re-inlining mean/std*sqrt(ppy).
+from quant_fund.metrics.scoring import icir as ic_information_ratio
 from quant_fund.metrics.snooping import (
     McsResult,
     SnoopingResult,
@@ -150,6 +160,11 @@ __all__ = [
     "StepMResult",
     "McsResult",
     "probability_of_backtest_overfitting",
+    "CORRELATED_TRIAL_MIN_RHO",
+    "choose_cscv_slices",
+    "cscv_performance",
+    "effective_n_trials",
+    "overfitting_diagnostics",
     "cagr",
     "calmar_ratio",
     "GARCH_ONE_STEP_CRPS_TAUS",
@@ -171,6 +186,7 @@ __all__ = [
     "historical_es",
     "historical_var",
     "icir",
+    "ic_information_ratio",
     "max_drawdown",
     "fissler_ziegel_loss",
     "mean_fissler_ziegel",
@@ -185,6 +201,7 @@ __all__ = [
     "rank_ic",
     "rearrange_quantiles",
     "sharpe_ratio",
+    "sharpe_ratio_batch",
     "sortino_ratio",
     "turnover",
     "wealth_index",
