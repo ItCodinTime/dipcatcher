@@ -18,17 +18,11 @@ from numpy.typing import NDArray
 Array = NDArray[np.float64]
 
 
-def hui_heubel_ratio(
-    prices: Array, volume_shares: Array, shares_outstanding: float
-) -> float:
+def hui_heubel_ratio(prices: Array, volume_shares: Array, shares_outstanding: float) -> float:
     """Hui-Heubel liquidity ratio over the supplied window (higher = less liquid)."""
     p = np.asarray(prices, dtype=float).ravel()
     v = np.asarray(volume_shares, dtype=float).ravel()
-    if (
-        p.size < 2
-        or p.size != v.size
-        or not (np.isfinite(p).all() and np.isfinite(v).all())
-    ):
+    if p.size < 2 or p.size != v.size or not (np.isfinite(p).all() and np.isfinite(v).all()):
         raise ValueError("prices and volume must be finite, aligned, length >= 2")
     if (
         not np.isfinite(shares_outstanding)
@@ -36,9 +30,7 @@ def hui_heubel_ratio(
         or (p <= 0).any()
         or (v < 0).any()
     ):
-        raise ValueError(
-            "require positive prices, shares outstanding, non-negative volume"
-        )
+        raise ValueError("require positive prices, shares outstanding, non-negative volume")
     p_min = float(p.min())
     price_range = (float(p.max()) - p_min) / p_min
     p_bar = float(p.mean())
@@ -67,9 +59,7 @@ def ulcer_index(returns: Array) -> float:
     return float(np.sqrt(np.mean(drawdown**2)))
 
 
-def martin_ratio(
-    returns: Array, rf: float = 0.0, periods_per_year: float = 252.0
-) -> float:
+def martin_ratio(returns: Array, rf: float = 0.0, periods_per_year: float = 252.0) -> float:
     """Martin ratio: annualised excess return in percent divided by percent Ulcer Index.
 
     ``rf`` is the per-period risk-free return in fractional units.
@@ -77,11 +67,7 @@ def martin_ratio(
     r = np.asarray(returns, dtype=float).ravel()
     if r.size < 2 or not np.isfinite(r).all():
         raise ValueError("returns must be finite with >= 2 observations")
-    if (
-        not np.isfinite(rf)
-        or not np.isfinite(periods_per_year)
-        or periods_per_year <= 0.0
-    ):
+    if not np.isfinite(rf) or not np.isfinite(periods_per_year) or periods_per_year <= 0.0:
         raise ValueError("rf must be finite and periods_per_year positive and finite")
     ui = ulcer_index(r)
     if ui <= 0.0:

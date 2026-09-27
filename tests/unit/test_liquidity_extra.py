@@ -41,9 +41,7 @@ def test_ulcer_includes_starting_wealth_and_martin_uses_percent_units() -> None:
     returns = np.array([-0.10, 1.0 / 9.0])
     assert ulcer_index(returns) == pytest.approx(10.0 / np.sqrt(2.0))
     annual_excess_pct = 100.0 * returns.mean() * 252.0
-    assert martin_ratio(returns) == pytest.approx(
-        annual_excess_pct / ulcer_index(returns)
-    )
+    assert martin_ratio(returns) == pytest.approx(annual_excess_pct / ulcer_index(returns))
 
 
 def test_liquidity_and_drawdown_invalid_inputs_rejected() -> None:
