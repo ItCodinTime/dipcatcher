@@ -331,7 +331,11 @@ def verify_research(
 def execution_sensitivity_cmd(
     config: Path = typer.Option(Path("configs/backtest.yaml")),
     max_dates: int | None = typer.Option(
-        None, help="Use only the first N panel dates (the strategy code path is unchanged)."
+        None,
+        help=(
+            "Use only the first N decision dates present on both the feature "
+            "panel and the causal gold panel."
+        ),
     ),
     signal_latencies: str = typer.Option(
         "0,1", help="Comma-separated signal-to-order delays in bars."
@@ -347,6 +351,7 @@ def execution_sensitivity_cmd(
     from quant_fund.backtest.event_sim import execution_sensitivity, format_sensitivity_table
     from quant_fund.features.engine import build_features
     from quant_fund.pipeline.dataset import ensure_silver
+    from quant_fund.pipeline.dataset import panel as decision_panel
     from quant_fund.pipeline.forecast import build_causal_weight_panel
 
     def _ints(raw: str) -> tuple[int, ...]:
@@ -365,11 +370,19 @@ def execution_sensitivity_cmd(
     bars = ensure_silver(cfg)
     feat = build_features(bars, cfg)
     dates = feat["event_time"].unique().sort().to_list()
+    # Gold drops warmup bars (history / label horizon). optimize_asof refuses
+    # a decision date with no panel row, so the grid uses the overlap only.
+    on_panel = set(decision_panel(cfg)["event_time"].unique().to_list())
+    dates = [day for day in dates if day in on_panel]
+    if len(dates) < 2:
+        raise typer.BadParameter(
+            "need at least 2 decision dates on both the feature panel and the causal gold panel"
+        )
     if max_dates is not None:
         if max_dates < 2:
             raise typer.BadParameter("--max-dates must be at least 2")
         dates = dates[:max_dates]
-        feat = feat.filter(pl.col("event_time").is_in(dates))
+    feat = feat.filter(pl.col("event_time").is_in(dates))
     weights = build_causal_weight_panel(cfg, dates)
     report = execution_sensitivity(
         feat,
