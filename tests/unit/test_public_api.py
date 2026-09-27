@@ -27,6 +27,66 @@ from quant_fund.research.verify import verify_research_artifact
 _SNAPSHOT = Path(__file__).with_name("public_api_snapshot.txt")
 _ROOT = Path(__file__).resolve().parents[2]
 
+_STRICT_MODULES = [
+    "quant_fund",
+    "quant_fund.public",
+    "quant_fund.backtest.engine",
+    "quant_fund.config.loader",
+    "quant_fund.config.models",
+    "quant_fund.data.adapters.hf_ohlcv_1m",
+    "quant_fund.data.adapters.parquet",
+    "quant_fund.data.adapters.synthetic",
+    "quant_fund.data.corporate_actions",
+    "quant_fund.data.ingest",
+    "quant_fund.data.lake",
+    "quant_fund.data.security_master",
+    "quant_fund.data.sources",
+    "quant_fund.data.sources.adapters",
+    "quant_fund.data.sources.base",
+    "quant_fund.data.sources.normalize",
+    "quant_fund.data.sources.registry",
+    "quant_fund.data.sources.storage",
+    "quant_fund.data.universe",
+    "quant_fund.execution.costs",
+    "quant_fund.metrics.analytics",
+    "quant_fund.metrics.inference",
+    "quant_fund.metrics.returns",
+    "quant_fund.metrics.risk",
+    "quant_fund.models.crc",
+    "quant_fund.monitoring.kill_switch",
+    "quant_fund.northset.benches",
+    "quant_fund.pipeline",
+    "quant_fund.pipeline.dataset",
+    "quant_fund.pipeline.forecast",
+    "quant_fund.portfolio.optimizer",
+    "quant_fund.portfolio.risk_gate",
+    "quant_fund.reporting.report",
+    "quant_fund.research.agent",
+    "quant_fund.research.benches",
+    "quant_fund.research.benches_extra",
+    "quant_fund.research.catalog",
+    "quant_fund.research.catalog._helpers",
+    "quant_fund.research.catalog.candle",
+    "quant_fund.research.catalog.consistency",
+    "quant_fund.research.catalog.constants",
+    "quant_fund.research.catalog.families",
+    "quant_fund.research.catalog.kyle",
+    "quant_fund.research.catalog.northset",
+    "quant_fund.research.catalog.predicates",
+    "quant_fund.research.catalog.session",
+    "quant_fund.research.cost_allocation",
+    "quant_fund.research.verify",
+    "quant_fund.risk.overlay",
+    "quant_fund.risk.pyrisk",
+    "quant_fund.risk.pyriskmgmt",
+    "quant_fund.schemas.errors",
+    "quant_fund.schemas.forecast",
+    "quant_fund.schemas.orders",
+    "quant_fund.utils.hashing",
+    "quant_fund.utils.reproducibility",
+    "quant_fund.utils.seeds",
+]
+
 _STRICT_FLAGS = (
     "check_untyped_defs",
     "disallow_any_generics",
@@ -183,11 +243,7 @@ def test_mypy_strict_flags_are_per_module() -> None:
     config = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     mypy = config["tool"]["mypy"]
     assert mypy["strict"] is False
-    matched = [
-        block
-        for block in mypy["overrides"]
-        if block.get("module") == ["quant_fund", "quant_fund.public"]
-    ]
+    matched = [block for block in mypy["overrides"] if block.get("module") == _STRICT_MODULES]
     assert len(matched) == 1
     block = matched[0]
     assert "strict" not in block

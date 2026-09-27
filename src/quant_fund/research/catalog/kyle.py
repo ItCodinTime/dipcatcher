@@ -33,7 +33,7 @@ def kyle_residual_flow_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:  # finite
@@ -111,7 +111,7 @@ def kyle_lambda_dispersion_honesty_errors(blob: object) -> list[str]:
             present = True
             break
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -147,7 +147,7 @@ def kyle_lambda_ofi_depth_corr_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -217,7 +217,7 @@ def kyle_lambda_date_series_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -382,7 +382,7 @@ def kyle_ofi_ic_method_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             return False
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return False
         return x == x
@@ -466,7 +466,7 @@ def kyle_ofi_hac_lags_honesty_errors(blob: object) -> list[str]:
     errors: list[str] = []
     if "hac_lags" in kyle and kyle.get("hac_lags") is not None:
         try:
-            x = float(kyle["hac_lags"])  # type: ignore[arg-type]
+            x = float(kyle["hac_lags"])
         except (TypeError, ValueError):
             return ["kyle_ofi_hac_lags_non_numeric"]
         if x != x or abs(x) == float("inf"):
@@ -480,8 +480,8 @@ def kyle_ofi_hac_lags_honesty_errors(blob: object) -> list[str]:
         if lo_key not in kyle or hi_key not in kyle:
             return
         try:
-            lo = float(kyle[lo_key])  # type: ignore[arg-type]
-            hi = float(kyle[hi_key])  # type: ignore[arg-type]
+            lo = float(kyle[lo_key])
+            hi = float(kyle[hi_key])
         except (TypeError, ValueError):
             return
         if lo != lo or hi != hi:
@@ -517,7 +517,7 @@ def kyle_ofi_min_names_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -526,7 +526,7 @@ def kyle_ofi_min_names_honesty_errors(blob: object) -> list[str]:
     if "min_names" not in kyle or kyle.get("min_names") is None:
         return ["kyle_ofi_min_names_missing"] if benchish else []
     try:
-        x = float(kyle["min_names"])  # type: ignore[arg-type]
+        x = float(kyle["min_names"])
     except (TypeError, ValueError):
         return ["kyle_ofi_min_names_non_numeric"]
     errors: list[str] = []
@@ -560,7 +560,7 @@ def kyle_ofi_n_fused_scored_honesty_errors(blob: object) -> list[str]:
 
     def _parse(key: str) -> float | None:
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_{key}_non_numeric")
             return None
@@ -617,7 +617,7 @@ def kyle_ofi_min_join_coverage_pair_honesty_errors(blob: object) -> list[str]:
     if raw_floor is None:
         return []
     try:
-        floor = float(raw_floor)  # type: ignore[arg-type]
+        floor = float(raw_floor)
     except (TypeError, ValueError):
         return ["kyle_ofi_min_join_coverage_non_numeric"]
     errors: list[str] = []
@@ -629,7 +629,7 @@ def kyle_ofi_min_join_coverage_pair_honesty_errors(blob: object) -> list[str]:
     if "join_coverage" not in kyle or kyle.get("join_coverage") is None:
         return errors
     try:
-        cov = float(kyle["join_coverage"])  # type: ignore[arg-type]
+        cov = float(kyle["join_coverage"])
     except (TypeError, ValueError):
         return errors
     if cov != cov or abs(cov) == float("inf"):
@@ -656,7 +656,7 @@ def kyle_ofi_dispersion_window_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             return False
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return False
         return x == x
@@ -668,7 +668,7 @@ def kyle_ofi_dispersion_window_honesty_errors(blob: object) -> list[str]:
     ):
         return ["kyle_ofi_dispersion_window_missing"] if disp_markers else []
     try:
-        x = float(kyle["kyle_lambda_dispersion_window"])  # type: ignore[arg-type]
+        x = float(kyle["kyle_lambda_dispersion_window"])
     except (TypeError, ValueError):
         return ["kyle_ofi_dispersion_window_non_numeric"]
     errors: list[str] = []
@@ -717,7 +717,7 @@ def kyle_ofi_lambda_decile_order_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             return None
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return None
         if x != x or abs(x) == float("inf"):
@@ -773,7 +773,7 @@ def kyle_ofi_std_iqr_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_{key}_non_numeric")
             continue
@@ -801,7 +801,7 @@ def kyle_ofi_rolling_mean_hac_band_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             return None
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return None
         if x != x or abs(x) == float("inf"):
@@ -840,7 +840,7 @@ def kyle_ofi_n_dates_companion_honesty_errors(blob: object) -> list[str]:
         if key not in kyle:
             return None
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return None
         if x != x or abs(x) == float("inf"):
@@ -886,7 +886,7 @@ def kyle_ofi_n_dates_companion_honesty_errors(blob: object) -> list[str]:
             errors.append(f"kyle_ofi_n_dates_missing:{stem}")
             continue
         try:
-            n = float(kyle[nkey])  # type: ignore[arg-type]
+            n = float(kyle[nkey])
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_n_dates_non_numeric:{stem}")
             continue
@@ -915,7 +915,7 @@ def kyle_ofi_pvalue_honesty_errors(blob: object) -> list[str]:
             continue
         # deciles are *_p10/*_p50/*_p90 — they do not end with lone "_p"
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_pvalue_non_numeric:{key}")
             continue
@@ -947,7 +947,7 @@ def kyle_ofi_spearman_honesty_errors(blob: object) -> list[str]:
         ):
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_corr_non_numeric:{key}")
             continue
@@ -976,7 +976,7 @@ def kyle_ofi_tstat_honesty_errors(blob: object) -> list[str]:
         if key not in kyle or kyle.get(key) is None:
             return None
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             return None
         if x != x or abs(x) == float("inf"):
@@ -990,7 +990,7 @@ def kyle_ofi_tstat_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_tstat_non_numeric:{key}")
             continue
@@ -1047,7 +1047,7 @@ def kyle_ofi_date_series_counts_honesty_errors(blob: object) -> list[str]:
         if key not in kyle or kyle.get(key) is None:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             errors.append(f"kyle_ofi_{key}_non_numeric")
             continue

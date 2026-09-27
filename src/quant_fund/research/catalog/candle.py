@@ -226,7 +226,7 @@ def candle_all_ic_pearson_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -258,7 +258,7 @@ def candle_all_ic_p_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -282,7 +282,7 @@ def candle_all_ic_t_finite_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -306,7 +306,7 @@ def candle_all_ic_n_dates_nonneg_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -458,7 +458,7 @@ def candle_all_finite_rate_prefix_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -944,7 +944,7 @@ def candle_feature_cols_ic_honesty_errors(blob: object) -> list[str]:
         if not isinstance(key, str) or not key.startswith("ic_"):
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             # Skip non-numeric meta (e.g. ic_method=date_level_spearman_hac).
             continue
@@ -1284,7 +1284,7 @@ def candle_order_book_ic_method_honesty_errors(blob: object) -> list[str]:
         if key.endswith(("_t", "_p", "_n_dates", "_pearson")):
             continue
         try:
-            x = float(val)  # type: ignore[arg-type]
+            x = float(val)
         except (TypeError, ValueError):
             continue
         if x != x:

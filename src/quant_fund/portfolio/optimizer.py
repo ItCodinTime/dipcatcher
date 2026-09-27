@@ -213,7 +213,7 @@ def optimize_mean_variance(
     )
 
 
-def _constraint_names(constraints: list) -> list[str]:
+def _constraint_names(constraints: list[object]) -> list[str]:
     names = []
     for i, c in enumerate(constraints):
         names.append(f"c{i}:{c}")

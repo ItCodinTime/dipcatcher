@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 
 def _iter_mapping_keys(obj: object) -> list[str]:
@@ -35,7 +36,7 @@ _JP_CV_SCOPE_FAMILIES = ("jackknife_plus", "cv_plus")
 
 
 def _ic_pack_honesty_errors(
-    blob: dict,
+    blob: dict[str, Any],
     *,
     mean_ic_key: str,
     rank_ic_key: str | None,
@@ -128,7 +129,7 @@ _KYLE_RESIDUAL_SPEARMAN_KEYS = (
 _KYLE_FORBIDDEN_TOKENS = ("sharpe", "sortino", "calmar", "pnl", "nav", "live_pnl_claim")
 
 
-def _kyle_ofi_blob(blob: object) -> dict | None:
+def _kyle_ofi_blob(blob: object) -> dict[str, Any] | None:
     """Return nested kyle_ofi dict from a northset family blob, or the blob itself."""
     if not isinstance(blob, dict):
         return None
@@ -138,13 +139,13 @@ def _kyle_ofi_blob(blob: object) -> dict | None:
     return nest if isinstance(nest, dict) else None
 
 
-def _kyle_ofi_has_nest_diagnostic_marker(kyle: dict) -> bool:
+def _kyle_ofi_has_nest_diagnostic_marker(kyle: dict[str, Any]) -> bool:
     """True when any kyle nest diagnostic stamp is present/finite."""
     for key in _KYLE_RESIDUAL_SPEARMAN_KEYS:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -163,7 +164,7 @@ def _kyle_ofi_has_nest_diagnostic_marker(kyle: dict) -> bool:
         if key not in kyle:
             continue
         try:
-            x = float(kyle[key])  # type: ignore[arg-type]
+            x = float(kyle[key])
         except (TypeError, ValueError):
             continue
         if x == x:
@@ -204,7 +205,7 @@ def _finite_pair(blob: object, key_a: str, key_b: str) -> tuple[float, float] | 
 _CANDLE_FEATURE_IC_METHOD_ALLOWED = frozenset({"date_level_spearman_hac"})
 
 
-def _candle_has_feature_ic_marker(blob: dict) -> bool:
+def _candle_has_feature_ic_marker(blob: dict[str, Any]) -> bool:
     """True if any FEATURE_COLS-style ic_<col> spearman (not meta suffix) is present."""
     for key in blob:
         if not isinstance(key, str) or not key.startswith("ic_"):

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -107,8 +108,12 @@ from quant_fund.portfolio.interval_risk import apply_interval_caps, interval_ref
 from quant_fund.portfolio.optimizer import optimize_mean_variance
 from quant_fund.schemas.errors import OptimizationInfeasible, PointInTimeError
 from quant_fund.schemas.forecast import (
-    MARKET_RISK_OVERLAY_GARCH,
-    MARKET_RISK_OVERLAY_REALIZED_GARCH,
+    MARKET_RISK_OVERLAY_GARCH as MARKET_RISK_OVERLAY_GARCH,
+)
+from quant_fund.schemas.forecast import (
+    MARKET_RISK_OVERLAY_REALIZED_GARCH as MARKET_RISK_OVERLAY_REALIZED_GARCH,
+)
+from quant_fund.schemas.forecast import (
     AssetForecast,
     IntervalMethod,
     MarketState,
@@ -124,17 +129,17 @@ INTERVAL_ALPHA = 0.10
 
 # Process-local caches for causal panel / multi-asof hot paths
 _RANKER_CACHE: dict[tuple[str, str], object] = {}
-_RL_POLICY_CACHE: dict[tuple[str, float], object] = {}
+_RL_POLICY_CACHE: dict[tuple[str, float], tuple[Any, list[str], str]] = {}
 _GARCH_SPEC_CACHE: dict[tuple[str, str], GARCHVol] = {}
-_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
-_GARCH_NAME_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_GARCH_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
+_GARCH_NAME_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 _REALIZED_GARCH_SPEC_CACHE: dict[tuple[str, str], RealizedGARCHVol] = {}
-_REALIZED_GARCH_ASOF_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_REALIZED_GARCH_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 _PANEL_ASOF_CACHE: dict[tuple[str, float, float], pl.DataFrame] = {}
-_CONFORMAL_CACHE: dict[tuple, ForecastIntervals] = {}
+_CONFORMAL_CACHE: dict[tuple[object, ...], ForecastIntervals] = {}
 # Wrappee train-fit reuse: key = train-primary fingerprint + selected family name.
 # Family is re-selected on current cal each call; fit reused only when family matches.
-_WRAPPEE_CACHE: OrderedDict[tuple, object] = OrderedDict()
+_WRAPPEE_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 
 
 def _array_content_digest(*arrays: NDArray[np.float64]) -> str:
@@ -169,7 +174,7 @@ def wrappee_cal_fingerprint(
     label: str = "",
     include_cal: bool = False,
     train_content_digest: str = "",
-) -> tuple:
+) -> tuple[object, ...]:
     """Fingerprint for ``_WRAPPEE_CACHE``.
 
     **When reuse is valid (train-primary, default ``include_cal=False``)**
@@ -216,7 +221,7 @@ def wrappee_fit_cache_key(
     n_cal: int = 0,
     include_cal: bool = False,
     train_content_digest: str = "",
-) -> tuple:
+) -> tuple[object, ...]:
     """Train-primary fit key including selected family (Wave 7).
 
     Cal keys are ignored unless ``include_cal=True`` (diagnostics). Alpha/label
@@ -838,7 +843,7 @@ def _joblib_artifact_digest(path: Path) -> str:
     return hash_file(path)
 
 
-def _load_ranker_cached(config: AppConfig):
+def _load_ranker_cached(config: AppConfig) -> Any:
     """Load the strongest available supervised ranker artifact.
 
     Candidate artifacts are searched in priority order; cache identity is
@@ -885,7 +890,7 @@ def _load_ranker_cached(config: AppConfig):
     return model
 
 
-def _load_rl_cached(config: AppConfig):
+def _load_rl_cached(config: AppConfig) -> tuple[Any, list[str], str] | None:
     """Load the strongest available persisted RL policy and feature contract."""
     root = Path(config.data.root) / "metadata"
     path = next(

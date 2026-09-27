@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 from ._helpers import (
     _iter_mapping_keys,
@@ -263,7 +264,7 @@ def hypotheses_include_h3(hypotheses: object, *, require_discovery: bool = True)
     return False
 
 
-def rankers_oracle_raw(rankers: object) -> dict | None:
+def rankers_oracle_raw(rankers: object) -> dict[str, Any] | None:
     """Return the ``oracle_raw`` ranker dict from *rankers*, or None.
 
     Skips non-dicts and names starting with ``_`` (same filter as agent

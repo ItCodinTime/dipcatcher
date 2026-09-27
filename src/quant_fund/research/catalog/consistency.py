@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ._helpers import (
     _JP_CV_SCOPE_FAMILIES,
     _finite_scalar,
@@ -687,7 +689,7 @@ def northset_session_means_honesty_errors(blob: object) -> list[str]:
     return errors
 
 
-NORTHSET_RECEIPT_HONESTY_HELPERS: tuple = (
+NORTHSET_RECEIPT_HONESTY_HELPERS: tuple[Callable[..., list[str]], ...] = (
     mean_book_age_seconds_honesty_errors,
     book_age_seconds_honesty_errors,
     mean_microprice_minus_mid_honesty_errors,

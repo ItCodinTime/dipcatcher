@@ -309,7 +309,7 @@ def stress_report(
     for key in pnl_keys:
         val = raw.get(key, float("nan"))
         try:
-            fval = float(val)  # type: ignore[arg-type]
+            fval = float(val)
         except (TypeError, ValueError):
             fval = float("nan")
         contributions.append({"scenario": key, "pnl": fval})

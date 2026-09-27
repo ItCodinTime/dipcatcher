@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from ._helpers import (
     _finite_scalar,
 )
@@ -42,7 +44,7 @@ def oracle_has_finite_ls_p(payload: object) -> bool:
     return _finite_scalar(payload.get("ls_p"))
 
 
-def ranking_data_snooping_blob(ranking: object) -> dict | None:
+def ranking_data_snooping_blob(ranking: object) -> dict[str, Any] | None:
     """Return the nested ``data_snooping`` dict from a ranking family blob."""
     if not isinstance(ranking, dict):
         return None
@@ -57,7 +59,7 @@ def data_snooping_has_finite_spa_p(blob: object) -> bool:
     return _finite_scalar(blob.get("spa_p_consistent"))
 
 
-def conformal_aci_blob(conformal: object) -> dict | None:
+def conformal_aci_blob(conformal: object) -> dict[str, Any] | None:
     """Return ``families['conformal']['aci']`` dict, or None.
 
     *conformal* is ``families.get("conformal")`` (the conformal family blob),
@@ -76,7 +78,7 @@ def aci_has_finite_kupiec_p(payload: object) -> bool:
     return _finite_scalar(payload.get("kupiec_p"))
 
 
-def conformal_mondrian_aci_blob(conformal: object) -> dict | None:
+def conformal_mondrian_aci_blob(conformal: object) -> dict[str, Any] | None:
     """Return ``families['conformal']['mondrian_aci']`` dict, or None.
 
     *conformal* is ``families.get("conformal")`` (the conformal family blob),

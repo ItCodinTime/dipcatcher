@@ -84,7 +84,7 @@ def northset_shape_and_session_l2_floors_honesty_errors(blob: object) -> list[st
         if val is None:
             continue
         try:
-            x = float(val)  # type: ignore[arg-type]
+            x = float(val)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -178,7 +178,7 @@ def northset_range_spread_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue  # JSON null = unavailable (NaN), never non-numeric
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -526,7 +526,7 @@ def northset_price_slope_tick_top_levels_honesty_errors(blob: object) -> list[st
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -546,7 +546,7 @@ def northset_price_slope_tick_top_levels_honesty_errors(blob: object) -> list[st
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -928,7 +928,7 @@ def northset_all_rate_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1279,7 +1279,7 @@ def northset_all_t_ic_finite_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1303,7 +1303,7 @@ def northset_all_mean_ic_finite_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1327,7 +1327,7 @@ def northset_all_mean_rank_ic_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1356,7 +1356,7 @@ def northset_all_finite_rate_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1385,7 +1385,7 @@ def northset_all_floor_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1414,7 +1414,7 @@ def northset_all_p_ic_unit_interval_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            p = float(raw)  # type: ignore[arg-type]
+            p = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -1441,7 +1441,7 @@ def northset_all_n_dates_nonneg_honesty_errors(blob: object) -> list[str]:
         if key.startswith("best_feature"):
             continue
         try:
-            n = float(raw)  # type: ignore[arg-type]
+            n = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
@@ -2479,7 +2479,7 @@ def northset_all_share_unit_honesty_errors(blob: object) -> list[str]:
         if raw is None:
             continue
         try:
-            x = float(raw)  # type: ignore[arg-type]
+            x = float(raw)
         except (TypeError, ValueError):
             errs.append(f"{key}_non_numeric")
             continue
