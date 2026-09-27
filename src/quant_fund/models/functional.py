@@ -91,7 +91,7 @@ def fpca_predict(fit: dict[str, Array | float], scores: Array | None = None) -> 
         s = s[:, None]
     if s.shape[1] != phi.shape[1]:
         raise ValueError("score/component dimension mismatch")
-    return mu[None, :] + s @ phi.T
+    return np.asarray(mu[None, :] + s @ phi.T, dtype=float)
 
 
 def fos_regress(y: Array, x: Array) -> dict[str, Array | float]:

@@ -55,6 +55,7 @@ Merge:
     .venv/bin/python scripts/sota_eval_native.py \
         --merge-parts .dsh-24x7/native/*.paths.npz --merge-out /tmp/native.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -120,6 +121,7 @@ except ImportError:  # divergent checkouts: inline the same contract
         if not np.isfinite(values).all() or np.any(values[:, :4] <= 0):
             raise ValueError("prices must be positive and volume nonnegative, all finite")
         return times, int(steps[0])
+
 
 TEST_START = pd.Timestamp("2024-07-01", tz="UTC")
 # Paper Table 8: (lookback, horizon) by frequency.
@@ -282,13 +284,22 @@ def challenger_paths(
 # --------------------------------------------------------------------------
 
 
-def kronos_path(predictor, history: pd.DataFrame, x_ts, y_ts, samples: int, horizon: int) -> np.ndarray:
+def kronos_path(
+    predictor, history: pd.DataFrame, x_ts, y_ts, samples: int, horizon: int
+) -> np.ndarray:
     """Mean close path over S sampled OHLC trajectories."""
     acc = np.zeros(horizon, dtype=float)
     for _ in range(samples):
         out = predictor.predict(
-            history, x_ts, y_ts, horizon, T=1.0, top_k=0, top_p=0.9,
-            sample_count=1, verbose=False,
+            history,
+            x_ts,
+            y_ts,
+            horizon,
+            T=1.0,
+            top_k=0,
+            top_p=0.9,
+            sample_count=1,
+            verbose=False,
         )
         acc += np.asarray(out["close"].iloc[:horizon], dtype=float)
     return acc / samples
@@ -317,7 +328,9 @@ def bolt_path(pipe, closes_hist: np.ndarray, horizon: int) -> np.ndarray:
 
 
 def timesfm_path(model, closes_hist: np.ndarray, horizon: int) -> np.ndarray:
-    _point, quant = model.forecast(horizon=horizon, inputs=[np.asarray(closes_hist, dtype=np.float64)])
+    _point, quant = model.forecast(
+        horizon=horizon, inputs=[np.asarray(closes_hist, dtype=np.float64)]
+    )
     q = np.asarray(quant, dtype=np.float64)
     return np.asarray(q[0, :, 5], dtype=float)  # channel 5 = point forecast
 
@@ -408,8 +421,10 @@ def summarize_parts(parts: list[dict]) -> dict:
             pooled_retact[m].extend(ret.tolist())
         dupes = set(asset_row) & set(out["assets"].get(asset, {}))
         if dupes:
-            print(f"WARNING: duplicate (asset,model) rows overwritten: {asset} {sorted(dupes)}",
-                  file=sys.stderr)
+            print(
+                f"WARNING: duplicate (asset,model) rows overwritten: {asset} {sorted(dupes)}",
+                file=sys.stderr,
+            )
         out["assets"].setdefault(asset, {}).update(asset_row)
 
     pooled: dict[str, Any] = {}
@@ -422,9 +437,7 @@ def summarize_parts(parts: list[dict]) -> dict:
         ok = np.isfinite(rr) & np.isfinite(ra)
         row = {
             "path_rankic_mean": float(np.nanmean(r)),
-            "ret_rankic": float(st.spearmanr(rr[ok], ra[ok]).statistic)
-            if ok.sum() > 3
-            else np.nan,
+            "ret_rankic": float(st.spearmanr(rr[ok], ra[ok]).statistic) if ok.sum() > 3 else np.nan,
             "n_origins": int(np.isfinite(r).sum()),
         }
         row.update(_vol_stats(vh, va))
@@ -535,9 +548,7 @@ def main() -> int:
         ap.error("run mode requires --bars and --out")
 
     specs = [] if args.no_targets else parse_specs(args)
-    challengers = (
-        args.challengers.split(",") if args.challengers else list(CHALLENGER_NAMES)
-    )
+    challengers = args.challengers.split(",") if args.challengers else list(CHALLENGER_NAMES)
     unknown = [c for c in challengers if c not in CHALLENGER_NAMES]
     if unknown:
         raise SystemExit(f"unknown challengers: {unknown} (valid: {CHALLENGER_NAMES})")
@@ -692,11 +703,7 @@ def main() -> int:
             rets_long = np.diff(hist_close[long_start:]) / hist_close[long_start:-1]
             params = challenger_params(rets, rets_long)
             try:
-                q_l = (
-                    None
-                    if args.no_lgbm
-                    else lgbm_quantiles(X, rets_all, i, args.garch_window)
-                )
+                q_l = None if args.no_lgbm else lgbm_quantiles(X, rets_all, i, args.garch_window)
             except Exception:  # noqa: BLE001
                 q_l = None
             paths, vol2s, reth = challenger_paths(params, q_l, last_close, horizon)

@@ -24,7 +24,9 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
+from scipy.signal import lfilter
 
 Array = NDArray[np.float64]
 
@@ -71,14 +73,31 @@ def _nan_pad(n: int) -> Array:
     return np.full(n, np.nan)
 
 
+def _lfilter_recur(seed: float, alpha: float, tail: Array) -> Array:
+    """``y = alpha * x + (1 - alpha) * y_prev`` with ``y`` seeded before ``tail``.
+
+    ``scipy.signal.lfilter`` uses that recurrence. For EMA (``alpha = 2/(n+1)``)
+    it matches the scalar loop bit for bit. Wilder's ``(prev*(n-1) + x) / n``
+    is the same formula written with ``alpha = 1/n``; the two associations
+    differ by a few ulps on long series.
+    """
+    if tail.size == 0:
+        return tail
+    decay = 1.0 - alpha
+    filtered, _ = lfilter([alpha], [1.0, -decay], tail, zi=np.array([decay * seed]))
+    return np.asarray(filtered, dtype=float)
+
+
 def _ema(x: Array, n: int) -> Array:
     """Wilder-exponential moving average, NaN warmup (alpha = 2/(n+1))."""
     v = np.asarray(x, dtype=float)
     out = _nan_pad(v.size)
+    if n < 1 or v.size < n:
+        return out
     alpha = 2.0 / (n + 1.0)
-    out[n - 1] = v[:n].mean()
-    for i in range(n, v.size):
-        out[i] = alpha * v[i] + (1.0 - alpha) * out[i - 1]
+    seed = float(v[:n].mean())
+    out[n - 1] = seed
+    out[n:] = _lfilter_recur(seed, alpha, v[n:])
     return out
 
 
@@ -96,15 +115,19 @@ def _ema_causal(x: Array, n: int) -> Array:
     if finite.size < n:
         return out
     start = int(finite[0])
-    seed = v[start : start + n]
-    if seed.size < n or not np.isfinite(seed).all():
+    seed_slice = v[start : start + n]
+    if seed_slice.size < n or not np.isfinite(seed_slice).all():
         return out
     alpha = 2.0 / (n + 1.0)
-    out[start + n - 1] = float(seed.mean())
-    for i in range(start + n, v.size):
-        if not np.isfinite(v[i]) or not np.isfinite(out[i - 1]):
-            break
-        out[i] = alpha * float(v[i]) + (1.0 - alpha) * out[i - 1]
+    seed = float(seed_slice.mean())
+    out[start + n - 1] = seed
+    rest = v[start + n :]
+    if rest.size == 0:
+        return out
+    bad = np.flatnonzero(~np.isfinite(rest))
+    end = int(bad[0]) if bad.size else int(rest.size)
+    if end:
+        out[start + n : start + n + end] = _lfilter_recur(seed, alpha, rest[:end])
     return out
 
 
@@ -112,12 +135,13 @@ def _sma_causal(x: Array, window: int) -> Array:
     """SMA only when every bar in the window is finite. Leading NaNs stay NaN."""
     v = np.asarray(x, dtype=float)
     out = _nan_pad(v.size)
-    if window < 1:
+    if window < 1 or v.size < window:
         return out
-    for i in range(window - 1, v.size):
-        seg = v[i - window + 1 : i + 1]
-        if np.isfinite(seg).all():
-            out[i] = float(seg.mean())
+    view = sliding_window_view(v, window)
+    ok = np.isfinite(view).all(axis=1)
+    # ``ndarray.sum`` on the window matches ``slice.sum``; divide by ``window``
+    # matches ``slice.mean`` for these short windows (exact on the unit grid).
+    out[window - 1 :] = np.where(ok, view.sum(axis=1) / window, np.nan)
     return out
 
 
@@ -125,9 +149,29 @@ def _wilder_smooth(x: Array, n: int) -> Array:
     """Wilder smoothing (alpha = 1/n), NaN warmup."""
     v = np.asarray(x, dtype=float)
     out = _nan_pad(v.size)
-    out[n - 1] = v[:n].mean()
-    for i in range(n, v.size):
-        out[i] = (out[i - 1] * (n - 1) + v[i]) / n
+    if n < 1 or v.size < n:
+        return out
+    seed = float(v[:n].mean())
+    out[n - 1] = seed
+    out[n:] = _lfilter_recur(seed, 1.0 / n, v[n:])
+    return out
+
+
+def _rolling_sum(x: Array, window: int) -> Array:
+    """Trailing sum. ``out[i] = sum(x[i-window+1:i+1])`` for ``i >= window-1``."""
+    out = _nan_pad(x.size)
+    if window < 1 or x.size < window:
+        return out
+    out[window - 1 :] = sliding_window_view(x, window).sum(axis=1)
+    return out
+
+
+def _rolling_extreme(x: Array, window: int, *, high: bool) -> Array:
+    out = _nan_pad(x.size)
+    if window < 1 or x.size < window:
+        return out
+    view = sliding_window_view(x, window)
+    out[window - 1 :] = view.max(axis=1) if high else view.min(axis=1)
     return out
 
 
@@ -153,8 +197,8 @@ def wma(close: Array, window: int) -> Array:
     w = _check_window(window, c.size)
     weights = np.arange(1, w + 1, dtype=float)
     out = _nan_pad(c.size)
-    for i in range(w - 1, c.size):
-        out[i] = float(np.dot(c[i - w + 1 : i + 1], weights)) / weights.sum()
+    # correlate(c, weights)[k] = dot(c[k:k+w], weights), same as the scalar dot.
+    out[w - 1 :] = np.correlate(c, weights, mode="valid") / weights.sum()
     return out
 
 
@@ -185,11 +229,12 @@ def hma(close: Array, window: int) -> Array:
     raw = 2.0 * wma_h - wma_f
     out = _nan_pad(c.size)
     weights = np.arange(1, wsq + 1, dtype=float)
-    for i in range(w + wsq - 2, c.size):
-        seg = raw[i - wsq + 1 : i + 1]
-        if not np.isfinite(seg).all():
-            continue
-        out[i] = float(np.dot(seg, weights)) / weights.sum()
+    if c.size >= wsq:
+        view = sliding_window_view(raw, wsq)
+        ok = np.isfinite(view).all(axis=1)
+        scored = np.where(ok, view @ weights / weights.sum(), np.nan)
+        out[wsq - 1 :] = scored
+    out[: w + wsq - 2] = np.nan
     return out
 
 
@@ -199,13 +244,15 @@ def kama(close: Array, window: int = 10, fast: int = 2, slow: int = 30) -> Array
     w = _check_window(window, c.size)
     out = _nan_pad(c.size)
     er = _nan_pad(c.size)
-    for i in range(w, c.size):
-        change = abs(c[i] - c[i - w])
-        vol = np.sum(np.abs(np.diff(c[i - w : i + 1])))
-        er[i] = change / vol if vol > 0.0 else 0.0
+    if c.size > w:
+        change = np.abs(c[w:] - c[:-w])
+        # sum |Δ| over the w steps ending at i equals the window of abs(diff).
+        vol = sliding_window_view(np.abs(np.diff(c)), w).sum(axis=1)
+        er[w:] = np.where(vol > 0.0, change / vol, 0.0)
     fast_sc = 2.0 / (fast + 1.0)
     slow_sc = 2.0 / (slow + 1.0)
     sc = (er * (fast_sc - slow_sc) + slow_sc) ** 2
+    # ``c[w]`` is out of range when ``n == w``, matching the previous loop.
     out[w] = c[w]
     for i in range(w + 1, c.size):
         out[i] = out[i - 1] + sc[i] * (c[i] - out[i - 1])
@@ -245,7 +292,10 @@ def ppo(close: Array, fast: int = 12, slow: int = 26) -> Array:
 def true_range(high: Array, low: Array, close: Array) -> Array:
     h, lo, c = _ohlcv(high, low, close)
     pc = np.concatenate([[c[0]], c[:-1]])
-    return np.maximum(h - lo, np.maximum(np.abs(h - pc), np.abs(lo - pc)))
+    return np.asarray(
+        np.maximum(h - lo, np.maximum(np.abs(h - pc), np.abs(lo - pc))),
+        dtype=float,
+    )
 
 
 def atr(high: Array, low: Array, close: Array, window: int = 14) -> Array:
@@ -282,9 +332,17 @@ def dmi(high: Array, low: Array, close: Array, window: int = 14) -> dict[str, Ar
     adx = _nan_pad(n)
     first = 2 * window - 1
     if first < n:
-        adx[first] = np.nanmean(dx[window - 1 : first + 1])
-        for i in range(first + 1, n):
-            adx[i] = (adx[i - 1] * (window - 1) + dx[i]) / window
+        segment = dx[window - 1 : first + 1]
+        # Finite OHLC makes this slice finite, so nanmean == mean. A gap falls
+        # back to the scalar Wilder step so a NaN still stops the seed.
+        if np.isfinite(segment).all():
+            seed = float(segment.mean())
+            adx[first] = seed
+            adx[first + 1 :] = _lfilter_recur(seed, 1.0 / window, dx[first + 1 :])
+        else:
+            adx[first] = float(np.nanmean(segment))
+            for i in range(first + 1, n):
+                adx[i] = (adx[i - 1] * (window - 1) + dx[i]) / window
     return {"plus_di": plus_di, "minus_di": minus_di, "dx": dx, "adx": adx}
 
 
@@ -297,12 +355,12 @@ def aroon(high: Array, low: Array, window: int = 25) -> dict[str, Array]:
     w = _check_window(window, h.size)
     up = _nan_pad(h.size)
     dn = _nan_pad(h.size)
-    for i in range(w - 1, h.size):
-        seg_h = h[i - w + 1 : i + 1]
-        seg_l = lo[i - w + 1 : i + 1]
-        # Position of the most extreme point: near end -> high Aroon.
-        up[i] = 100.0 * np.argmax(seg_h) / (w - 1)
-        dn[i] = 100.0 * np.argmin(seg_l) / (w - 1)
+    if w == 1:
+        # Scalar ``/ (w - 1)`` raises; keep that failure instead of emitting NaN.
+        raise ZeroDivisionError("division by zero")
+    # Position of the most extreme point: near end -> high Aroon.
+    up[w - 1 :] = 100.0 * np.argmax(sliding_window_view(h, w), axis=1) / (w - 1)
+    dn[w - 1 :] = 100.0 * np.argmin(sliding_window_view(lo, w), axis=1) / (w - 1)
     return {"up": up, "down": dn, "oscillator": up - dn}
 
 
@@ -315,13 +373,9 @@ def vortex(high: Array, low: Array, close: Array, window: int = 14) -> dict[str,
     vm_minus = np.abs(lo - prev_hi)
     tr = true_range(h, lo, c)
     w = _check_window(window, h.size)
-    sp = _nan_pad(h.size)
-    sm = _nan_pad(h.size)
-    st = _nan_pad(h.size)
-    for i in range(w - 1, h.size):
-        sp[i] = vm_plus[i - w + 1 : i + 1].sum()
-        sm[i] = vm_minus[i - w + 1 : i + 1].sum()
-        st[i] = tr[i - w + 1 : i + 1].sum()
+    sp = _rolling_sum(vm_plus, w)
+    sm = _rolling_sum(vm_minus, w)
+    st = _rolling_sum(tr, w)
     with np.errstate(invalid="ignore", divide="ignore"):
         return {"plus": sp / st, "minus": sm / st}
 
@@ -344,10 +398,12 @@ def cci(high: Array, low: Array, close: Array, window: int = 20) -> Array:
     tp = (h + lo + c) / 3.0
     ma = sma(tp, window)
     out = _nan_pad(h.size)
-    for i in range(window - 1, h.size):
-        seg = tp[i - window + 1 : i + 1]
-        md = np.mean(np.abs(seg - seg.mean()))
-        out[i] = (tp[i] - ma[i]) / (0.015 * md) if md > 0 else 0.0
+    view = sliding_window_view(tp, window)
+    centered = view - view.mean(axis=1, keepdims=True)
+    md = np.mean(np.abs(centered), axis=1)
+    out[window - 1 :] = np.where(
+        md > 0.0, (tp[window - 1 :] - ma[window - 1 :]) / (0.015 * md), 0.0
+    )
     return out
 
 
@@ -361,10 +417,7 @@ def ichimoku(
         raise ValueError("high and low must match length")
 
     def _hh_ll(w: int) -> Array:
-        out = _nan_pad(h.size)
-        for i in range(w - 1, h.size):
-            out[i] = 0.5 * (h[i - w + 1 : i + 1].max() + lo[i - w + 1 : i + 1].min())
-        return out
+        return 0.5 * (_rolling_extreme(h, w, high=True) + _rolling_extreme(lo, w, high=False))
 
     t = _hh_ll(tenkan)
     k = _hh_ll(kijun)
@@ -376,12 +429,9 @@ def ichimoku(
 def donchian(high: Array, low: Array, window: int = 20) -> dict[str, Array]:
     h = _as_vec(high, "high", window)
     lo = _as_vec(low, "low", window)
-    w = _check_window(window, h.size)
-    up = _nan_pad(h.size)
-    dn = _nan_pad(h.size)
-    for i in range(w - 1, h.size):
-        up[i] = h[i - w + 1 : i + 1].max()
-        dn[i] = lo[i - w + 1 : i + 1].min()
+    _check_window(window, h.size)
+    up = _rolling_extreme(h, window, high=True)
+    dn = _rolling_extreme(lo, window, high=False)
     return {"upper": up, "lower": dn, "mid": (up + dn) / 2.0}
 
 
@@ -401,8 +451,7 @@ def bollinger(close: Array, window: int = 20, num_sd: float = 2.0) -> dict[str, 
         raise ValueError("num_sd must be positive")
     mid = sma(c, w)
     sd = _nan_pad(c.size)
-    for i in range(w - 1, c.size):
-        sd[i] = c[i - w + 1 : i + 1].std(ddof=0)
+    sd[w - 1 :] = sliding_window_view(c, w).std(axis=1, ddof=0)
     upper = mid + num_sd * sd
     lower = mid - num_sd * sd
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -443,10 +492,12 @@ def stochastic(
     h, lo, c = _ohlcv(high, low, close, k_window)
     w = _check_window(k_window, h.size)
     k = _nan_pad(h.size)
-    for i in range(w - 1, h.size):
-        hh = h[i - w + 1 : i + 1].max()
-        ll = lo[i - w + 1 : i + 1].min()
-        k[i] = 100.0 * (c[i] - ll) / (hh - ll) if hh > ll else 50.0
+    hh = _rolling_extreme(h, w, high=True)
+    ll = _rolling_extreme(lo, w, high=False)
+    span = hh - ll
+    with np.errstate(invalid="ignore", divide="ignore"):
+        raw_k = 100.0 * (c - ll) / span
+    k[w - 1 :] = np.where(span[w - 1 :] > 0.0, raw_k[w - 1 :], 50.0)
     d = _sma_causal(k, _check_window(d_window, k.size, "%D"))
     return {"k": k, "d": d}
 
@@ -455,10 +506,12 @@ def williams_r(high: Array, low: Array, close: Array, window: int = 14) -> Array
     h, lo, c = _ohlcv(high, low, close, window)
     w = _check_window(window, h.size)
     out = _nan_pad(h.size)
-    for i in range(w - 1, h.size):
-        hh = h[i - w + 1 : i + 1].max()
-        ll = lo[i - w + 1 : i + 1].min()
-        out[i] = -100.0 * (hh - c[i]) / (hh - ll) if hh > ll else -50.0
+    hh = _rolling_extreme(h, w, high=True)
+    ll = _rolling_extreme(lo, w, high=False)
+    span = hh - ll
+    with np.errstate(invalid="ignore", divide="ignore"):
+        raw = -100.0 * (hh - c) / span
+    out[w - 1 :] = np.where(span[w - 1 :] > 0.0, raw[w - 1 :], -50.0)
     return out
 
 
@@ -486,10 +539,12 @@ def cmo(close: Array, window: int = 14) -> Array:
     up = np.where(d > 0, d, 0.0)
     dn = np.where(d < 0, -d, 0.0)
     out = _nan_pad(c.size)
-    for i in range(w, c.size):
-        su = up[i - w + 1 : i + 1].sum()
-        sd = dn[i - w + 1 : i + 1].sum()
-        out[i] = 100.0 * (su - sd) / (su + sd) if su + sd > 0 else 0.0
+    # The first window starts at index 1: the prepended zero change is excluded.
+    if c.size > w:
+        su = sliding_window_view(up, w).sum(axis=1)[1:]
+        sd = sliding_window_view(dn, w).sum(axis=1)[1:]
+        denom = su + sd
+        out[w:] = np.where(denom > 0.0, 100.0 * (su - sd) / denom, 0.0)
     return out
 
 
@@ -520,16 +575,17 @@ def ultimate_oscillator(
     tr = np.maximum(h, pc) - np.minimum(lo, pc)
     out = _nan_pad(h.size)
 
-    def _avg(w: int, i: int) -> float:
-        s_bp = bp[i - w + 1 : i + 1].sum()
-        s_tr = tr[i - w + 1 : i + 1].sum()
-        return s_bp / s_tr if s_tr > 0 else 0.0
+    def _avg(w: int) -> Array:
+        s_bp = _rolling_sum(bp, w)
+        s_tr = _rolling_sum(tr, w)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            ratio = s_bp / s_tr
+        return np.where(s_tr > 0.0, ratio, 0.0)
 
-    for i in range(s3 - 1, h.size):
-        a7 = _avg(s1, i)
-        a14 = _avg(s2, i)
-        a28 = _avg(s3, i)
-        out[i] = 100.0 * (4 * a7 + 2 * a14 + a28) / 7.0
+    a7 = _avg(s1)
+    a14 = _avg(s2)
+    a28 = _avg(s3)
+    out[s3 - 1 :] = 100.0 * (4.0 * a7[s3 - 1 :] + 2.0 * a14[s3 - 1 :] + a28[s3 - 1 :]) / 7.0
     return out
 
 
@@ -548,13 +604,13 @@ def fisher_transform(high: Array, low: Array, window: int = 10) -> dict[str, Arr
     w = _check_window(window, h.size)
     med = (h + lo) / 2.0
     out = _nan_pad(h.size)
+    hh = _rolling_extreme(med, w, high=True)
+    ll = _rolling_extreme(med, w, high=False)
     prev_val = 0.0
     prev_fish = 0.0
     for i in range(w - 1, h.size):
-        hh = med[i - w + 1 : i + 1].max()
-        ll = med[i - w + 1 : i + 1].min()
-        rng_ = hh - ll
-        v = 0.0 if rng_ <= 0 else 2.0 * (med[i] - ll) / rng_ - 1.0
+        rng_ = hh[i] - ll[i]
+        v = 0.0 if rng_ <= 0.0 else 2.0 * (med[i] - ll[i]) / rng_ - 1.0
         val = min(max(0.33 * v + 0.67 * prev_val, -0.999), 0.999)
         fish = 0.5 * math.log((1.0 + val) / (1.0 - val)) + 0.5 * prev_fish
         prev_val = val
@@ -620,9 +676,11 @@ def chaikin_money_flow(
     mfv = mfm * v
     out = _nan_pad(h.size)
     w = _check_window(window, h.size)
-    for i in range(w - 1, h.size):
-        sv = v[i - w + 1 : i + 1].sum()
-        out[i] = mfv[i - w + 1 : i + 1].sum() / sv if sv > 0 else 0.0
+    sv = _rolling_sum(v, w)
+    sm = _rolling_sum(mfv, w)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ratio = sm / sv
+    out[w - 1 :] = np.where(sv[w - 1 :] > 0.0, ratio[w - 1 :], 0.0)
     return out
 
 
@@ -648,10 +706,12 @@ def mfi(high: Array, low: Array, close: Array, volume: Array, window: int = 14) 
     pos = np.where(d > 0, rmf, 0.0)
     neg = np.where(d < 0, rmf, 0.0)
     out = _nan_pad(h.size)
-    for i in range(window, h.size):
-        sp = pos[i - window + 1 : i + 1].sum()
-        sn = neg[i - window + 1 : i + 1].sum()
-        out[i] = 100.0 - 100.0 / (1.0 + sp / sn) if sn > 0 else 100.0
+    if h.size > window:
+        sp = sliding_window_view(pos, window).sum(axis=1)[1:]
+        sn = sliding_window_view(neg, window).sum(axis=1)[1:]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            raw = 100.0 - 100.0 / (1.0 + sp / sn)
+        out[window:] = np.where(sn > 0.0, raw, 100.0)
     return out
 
 
@@ -704,9 +764,13 @@ def chaikin_volatility(high: Array, low: Array, window: int = 10, roc_window: in
     lo = _as_vec(low, "low", window + roc_window)
     e = _ema(h - lo, window)
     out = _nan_pad(h.size)
-    for i in range(window + roc_window - 1, h.size):
-        prev = e[i - roc_window]
-        out[i] = (e[i] - prev) / prev * 100.0 if prev != 0 else 0.0
+    start = window + roc_window - 1
+    if start < h.size:
+        prev = e[start - roc_window : h.size - roc_window]
+        cur = e[start:]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            roc = (cur - prev) / prev * 100.0
+        out[start:] = np.where(prev != 0.0, roc, 0.0)
     return out
 
 
@@ -715,9 +779,16 @@ def stoch_rsi(close: Array, rsi_window: int = 14, stoch_window: int = 14) -> Arr
     c = _as_vec(close, "close", rsi_window + stoch_window)
     r = rsi(c, rsi_window)
     out = _nan_pad(c.size)
-    for i in range(rsi_window + stoch_window - 1, c.size):
-        seg = r[i - stoch_window + 1 : i + 1]
-        lo = np.nanmin(seg)
-        hi = np.nanmax(seg)
-        out[i] = (r[i] - lo) / (hi - lo) if hi > lo else 0.5
+    start = rsi_window + stoch_window - 1
+    if start < c.size:
+        view = sliding_window_view(r, stoch_window)
+        # view[j] ends at index j + stoch_window - 1. The first used end is ``start``.
+        offset = start - (stoch_window - 1)
+        hi = np.nanmax(view[offset:], axis=1)
+        lo = np.nanmin(view[offset:], axis=1)
+        span = hi - lo
+        cur = r[start:]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            raw = (cur - lo) / span
+        out[start:] = np.where(span > 0.0, raw, 0.5)
     return out

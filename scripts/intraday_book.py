@@ -59,8 +59,15 @@ def _load(src: Path) -> pl.DataFrame:
                 pl.lit("yahoo_1h").alias("source"),
                 pl.col("close").alias("close_total_return"),
             ).select(
-                "security_id", "event_time", "open", "high", "low", "close",
-                "close_total_return", "volume", "source",
+                "security_id",
+                "event_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "close_total_return",
+                "volume",
+                "source",
             )
         )
     if not parts:
@@ -69,13 +76,15 @@ def _load(src: Path) -> pl.DataFrame:
 
 
 def _matrices(bars: pl.DataFrame):
-    piv = bars.pivot(on="security_id", index="event_time", values="close",
-                     aggregate_function="last").sort("event_time")
+    piv = bars.pivot(
+        on="security_id", index="event_time", values="close", aggregate_function="last"
+    ).sort("event_time")
     times = piv["event_time"].to_list()
     sids = [c for c in piv.columns if c != "event_time"]
     close = piv.select(sids).to_numpy()
-    piv_o = bars.pivot(on="security_id", index="event_time", values="open",
-                       aggregate_function="last").sort("event_time")
+    piv_o = bars.pivot(
+        on="security_id", index="event_time", values="open", aggregate_function="last"
+    ).sort("event_time")
     opens = piv_o.select(sids).to_numpy()
     return times, sids, close, opens
 
@@ -129,7 +138,9 @@ def build_weights(times, sids, close, opens, args) -> dict:
                 v = vol[i, j]
                 if not np.isfinite(v) or v <= 0:
                     continue
-                w[sids[j]] = w.get(sids[j], 0.0) - z[j] * args.xrev_risk / (v * np.sqrt(args.bars_per_year))
+                w[sids[j]] = w.get(sids[j], 0.0) - z[j] * args.xrev_risk / (
+                    v * np.sqrt(args.bars_per_year)
+                )
         if "xgap" in sleeves and bod == 0:
             gap = np.where(
                 np.isfinite(opens[i]) & np.isfinite(close[i - 1]) & (close[i - 1] > 0),
@@ -143,7 +154,9 @@ def build_weights(times, sids, close, opens, args) -> dict:
                 v = vol[i, j]
                 if not np.isfinite(v) or v <= 0:
                     continue
-                w[sids[j]] = w.get(sids[j], 0.0) - z[j] * args.xgap_risk / (v * np.sqrt(args.bars_per_year))
+                w[sids[j]] = w.get(sids[j], 0.0) - z[j] * args.xgap_risk / (
+                    v * np.sqrt(args.bars_per_year)
+                )
         if "tmom" in sleeves and i >= args.tmom_bars + 1:
             mom = logc[i] - logc[i - args.tmom_bars]
             z = _zscore(mom)
@@ -153,7 +166,9 @@ def build_weights(times, sids, close, opens, args) -> dict:
                 v = vol[i, j]
                 if not np.isfinite(v) or v <= 0:
                     continue
-                w[sids[j]] = w.get(sids[j], 0.0) + z[j] * args.tmom_risk / (v * np.sqrt(args.bars_per_year))
+                w[sids[j]] = w.get(sids[j], 0.0) + z[j] * args.tmom_risk / (
+                    v * np.sqrt(args.bars_per_year)
+                )
         if "daymom" in sleeves and bod >= args.daymom_entry and bod < 6:
             first = i - bod
             dayret = logc[i] - logc[first]
@@ -164,7 +179,9 @@ def build_weights(times, sids, close, opens, args) -> dict:
                 v = vol[i, j]
                 if not np.isfinite(v) or v <= 0:
                     continue
-                w[sids[j]] = w.get(sids[j], 0.0) + z[j] * args.daymom_risk / (v * np.sqrt(args.bars_per_year))
+                w[sids[j]] = w.get(sids[j], 0.0) + z[j] * args.daymom_risk / (
+                    v * np.sqrt(args.bars_per_year)
+                )
         # flatten at last bar of day: next bar opens a new session; weight map
         # already zeroes ungated names, but positions held to session end are
         # fine — engine carries weights until next explicit row anyway.
@@ -198,10 +215,19 @@ def _weights_frame(wmap, times, sids) -> pl.DataFrame:
 
 
 def _metrics(m) -> dict:
-    return {k: getattr(m, k, None) for k in (
-        "total_return", "cagr", "sharpe", "max_drawdown", "n",
-        "margin_rejects", "ruined", "turnover",
-    )}
+    return {
+        k: getattr(m, k, None)
+        for k in (
+            "total_return",
+            "cagr",
+            "sharpe",
+            "max_drawdown",
+            "n",
+            "margin_rejects",
+            "ruined",
+            "turnover",
+        )
+    }
 
 
 def main() -> int:
@@ -289,14 +315,14 @@ def main() -> int:
                 min_scale=0.0,
                 max_scale=args.max_scale,
             ),
-            DrawdownGovernor(
-                dd_soft=args.dd_soft, dd_hard=args.dd_hard, floor=args.dd_floor
-            ),
+            DrawdownGovernor(dd_soft=args.dd_soft, dd_hard=args.dd_hard, floor=args.dd_floor),
         ]
     )
 
     t0 = datetime.now(UTC)
-    res = run_perp_backtest(bars_seg, None, weights, cfg, initial_nav=args.initial_nav, scaler=scaler)
+    res = run_perp_backtest(
+        bars_seg, None, weights, cfg, initial_nav=args.initial_nav, scaler=scaler
+    )
     elapsed = (datetime.now(UTC) - t0).total_seconds()
     m = res.metrics
     receipt = {
@@ -308,15 +334,23 @@ def main() -> int:
         "bars_per_year_measured": bpy,
         "sleeves": args.sleeves,
         "params": {
-            "xrev_risk": args.xrev_risk, "xrev_gate": args.xrev_gate,
-            "xgap_risk": args.xgap_risk, "xgap_gate": args.xgap_gate,
-            "tmom_bars": args.tmom_bars, "tmom_risk": args.tmom_risk,
+            "xrev_risk": args.xrev_risk,
+            "xrev_gate": args.xrev_gate,
+            "xgap_risk": args.xgap_risk,
+            "xgap_gate": args.xgap_gate,
+            "tmom_bars": args.tmom_bars,
+            "tmom_risk": args.tmom_risk,
             "tmom_gate": args.tmom_gate,
-            "daymom_entry": args.daymom_entry, "daymom_risk": args.daymom_risk,
+            "daymom_entry": args.daymom_entry,
+            "daymom_risk": args.daymom_risk,
             "daymom_gate": args.daymom_gate,
-            "gross_cap": args.gross_cap, "name_cap": args.name_cap,
-            "target_vol": args.target_vol, "max_scale": args.max_scale,
-            "dd_soft": args.dd_soft, "dd_hard": args.dd_hard, "dd_floor": args.dd_floor,
+            "gross_cap": args.gross_cap,
+            "name_cap": args.name_cap,
+            "target_vol": args.target_vol,
+            "max_scale": args.max_scale,
+            "dd_soft": args.dd_soft,
+            "dd_hard": args.dd_hard,
+            "dd_floor": args.dd_floor,
             "commission_bps": args.commission_bps,
             "half_spread_bps": args.half_spread_bps,
             "borrow_bps_per_year": args.borrow_bps,
@@ -338,7 +372,15 @@ def main() -> int:
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(receipt, indent=2, default=str) + "\n")
-    print(json.dumps({k: receipt["metrics"][k] for k in ("sharpe", "max_drawdown", "cagr", "total_return", "turnover")}, default=str))
+    print(
+        json.dumps(
+            {
+                k: receipt["metrics"][k]
+                for k in ("sharpe", "max_drawdown", "cagr", "total_return", "turnover")
+            },
+            default=str,
+        )
+    )
     return 0
 
 

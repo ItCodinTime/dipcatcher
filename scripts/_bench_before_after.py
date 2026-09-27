@@ -4,6 +4,7 @@ Interleaves ``_fast_replay_before.run_backtest_fast`` (the pre-kernel
 interpreted implementation, extracted verbatim from git HEAD) with the
 current ``run_backtest_fast`` on the same 11-asset workload.
 """
+
 import importlib.util
 import json
 import sys
@@ -51,10 +52,15 @@ for _ in range(REPS):
     run_backtest_fast(bars, weights, cfg)
     ta.append(time.perf_counter() - t0)
 
-print(json.dumps({
-    "before_ms_median": float(np.median(tb) * 1e3),
-    "after_ms_median": float(np.median(ta) * 1e3),
-    "before_all_ms": [round(t * 1e3, 1) for t in tb],
-    "after_all_ms": [round(t * 1e3, 1) for t in ta],
-    "before_after_nav_bitwise_equal": parity,
-}, indent=2))
+print(
+    json.dumps(
+        {
+            "before_ms_median": float(np.median(tb) * 1e3),
+            "after_ms_median": float(np.median(ta) * 1e3),
+            "before_all_ms": [round(t * 1e3, 1) for t in tb],
+            "after_all_ms": [round(t * 1e3, 1) for t in ta],
+            "before_after_nav_bitwise_equal": parity,
+        },
+        indent=2,
+    )
+)

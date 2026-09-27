@@ -167,7 +167,7 @@ def omp(x: Array, y: Array, k: int) -> dict[str, Array | float]:
 
 
 def _soft(v: float, lam: float) -> float:
-    return np.sign(v) * max(abs(v) - lam, 0.0)
+    return float(np.sign(v) * max(abs(v) - lam, 0.0))
 
 
 def lasso_cd(

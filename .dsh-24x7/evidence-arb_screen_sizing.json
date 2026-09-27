@@ -1,0 +1,58 @@
+{
+  "frozen": "mass120:g50",
+  "frozen_config": {
+    "enter": 0.001,
+    "exit_": -0.000125,
+    "lb": 9,
+    "nw": 0.08,
+    "mx": 30,
+    "band": 1.3,
+    "rsr": 0.002,
+    "rsc": 1.5,
+    "rsf": 1.0,
+    "rexp": 0.0,
+    "vlb": 30,
+    "vr": 0.08
+  },
+  "universe": "mass120",
+  "n_names": 120,
+  "dev": {
+    "total_return": 0.34832849095347007,
+    "cagr": 0.16129433195757614,
+    "sharpe": 11.212294891664682,
+    "max_drawdown": -0.0030573468696140083,
+    "mean_turnover": 0.017743341782941235,
+    "funding_net": 385752.3422251816,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 5,
+    "n": 730
+  },
+  "holdout": {
+    "total_return": 0.04718341898119682,
+    "cagr": 0.02813061137841011,
+    "sharpe": 3.911010939407724,
+    "max_drawdown": -0.0022626540913660564,
+    "mean_turnover": 0.01271721901486001,
+    "funding_net": 68200.24761270094,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 9,
+    "n": 607
+  },
+  "full": {
+    "total_return": 0.42347051148456427,
+    "cagr": 0.10118777906084198,
+    "sharpe": 8.433492069232985,
+    "max_drawdown": -0.003213747987770299,
+    "mean_turnover": 0.013123982251125479,
+    "funding_net": 478783.7816178638,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 12,
+    "n": 1338
+  }
+}

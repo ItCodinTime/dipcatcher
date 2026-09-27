@@ -65,7 +65,19 @@ Packages exist only when they contain implementations. Empty `pass` modules are 
 | `registry` | MLflow champion/challenger |
 | `monitoring` | Drift, kill switch, promotion gates |
 | `api` | FastAPI service layer |
-| `cli` | `dipcatcher` Typer commands (`quant` compatibility alias) |
+| `cli` | `dipcatcher` Typer commands (`quant` compatibility alias); `cli/_app.py` owns the app + sub-CLI mounts, `cli/*_cmds.py` hold per-domain commands |
+| `microstructure` | Candle/order-book feature benches, synthetic LOB, vendor book maps |
+| `northset` | Northset estimators (Kyle λ, OFI, spread/session identities) + sweep research |
+| `hedge_lab` | Strategy lab: gated races, lightspeed book, promotion, sleeve policy |
+| `quant_models` | Options/quant pricing (`qm` CLI): greeks, GEX, monte-carlo, risk-parity |
+| `lightspeed` | `ls` CLI: ranker, momentum, metalabel, rotation, specs |
+| `hmm` | `hmm` CLI: discrete/Eisner HMM variants for regime work |
+| `research` | Honesty catalog (`research/catalog/` package), agent, verify, benches, tournaments |
+| `risk` | Risk gates, overlays, pyrisk/pyriskmgmt adapters |
+| `mc_engine` | Reproducible scenario Monte Carlo (Philox streams, variance reduction, tail risk). Research simulation only; see `docs/MC_ENGINE.md` |
+| `paper` | Paper-trading loop: clock, ledger, reconciliation, sim-live |
+| `formal` | Order-lifecycle specification, trace conformance, accounting identities |
+| `reporting` | Evidence reports and tearsheets |
 
 ## Runtime modes
 

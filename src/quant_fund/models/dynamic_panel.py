@@ -122,7 +122,7 @@ def arellano_bond(y: Array, max_lag_inst: int = 3) -> dict[str, Array | float]:
         return dep_mat - rho * end_mat
 
     def gmm_rho(rho: float) -> Array:
-        return np.einsum("ntm,tn->m", Zi, resid(rho)) / N
+        return np.asarray(np.einsum("ntm,tn->m", Zi, resid(rho)) / N, dtype=float)
 
     def obj(rho: float) -> float:
         g = gmm_rho(rho)

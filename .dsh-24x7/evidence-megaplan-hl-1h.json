@@ -1,0 +1,1257 @@
+{
+  "schema": "megaplan_eval.v1",
+  "created_at": "2026-09-24T09:09:20.793687+00:00",
+  "data_dir": "data/hl_carry_1h",
+  "split": "2026-06-01 00:00:00+00:00",
+  "dev_mid": "2026-04-15 11:00:00+00:00",
+  "bar_span": [
+    "2026-02-27 22:00:00+00:00",
+    "2026-09-24 09:00:00+00:00"
+  ],
+  "n_symbols": 178,
+  "n_bars": 873910,
+  "n_funding": 3444012,
+  "live_pnl_claim": false,
+  "freq": "1h",
+  "protocol": "dev-half grid -> freeze -> one locked holdout eval; failure is a result",
+  "stageA": {
+    "carry_lb3_vw48": {
+      "score": -4.958695234201184,
+      "h1": {
+        "total_return": -0.07363073939193321,
+        "cagr": -0.4516034141191596,
+        "sharpe": -3.491743407759068,
+        "max_drawdown": -0.09810481192842924,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.08416423636506663,
+        "funding_paid_total": 893.2657376247581,
+        "funding_received_total": 68069.6145956778,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.06524533068040972,
+        "cagr": -0.4113804073900129,
+        "sharpe": -4.958695234201184,
+        "max_drawdown": -0.0899366399835545,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.0593060772855567,
+        "funding_paid_total": 805.8624378847372,
+        "funding_received_total": 26743.96401551195,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "carry_lb3_vw168": {
+      "score": -4.844354613466837,
+      "h1": {
+        "total_return": -0.06491722281580103,
+        "cagr": -0.40975555651986983,
+        "sharpe": -3.12584466346325,
+        "max_drawdown": -0.09496970368339175,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.07306893044409642,
+        "funding_paid_total": 769.5077069591861,
+        "funding_received_total": 68705.25122197239,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.06813507800404217,
+        "cagr": -0.4255232257124192,
+        "sharpe": -4.844354613466837,
+        "max_drawdown": -0.09505953565605607,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05633721710685412,
+        "funding_paid_total": 759.8820600189424,
+        "funding_received_total": 27830.464943817875,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "carry_lb9_vw48": {
+      "score": -3.6357205818970546,
+      "h1": {
+        "total_return": -0.065511324636085,
+        "cagr": -0.4126947923122596,
+        "sharpe": -3.113010428957874,
+        "max_drawdown": -0.09691333977498884,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.052363236852271226,
+        "funding_paid_total": 990.9814162245385,
+        "funding_received_total": 69511.0444350826,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.046725427298069055,
+        "cagr": -0.31330985869305905,
+        "sharpe": -3.6357205818970546,
+        "max_drawdown": -0.08262498989076761,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.034213420911752716,
+        "funding_paid_total": 894.7717963516864,
+        "funding_received_total": 26278.716762945107,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "carry_lb9_vw168": {
+      "score": -4.015778801681968,
+      "h1": {
+        "total_return": -0.06375653413188331,
+        "cagr": -0.40397615250404384,
+        "sharpe": -3.0576686975840697,
+        "max_drawdown": -0.10378390838177765,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04469602043079004,
+        "funding_paid_total": 853.8754855186278,
+        "funding_received_total": 69819.83132044094,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.05536362833391484,
+        "cagr": -0.3606952661950926,
+        "sharpe": -4.015778801681968,
+        "max_drawdown": -0.09427709667083473,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.031342856106655013,
+        "funding_paid_total": 863.6879211891674,
+        "funding_received_total": 27707.4878224998,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "fade_l30_z2.0": {
+      "score": 0.5101030896669253,
+      "h1": {
+        "total_return": 0.016264084268885926,
+        "cagr": 0.1351036912458048,
+        "sharpe": 0.8482212510205767,
+        "max_drawdown": -0.4254830743871687,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.005146468018521946,
+        "funding_paid_total": 28616.958187328346,
+        "funding_received_total": 58999.949929510054,
+        "liquidation_count": 0,
+        "margin_rejects": 11080,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.004914924049566394,
+        "cagr": -0.03796180014142514,
+        "sharpe": 0.5101030896669253,
+        "max_drawdown": -0.343632488150038,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.006327925714306541,
+        "funding_paid_total": 30719.812384235727,
+        "funding_received_total": 46226.814747489385,
+        "liquidation_count": 0,
+        "margin_rejects": 9082,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "fade_l30_z3.0": {
+      "score": 1.155807838221479,
+      "h1": {
+        "total_return": 0.08320875727236099,
+        "cagr": 0.8735204470209772,
+        "sharpe": 1.155807838221479,
+        "max_drawdown": -0.40687511921719877,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.003769992734229206,
+        "funding_paid_total": 27106.35248314308,
+        "funding_received_total": 63335.66164623224,
+        "liquidation_count": 0,
+        "margin_rejects": 3666,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.09374592058667486,
+        "cagr": 1.0215403216470706,
+        "sharpe": 1.200676527383702,
+        "max_drawdown": -0.28964028544002685,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.005495119913100297,
+        "funding_paid_total": 29255.929278024334,
+        "funding_received_total": 46136.31796745713,
+        "liquidation_count": 0,
+        "margin_rejects": 3849,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l72_s4": {
+      "score": -12.033622184107111,
+      "h1": {
+        "total_return": -0.14639412806286933,
+        "cagr": -0.7115716690509535,
+        "sharpe": -12.033622184107111,
+        "max_drawdown": -0.14911307501558124,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.08149955737745573,
+        "funding_paid_total": 20441.8630098069,
+        "funding_received_total": 22269.61263939758,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.047787237557385676,
+        "cagr": -0.3192949316398953,
+        "sharpe": -2.7012888018870633,
+        "max_drawdown": -0.09337018211146353,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.0816918244414282,
+        "funding_paid_total": 15331.68584056341,
+        "funding_received_total": 16401.565310656537,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l72_s24": {
+      "score": -6.554590351389459,
+      "h1": {
+        "total_return": -0.0801994673652704,
+        "cagr": -0.48141550300657276,
+        "sharpe": -6.554590351389459,
+        "max_drawdown": -0.08495158706765504,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.09076998844088,
+        "funding_paid_total": 24829.045303020663,
+        "funding_received_total": 18376.175009060807,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.056705386523719925,
+        "cagr": -0.3677933516922268,
+        "sharpe": -3.3302280498269683,
+        "max_drawdown": -0.09714152538507692,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.09891024137080391,
+        "funding_paid_total": 16470.80895905741,
+        "funding_received_total": 14775.5445891626,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l168_s4": {
+      "score": -9.944769411792985,
+      "h1": {
+        "total_return": -0.11245442700786223,
+        "cagr": -0.6082166212996007,
+        "sharpe": -9.944769411792985,
+        "max_drawdown": -0.12379497510385495,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.0486267030624099,
+        "funding_paid_total": 20232.00523128717,
+        "funding_received_total": 21617.109664023286,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.0051307872912491614,
+        "cagr": -0.03959984271746275,
+        "sharpe": -0.21560783805836017,
+        "max_drawdown": -0.07132639062867896,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05290045822547125,
+        "funding_paid_total": 15780.459795844228,
+        "funding_received_total": 17740.49621211013,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l168_s24": {
+      "score": -6.223497524963996,
+      "h1": {
+        "total_return": -0.07058754373424603,
+        "cagr": -0.43729236658873805,
+        "sharpe": -6.223497524963996,
+        "max_drawdown": -0.07997056476424413,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05125491532200944,
+        "funding_paid_total": 24280.605462411517,
+        "funding_received_total": 18350.691216570158,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.02339508876105989,
+        "cagr": -0.1696835369655002,
+        "sharpe": -1.3600853433863063,
+        "max_drawdown": -0.06301161453520021,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05819681069600598,
+        "funding_paid_total": 17477.220955171873,
+        "funding_received_total": 16028.762236293012,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l336_s4": {
+      "score": -7.2806482995837305,
+      "h1": {
+        "total_return": -0.06772615068647869,
+        "cagr": -0.4235400729350166,
+        "sharpe": -7.2806482995837305,
+        "max_drawdown": -0.07155130971628654,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.032389172249354094,
+        "funding_paid_total": 17171.875784005668,
+        "funding_received_total": 19507.13549028144,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.008427973626641494,
+        "cagr": -0.06431923001191076,
+        "sharpe": -0.41421639051619047,
+        "max_drawdown": -0.07123040028623184,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04290196917935543,
+        "funding_paid_total": 15781.323891906299,
+        "funding_received_total": 18234.468211914565,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "mom_l336_s24": {
+      "score": -3.610494564202942,
+      "h1": {
+        "total_return": -0.034038605376993325,
+        "cagr": -0.23816412809102006,
+        "sharpe": -3.610494564202942,
+        "max_drawdown": -0.037380127320671086,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.03316733931831011,
+        "funding_paid_total": 20531.46514053039,
+        "funding_received_total": 16917.442978391595,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.0014367362896861025,
+        "cagr": 0.0113410602523909,
+        "sharpe": 0.1515354864183378,
+        "max_drawdown": -0.05809416059988981,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04313881473916569,
+        "funding_paid_total": 17755.16325763092,
+        "funding_received_total": 16525.709987468606,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "sweep_l20_h8": {
+      "score": -4.975969716150719,
+      "h1": {
+        "total_return": 0.014019256901069976,
+        "cagr": 0.11555746405655243,
+        "sharpe": 1.236290800657641,
+        "max_drawdown": -0.017274053674568135,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.06181056450182736,
+        "funding_paid_total": 9183.726205508889,
+        "funding_received_total": 3988.2472788047053,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.0848492890120075,
+        "cagr": -0.5016542574110148,
+        "sharpe": -4.975969716150719,
+        "max_drawdown": -0.10045027268918061,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.06883082971926595,
+        "funding_paid_total": 6789.826531800872,
+        "funding_received_total": 3759.5575834510146,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "sweep_l20_h24": {
+      "score": -6.563690190062548,
+      "h1": {
+        "total_return": 0.004158584753819028,
+        "cagr": 0.033134391678734554,
+        "sharpe": 0.40972283464578874,
+        "max_drawdown": -0.017226726558553396,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.06449061271696564,
+        "funding_paid_total": 7546.290072474957,
+        "funding_received_total": 3332.9481578513637,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.10653013312949,
+        "cagr": -0.5871991488432545,
+        "sharpe": -6.563690190062548,
+        "max_drawdown": -0.12192781909178885,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.07200575967153916,
+        "funding_paid_total": 5969.966336119652,
+        "funding_received_total": 3189.15798122765,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "sweep_l48_h8": {
+      "score": -4.457842311905837,
+      "h1": {
+        "total_return": 0.02164004359621341,
+        "cagr": 0.18313297668337536,
+        "sharpe": 2.022238554198264,
+        "max_drawdown": -0.015080332844544797,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.038622747628148865,
+        "funding_paid_total": 8501.864988374728,
+        "funding_received_total": 4041.838195427518,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.07658171820402737,
+        "cagr": -0.4651764153627933,
+        "sharpe": -4.457842311905837,
+        "max_drawdown": -0.09284400188223663,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04566336877892546,
+        "funding_paid_total": 7098.643258136892,
+        "funding_received_total": 3498.851368707525,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "sweep_l48_h24": {
+      "score": -6.079484186712891,
+      "h1": {
+        "total_return": 0.01707435779754829,
+        "cagr": 0.1422319737555502,
+        "sharpe": 1.854306494713711,
+        "max_drawdown": -0.014065264706213387,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04132470975675998,
+        "funding_paid_total": 6322.8565204109445,
+        "funding_received_total": 2341.9318932147444,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.09212819590737098,
+        "cagr": -0.5319530273943166,
+        "sharpe": -6.079484186712891,
+        "max_drawdown": -0.10608858813667787,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04894124028800388,
+        "funding_paid_total": 5316.560310864467,
+        "funding_received_total": 2388.372016001401,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "trend_168_720": {
+      "score": -2.2902091551234243,
+      "h1": {
+        "total_return": -0.012678812699607578,
+        "cagr": -0.09536773796468945,
+        "sharpe": -2.2902091551234243,
+        "max_drawdown": -0.018189271520975603,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.008659668160305408,
+        "funding_paid_total": 4665.340179758304,
+        "funding_received_total": 8382.577833064375,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.027852978945139384,
+        "cagr": 0.24084081991008377,
+        "sharpe": 2.395107778829051,
+        "max_drawdown": -0.025844335452331224,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.02312271572177341,
+        "funding_paid_total": 12570.139182991823,
+        "funding_received_total": 10616.282371574112,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "trend_168_1440": {
+      "score": -Infinity,
+      "h1": null,
+      "h2": null
+    },
+    "trend_336_720": {
+      "score": -1.6525982318701316,
+      "h1": {
+        "total_return": -0.009082842761227061,
+        "cagr": -0.06916220606651124,
+        "sharpe": -1.6525982318701316,
+        "max_drawdown": -0.017182489411382673,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.008927945320928376,
+        "funding_paid_total": 4686.998711035335,
+        "funding_received_total": 8426.39112080127,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.0029776688847178434,
+        "cagr": -0.02315178828630582,
+        "sharpe": -0.20711969695657523,
+        "max_drawdown": -0.04473309504843337,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.023668636600643583,
+        "funding_paid_total": 13029.58984418977,
+        "funding_received_total": 10066.476972937167,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "trend_336_1440": {
+      "score": -Infinity,
+      "h1": null,
+      "h2": null
+    }
+  },
+  "stageB": {
+    "only_carry": {
+      "score": -3.6357205818970546,
+      "mix": {
+        "carry": 1.0
+      },
+      "h1": {
+        "total_return": -0.065511324636085,
+        "cagr": -0.4126947923122596,
+        "sharpe": -3.113010428957874,
+        "max_drawdown": -0.09691333977498884,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.052363236852271226,
+        "funding_paid_total": 990.9814162245385,
+        "funding_received_total": 69511.0444350826,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.046725427298069055,
+        "cagr": -0.31330985869305905,
+        "sharpe": -3.6357205818970546,
+        "max_drawdown": -0.08262498989076761,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.034213420911752716,
+        "funding_paid_total": 894.7717963516864,
+        "funding_received_total": 26278.716762945107,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "only_spike_fade": {
+      "score": 1.155807838221479,
+      "mix": {
+        "spike_fade": 1.0
+      },
+      "h1": {
+        "total_return": 0.08320875727236099,
+        "cagr": 0.8735204470209772,
+        "sharpe": 1.155807838221479,
+        "max_drawdown": -0.40687511921719877,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.003769992734229206,
+        "funding_paid_total": 27106.35248314308,
+        "funding_received_total": 63335.66164623224,
+        "liquidation_count": 0,
+        "margin_rejects": 3666,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.09374592058667486,
+        "cagr": 1.0215403216470706,
+        "sharpe": 1.200676527383702,
+        "max_drawdown": -0.28964028544002685,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.005495119913100297,
+        "funding_paid_total": 29255.929278024334,
+        "funding_received_total": 46136.31796745713,
+        "liquidation_count": 0,
+        "margin_rejects": 3849,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "only_momentum": {
+      "score": -3.610494564202942,
+      "mix": {
+        "momentum": 1.0
+      },
+      "h1": {
+        "total_return": -0.034038605376993325,
+        "cagr": -0.23816412809102006,
+        "sharpe": -3.610494564202942,
+        "max_drawdown": -0.037380127320671086,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.03316733931831011,
+        "funding_paid_total": 20531.46514053039,
+        "funding_received_total": 16917.442978391595,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.0014367362896861025,
+        "cagr": 0.0113410602523909,
+        "sharpe": 0.1515354864183378,
+        "max_drawdown": -0.05809416059988981,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04313881473916569,
+        "funding_paid_total": 17755.16325763092,
+        "funding_received_total": 16525.709987468606,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "only_sweep": {
+      "score": -4.457842311905837,
+      "mix": {
+        "sweep": 1.0
+      },
+      "h1": {
+        "total_return": 0.02164004359621341,
+        "cagr": 0.18313297668337536,
+        "sharpe": 2.022238554198264,
+        "max_drawdown": -0.015080332844544797,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.038622747628148865,
+        "funding_paid_total": 8501.864988374728,
+        "funding_received_total": 4041.838195427518,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.07658171820402737,
+        "cagr": -0.4651764153627933,
+        "sharpe": -4.457842311905837,
+        "max_drawdown": -0.09284400188223663,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04566336877892546,
+        "funding_paid_total": 7098.643258136892,
+        "funding_received_total": 3498.851368707525,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "only_trend": {
+      "score": -1.6525982318701316,
+      "mix": {
+        "trend": 1.0
+      },
+      "h1": {
+        "total_return": -0.009082842761227061,
+        "cagr": -0.06916220606651124,
+        "sharpe": -1.6525982318701316,
+        "max_drawdown": -0.017182489411382673,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.008927945320928376,
+        "funding_paid_total": 4686.998711035335,
+        "funding_received_total": 8426.39112080127,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.0029776688847178434,
+        "cagr": -0.02315178828630582,
+        "sharpe": -0.20711969695657523,
+        "max_drawdown": -0.04473309504843337,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.023668636600643583,
+        "funding_paid_total": 13029.58984418977,
+        "funding_received_total": 10066.476972937167,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "equal": {
+      "score": -8.131993953288582,
+      "mix": {
+        "carry": 0.2,
+        "spike_fade": 0.2,
+        "momentum": 0.2,
+        "sweep": 0.2,
+        "trend": 0.2
+      },
+      "h1": {
+        "total_return": -0.03416146466166525,
+        "cagr": -0.2389249054626964,
+        "sharpe": -5.499221521314748,
+        "max_drawdown": -0.03721394261795585,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.053374703762508025,
+        "funding_paid_total": 2073.692391550144,
+        "funding_received_total": 19124.3409042565,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.05635315555768872,
+        "cagr": -0.36593669171416765,
+        "sharpe": -8.131993953288582,
+        "max_drawdown": -0.07467257514198222,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05966929908252422,
+        "funding_paid_total": 2937.650280190582,
+        "funding_received_total": 8733.964219757974,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "heavy_carry": {
+      "score": -6.517555059015728,
+      "mix": {
+        "carry": 0.5,
+        "spike_fade": 0.125,
+        "momentum": 0.125,
+        "sweep": 0.125,
+        "trend": 0.125
+      },
+      "h1": {
+        "total_return": -0.04188051988525654,
+        "cagr": -0.2854139957159373,
+        "sharpe": -3.64539098079535,
+        "max_drawdown": -0.05459718680840708,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05473001720201572,
+        "funding_paid_total": 1066.2576769308466,
+        "funding_received_total": 39143.00593025787,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.05312376463481583,
+        "cagr": -0.34869105673883416,
+        "sharpe": -6.517555059015728,
+        "max_drawdown": -0.07848007897263509,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.051567142356986034,
+        "funding_paid_total": 1614.5923840476462,
+        "funding_received_total": 15374.211988131558,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "heavy_spike_fade": {
+      "score": -7.625666271648735,
+      "mix": {
+        "spike_fade": 0.5,
+        "carry": 0.125,
+        "momentum": 0.125,
+        "sweep": 0.125,
+        "trend": 0.125
+      },
+      "h1": {
+        "total_return": -0.04715746093225426,
+        "cagr": -0.31575060757372175,
+        "sharpe": -7.159141996925732,
+        "max_drawdown": -0.04783501729077777,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.060456404287401594,
+        "funding_paid_total": 1402.8813175458085,
+        "funding_received_total": 14623.23425677746,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.062328164896041094,
+        "cagr": -0.39679615413001856,
+        "sharpe": -7.625666271648735,
+        "max_drawdown": -0.07950350491572988,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.07045644105217332,
+        "funding_paid_total": 1973.098600340056,
+        "funding_received_total": 7638.37952768829,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "heavy_momentum": {
+      "score": -5.84588953517778,
+      "mix": {
+        "momentum": 0.5,
+        "carry": 0.125,
+        "spike_fade": 0.125,
+        "sweep": 0.125,
+        "trend": 0.125
+      },
+      "h1": {
+        "total_return": -0.034189202045473155,
+        "cagr": -0.23909657095431658,
+        "sharpe": -5.84588953517778,
+        "max_drawdown": -0.03820568555028658,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04926093105616379,
+        "funding_paid_total": 6434.50322760997,
+        "funding_received_total": 16238.379445891553,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.04211515713262448,
+        "cagr": -0.2867874194798622,
+        "sharpe": -4.644511227024085,
+        "max_drawdown": -0.06603005354608915,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05687028340208104,
+        "funding_paid_total": 7172.984974897622,
+        "funding_received_total": 10512.253059527762,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "heavy_sweep": {
+      "score": -8.741540860400182,
+      "mix": {
+        "sweep": 0.5,
+        "carry": 0.125,
+        "spike_fade": 0.125,
+        "momentum": 0.125,
+        "trend": 0.125
+      },
+      "h1": {
+        "total_return": -0.018654560152343902,
+        "cagr": -0.13749342980343215,
+        "sharpe": -3.1502928230799747,
+        "max_drawdown": -0.0254588968787427,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05228845389604142,
+        "funding_paid_total": 2536.4265708602366,
+        "funding_received_total": 12184.46961085311,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.07439905657759116,
+        "cagr": -0.45516590795890044,
+        "sharpe": -8.741540860400182,
+        "max_drawdown": -0.08867361165555077,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.05923607970405673,
+        "funding_paid_total": 3265.0436257830206,
+        "funding_received_total": 5761.1590417761945,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "heavy_trend": {
+      "score": -5.89201095989537,
+      "mix": {
+        "trend": 0.5,
+        "carry": 0.125,
+        "spike_fade": 0.125,
+        "momentum": 0.125,
+        "sweep": 0.125
+      },
+      "h1": {
+        "total_return": -0.027496938685167227,
+        "cagr": -0.19668555166108248,
+        "sharpe": -5.436913313219068,
+        "max_drawdown": -0.029853883198312503,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.040454867785317435,
+        "funding_paid_total": 2644.169036301473,
+        "funding_received_total": 15205.361186350898,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.040128126676874265,
+        "cagr": -0.27508335347185076,
+        "sharpe": -5.89201095989537,
+        "max_drawdown": -0.0604948447964857,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.04909805974289525,
+        "funding_paid_total": 4983.876734974751,
+        "funding_received_total": 7699.853785803884,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    }
+  },
+  "log": [
+    "stageA carry: best=carry_lb9_vw48 score=-3.636",
+    "stageA spike_fade: best=fade_l30_z3.0 score=1.156",
+    "stageA momentum: best=mom_l336_s24 score=-3.610",
+    "stageA sweep: best=sweep_l48_h8 score=-4.458",
+    "stageA trend: best=trend_336_720 score=-1.653",
+    "stageB best=only_spike_fade score=1.156"
+  ],
+  "stageC": {
+    "0.1": {
+      "score": -Infinity,
+      "h1": {
+        "total_return": -0.01235760709436684,
+        "cagr": -0.09305344520265635,
+        "sharpe": -0.017690042095577646,
+        "max_drawdown": -0.15080067108972672,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.005129308959535499,
+        "funding_paid_total": 6169.761897408939,
+        "funding_received_total": 22296.468020142787,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.03792894038467076,
+        "cagr": -0.2619345476873297,
+        "sharpe": -0.5481079333188205,
+        "max_drawdown": -0.16395013704902583,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.008137827293293912,
+        "funding_paid_total": 8966.422665713451,
+        "funding_received_total": 19303.58885583334,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "0.2": {
+      "score": -Infinity,
+      "h1": {
+        "total_return": -0.02587339678416689,
+        "cagr": -0.18609103019398843,
+        "sharpe": -0.16735411935927075,
+        "max_drawdown": -0.18302835288475194,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.0062090587176513185,
+        "funding_paid_total": 7670.334893074638,
+        "funding_received_total": 29171.89376113436,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.05555618834105236,
+        "cagr": -0.36171818982373305,
+        "sharpe": -0.6339326840501062,
+        "max_drawdown": -0.2148208061443222,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.00972867571733881,
+        "funding_paid_total": 11708.498522372209,
+        "funding_received_total": 25277.653337640495,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "0.3": {
+      "score": -Infinity,
+      "h1": {
+        "total_return": -0.04957215908869361,
+        "cagr": -0.3292533972049211,
+        "sharpe": -0.4201687397583223,
+        "max_drawdown": -0.22012678129677554,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.00716274902912433,
+        "funding_paid_total": 8770.830188902259,
+        "funding_received_total": 34608.9510576682,
+        "liquidation_count": 0,
+        "margin_rejects": 0,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": -0.0581448718269123,
+        "cagr": -0.3753318622018337,
+        "sharpe": -0.5303228601496967,
+        "max_drawdown": -0.2365311694040323,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.010934943699982725,
+        "funding_paid_total": 13608.088531100933,
+        "funding_received_total": 29264.529081071683,
+        "liquidation_count": 0,
+        "margin_rejects": 8,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    },
+    "none": {
+      "score": -Infinity,
+      "h1": {
+        "total_return": 0.08320875727236099,
+        "cagr": 0.8735204470209772,
+        "sharpe": 1.155807838221479,
+        "max_drawdown": -0.40687511921719877,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.003769992734229206,
+        "funding_paid_total": 27106.35248314308,
+        "funding_received_total": 63335.66164623224,
+        "liquidation_count": 0,
+        "margin_rejects": 3666,
+        "ruined": false,
+        "funding_events_dropped": 0
+      },
+      "h2": {
+        "total_return": 0.09374592058667486,
+        "cagr": 1.0215403216470706,
+        "sharpe": 1.200676527383702,
+        "max_drawdown": -0.28964028544002685,
+        "n": 1116,
+        "periods_per_year": 8766.0,
+        "mean_turnover": 0.005495119913100297,
+        "funding_paid_total": 29255.929278024334,
+        "funding_received_total": 46136.31796745713,
+        "liquidation_count": 0,
+        "margin_rejects": 3849,
+        "ruined": false,
+        "funding_events_dropped": 0
+      }
+    }
+  },
+  "frozen": {
+    "blend": "only_spike_fade",
+    "mix": {
+      "spike_fade": 1.0
+    },
+    "target_vol": 0.1,
+    "qualified_on_dev": false
+  },
+  "final": {
+    "dev": {
+      "total_return": 2.5444848593236813e-05,
+      "cagr": 9.989155626999313e-05,
+      "sharpe": 0.19850802350671976,
+      "max_drawdown": -0.16102730373018703,
+      "n": 2233,
+      "periods_per_year": 8766.0,
+      "mean_turnover": 0.005674875920539236,
+      "funding_paid_total": 15274.93898261181,
+      "funding_received_total": 39917.28244351845,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "ruined": false,
+      "funding_events_dropped": 0
+    },
+    "holdout": {
+      "total_return": -0.02605434879338786,
+      "cagr": -0.080178322992141,
+      "sharpe": -0.004177420519166916,
+      "max_drawdown": -0.2523072589960159,
+      "n": 2769,
+      "periods_per_year": 8766.0,
+      "mean_turnover": 0.006791094237946736,
+      "funding_paid_total": 16757.60329801915,
+      "funding_received_total": 41626.134369207066,
+      "liquidation_count": 0,
+      "margin_rejects": 0,
+      "ruined": false,
+      "funding_events_dropped": 0
+    }
+  },
+  "gate": {
+    "sharpe_gt_5": false,
+    "mdd_lt_5pct": false,
+    "qualified_on_dev": false,
+    "PROVEN": false
+  },
+  "input_hashes": {
+    "funding.parquet": "79a5070a79c6cb5df24722d0186351eba50ba41f3973c7b091617f8c1121e357",
+    "perp_bars.parquet": "65f7526d75575d5421788187c03930f3b3b08262be4e6c9c0dc38328126088ff"
+  },
+  "segment_exclusions": {
+    "2026-02-27 22:00:00+00:00->2026-04-15 11:00:00+00:00": {
+      "n_excluded": 5,
+      "n_eligible": 173
+    },
+    "2026-04-15 11:00:00+00:00->2026-06-01 00:00:00+00:00": {
+      "n_excluded": 4,
+      "n_eligible": 174
+    },
+    "2026-02-27 22:00:00+00:00->2026-06-01 00:00:00+00:00": {
+      "n_excluded": 4,
+      "n_eligible": 174
+    },
+    "2026-06-01 00:00:00+00:00->2026-09-24 10:00:00+00:00": {
+      "n_excluded": 0,
+      "n_eligible": 178
+    }
+  },
+  "n_evals": 70,
+  "wall_seconds": 1160.2
+}

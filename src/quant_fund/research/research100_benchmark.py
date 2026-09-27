@@ -12,7 +12,6 @@ from numpy.typing import NDArray
 
 from quant_fund.metrics.research_evaluation import (
     compare_research_paths,
-    serial_adjusted_sharpe,
     walk_forward_allocations,
 )
 from quant_fund.models.covariance import ledoit_wolf_cov
@@ -59,7 +58,7 @@ def synthetic_benchmark(seed: int = 100) -> dict[str, Any]:
             quadratic_cost=0.002,
         )
         # Solver-tolerance roundoff only; the method already checked feasibility.
-        w = np.maximum(result.weights[0], 0)
+        w: Array = np.asarray(np.maximum(result.weights[0], 0), dtype=float)
         return w / max(1.0, float(w.sum()))
 
     def kelly(history: Array, previous: Array) -> Array:
@@ -97,15 +96,10 @@ def synthetic_benchmark(seed: int = 100) -> dict[str, Any]:
     )
     summaries = {}
     for name, path in paths.items():
-        try:
-            sharpe = serial_adjusted_sharpe(path.net_returns, max_lag=5)
-        except ValueError:
-            sharpe = None
         summaries[name] = {
-            "total_net_return": float(np.prod(1 + path.net_returns) - 1),
+            "observations": int(path.net_returns.size),
             "sum_cost_fraction": float(path.cost_fraction.sum()),
             "total_one_way_turnover": float(path.turnover.sum()),
-            "sharpe": sharpe,
         }
     module_hashes = {}
     for function in [

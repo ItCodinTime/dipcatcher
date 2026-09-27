@@ -65,7 +65,7 @@ def _cov_to_corr(cov: Array) -> Array:
     sd = np.sqrt(np.diag(cov))
     if np.any(sd <= 0.0):
         raise ValueError("cov must have positive diagonal")
-    return cov / np.outer(sd, sd)
+    return np.asarray(cov / np.outer(sd, sd), dtype=float)
 
 
 def inverse_volatility(cov: Array) -> Array:
@@ -152,7 +152,7 @@ def equal_risk_contribution(cov: Array, x0: Array | None = None) -> Array:
     )
     if not res.success:
         raise ValueError(f"portfolio optimization failed: {res.message}")
-    w = np.clip(res.x, 0.0, None)
+    w: Array = np.clip(np.asarray(res.x, dtype=float), 0.0, None)
     s = w.sum()
     if s <= 0.0:
         raise ValueError("ERC optimization failed to find feasible weights")
@@ -186,7 +186,7 @@ def maximum_diversification(cov: Array) -> Array:
     )
     if not res.success:
         raise ValueError(f"portfolio optimization failed: {res.message}")
-    w = np.clip(res.x, 0.0, None)
+    w: Array = np.clip(np.asarray(res.x, dtype=float), 0.0, None)
     s = w.sum()
     if s <= 0.0:
         raise ValueError("max-diversification optimization failed")

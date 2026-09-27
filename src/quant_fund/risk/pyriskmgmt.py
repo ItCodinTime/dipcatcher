@@ -64,7 +64,7 @@ def portfolio_returns(asset_returns: Array, weights: Array) -> Array:
         raise ValueError("asset_returns must be (T, N) and weights length N")
     r = np.where(np.isfinite(r), r, 0.0)
     w = np.where(np.isfinite(w), w, 0.0)
-    return r @ w
+    return np.asarray(r @ w, dtype=float)
 
 
 def portfolio_var_es(

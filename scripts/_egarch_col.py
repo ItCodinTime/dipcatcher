@@ -95,14 +95,8 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             if not np.isfinite(sig_g) or sig_g <= 0.0:
                 raise ValueError("degenerate egarch variance forecast")
             scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-            c = float(
-                crps_student_t(np.array([y]), np.array([mu_g]), np.array([scale_g]), nu_g)[0]
-            )
-            q = (
-                st.t.ppf(TAUS, nu_g, loc=mu_g, scale=scale_g)
-                if np.isfinite(scale_g)
-                else nan3
-            )
+            c = float(crps_student_t(np.array([y]), np.array([mu_g]), np.array([scale_g]), nu_g)[0])
+            q = st.t.ppf(TAUS, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan3
             if spec == "egarch_t_o0":
                 spec_o0 += 1
             else:
@@ -110,9 +104,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             crps[row] = c
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q[k]]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             failures += 1
     return {
@@ -162,9 +154,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -178,9 +168,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "elapsed_s": round(time.time() - t0, 3),

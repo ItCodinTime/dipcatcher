@@ -155,9 +155,10 @@ def risk_constrained_kelly(
     # This avoids duplicate exponential-cone representations near unit growth.
     log_growth = cp.Variable(gross.shape[0])
     log_moment = cp.log_sum_exp(np.log(p) - lam * log_growth)
-    # Positive objective scaling improves conditioning at daily return magnitudes.
+    # Keep the log-growth objective unscaled: large multipliers can produce
+    # an inaccurate conic termination at daily return magnitudes.
     problem = cp.Problem(
-        cp.Maximize(1000.0 * (p @ log_growth)),
+        cp.Maximize(p @ log_growth),
         [weights >= 0, cp.sum(weights) == 1, log_growth <= cp.log(growth), log_moment <= 0],
     )
     problem.solve(solver="CLARABEL", max_iter=300)

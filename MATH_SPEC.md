@@ -169,3 +169,224 @@
   each test block.
 - `feature_select.py`: FCD mRMR with |corr| relevance/redundancy.
 
+
+## Wave 9 mathematical conventions
+
+- `skew_normal.py`: f(x) = (2/omega) phi(z) Phi(alpha z), z=(x-xi)/omega;
+  CDF = Phi(z) - 2 T(z, alpha) (Owen's T). MoM inverts skewness g1 to
+  delta = alpha/sqrt(1+alpha^2) with |g1| capped at 0.995; omega, xi match
+  the first two moments.
+- `johnson_su.py`: z = gamma + delta asinh((x-xi)/lambda). Slifker-Shapiro
+  reads quantiles at z=+/-z0, +/-3z0; delta = 2 z0 / acosh((m/p+n/p)/2),
+  gamma = delta asinh((n/p-m/p)/(2 sqrt(mn/p^2-1))); lambda and xi are
+  recovered exactly from the standardised inner spread p = lambda[sinh((z0-g)/d)
+  - sinh((-z0-g)/d)].
+- `edgeworth.py`: Gram-Charlier A f = phi(z)/sigma [1 + (S/6)He_3 + (K/24)He_4],
+  F = Phi(z) - phi(z)[(S/6)He_2 + (K/24)He_3], He_2=z^2-1, He_3=z^3-3z,
+  He_4=z^4-6z^2+3; integrates to 1 for any (S,K) but may go negative
+  (validity checked on a grid).
+- `tukey_gh.py`: x = A + B (e^{gZ}-1)/g e^{hZ^2/2} (limit B Z e^{hZ^2/2} as
+  g->0). Monotone in Z for h>=0 so CDF/PDF follow by inversion and
+  f(x)=phi(Z)/(dx/dZ). Hoaglin fit: g = (1/Z) ln(UHS/LHS) per symmetric
+  quantile pair; regress ln[FS g/(2 sinh gZ)] on Z^2/2 for (ln B, h).
+## Wave 8 mathematical conventions
+
+- `ets.py`: SES level l_t = a y_t + (1-a) l_{t-1}; Holt adds trend
+  b_t = beta (l_t - l_{t-1}) + (1-beta) phi b_{t-1} with damped factor
+  phi in [0.8, 1]; multi-step damping sum_{i=1..h} phi^i (= h when phi=1).
+  Holt-Winters additive s_t = gamma (y_t - l_{t-1} - phi b_{t-1}) +
+  (1-gamma) s_{t-m}; multiplicative uses ratios y_t / s_{t-m}. Smoothing
+  params fit by bounded L-BFGS-B on one-step SSE; states seeded from the
+  first one/two seasons; AIC = n ln(SSE/n) + 2k.
+- `theta.py`: theta line Z_t(theta) = theta y_t + (1-theta)(a + b t) with
+  (a, b) the OLS trend. Reconstruction weight 1/theta on the theta line and
+  1 - 1/theta on the trend line (equal 1/2 weights at theta=2). Forecast =
+  (1/theta) SES-extrapolation(Z) + (1 - 1/theta)(a + b(n+h-1)); drift is
+  ~ b/2 (Hyndman-Billah).
+- `croston.py`: SES on non-zero sizes z and inter-arrival intervals p;
+  rate = z_hat / p_hat. SBA scales by (1 - alpha/2). TSB smooths demand
+  probability every period: prob_t = beta 1{y_t>0} + (1-beta) prob_{t-1},
+  size updated only on occurrences; rate = prob_hat * z_hat.
+- `robust_location.py`: Hodges-Lehmann = median of Walsh averages
+  {(x_i + x_j)/2 : i <= j}; two-sample = median{x_i - y_j}. Siegel
+  repeated median slope = median_i median_{j != i} (y_j - y_i)/(x_j - x_i),
+  intercept = median_i (y_i - slope x_i) (50% breakdown).
+- `expectile.py`: tau-expectile minimises E[w_tau(y-mu)(y-mu)^2],
+  w_tau = tau if residual > 0 else 1 - tau; solved by IRLS (WLS with
+  sqrt-weights) which converges on the convex objective. EVaR = tau-expectile
+  of losses, coherent for tau >= 1/2.
+- `spectral_risk.py`: M_phi = sum_i w_i L_(i) over ascending losses, with
+  band weights w_i = integral_{(i-1)/n}^{i/n} phi(p) dp, phi non-negative,
+  non-decreasing, sum 1. Exponential phi(p) = k e^{-k(1-p)}/(1-e^{-k});
+  power phi(p) = gamma p^{gamma-1}; ES is the uniform tail spectrum on
+  [alpha, 1] scaled by 1/(1-alpha).
+
+## Wave 11 mathematical conventions
+
+- `skew_t.py`: standardised Hansen skew-t with c=Gamma((nu+1)/2)/(sqrt(pi(nu-2))
+  Gamma(nu/2)), a=4 lambda c (nu-2)/(nu-1), b=sqrt(1+3 lambda^2-a^2); density
+  splices (bz+a)/(1-/+lambda); CDF via scaled Student-t of each branch; ML fit.
+- `ar_estimation.py`: Yule-Walker solves R phi = r; Levinson-Durbin recursion
+  k_m=(r_m - sum phi_j r_{m-j})/E_{m-1}, E_m=E_{m-1}(1-k_m^2); Burg minimises
+  forward+backward errors, phi=-a[1:], reflection coeffs per order.
+- `empirical_copula.py`: pseudo-obs U=rank/(n+1); C_n(u)=(1/n) sum_i prod_j
+  1{U_ij<=u_j}; lower/upper tail dependence C(t,t)/t and (1-2t+C)/(1-t).
+- `dcca.py`: integrate profiles, detrend length-(s+1) overlapping windows by an
+  order-1 polynomial, F2_DCCA(s)=mean box cross-cov; rho_DCCA=F2_DCCA/
+  sqrt(F2_DFA_x F2_DFA_y) in [-1,1]; exponent = slope of log|F_DCCA| vs log s.
+- `elliptical.py`: multivariate-t EM with weights w_i=(nu+d)/(nu+maha_i),
+  mu=sum w_i x_i/sum w_i, Sigma=(1/n) sum w_i (x-mu)(x-mu)'; nu by profile-
+  likelihood 1-D search.
+## Wave 13 mathematical conventions
+
+- `bachelier.py`: d=(F-K)/(sigma sqrt(T)); call=df[(F-K)Phi(d)+sigma sqrt(T)phi(d)];
+  ATM=df sigma sqrt(T/(2 pi)); implied normal vol by brentq.
+- `short_rate.py`: Vasicek/CIR affine bonds P=A(tau) e^{-B(tau) r}; Vasicek exact
+  AR(1) discretisation r_{t+1}=r_t e^{-kappa dt}+theta(1-e^{-kappa dt})+sd Z, OLS
+  calibration recovers (kappa,theta,sigma); CIR B=2(e^{g tau}-1)/((g+kappa)
+  (e^{g tau}-1)+2g), g=sqrt(kappa^2+2 sigma^2), full-truncation Euler sim.
+- `bond_analytics.py`: continuous compounding P=sum c_i e^{-y t_i}; Macaulay
+  D=(1/P)sum t_i c_i e^{-y t_i} (=modified under continuous comp.); convexity
+  (1/P)sum t_i^2 c_i e^{-y t_i}; YTM by brentq; DV01=D*P*1e-4.
+- `variance_swap.py`: DDKZ fair strike K_var=(2/T)e^{rT} sum (dK_i/K_i^2) Q(K_i)
+  - (1/T)(F/K0-1)^2 with OTM puts below K0 and calls at/above; equals sigma^2
+  under flat Black-Scholes vol.
+## Wave 12 mathematical conventions
+
+- `nig_vg.py`: NIG f=(alpha delta/pi) exp(delta gamma + beta(x-mu)) K_1(alpha g)/g,
+  g=sqrt(delta^2+(x-mu)^2), gamma=sqrt(alpha^2-beta^2); closed-form MoM inverts
+  (mean,var,skew,exkurt) with bar_beta^2 = r/(3-4r), r=s^2/k. VG uses the
+  Madan-Carr-Chang density with K_{1/nu-1/2}; both sampled as normal
+  mean-variance mixtures (inverse-Gaussian / gamma subordinators).
+- `mic.py`: MIC = max over grids with n_x n_y <= n^0.6 of I(X;Y)/log(min(n_x,n_y))
+  using equi-frequency (quantile) bins; value in [0,1].
+- `archimedean_extra.py`: Frank C=-1/theta log(1+ (e^{-theta u}-1)(e^{-theta v}-1)/
+  (e^{-theta}-1)), tau=1-4/theta+4 D_1(theta)/theta (Debye), fit by tau inversion;
+  Joe C=1-(a+b-ab)^{1/theta}, a=(1-u)^theta, density c=S^{1/theta-2}
+  ((1-u)(1-v))^{theta-1}(theta-1+S), fit by ML. Both sampled by conditional
+  inversion of dC/du.
+## Wave 10 mathematical conventions
+
+- `entropic_risk.py`: rho_theta(L) = (1/theta) log E[e^{theta L}] (log-sum-exp
+  stabilised). EVaR_{1-alpha} = inf_{z>0} (1/z) log(E[e^{zL}]/(1-alpha)),
+  minimised over log z; satisfies EVaR >= CVaR >= VaR.
+- `perf_ratios.py`: ASR = SR[1 + (S/6)SR - ((K-3)/24)SR^2] (Pezier-White);
+  M^2 = rf + SR * sigma_benchmark; Rachev = E[x | x >= Q_{1-beta}] /
+  (-E[x | x <= Q_alpha]); gain-to-pain = sum(x)/sum(max(-x,0)); UPR =
+  E[(x-mar)_+] / sqrt(E[((x-mar)_-)^2]).
+- `stable.py`: Chambers-Mallows-Stuck sampler with U~Unif(-pi/2,pi/2), W~Exp(1);
+  zeta=-beta tan(pi alpha/2), xi=atan(-zeta)/alpha. ECF fit regresses
+  log(-log|phi(t)|) on log|t|: slope=alpha, intercept=alpha log c; loc=median.
+- `resampled.py`: for s=1..S draw N(mu,cov) of length n_obs, re-estimate
+  (mu_s, cov_s), solve simplex-constrained max-Sharpe / min-variance (SLSQP),
+  average the weights and renormalise (Michaud resampled efficiency).
+
+## Wave 14 mathematical conventions
+
+- `local_projection.py`: for each horizon h regress y_{t+h}=a_h+beta_h x_t+
+  controls+e; IRF(h)=beta_h; Newey-West HAC variance with bandwidth h+1.
+- `empirical_likelihood.py`: W(mu0)=2 sum log(1+lambda(x_i-mu0)) with lambda
+  solving sum (x_i-mu0)/(1+lambda(x_i-mu0))=0 on the feasible interval; W ~
+  chi2_1; CI by inverting W(mu0)<=chi2_{1,level}.
+- `kde.py`: fhat=(1/nh) sum phi((x-x_i)/h); Silverman h=0.9 min(sd,IQR/1.34)
+  n^{-1/5}; Scott h=1.059 sd n^{-1/5}; LSCV minimises
+  (1/n^2) sum (1/(2h sqrt pi)) e^{-d^2/4} - (2/(n(n-1)h)) sum_{i!=j} phi(d).
+- `lowess.py`: local linear fit over the frac*n nearest points with tricube
+  weights (1-|u|^3)^3; robustness iterations reweight by Tukey bisquare
+  (1-(r/6s)^2)^2, s=median|resid|.
+## Optional scorecard families (benches_extra)
+
+- `complexity` / `roughness` / `serial_randomness` benches average per-asset
+  proper-score diagnostics over the SYNTHETIC panel's `ret_1` series (assets with
+  >= 64/128 observations), reusing the entropy/fractal/serial metric modules; the
+  resulting family blobs contain only finite floats with no sharpe/sortino/
+  calmar/pnl/nav key tokens, so the verify.py scorecard honesty gates pass.
+## Wave 15 mathematical conventions
+
+- `fgls_ar1.py`: estimate rho from OLS residuals (rho=sum r_t r_{t-1}/sum r_{t-1}^2);
+  Cochrane-Orcutt quasi-differences y_t-rho y_{t-1} (drops obs 1); Prais-Winsten
+  keeps obs 1 scaled by sqrt(1-rho^2); iterate to convergence.
+- `twosample.py`: KS D=max|F_x-F_y|, p via Kolmogorov asymptotic with the
+  Stephens small-sample correction on sqrt(ne) D, ne=n_x n_y/(n_x+n_y); energy
+  distance E=2 mean|x_i-y_j| - mean|x_i-x_j| - mean|y_i-y_j|; permutation
+  p-values (count of shuffled statistics >= observed, +1 smoothing).
+## Wave 16 mathematical conventions
+
+- `american_baw.py`: b=r-q; q2/q1 = (-(N-1) +/- sqrt((N-1)^2+4M/Kc))/2,
+  M=2r/sigma^2, N=2b/sigma^2, Kc=1-e^{-rT}; critical price by root finding;
+  C_A = C_E + A2 (S/S*)^{q2} for S<S*, else S-K (puts analogous with q1).
+- `johnson_sb.py`: SB z=gamma+delta log(u/(1-u)), u=(x-xi)/lambda on (xi,xi+lam);
+  SL z=gamma+delta log(x-xi); fit fixes support then regresses Phi^{-1}(rank)
+  on the transform (slope=delta, intercept=gamma).
+- `carr_madan.py`: psi(v)=e^{-rT} phi(v-(alpha+1)i)/(alpha^2+alpha-v^2+
+  i(2alpha+1)v); C(k)=e^{-alpha k}/pi Re int e^{-ivk} psi dv via FFT with
+  log-strike spacing lambda=2pi/(N eta) and Simpson weights.
+## Wave 17 mathematical conventions
+
+- `iv_approx.py`: Brenner-Subrahmanyam sigma = sqrt(2 pi/T) C/S (ATM);
+  Corrado-Miller sigma = sqrt(2pi/T)/(S+Ke^{-rT}) [(C-X/2)+sqrt((C-X/2)^2-X^2/pi)],
+  X = S - K e^{-rT} (radicand floored at 0).
+- `leisen_reimer.py`: p=PP(d2,n), p'=PP(d1,n) with Peizer-Pratt method-2
+  PP(z,n)=0.5+sign(z)0.5 sqrt(1-exp(-(z/(n+1/3+0.1/(n+1)))^2 (n+1/6))); u=e^{(r-q)dt}
+  p'/p, d=(e^{(r-q)dt}-p u)/(1-p); odd n; backward induction (+early exercise).
+- `tempered_stable.py`: psi(u)=C Gamma(-Y)[(M-iu)^Y-M^Y+(G+iu)^Y-G^Y]; cumulants
+  c_k=C Gamma(k-Y)[M^{Y-k}+(-1)^k G^{Y-k}]; density by numerical inversion
+  f(x)=(1/pi) int_0^inf Re(e^{-iux} e^{psi(u)}) du.
+## Wave 18 mathematical conventions
+
+- `vasicek_credit.py`: P(L<=x)=Phi((sqrt(1-rho)Phi^{-1}(x)-Phi^{-1}(pd))/sqrt(rho));
+  density sqrt((1-rho)/rho) exp(0.5 Phi^{-1}(x)^2 - 0.5/rho(sqrt(1-rho)Phi^{-1}(x)
+  -Phi^{-1}(pd))^2); VaR_q=Phi((Phi^{-1}(pd)+sqrt(rho)Phi^{-1}(q))/sqrt(1-rho));
+  mean loss = pd.
+- `gaussian_copula_default.py`: p_i(m)=Phi((Phi^{-1}(pd_i)-sqrt(rho)m)/sqrt(1-rho));
+  conditional default-count pmf by convolving [1-p_i, p_i] (ASB recursion),
+  integrated over M with Gauss-Hermite quadrature.
+- `creditrisk_plus.py`: G(z)=exp(sum pd_i(z^{v_i}-1)); Panjer recursion p_0=
+  exp(-sum pd_i), p_n=(1/n) sum_{k=1}^n k a_k p_{n-k}, a_k=sum_{i:v_i=k} pd_i;
+  E[loss]=sum pd_i v_i, Var=sum pd_i v_i^2.
+## Wave 20 mathematical conventions
+
+- `concordance.py`: from concordant C, discordant D, ties Tx/Ty: gamma=(C-D)/(C+D);
+  Somers' D_{y|x}=(C-D)/(C+D+Ty); tau-b=(C-D)/sqrt((C+D+Tx)(C+D+Ty)); c-index =
+  (#{s_pos>s_neg}+0.5 #ties)/(n_pos n_neg) (= AUC).
+- `calibration_tests.py`: Spiegelhalter Z = sum (y-p)(1-2p)/sqrt(sum (1-2p)^2
+  p(1-p)) ~ N(0,1) under calibration; insensitive to symmetric additive shifts,
+  sensitive to over/under-confidence.
+- `gam.py`: backfitting y=intercept+sum_j f_j(x_j); each f_j refit from the
+  partial residual with a Gaussian local-linear smoother (Silverman bandwidth)
+  and centred to zero mean; iterate to convergence.
+## Wave 19 mathematical conventions
+
+- `random_projection.py`: JL min dim k = ceil(4 ln n /(eps^2/2 - eps^3/3));
+  Gaussian R ~ N(0,1/k); Achlioptas sparse R entries sqrt(s/k){+1,0,-1} at
+  probs {1/2s, 1-1/s, 1/2s}, s=1/density.
+- `spectral_clustering.py`: W=exp(-||xi-xj||^2/(2 sigma^2)) (median-heuristic
+  sigma, zero diagonal); L_sym=I-D^{-1/2}WD^{-1/2}; embed with k smallest
+  eigenvectors, row-normalise, k-means.
+- `cluster_validity.py`: silhouette s=(b-a)/max(a,b); Calinski-Harabasz
+  (B/(k-1))/(W/(n-k)); Davies-Bouldin mean_i max_{j!=i}(s_i+s_j)/d_ij.
+## Wave 22 mathematical conventions
+
+- `scale_tests.py`: Bartlett B=((N-k)ln sp2 - sum(n_i-1)ln s_i^2)/C ~ chi2_{k-1};
+  Levene/Brown-Forsythe F on |x-center| (mean/median); Fligner-Killeen chi2 on
+  normal scores of ranked |x-median_i|.
+- `ledoit_wolf_sharpe.py`: SR_i=mu_i/sqrt(gamma_i-mu_i^2); delta-method gradient
+  wrt (mu1,mu2,gamma1,gamma2) with Newey-West HAC covariance of (r1,r2,r1^2,r2^2);
+  z=(SR1-SR2)/se.
+- `liquidity_extra.py`: Hui-Heubel LR=((Pmax-Pmin)/Pmin)/(dollar_vol/(shares*Pbar));
+  Ulcer Index = RMS percent drawdown from an initial wealth of 1; Martin ratio =
+  annualised excess return in percent / UI in percent.
+- `agreement.py`: kappa=(po-pe)/(1-pe); weighted kappa=1 - sum(w p)/sum(w
+  outer(row,col)), w linear |i-j|/(k-1) or quadratic ((i-j)/(k-1))^2.
+## Wave 21 mathematical conventions
+
+- `forecast_accuracy.py`: U1=sqrt(MSE)/(sqrt(mean a^2)+sqrt(mean f^2)); U2=
+  sqrt(sum(f-a)^2)/sqrt(sum(a_t-a_{t-1})^2); MASE=mean|a-f|/mean|a_t-a_{t-m}|.
+- `whitening.py`: Sigma=U Lambda U'; PCA W=Lambda^{-1/2}U'; ZCA W=U Lambda^{-1/2}
+  U' (symmetric); whitened Cov = I.
+- `efficient_frontier.py`: A=1'S^{-1}1, B=1'S^{-1}mu, C=mu'S^{-1}mu, D=AC-B^2;
+  min-var w=S^{-1}1/A; frontier w=g+h m, var=(A m^2-2B m+C)/D; tangency=
+  S^{-1}(mu-rf)/1'S^{-1}(mu-rf).
+- `utility.py`: u(w)=(w^{1-gamma}-1)/(1-gamma) (log for gamma=1); CE gross =
+  (mean gross^{1-gamma})^{1/(1-gamma)} (geometric mean for gamma=1); CE<mean for
+  gamma>0.

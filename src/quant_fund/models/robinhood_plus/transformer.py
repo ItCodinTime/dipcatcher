@@ -43,7 +43,7 @@ def _causal_attention(q: Array, k: Array, v: Array) -> Array:
     mask = np.triu(np.ones((t, t), dtype=bool), k=1)
     scores[:, mask] = -1e9
     weights = _softmax(scores, axis=-1)
-    return np.einsum("hts,shd->thd", weights, v)
+    return np.asarray(np.einsum("hts,shd->thd", weights, v), dtype=float)
 
 
 @dataclass

@@ -42,6 +42,7 @@ from quant_fund.backtest.engine import (
 )
 from quant_fund.config.models import AppConfig, FillConvention
 from quant_fund.monitoring.kill_switch import KillSwitch
+from quant_fund.portfolio.risk_gate import LIMIT_ABS_SLACK, LIMIT_REL_SLACK, exceeds_limit, funded
 from quant_fund.schemas.errors import KillSwitchActive
 
 try:
@@ -263,7 +264,7 @@ def _csum(v: np.ndarray, f: np.ndarray) -> float:
             k0 = j
             break
     if k0 == n:
-        return _neumaier(v)
+        return float(_neumaier(v))
     hi = 0.0
     lo = 0.0
     for j in range(k0):
@@ -308,6 +309,26 @@ def _order_costs_nb(
 
 
 @njit(cache=True)
+def _exceeds_nb(value: float, limit: float) -> bool:
+    """Numba twin of ``exceeds_limit``. Keep the slack constants identical."""
+    if not (value > limit):
+        return False
+    slack = LIMIT_ABS_SLACK
+    rel = LIMIT_REL_SLACK * abs(limit)
+    if rel > slack:
+        slack = rel
+    return (value - limit) > slack
+
+
+@njit(cache=True)
+def _funded_nb(cash: float, needed: float) -> bool:
+    """Numba twin of ``funded``."""
+    if cash >= needed:
+        return True
+    return not _exceeds_nb(needed, cash)
+
+
+@njit(cache=True)
 def _replay_kernel(
     exec_px: np.ndarray,  # (T,A) f64 — exec source (open next_open / close)
     close_px: np.ndarray,  # (T,A) f64 — decision close + mark fallback
@@ -342,6 +363,7 @@ def _replay_kernel(
     f_fee: np.ndarray,  # (M,) f64
     f_spr: np.ndarray,  # (M,) f64
     f_imp: np.ndarray,  # (M,) f64
+    f_bpt: np.ndarray,  # (M,) f64 turnover bps charged in ``total``
     f_asset: np.ndarray,  # (M,) i64
     f_et: np.ndarray,  # (M,) i64
     f_st: np.ndarray,  # (M,) i64
@@ -479,9 +501,17 @@ def _replay_kernel(
             delta = desired - current
             if abs(delta) * price < 1.0:
                 continue
-            adv_a = adv[exec_t, a]
-            adv_eff = adv_a if np.isfinite(adv_a) and adv_a > 0 else 1.0
-            vol_a = vol[exec_t, a]
+            adv_a = adv[i, a]
+            if (
+                not np.isfinite(adv_a)
+                or adv_a <= 0
+                or not np.isfinite(participation_limit)
+                or not 0 < participation_limit <= 1
+            ):
+                reject_count += 1
+                continue
+            adv_eff = adv_a
+            vol_a = vol[i, a]
             vol_eff = vol_a if np.isfinite(vol_a) and vol_a > 0 else 0.02
             delta_np64 = nav_np64 or share_np64[a]
 
@@ -513,7 +543,7 @@ def _replay_kernel(
                 bps_per_turnover,
             )
             max_qty = participation_limit * (adv_eff / price)
-            if abs(delta) > max_qty > 0:
+            if abs(delta) > max_qty:
                 delta = np.sign(delta) * max_qty
                 delta_np64 = True
                 comm, spr, imp, total = _order_costs_nb(
@@ -570,19 +600,19 @@ def _replay_kernel(
                 or vol_eff < 0.0
                 or not np.isfinite(delta)
                 or delta == 0.0
-                or abs(delta) * price > max_order_notional
-                or abs(current_w + (delta * price) / nav_safe) > max_name
-                or gross_after > max_gross
-                or abs(net_after) > max_net
-                or participation > max_participation
-                or gate_vol > max_predicted_vol
+                or _exceeds_nb(abs(delta) * price, max_order_notional)
+                or _exceeds_nb(abs(current_w + (delta * price) / nav_safe), max_name)
+                or _exceeds_nb(gross_after, max_gross)
+                or _exceeds_nb(abs(net_after), max_net)
+                or _exceeds_nb(participation, max_participation)
+                or _exceeds_nb(gate_vol, max_predicted_vol)
             )
             if rejected:
                 reject_count += 1
                 continue
 
             notional = delta * price
-            if delta > 0 and cash < notional + total:
+            if delta > 0 and not _funded_nb(cash, notional + total):
                 cash_reject_count += 1
                 continue
             cash -= notional + total
@@ -599,11 +629,17 @@ def _replay_kernel(
             cost_comm += comm
             cost_spr += spr
             cost_imp += imp
+            if frictionless:
+                bpt = 0.0
+            else:
+                nt = abs(delta) * price
+                bpt = abs(nt) * bps_per_turnover / 1e4
             f_qty[n_fills] = delta
             f_px[n_fills] = price
             f_fee[n_fills] = comm
             f_spr[n_fills] = spr
             f_imp[n_fills] = imp
+            f_bpt[n_fills] = bpt
             f_asset[n_fills] = a
             f_et[n_fills] = exec_t
             f_st[n_fills] = i
@@ -711,6 +747,7 @@ def _replay_driver(
     f_fee = np.empty(max_fills)
     f_spr = np.empty(max_fills)
     f_imp = np.empty(max_fills)
+    f_bpt = np.empty(max_fills)
     f_asset = np.empty(max_fills, dtype=np.int64)
     f_et = np.empty(max_fills, dtype=np.int64)
     f_st = np.empty(max_fills, dtype=np.int64)
@@ -768,6 +805,7 @@ def _replay_driver(
         f_fee,
         f_spr,
         f_imp,
+        f_bpt,
         f_asset,
         f_et,
         f_st,
@@ -817,11 +855,17 @@ def _replay_driver(
             "fee": f_fee[j],
             "spread_cost": f_spr[j],
             "impact_cost": f_imp[j],
+            "turnover_cost": f_bpt[j],
             "decision_price": f_dec[j] if f_decok[j] else None,
         }
         for j in range(n_fills)
     ]
-    cost_sum = {"commission": cost_comm, "spread": cost_spr, "impact": cost_imp}
+    cost_sum = {
+        "commission": cost_comm,
+        "spread": cost_spr,
+        "impact": cost_imp,
+        "turnover": float(f_bpt[:n_fills].sum()) if n_fills else 0.0,
+    }
     return (
         navs,
         fill_rows,
@@ -1019,7 +1063,7 @@ def run_backtest_fast(
 
         navs = []
         fill_rows = []
-        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
+        cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0, "turnover": 0.0}
         reject_count = 0
         cash_reject_count = 0
         halt_count = 0
@@ -1075,8 +1119,8 @@ def run_backtest_fast(
                 break
 
             esrc = src_l[exec_t]
-            adv_row = adv_l[exec_t]
-            vol_row = vol_l[exec_t]
+            adv_row = adv_l[i]
+            vol_row = vol_l[i]
             dec_l = dec_l_i
             dec_ok_d = dec_ok_i
             # ``ids = exec | shares | target``; unpriced sids are skipped inside.
@@ -1111,7 +1155,15 @@ def run_backtest_fast(
                 current = shares[a]
                 delta = desired - current
                 adv_a = adv_row[a]
-                adv_eff = adv_a if math.isfinite(adv_a) and adv_a > 0 else 1.0
+                if (
+                    not math.isfinite(adv_a)
+                    or adv_a <= 0
+                    or not math.isfinite(costs_cfg.participation_limit)
+                    or not 0 < costs_cfg.participation_limit <= 1
+                ):
+                    reject_count += 1
+                    continue
+                adv_eff = adv_a
                 vol_a = vol_row[a]
                 vol_eff = vol_a if math.isfinite(vol_a) and vol_a > 0 else 0.02
 
@@ -1119,7 +1171,7 @@ def run_backtest_fast(
                     delta, price, adv_eff, vol_eff, costs_cfg
                 )
                 max_qty = costs_cfg.participation_limit * (adv_eff / price)
-                if abs(delta) > max_qty > 0:
+                if abs(delta) > max_qty:
                     # np.sign() yields np.float64; the reference does NOT coerce it
                     # back — the np.float64 delta contaminates shares/cash and
                     # degrades later sum() calls to the naive path. Replicate.
@@ -1169,19 +1221,19 @@ def run_backtest_fast(
                     or vol_eff < 0.0
                     or not math.isfinite(delta)
                     or delta == 0.0
-                    or abs(delta) * price > gate.max_order_notional
-                    or abs(current_w + (delta * price) / nav_safe) > gate.max_name
-                    or gross_after > gate.max_gross
-                    or abs(net_after) > gate.max_net
-                    or participation > gate.max_participation
-                    or gate_vol > gate.max_predicted_vol
+                    or exceeds_limit(abs(delta) * price, gate.max_order_notional)
+                    or exceeds_limit(abs(current_w + (delta * price) / nav_safe), gate.max_name)
+                    or exceeds_limit(gross_after, gate.max_gross)
+                    or exceeds_limit(abs(net_after), gate.max_net)
+                    or exceeds_limit(participation, gate.max_participation)
+                    or exceeds_limit(gate_vol, gate.max_predicted_vol)
                 )
                 if rejected:
                     reject_count += 1
                     continue
 
                 notional = delta * price
-                if delta > 0 and cash < notional + total_trade_cost:
+                if delta > 0 and not funded(cash, notional + total_trade_cost):
                     cash_reject_count += 1
                     continue
                 cash -= notional + total_trade_cost
@@ -1191,9 +1243,15 @@ def run_backtest_fast(
                 shares[a] = current + delta
                 terms_base[a] = shares[a] * npv[a]
                 traded_turn += abs(notional) / nav_safe
+                if costs_cfg.frictionless:
+                    bpt = 0.0
+                else:
+                    nt = abs(delta) * price
+                    bpt = abs(nt) * costs_cfg.bps_per_turnover / 1e4
                 cost_sum["commission"] += float(comm)
                 cost_sum["spread"] += float(spr)
                 cost_sum["impact"] += float(imp)
+                cost_sum["turnover"] += bpt
                 fill_rows.append(
                     {
                         "fill_time": dates[exec_t],
@@ -1204,6 +1262,7 @@ def run_backtest_fast(
                         "fee": comm,
                         "spread_cost": spr,
                         "impact_cost": imp,
+                        "turnover_cost": bpt,
                         "decision_price": dec_l[a] if dec_ok_d[a] else None,
                     }
                 )

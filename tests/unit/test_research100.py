@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import click
 import pytest
 from typer.testing import CliRunner
 
@@ -42,7 +43,8 @@ def test_catalog_cli_and_explicit_synthetic_requirement():
     assert describe_method("R008")["source_url"] in result.output
     result = runner.invoke(research100_app, ["benchmark"])
     assert result.exit_code != 0
-    assert "--synthetic" in result.output
+    assert result.exit_code == 2
+    assert "--synthetic" in click.unstyle(result.output)
 
 
 def test_fixed_synthetic_benchmark_retains_every_challenger():
@@ -54,6 +56,10 @@ def test_fixed_synthetic_benchmark_retains_every_challenger():
     assert result["comparison"]["n_observations"] == 60
     assert result["comparison"]["n_trials_supplied"] == 4
     assert len(result["summaries"]) == 5
+    assert all(
+        set(item) == {"observations", "sum_cost_fraction", "total_one_way_turnover"}
+        for item in result["summaries"].values()
+    )
     assert result["candidate_order"] == [
         "inverse_volatility",
         "multi_period",

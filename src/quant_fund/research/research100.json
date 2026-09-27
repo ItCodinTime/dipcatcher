@@ -13,9 +13,9 @@
     "live_performance_evidence": false,
     "component_summary": "",
     "test_paths": [
-      "tests/unit/test_optimizer.py",
-      "tests/unit/test_optimizer_edges.py",
-      "tests/unit/test_optimizer_adv_capacity.py"
+      "tests/unit/pipeline/test_optimizer.py",
+      "tests/unit/pipeline/test_optimizer_edges.py",
+      "tests/unit/pipeline/test_optimizer_adv_capacity.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -34,9 +34,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Black\u2013Litterman (1992) posterior expected returns.",
+    "component_summary": "Black–Litterman (1992) posterior expected returns.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -55,9 +55,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "L\u00f3pez de Prado (2016) HRP via Ward linkage on the correlation metric.",
+    "component_summary": "López de Prado (2016) HRP via Ward linkage on the correlation metric.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -76,9 +76,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Maillard\u2013Roncalli\u2013Teiletche (2010) ERC.",
+    "component_summary": "Maillard–Roncalli–Teiletche (2010) ERC.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -97,9 +97,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Choueifaty\u2013Coignard (2008) most-diversified portfolio.",
+    "component_summary": "Choueifaty–Coignard (2008) most-diversified portfolio.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -118,9 +118,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Rockafellar\u2013Uryasev (2000) CVaR-minimal portfolio via LP.",
+    "component_summary": "Rockafellar–Uryasev (2000) CVaR-minimal portfolio via LP.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -141,7 +141,7 @@
     "live_performance_evidence": false,
     "component_summary": "Kelly (1956)/Thorp continuous-time weights ``w* = f * Sigma^{-1} mu``.",
     "test_paths": [
-      "tests/unit/test_allocators.py"
+      "tests/unit/pipeline/test_allocators.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -196,7 +196,7 @@
     "authors": "Moreira and Muir (2017)",
     "entrypoint": "quant_fund.portfolio.research_allocators:volatility_managed_weights",
     "source_url": "https://onlinelibrary.wiley.com/doi/full/10.1111/jofi.12513",
-    "source_title": "Volatility\u2010Managed Portfolios - MOREIRA - 2017 - The Journal of Finance - Wiley Online Library",
+    "source_title": "Volatility‐Managed Portfolios - MOREIRA - 2017 - The Journal of Finance - Wiley Online Library",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "new_component",
@@ -223,11 +223,11 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Ledoit\u2013Wolf 2004 linear shrinkage.",
+    "component_summary": "Ledoit–Wolf 2004 linear shrinkage.",
     "test_paths": [
-      "tests/unit/test_covariance.py",
-      "tests/unit/test_optimize_dcc.py",
-      "tests/unit/test_api_fail_closed_branches.py"
+      "tests/unit/models/test_covariance.py",
+      "tests/unit/models/test_optimize_dcc.py",
+      "tests/unit/pipeline/test_api_fail_closed_branches.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -248,7 +248,7 @@
     "live_performance_evidence": false,
     "component_summary": "Estimate covariance with finite-sample Oracle Approximating Shrinkage.",
     "test_paths": [
-      "tests/unit/test_covariance.py"
+      "tests/unit/models/test_covariance.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -267,9 +267,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Analytical nonlinear Ledoit\u2013Wolf 2020 shrinkage.",
+    "component_summary": "Analytical nonlinear Ledoit–Wolf 2020 shrinkage.",
     "test_paths": [
-      "tests/unit/test_covariance.py"
+      "tests/unit/models/test_covariance.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -290,7 +290,7 @@
     "live_performance_evidence": false,
     "component_summary": "POET covariance estimator.",
     "test_paths": [
-      "tests/unit/test_poet.py"
+      "tests/unit/models/test_poet.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -311,7 +311,7 @@
     "live_performance_evidence": false,
     "component_summary": "Graphical lasso on sample covariance matrix S. Returns Theta, W.",
     "test_paths": [
-      "tests/unit/test_glasso.py"
+      "tests/unit/models/test_glasso.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -332,7 +332,7 @@
     "live_performance_evidence": false,
     "component_summary": "FastMCD: h-subset MCD with C-steps, returns reweighted center/cov.",
     "test_paths": [
-      "tests/unit/test_robust_cov.py"
+      "tests/unit/models/test_robust_cov.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -353,7 +353,7 @@
     "live_performance_evidence": false,
     "component_summary": "Orthogonalized Gnanadesikan-Kettenring estimator (Maronna-Zamar 2002).",
     "test_paths": [
-      "tests/unit/test_robust_cov.py"
+      "tests/unit/models/test_robust_cov.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -374,7 +374,7 @@
     "live_performance_evidence": false,
     "component_summary": "Laloux-style eigenvalue clipping (AFML ch. 2, ``denoiseCov``).",
     "test_paths": [
-      "tests/unit/test_rmt.py"
+      "tests/unit/models/test_rmt.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -395,7 +395,7 @@
     "live_performance_evidence": false,
     "component_summary": "Kritzman et al. (2011) absorption ratio.",
     "test_paths": [
-      "tests/unit/test_rmt.py"
+      "tests/unit/models/test_rmt.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -414,9 +414,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Bai\u2013Ng (2002) IC_p information criteria for the number of factors.",
+    "component_summary": "Bai–Ng (2002) IC_p information criteria for the number of factors.",
     "test_paths": [
-      "tests/unit/test_factor_models.py"
+      "tests/unit/models/test_factor_models.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -437,7 +437,7 @@
     "live_performance_evidence": false,
     "component_summary": "Ahn-Horenstein (2013) eigenvalue-ratio factor count.",
     "test_paths": [
-      "tests/unit/test_poet.py"
+      "tests/unit/models/test_poet.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -456,9 +456,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Jegadeesh\u2013Titman (1993) momentum: cumulative log return over\n[t-skip-formation, t-skip], skipping the most recent month to avoid\nshort-term reversal. Returns (T, N) NaN-warmup signals; the last\nfinite row holds the current cross-sectional scores.",
+    "component_summary": "Jegadeesh–Titman (1993) momentum: cumulative log return over\n[t-skip-formation, t-skip], skipping the most recent month to avoid\nshort-term reversal. Returns (T, N) NaN-warmup signals; the last\nfinite row holds the current cross-sectional scores.",
     "test_paths": [
-      "tests/unit/test_momentum.py"
+      "tests/unit/hedge_lab/test_momentum.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -471,15 +471,15 @@
     "authors": "George and Hwang (2004)",
     "entrypoint": "quant_fund.models.momentum:high_52w",
     "source_url": "https://onlinelibrary.wiley.com/doi/full/10.1111/j.1540-6261.2004.00695.x",
-    "source_title": "The 52\u2010Week High and Momentum Investing - GEORGE - 2004 - The Journal of Finance - Wiley Online Library",
+    "source_title": "The 52‐Week High and Momentum Investing - GEORGE - 2004 - The Journal of Finance - Wiley Online Library",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "George\u2013Hwang (2004): price / rolling 52-week high in (0, 1].",
+    "component_summary": "George–Hwang (2004): price / rolling 52-week high in (0, 1].",
     "test_paths": [
-      "tests/unit/test_momentum.py"
+      "tests/unit/hedge_lab/test_momentum.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -498,9 +498,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Blitz\u2013Huij\u2013Martens (2011) residual momentum.",
+    "component_summary": "Blitz–Huij–Martens (2011) residual momentum.",
     "test_paths": [
-      "tests/unit/test_momentum.py"
+      "tests/unit/hedge_lab/test_momentum.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -513,15 +513,15 @@
     "authors": "Moskowitz, Ooi and Pedersen (2012)",
     "entrypoint": "quant_fund.models.momentum:tsmom_signal",
     "source_url": "https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum",
-    "source_title": "Time Series Momentum \u2014 AQR",
+    "source_title": "Time Series Momentum — AQR",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Moskowitz\u2013Ooi\u2013Pedersen (2012) time-series momentum.",
+    "component_summary": "Moskowitz–Ooi–Pedersen (2012) time-series momentum.",
     "test_paths": [
-      "tests/unit/test_momentum.py"
+      "tests/unit/hedge_lab/test_momentum.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -543,9 +543,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Fama\u2013MacBeth (1973): mean of date-level CS OLS slopes (no intercept).",
+    "component_summary": "Fama–MacBeth (1973): mean of date-level CS OLS slopes (no intercept).",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -564,9 +564,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "ALS for IPCA FOCs (6)\u2013(7). Returns Gamma, {f_t}, iterations, Gamma_alpha.",
+    "component_summary": "ALS for IPCA FOCs (6)–(7). Returns Gamma, {f_t}, iterations, Gamma_alpha.",
     "test_paths": [
-      "tests/unit/test_asset_pricing_papers.py"
+      "tests/unit/models/test_asset_pricing_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -585,9 +585,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Kelly\u2013Pruitt automatic-proxy 3PRF (JoE 2015 Table 1 + Table 2).",
+    "component_summary": "Kelly–Pruitt automatic-proxy 3PRF (JoE 2015 Table 1 + Table 2).",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -608,7 +608,7 @@
     "live_performance_evidence": false,
     "component_summary": "JoF (20) / NBER (21) pair: S_i = [sin(gamma omega_i' G), cos(gamma omega_i' G)]'.",
     "test_paths": [
-      "tests/unit/test_asset_pricing_papers.py"
+      "tests/unit/models/test_asset_pricing_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -627,9 +627,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Kelly\u2013Malamud\u2013Zhou ridge: beta(z) = (z I + T^{-1} S'S)^{-1} T^{-1} S' R.",
+    "component_summary": "Kelly–Malamud–Zhou ridge: beta(z) = (z I + T^{-1} S'S)^{-1} T^{-1} S' R.",
     "test_paths": [
-      "tests/unit/test_asset_pricing_papers.py"
+      "tests/unit/models/test_asset_pricing_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -650,7 +650,7 @@
     "live_performance_evidence": false,
     "component_summary": "Two-step adaptive group LASSO + OLS on selected characteristics.",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -671,7 +671,7 @@
     "live_performance_evidence": false,
     "component_summary": "KNS (22): b = (Sigma + z I)^{-1} mu. Returns b, mu, eigenvalues of Sigma.",
     "test_paths": [
-      "tests/unit/test_asset_pricing_papers.py"
+      "tests/unit/models/test_asset_pricing_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -690,9 +690,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Gu\u2013Kelly\u2013Xiu gradient boosted regression trees (Huber, shallow).",
+    "component_summary": "Gu–Kelly–Xiu gradient boosted regression trees (Huber, shallow).",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -711,9 +711,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Kelly\u2013Malamud\u2013Pedersen prediction-matrix ranker (truncated SVD of Pi).",
+    "component_summary": "Kelly–Malamud–Pedersen prediction-matrix ranker (truncated SVD of Pi).",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -734,7 +734,7 @@
     "live_performance_evidence": false,
     "component_summary": "GKX PCR: leading PCs of standardized Z, then OLS of y on the scores.",
     "test_paths": [
-      "tests/unit/test_cs_papers.py"
+      "tests/unit/models/test_cs_papers.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -755,7 +755,7 @@
     "live_performance_evidence": false,
     "component_summary": "LARS-Lasso coefficient path (Efron et al. 2004, Alg. 3.2a).",
     "test_paths": [
-      "tests/unit/test_sparse.py"
+      "tests/unit/models/test_sparse.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -776,7 +776,7 @@
     "live_performance_evidence": false,
     "component_summary": "Cyclic coordinate descent for the lasso (Friedman et al. 2007).",
     "test_paths": [
-      "tests/unit/test_sparse.py"
+      "tests/unit/models/test_sparse.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -797,7 +797,7 @@
     "live_performance_evidence": false,
     "component_summary": "Zou (2006) adaptive lasso: weights w_j = 1/|b_ols_j|^power, then\nweighted lasso via coordinate descent.",
     "test_paths": [
-      "tests/unit/test_sparse.py"
+      "tests/unit/models/test_sparse.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -818,7 +818,7 @@
     "live_performance_evidence": false,
     "component_summary": "Pick the LARS-path point minimizing EBIC (Chen & Chen 2008):",
     "test_paths": [
-      "tests/unit/test_sparse.py"
+      "tests/unit/models/test_sparse.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -831,7 +831,7 @@
     "authors": "Pati, Rezaiifar and Krishnaprasad (1993)",
     "entrypoint": "quant_fund.models.sparse:omp",
     "source_url": "https://user.eng.umd.edu/~krishna/images/pati_reza_psk.pdf",
-    "source_title": "/ To appear in Proc. of the 27th Annual Asilomar Conference on Signals Systems and Computers, Nov. 1\u20133, 1993 /",
+    "source_title": "/ To appear in Proc. of the 27th Annual Asilomar Conference on Signals Systems and Computers, Nov. 1–3, 1993 /",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "existing_component",
@@ -839,7 +839,7 @@
     "live_performance_evidence": false,
     "component_summary": "Orthogonal matching pursuit: greedily pick k columns by residual\ncorrelation, LS-refit each step (Pati et al. 1993).",
     "test_paths": [
-      "tests/unit/test_sparse.py"
+      "tests/unit/models/test_sparse.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -860,7 +860,7 @@
     "live_performance_evidence": false,
     "component_summary": "HAR-RV OLS fit. Returns coefs (b0, bd, bw, bm), NW SEs, fitted, resid.",
     "test_paths": [
-      "tests/unit/test_har.py"
+      "tests/unit/models/test_har.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -881,7 +881,7 @@
     "live_performance_evidence": false,
     "component_summary": "HARQ: daily term = (b_d + b_q sqrt(RQ_t)) * RV_t.",
     "test_paths": [
-      "tests/unit/test_har.py"
+      "tests/unit/models/test_har.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -902,7 +902,7 @@
     "live_performance_evidence": false,
     "component_summary": "DCC(1,1) fit on (T, k) returns.",
     "test_paths": [
-      "tests/unit/test_dcc.py"
+      "tests/unit/models/test_dcc.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -923,7 +923,7 @@
     "live_performance_evidence": false,
     "component_summary": "EGARCH(1,1) Gaussian QMLE.",
     "test_paths": [
-      "tests/unit/test_egarch.py"
+      "tests/unit/models/test_egarch.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -944,7 +944,7 @@
     "live_performance_evidence": false,
     "component_summary": "GJR-GARCH(1,1) Gaussian QMLE (leverage: gamma > 0).",
     "test_paths": [
-      "tests/unit/test_egarch.py"
+      "tests/unit/models/test_egarch.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -965,7 +965,7 @@
     "live_performance_evidence": false,
     "component_summary": "Fit GAS(1,1) volatility by MLE.",
     "test_paths": [
-      "tests/unit/test_gas.py"
+      "tests/unit/models/test_gas.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -986,7 +986,7 @@
     "live_performance_evidence": false,
     "component_summary": "QMLE fit. Returns mu, alpha, beta, m, theta, w2, tau/g paths, ll.",
     "test_paths": [
-      "tests/unit/test_garch_midas.py"
+      "tests/unit/models/test_garch_midas.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1007,7 +1007,7 @@
     "live_performance_evidence": false,
     "component_summary": "Fit a CAViaR spec by tick-loss minimization (multi-start Powell).",
     "test_paths": [
-      "tests/unit/test_caviar.py"
+      "tests/unit/risk/test_caviar.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1028,7 +1028,7 @@
     "live_performance_evidence": false,
     "component_summary": "Fit QAR(p) at each tau. Returns coef matrix (len(taus), p+1).",
     "test_paths": [
-      "tests/unit/test_qar.py"
+      "tests/unit/hedge_lab/test_qar.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1049,9 +1049,9 @@
     "live_performance_evidence": false,
     "component_summary": "Causal log-linear Realized GARCH(1,1) with a Gaussian return law.",
     "test_paths": [
-      "tests/unit/test_realized_garch.py",
-      "tests/unit/test_api_fail_closed_branches.py",
-      "tests/unit/test_realized_garch_risk_gate.py"
+      "tests/unit/models/test_realized_garch.py",
+      "tests/unit/pipeline/test_api_fail_closed_branches.py",
+      "tests/unit/risk/test_realized_garch_risk_gate.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1072,9 +1072,9 @@
     "live_performance_evidence": false,
     "component_summary": "Sum of squared intraperiod returns (ABDL 2001).",
     "test_paths": [
-      "tests/unit/test_realized.py",
-      "tests/unit/test_realized_garch.py",
-      "tests/unit/test_api_fail_closed_branches.py"
+      "tests/unit/models/test_realized.py",
+      "tests/unit/models/test_realized_garch.py",
+      "tests/unit/pipeline/test_api_fail_closed_branches.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1093,9 +1093,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Barndorff-Nielsen\u2013Shephard bipower variation.",
+    "component_summary": "Barndorff-Nielsen–Shephard bipower variation.",
     "test_paths": [
-      "tests/unit/test_realized.py"
+      "tests/unit/models/test_realized.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1108,15 +1108,15 @@
     "authors": "Barndorff-Nielsen, Hansen, Lunde and Shephard (2008)",
     "entrypoint": "quant_fund.models.realized:realized_kernel",
     "source_url": "https://doi.org/10.3982/ECTA6495",
-    "source_title": "Designing Realized Kernels to Measure the ex post Variation of Equity Prices in the Presence of Noise - Barndorff\u2010Nielsen - 2008 - Econometrica - Wiley Online Library",
+    "source_title": "Designing Realized Kernels to Measure the ex post Variation of Equity Prices in the Presence of Noise - Barndorff‐Nielsen - 2008 - Econometrica - Wiley Online Library",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Barndorff-Nielsen\u2013Hansen\u2013Lunde\u2013Shephard (2008) flat-top realized kernel.",
+    "component_summary": "Barndorff-Nielsen–Hansen–Lunde–Shephard (2008) flat-top realized kernel.",
     "test_paths": [
-      "tests/unit/test_realized.py"
+      "tests/unit/models/test_realized.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1135,9 +1135,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Zhang\u2013Mykland\u2013Ait-Sahalia (2005) two-scales realized variance.",
+    "component_summary": "Zhang–Mykland–Ait-Sahalia (2005) two-scales realized variance.",
     "test_paths": [
-      "tests/unit/test_realized.py"
+      "tests/unit/models/test_realized.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1158,7 +1158,7 @@
     "live_performance_evidence": false,
     "component_summary": "Jacod et al. (2009) pre-averaging realized variance (modulated RV).",
     "test_paths": [
-      "tests/unit/test_realized.py"
+      "tests/unit/models/test_realized.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1177,9 +1177,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Lee\u2013Mykland (2008) instantaneous jump test.",
+    "component_summary": "Lee–Mykland (2008) instantaneous jump test.",
     "test_paths": [
-      "tests/unit/test_realized.py"
+      "tests/unit/models/test_realized.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1200,7 +1200,7 @@
     "live_performance_evidence": false,
     "component_summary": "GJR (2018) moment-scaling estimate of H.",
     "test_paths": [
-      "tests/unit/test_rough_vol.py"
+      "tests/unit/models/test_rough_vol.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1221,7 +1221,7 @@
     "live_performance_evidence": false,
     "component_summary": "Kalman filter for ``x_t = F x_{t-1} + w``, ``y_t = H x_t + v``.",
     "test_paths": [
-      "tests/unit/test_state_space.py"
+      "tests/unit/models/test_state_space.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1240,9 +1240,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Rauch\u2013Tung\u2013Striebel (1965) backward smoother over ``kalman_filter`` output.",
+    "component_summary": "Rauch–Tung–Striebel (1965) backward smoother over ``kalman_filter`` output.",
     "test_paths": [
-      "tests/unit/test_state_space.py"
+      "tests/unit/models/test_state_space.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1261,9 +1261,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Gordon\u2013Salmond\u2013Smith (1993) bootstrap/SIR particle filter.",
+    "component_summary": "Gordon–Salmond–Smith (1993) bootstrap/SIR particle filter.",
     "test_paths": [
-      "tests/unit/test_nonlinear_filters.py"
+      "tests/unit/models/test_nonlinear_filters.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1284,7 +1284,7 @@
     "live_performance_evidence": false,
     "component_summary": "Hamilton (1989) MS model with state-dependent mean and variance.",
     "test_paths": [
-      "tests/unit/test_regime_switch.py"
+      "tests/unit/models/test_regime_switch.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1305,7 +1305,7 @@
     "live_performance_evidence": false,
     "component_summary": "Select the n_pairs lowest-SSD pairs (Gatev 2006 formation stage).",
     "test_paths": [
-      "tests/unit/test_pairs.py"
+      "tests/unit/models/test_pairs.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1324,9 +1324,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Engle\u2013Granger (1987) two-step cointegration test.",
+    "component_summary": "Engle–Granger (1987) two-step cointegration test.",
     "test_paths": [
-      "tests/unit/test_var_coint.py"
+      "tests/unit/models/test_var_coint.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1347,7 +1347,7 @@
     "live_performance_evidence": false,
     "component_summary": "Johansen (1991) trace and max-eigenvalue cointegration tests.",
     "test_paths": [
-      "tests/unit/test_var_coint.py"
+      "tests/unit/models/test_var_coint.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1366,9 +1366,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Diebold\u2013Yilmaz (2012) connectedness from a VAR(p).",
+    "component_summary": "Diebold–Yilmaz (2012) connectedness from a VAR(p).",
     "test_paths": [
-      "tests/unit/test_var_coint.py"
+      "tests/unit/models/test_var_coint.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1389,9 +1389,9 @@
     "live_performance_evidence": false,
     "component_summary": "Holdings remaining after each slice, length n_slices+1, starts at quantity.",
     "test_paths": [
-      "tests/unit/test_execution.py",
-      "tests/unit/test_almgren_chriss_extremes.py",
-      "tests/unit/test_numeric_return_contracts.py"
+      "tests/unit/backtest/test_execution.py",
+      "tests/unit/backtest/test_almgren_chriss_extremes.py",
+      "tests/unit/research/test_numeric_return_contracts.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1404,7 +1404,7 @@
     "authors": "Avellaneda and Stoikov (2008)",
     "entrypoint": "quant_fund.models.market_making:as_optimal_quotes",
     "source_url": "https://www.sashastoikov.com/finance/2015/3/9/high-frequency-trading-in-a-limit-order-book",
-    "source_title": "High-Frequency Trading in a Limit Order Book \u2014 Sasha Stoikov",
+    "source_title": "High-Frequency Trading in a Limit Order Book — Sasha Stoikov",
     "source_review": "bibliographic_match",
     "source_review_date": "2026-09-24",
     "implementation_status": "existing_component",
@@ -1412,7 +1412,7 @@
     "live_performance_evidence": false,
     "component_summary": "Optimal bid/ask around the reservation price.",
     "test_paths": [
-      "tests/unit/test_market_making.py"
+      "tests/unit/microstructure/test_market_making.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1431,9 +1431,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Cont\u2013Kukanov\u2013Stoikov OFI for one security path. First observation is 0.",
+    "component_summary": "Cont–Kukanov–Stoikov OFI for one security path. First observation is 0.",
     "test_paths": [
-      "tests/unit/test_kyle_ofi.py"
+      "tests/unit/microstructure/test_kyle_ofi.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1454,7 +1454,7 @@
     "live_performance_evidence": false,
     "component_summary": "Lee-Ready (1991) classification.",
     "test_paths": [
-      "tests/unit/test_trade_sign.py"
+      "tests/unit/microstructure/test_trade_sign.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1475,7 +1475,7 @@
     "live_performance_evidence": false,
     "component_summary": "Bulk Volume Classification (Easley-Lopez de Prado-O'Hara).",
     "test_paths": [
-      "tests/unit/test_trade_sign.py"
+      "tests/unit/microstructure/test_trade_sign.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1496,7 +1496,7 @@
     "live_performance_evidence": false,
     "component_summary": "Univariate Hawkes MLE over (mu, alpha, beta); Nelder-Mead on log-params.",
     "test_paths": [
-      "tests/unit/test_point_process.py"
+      "tests/unit/models/test_point_process.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1517,8 +1517,8 @@
     "live_performance_evidence": false,
     "component_summary": "Split the timeline into ``n_groups`` sequential groups; every combination\nof ``n_test_groups`` is the test set, train is the purged/embargoed complement.",
     "test_paths": [
-      "tests/unit/test_validation.py",
-      "tests/unit/test_cpcv_extremes.py"
+      "tests/unit/pipeline/test_validation.py",
+      "tests/unit/research/test_cpcv_extremes.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1537,11 +1537,11 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "CSCV PBO (L\u00f3pez de Prado): share of splits where the IS-best trial is OOS-below-median.",
+    "component_summary": "CSCV PBO (López de Prado): share of splits where the IS-best trial is OOS-below-median.",
     "test_paths": [
-      "tests/unit/test_inference.py",
-      "tests/unit/test_pbo_edges.py",
-      "tests/unit/test_inference_edges.py"
+      "tests/unit/pipeline/test_inference.py",
+      "tests/unit/research/test_pbo_edges.py",
+      "tests/unit/pipeline/test_inference_edges.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1560,11 +1560,11 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "DSR = PSR with sr* = E[max SR under n_trials]. Research diagnostic only \u2014 not live P&L.",
+    "component_summary": "DSR = PSR with sr* = E[max SR under n_trials]. Research diagnostic only — not live P&L.",
     "test_paths": [
-      "tests/unit/test_metrics.py",
-      "tests/unit/test_psr_dsr_fixtures.py",
-      "tests/unit/test_overfitting_edges.py"
+      "tests/unit/research/test_metrics.py",
+      "tests/unit/research/test_psr_dsr_fixtures.py",
+      "tests/unit/research/test_overfitting_edges.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1585,9 +1585,9 @@
     "live_performance_evidence": false,
     "component_summary": "PSR: P(true SR > sr_star | observed moments). Research diagnostic only.",
     "test_paths": [
-      "tests/unit/test_metrics.py",
-      "tests/unit/test_psr_dsr_fixtures.py",
-      "tests/unit/test_overfitting_edges.py"
+      "tests/unit/research/test_metrics.py",
+      "tests/unit/research/test_psr_dsr_fixtures.py",
+      "tests/unit/research/test_overfitting_edges.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1633,7 +1633,7 @@
     "live_performance_evidence": false,
     "component_summary": "White's Reality Check (2000) with the stationary bootstrap.",
     "test_paths": [
-      "tests/unit/test_data_snooping.py"
+      "tests/unit/data/test_data_snooping.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1652,10 +1652,10 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Hansen's SPA (2005) \u2014 studentized Reality Check with three p-values.",
+    "component_summary": "Hansen's SPA (2005) — studentized Reality Check with three p-values.",
     "test_paths": [
-      "tests/unit/test_data_snooping.py",
-      "tests/unit/test_snooping_reference.py"
+      "tests/unit/data/test_data_snooping.py",
+      "tests/unit/research/test_snooping_reference.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1674,9 +1674,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Romano\u2013Wolf StepM (2005): step-down FWER control with adjusted p-values.",
+    "component_summary": "Romano–Wolf StepM (2005): step-down FWER control with adjusted p-values.",
     "test_paths": [
-      "tests/unit/test_data_snooping.py"
+      "tests/unit/data/test_data_snooping.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1695,10 +1695,10 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Hansen\u2013Lunde\u2013Nason (2011) model confidence set, range statistic.",
+    "component_summary": "Hansen–Lunde–Nason (2011) model confidence set, range statistic.",
     "test_paths": [
-      "tests/unit/test_data_snooping.py",
-      "tests/unit/test_snooping_reference.py"
+      "tests/unit/data/test_data_snooping.py",
+      "tests/unit/research/test_snooping_reference.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1719,8 +1719,8 @@
     "live_performance_evidence": false,
     "component_summary": "Stationary bootstrap (Politis & Romano 1994) index matrix, shape (n_boot, n).",
     "test_paths": [
-      "tests/unit/test_snooping_reference.py",
-      "tests/unit/test_stationary_bootstrap_block_length.py"
+      "tests/unit/research/test_snooping_reference.py",
+      "tests/unit/models/test_stationary_bootstrap_block_length.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1739,9 +1739,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Politis\u2013White (2004) automatic block length for the sample mean.",
+    "component_summary": "Politis–White (2004) automatic block length for the sample mean.",
     "test_paths": [
-      "tests/unit/test_stationary_bootstrap_block_length.py"
+      "tests/unit/models/test_stationary_bootstrap_block_length.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1760,9 +1760,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Newey\u2013West (1987) Bartlett-kernel LRV.",
+    "component_summary": "Newey–West (1987) Bartlett-kernel LRV.",
     "test_paths": [
-      "tests/unit/test_hac.py"
+      "tests/unit/models/test_hac.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1783,7 +1783,7 @@
     "live_performance_evidence": false,
     "component_summary": "Andrews (1991) automatic bandwidth via approximating AR(1) model.",
     "test_paths": [
-      "tests/unit/test_hac.py"
+      "tests/unit/models/test_hac.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1804,9 +1804,9 @@
     "live_performance_evidence": false,
     "component_summary": "DM test of equal predictive accuracy. Negative mean_loss_diff prefers a.",
     "test_paths": [
-      "tests/unit/test_inference.py",
-      "tests/unit/test_eprocess_dm.py",
-      "tests/unit/test_pairwise_dm.py"
+      "tests/unit/pipeline/test_inference.py",
+      "tests/unit/research/test_eprocess_dm.py",
+      "tests/unit/research/test_pairwise_dm.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1825,9 +1825,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Giacomini\u2013White (2006) unconditional predictive-ability Wald test.",
+    "component_summary": "Giacomini–White (2006) unconditional predictive-ability Wald test.",
     "test_paths": [
-      "tests/unit/test_forecast_eval.py"
+      "tests/unit/research/test_forecast_eval.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1846,9 +1846,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Clark\u2013West (2007) adjusted-MSPE test for *nested* comparisons.",
+    "component_summary": "Clark–West (2007) adjusted-MSPE test for *nested* comparisons.",
     "test_paths": [
-      "tests/unit/test_forecast_eval.py"
+      "tests/unit/research/test_forecast_eval.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1869,7 +1869,7 @@
     "live_performance_evidence": false,
     "component_summary": "Patton-robust QLIKE: x/f - ln(x/f) - 1 (needs x, f > 0).",
     "test_paths": [
-      "tests/unit/test_vol_eval.py"
+      "tests/unit/research/test_vol_eval.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1888,9 +1888,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Benjamini\u2013Hochberg (1995) FDR control, valid under PRDS dependence.",
+    "component_summary": "Benjamini–Hochberg (1995) FDR control, valid under PRDS dependence.",
     "test_paths": [
-      "tests/unit/test_fdr.py"
+      "tests/unit/research/test_fdr.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1909,9 +1909,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Benjamini\u2013Yekutieli (2001) FDR under arbitrary dependence (c(m) factor).",
+    "component_summary": "Benjamini–Yekutieli (2001) FDR under arbitrary dependence (c(m) factor).",
     "test_paths": [
-      "tests/unit/test_fdr.py"
+      "tests/unit/research/test_fdr.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1932,7 +1932,7 @@
     "live_performance_evidence": false,
     "component_summary": "Holm (1979) step-down FWER (uniformly more powerful than Bonferroni).",
     "test_paths": [
-      "tests/unit/test_fdr.py"
+      "tests/unit/research/test_fdr.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1953,7 +1953,7 @@
     "live_performance_evidence": false,
     "component_summary": "Kupiec (1995) proportion-of-failures test.",
     "test_paths": [
-      "tests/unit/test_var_backtest.py"
+      "tests/unit/risk/test_var_backtest.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1974,7 +1974,7 @@
     "live_performance_evidence": false,
     "component_summary": "Christoffersen (1998) independence + conditional-coverage tests.",
     "test_paths": [
-      "tests/unit/test_var_backtest.py"
+      "tests/unit/risk/test_var_backtest.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -1993,9 +1993,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "McNeil\u2013Frey (2000) exceedance-residual test.",
+    "component_summary": "McNeil–Frey (2000) exceedance-residual test.",
     "test_paths": [
-      "tests/unit/test_es_backtest.py"
+      "tests/unit/risk/test_es_backtest.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2014,9 +2014,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Du\u2013Escanciano (2017) cumulative-violation autocorrelation screen.",
+    "component_summary": "Du–Escanciano (2017) cumulative-violation autocorrelation screen.",
     "test_paths": [
-      "tests/unit/test_es_backtest.py"
+      "tests/unit/risk/test_es_backtest.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2037,7 +2037,7 @@
     "live_performance_evidence": false,
     "component_summary": "Calibrate a residual quantile on a held-out window, then expand bands.",
     "test_paths": [
-      "tests/unit/test_conformal.py"
+      "tests/unit/models/test_conformal.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2056,9 +2056,9 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Gibbs\u2013Cand\u00e8s ACI on residual scores, updated once per timestamp.",
+    "component_summary": "Gibbs–Candès ACI on residual scores, updated once per timestamp.",
     "test_paths": [
-      "tests/unit/test_conformal.py"
+      "tests/unit/models/test_conformal.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2077,10 +2077,10 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Split CQR with Tibshirani\u2013Barber\u2013Cand\u00e8s\u2013Ramdas likelihood-ratio weights.",
+    "component_summary": "Split CQR with Tibshirani–Barber–Candès–Ramdas likelihood-ratio weights.",
     "test_paths": [
-      "tests/unit/test_weighted_conformal.py",
-      "tests/unit/test_weighted_conformal_extremes.py"
+      "tests/unit/models/test_weighted_conformal.py",
+      "tests/unit/models/test_weighted_conformal_extremes.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2099,11 +2099,11 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Leave-one-out conformal wrapper. Guarantee is 1-2\u03b1, not 1-\u03b1.",
+    "component_summary": "Leave-one-out conformal wrapper. Guarantee is 1-2α, not 1-α.",
     "test_paths": [
-      "tests/unit/test_jackknife_plus.py",
-      "tests/unit/test_math_extremes_wave3.py",
-      "tests/unit/test_coverage_guarantee_scope.py"
+      "tests/unit/models/test_jackknife_plus.py",
+      "tests/unit/core/test_math_extremes_wave3.py",
+      "tests/unit/research/test_coverage_guarantee_scope.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",
@@ -2122,10 +2122,10 @@
     "implementation_status": "existing_component",
     "empirical_reproduction": "not_reproduced",
     "live_performance_evidence": false,
-    "component_summary": "Expand a base VaR / drawdown bound until CRC expected hit risk \u2264 \u03b1.",
+    "component_summary": "Expand a base VaR / drawdown bound until CRC expected hit risk ≤ α.",
     "test_paths": [
-      "tests/unit/test_crc.py",
-      "tests/unit/test_conformal_wrappee.py"
+      "tests/unit/research/test_crc.py",
+      "tests/unit/pipeline/test_conformal_wrappee.py"
     ],
     "test_scope": "component_unit_tests_not_full_paper_reproduction",
     "reproduction_gap": "Original datasets, sample construction, parameter search, and published tables have not been reproduced in this work.",

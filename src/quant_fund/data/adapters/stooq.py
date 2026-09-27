@@ -15,14 +15,15 @@ from __future__ import annotations
 
 import csv
 import io
-import time
 import urllib.error
-import urllib.request
 from datetime import UTC, date, datetime
+from email.message import Message
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import polars as pl
+
+from quant_fund.data.concurrent_io import IoError, call_with_retry, map_ordered, pooled_request
 
 SOURCE = "stooq"
 REVISION = "STOOQ_VENDOR_ADJ"
@@ -126,13 +127,50 @@ def np_finite(value: float) -> bool:
     return value == value and value not in (float("inf"), float("-inf"))
 
 
-def fetch_stooq_csv(stooq_symbol: str, *, timeout: float = 30.0) -> str:
-    """HTTP GET one Stooq daily CSV. Caller owns rate limits."""
+def fetch_stooq_csv(stooq_symbol: str, *, timeout: float = 30.0, retries: int = 2) -> str:
+    """HTTP GET one Stooq daily CSV. Retries transient failures; caller sets the rate."""
     url = STOQ_URL.format(ticker=stooq_symbol)
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — explicit public CSV  # nosec B310
-        body = resp.read()
-    return body.decode("utf-8", errors="replace")
+
+    def once() -> str:
+        try:
+            status, body = pooled_request(
+                "GET",
+                url,
+                headers={"User-Agent": USER_AGENT},
+                timeout=timeout,
+                max_bytes=20_000_000,
+            )
+        except IoError as exc:
+            raise urllib.error.URLError(str(exc)) from exc
+        if status >= 400:
+            raise urllib.error.HTTPError(url, status, f"HTTP {status}", Message(), None)
+        return body.decode("utf-8", errors="replace")
+
+    # 4xx other than 429 is terminal: wrap it so the retry loop does not spin.
+    def attempt() -> str:
+        try:
+            return once()
+        except urllib.error.HTTPError as exc:
+            if exc.code in (429, 500, 502, 503, 504):
+                raise
+            raise _TerminalHTTP(exc) from exc
+
+    try:
+        return call_with_retry(
+            attempt,
+            retries=retries,
+            backoff_s=0.4,
+            max_backoff_s=8.0,
+            jitter=True,
+            retry_on=(urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError),
+        )
+    except _TerminalHTTP as exc:
+        raise exc.error from None
+
+
+class _TerminalHTTP(Exception):
+    def __init__(self, error: urllib.error.HTTPError) -> None:
+        self.error = error
 
 
 def _master_row(
@@ -234,25 +272,37 @@ def download_stooq_universe(
     start: datetime | None = None,
     end: datetime | None = None,
     pause_s: float = 0.4,
+    max_workers: int = 4,
 ) -> dict[str, object]:
     """Download a liquid public universe into ``root`` as a PIT-shaped file tape."""
-    frames: list[pl.DataFrame] = []
-    errors: dict[str, str] = {}
-    for security_id, symbol in names:
+
+    def _one(pair: tuple[str, str]) -> tuple[str, pl.DataFrame | None, str | None]:
+        security_id, symbol = pair
         try:
             text = fetch_stooq_csv(symbol)
             frame = parse_stooq_csv(text, security_id=security_id, stooq_symbol=symbol)
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
-            errors[security_id] = str(exc)
-            time.sleep(pause_s)
-            continue
+            return security_id, None, str(exc)
         if start is not None and not frame.is_empty():
             frame = frame.filter(pl.col("event_time") >= start)
         if end is not None and not frame.is_empty():
             frame = frame.filter(pl.col("event_time") <= end)
-        if not frame.is_empty():
+        return security_id, frame, None
+
+    fetched = map_ordered(
+        _one,
+        list(names),
+        max_workers=max_workers,
+        min_interval_s=pause_s,
+    )
+    frames: list[pl.DataFrame] = []
+    errors: dict[str, str] = {}
+    for security_id, frame, err in fetched:
+        if err is not None:
+            errors[security_id] = err
+            continue
+        if frame is not None and not frame.is_empty():
             frames.append(frame)
-        time.sleep(pause_s)
     if not frames:
         return {
             "status": "empty",

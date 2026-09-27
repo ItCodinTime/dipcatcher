@@ -11,7 +11,7 @@ implementing the ``KronosPredictor`` protocol.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import polars as pl
@@ -65,7 +65,7 @@ def _resolve_asof(frame: pl.DataFrame, asof: Any) -> datetime:
     if isinstance(asof, datetime):
         return asof
     timestamp = pd.Timestamp(asof)
-    return timestamp.to_pydatetime()
+    return cast(datetime, timestamp.to_pydatetime())
 
 
 def forecast_kronos_frame(

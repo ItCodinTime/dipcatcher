@@ -100,8 +100,16 @@ def main() -> int:
         missing = [m for m in NEW_MODELS if m not in found[key]]
         out = OUT / "spliced" / f"{key}.mega.npz"
         if cols:
-            cmd = [PY, str(SPLICE), "--shard", str(src), "--cols",
-                   *[str(c) for c in cols], "--out", str(out)]
+            cmd = [
+                PY,
+                str(SPLICE),
+                "--shard",
+                str(src),
+                "--cols",
+                *[str(c) for c in cols],
+                "--out",
+                str(out),
+            ]
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode:
                 print(f"SPLICE FAIL {key}: {r.stdout}{r.stderr}")
@@ -115,8 +123,16 @@ def main() -> int:
         if not parts:
             continue
         receipt = OUT / f"merge_{cell}.json"
-        cmd = [PY, str(EVAL), "--merge-parts", *parts, "--merge-out", str(receipt),
-               "--bars-root", "data/raw/sources"]
+        cmd = [
+            PY,
+            str(EVAL),
+            "--merge-parts",
+            *parts,
+            "--merge-out",
+            str(receipt),
+            "--bars-root",
+            "data/raw/sources",
+        ]
         r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
         if r.returncode:
             print(f"MERGE FAIL {cell}: {r.stdout[-800:]}{r.stderr[-800:]}")

@@ -219,9 +219,7 @@ def _slot_ids(event_times: np.ndarray, interval_ns: int) -> tuple[np.ndarray, st
     return (hours // 4).astype(np.int64), "hour4"
 
 
-def _seas_quantiles(
-    rets_long: np.ndarray, train_slots: np.ndarray, slot: int
-) -> np.ndarray:
+def _seas_quantiles(rets_long: np.ndarray, train_slots: np.ndarray, slot: int) -> np.ndarray:
     """Shrunk slot-conditional empirical quantiles at ``LGBM_TAUS``."""
     q_global = np.quantile(rets_long, LGBM_TAUS)
     if not np.isfinite(q_global).all():
@@ -323,7 +321,7 @@ def _volm_quantiles(rets_long: np.ndarray, vs_long: np.ndarray) -> np.ndarray:
         return nan
 
     sigma_base = ewma_next_sigma(rets_long, lam=EWMA_LAM)
-    mult = float(np.clip(s_val ** gamma_hat, MULT_LO, MULT_HI))
+    mult = float(np.clip(s_val**gamma_hat, MULT_LO, MULT_HI))
     sigma_cond = sigma_base * mult
     if not np.isfinite(sigma_cond) or sigma_cond <= 0.0:
         return nan
@@ -337,9 +335,7 @@ def _volm_quantiles(rets_long: np.ndarray, vs_long: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _stack2_base_quantiles(
-    model: str, rets_long: np.ndarray, ctx: dict
-) -> np.ndarray:
+def _stack2_base_quantiles(model: str, rets_long: np.ndarray, ctx: dict) -> np.ndarray:
     """Quantile vector at LGBM_TAUS for one base challenger (NaN on failure).
 
     ``ctx`` carries the per-origin extras the new bases need:
@@ -371,9 +367,7 @@ def _stack2_base_quantiles(
             mu_g = float(fit.params.get("mu", 0.0)) / 100.0
             sig_g = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0
             scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-            return (
-                st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
-            )
+            return st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
         if model == "dip_fhs":
             fit = _arch_fit(rets_long * 100.0, vol="GARCH", dist="normal", o=1)
             sig_next = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0
@@ -402,9 +396,7 @@ def _stack2_base_quantiles(
             if not np.isfinite(sig_g) or sig_g <= 0.0:
                 return nan
             scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-            return (
-                st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
-            )
+            return st.t.ppf(g, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan
         if model == "dip_evt":
             return _evt_base_quantiles(rets_long, g)
         if model == "dip_seas":
@@ -416,9 +408,7 @@ def _stack2_base_quantiles(
     raise ValueError(f"unknown stack base {model}")
 
 
-def _stack2_fit(
-    buf_q: np.ndarray, buf_y: np.ndarray
-) -> np.ndarray:
+def _stack2_fit(buf_q: np.ndarray, buf_y: np.ndarray) -> np.ndarray:
     """Per-tau simplex weights (T,B)->(B,T) via exponentiated gradient on pinball.
 
     ``buf_q`` is (n_past, n_bases, n_taus); ``buf_y`` is (n_past,). Deterministic:
@@ -528,16 +518,11 @@ def _stack2_column(
         "n_scored": int(n_scored),
         "n_warmup_uniform": int(n_uniform),
         "n_banked_all_finite": int(len(buf_q)),
-        "base_finite_origins": {
-            m: int(c) for m, c in zip(STACK2_BASES, finite_cnt, strict=True)
-        },
+        "base_finite_origins": {m: int(c) for m, c in zip(STACK2_BASES, finite_cnt, strict=True)},
         # Mean effective stack weight per base per tau (0 on excluded origins);
         # each column sums to 1 over bases at every scored origin.
         "mean_weight_by_tau": {
-            m: [
-                round(float(w_eff_sum[b, t] / max(n_scored, 1)), 6)
-                for t in range(LGBM_TAUS.size)
-            ]
+            m: [round(float(w_eff_sum[b, t] / max(n_scored, 1)), 6) for t in range(LGBM_TAUS.size)]
             for b, m in enumerate(STACK2_BASES)
         },
         # Headline diagnostic: mean effective weight per base over origins+taus.
@@ -547,9 +532,7 @@ def _stack2_column(
         },
         # Mean weight conditional on the base being finite that origin.
         "mean_weight_when_finite": {
-            m: round(
-                float(w_fin_sum[b].mean() / max(int(finite_cnt[b]), 1)), 6
-            )
+            m: round(float(w_fin_sum[b].mean() / max(int(finite_cnt[b]), 1)), 6)
             for b, m in enumerate(STACK2_BASES)
         },
     }
@@ -609,9 +592,7 @@ def main() -> int:
     t0 = time.time()
     out, diag = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
@@ -621,9 +602,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "stack_params": {
             "warmup": STACK_WARMUP,
             "buffer": STACK_BUFFER,

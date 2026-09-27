@@ -1,0 +1,56 @@
+{
+  "dev": {
+    "total_return": 2.068993676351611,
+    "cagr": 0.25144720811833055,
+    "sharpe": 8.042676792605672,
+    "max_drawdown": -0.00712769677281877,
+    "mean_turnover": 0.015671875868310918,
+    "funding_net": 2171620.869410059,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 0,
+    "n": 1826,
+    "eligible": 103
+  },
+  "holdout": {
+    "total_return": 0.022239241377648877,
+    "cagr": 0.013323357143942838,
+    "sharpe": 0.6710350185832192,
+    "max_drawdown": -0.0274763766190943,
+    "mean_turnover": 0.01685756816540547,
+    "funding_net": 39540.29235247936,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 0,
+    "n": 607,
+    "eligible": 142
+  },
+  "full": {
+    "total_return": 2.1876771783497064,
+    "cagr": 0.19001429280045734,
+    "sharpe": 7.019464649545957,
+    "max_drawdown": -0.00712769677281877,
+    "mean_turnover": 0.014089219949260557,
+    "funding_net": 2331812.2616461506,
+    "funding_events_dropped": 0,
+    "liquidation_count": 0,
+    "margin_rejects": 0,
+    "risk_gate_rejects": 0,
+    "n": 2434,
+    "eligible": 141
+  },
+  "frozen_config": {
+    "enter": 0.0003,
+    "exit_": -0.000125,
+    "lb": 9,
+    "nw": 0.08,
+    "mx": 15,
+    "band": 1.3,
+    "rsr": 0.002,
+    "rsc": 1.5,
+    "rsf": 1.0
+  },
+  "book": "data/binance_carry"
+}

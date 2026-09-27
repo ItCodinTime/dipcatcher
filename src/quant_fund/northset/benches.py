@@ -592,7 +592,7 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         # not repaired, and absent structure must read as unmeasured.
         if not set(required).issubset(book.columns):
             return float("nan")
-        return rate_fn(shape_rows)
+        return float(rate_fn(shape_rows))
 
     depth_shape_rate = _rate_or_nan(
         (*book_metrics_mod.DEPTH_SHAPE_FIELDS, "n_bid_levels", "n_ask_levels"),

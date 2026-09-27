@@ -1,0 +1,44 @@
+{
+  "manifest_sha256": "a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384",
+  "phase": "test",
+  "created_at": "2026-09-25T06:49:22.079128+00:00",
+  "scores": {
+    "zero": {
+      "date_equal_weight_mse": 0.0003899407444036478,
+      "date_equal_weight_mae": 0.012870926140241257,
+      "n_rows": 181451,
+      "n_dates": 431
+    },
+    "historical_mean": {
+      "date_equal_weight_mse": 0.0003897374788546646,
+      "date_equal_weight_mae": 0.01285457126409479,
+      "n_rows": 181451,
+      "n_dates": 431
+    },
+    "rolling_mean_20": {
+      "date_equal_weight_mse": 0.0004090936928422289,
+      "date_equal_weight_mae": 0.01332045812890271,
+      "n_rows": 181451,
+      "n_dates": 431
+    },
+    "ridge": {
+      "date_equal_weight_mse": 0.00038903174185071765,
+      "date_equal_weight_mae": 0.012853767095097215,
+      "n_rows": 181451,
+      "n_dates": 431
+    }
+  },
+  "research_only": true,
+  "live_pnl_claim": false,
+  "promote": false,
+  "claim": "fixed_split_forecast_diagnostic",
+  "holdout_status": "previously_inspected",
+  "limitations": [
+    "Source, usage rights and historical availability are user declarations, not independently verified.",
+    "File hashes detect changes; they do not prove a holdout was never inspected.",
+    "Close-to-close forecast scores do not establish executable net returns.",
+    "Input universe has survivorship bias.",
+    "Historical availability timestamps were reconstructed."
+  ],
+  "receipt_sha256": "d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01"
+}

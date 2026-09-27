@@ -32,7 +32,7 @@ def _v(x: Array, n: int = 20) -> Array:
 def _norm_pdf(x: Array, mu: Array, sigma: Array) -> Array:
     s = np.maximum(np.asarray(sigma, dtype=float), 1e-12)
     z = (x - mu) / s
-    return np.exp(-0.5 * z * z) / (math.sqrt(2 * math.pi) * s)
+    return np.asarray(np.exp(-0.5 * z * z) / (math.sqrt(2 * math.pi) * s), dtype=float)
 
 
 def fit_markov_switching_mean(
@@ -255,4 +255,4 @@ def ergodic_probabilities(P: Array) -> Array:
     idx = int(np.argmin(np.abs(vals - 1.0)))
     pi = np.real(vecs[:, idx])
     pi = np.abs(pi) / np.sum(np.abs(pi))
-    return pi
+    return np.asarray(pi, dtype=float)

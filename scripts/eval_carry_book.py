@@ -223,11 +223,7 @@ def main() -> int:
     # engine would fail closed, so ineligible names are excluded per segment
     # and reported, never silently carried on stale marks.
     all_times = sorted(perp_bars["event_time"].unique().to_list())
-    step_s = float(
-        np.median(
-            np.diff(np.array([t.timestamp() for t in all_times], dtype=float))
-        )
-    )
+    step_s = float(np.median(np.diff(np.array([t.timestamp() for t in all_times], dtype=float))))
     seg_bounds = {
         "dev": (all_times[0], cast(datetime, cut)),
         "holdout": (cast(datetime, cut), all_times[-1]),

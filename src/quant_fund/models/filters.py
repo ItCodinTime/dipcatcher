@@ -98,7 +98,7 @@ def christiano_fitzgerald(y: Array, low: float = 6.0, high: float = 32.0) -> dic
     def bj(j: float) -> float:
         if j == 0:
             return (wh - wl) / np.pi
-        return (np.sin(wh * j) - np.sin(wl * j)) / (np.pi * j)
+        return float((np.sin(wh * j) - np.sin(wl * j)) / (np.pi * j))
 
     cyc = np.zeros(n)
     for t in range(n):

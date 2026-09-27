@@ -175,7 +175,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
                     float(pinball_loss(np.array([y]), np.array([qt]), tau)[0])
                     if np.isfinite(qt)
                     else np.nan
-                    for qt, tau in zip(q_taus, TAUS)
+                    for qt, tau in zip(q_taus, TAUS, strict=True)
                 ]
             )
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
@@ -188,12 +188,9 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
     diag = {
         "slot_scheme": scheme,
         "n_slots": int(slots.max()) + 1,
-        "slot_origin_counts": {
-            str(int(s)): int((origin_slot == s).sum()) for s in uniq
-        },
+        "slot_origin_counts": {str(int(s)): int((origin_slot == s).sum()) for s in uniq},
         "slot_mean_pool_n": {
-            str(int(s)): round(float(pool_n[origin_slot == s].mean()), 2)
-            for s in uniq
+            str(int(s)): round(float(pool_n[origin_slot == s].mean()), 2) for s in uniq
         },
         "n_global_fallback_rows": int(fell_back.sum()),
         "shrinkage_k": SHRINK_K,
@@ -204,12 +201,8 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             "dip_qar/dip_stack); crps_empirical on a deterministic 512-point "
             "quantile-grid sample recorded as a cross-check only"
         ),
-        "crps_empirical_512_mean_abs_diff": (
-            float(np.mean(emp_diffs)) if emp_diffs else None
-        ),
-        "crps_empirical_512_max_abs_diff": (
-            float(np.max(emp_diffs)) if emp_diffs else None
-        ),
+        "crps_empirical_512_mean_abs_diff": (float(np.mean(emp_diffs)) if emp_diffs else None),
+        "crps_empirical_512_max_abs_diff": (float(np.max(emp_diffs)) if emp_diffs else None),
     }
     return {
         "crps_col": crps,
@@ -222,9 +215,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "--shard", type=Path, required=True, help="existing losses shard to match"
-    )
+    p.add_argument("--shard", type=Path, required=True, help="existing losses shard to match")
     p.add_argument("--bars-root", type=Path, default=Path("data/raw/sources"))
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
@@ -243,9 +234,7 @@ def main() -> int:
     out = compute_column(bars, cfg)
     diag = out.pop("diag")
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,

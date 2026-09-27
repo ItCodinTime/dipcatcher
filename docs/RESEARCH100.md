@@ -72,6 +72,11 @@ strategies. Source-to-code bindings include approximation notes and linked tests
 
 ## Evidence and limitations
 
+The current CLI reports synthetic integration and accounting diagnostics only.
+It omits Sharpe and total-return summary fields. The committed benchmark receipt
+below is a historical snapshot from 2026-09-24; its module hashes and legacy
+summary fields are preserved as recorded and do not describe the current code.
+
 The committed [synthetic integration receipt](research100/synthetic_benchmark.json)
 compares a fixed equal-weight baseline with inverse-volatility, multi-period,
 risk-constrained Kelly and volatility-managed policies. It records all four

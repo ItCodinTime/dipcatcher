@@ -202,4 +202,4 @@ def risk_in_eigenmodes(weights: Array, cov: Array) -> Array:
     total = float(contrib.sum())
     if total <= 0.0:
         raise ValueError("portfolio variance is zero")
-    return contrib / total
+    return np.asarray(contrib / total, dtype=float)

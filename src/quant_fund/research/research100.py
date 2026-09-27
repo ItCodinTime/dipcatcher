@@ -8,12 +8,14 @@ import inspect
 import json
 from collections.abc import Callable
 from importlib.resources import files
-from typing import Any
+from typing import Any, cast
 
 
 def load_catalog() -> list[dict[str, Any]]:
     """Load the shipped catalog; identifiers are stable, not performance ranks."""
-    rows = json.loads(files("quant_fund.research").joinpath("research100.json").read_text())
+    rows: list[dict[str, Any]] = json.loads(
+        files("quant_fund.research").joinpath("research100.json").read_text()
+    )
     if len(rows) != 100 or len({r["id"] for r in rows}) != 100:
         raise ValueError("research100 catalog requires 100 unique entries")
     return rows
@@ -38,7 +40,7 @@ def resolve_method(identifier: str) -> Callable[..., Any]:
     obj = getattr(importlib.import_module(module), symbol)
     if not callable(obj):
         raise ValueError(f"{identifier} does not resolve to a callable")
-    return obj
+    return cast(Callable[..., Any], obj)
 
 
 def audit_catalog() -> dict[str, Any]:

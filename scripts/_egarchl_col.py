@@ -127,20 +127,12 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             nu_g = float(fit.params["nu"])
             mu_g = float(fit.params.get("mu", 0.0)) / 100.0
             scale_g = sig_g * np.sqrt((nu_g - 2.0) / nu_g) if nu_g > 2.0 else np.nan
-            c = float(
-                crps_student_t(np.array([y]), np.array([mu_g]), np.array([scale_g]), nu_g)[0]
-            )
-            q = (
-                st.t.ppf(TAUS, nu_g, loc=mu_g, scale=scale_g)
-                if np.isfinite(scale_g)
-                else nan3
-            )
+            c = float(crps_student_t(np.array([y]), np.array([mu_g]), np.array([scale_g]), nu_g)[0])
+            q = st.t.ppf(TAUS, nu_g, loc=mu_g, scale=scale_g) if np.isfinite(scale_g) else nan3
             crps[row] = c
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q[k]]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             failures += 1
     g = np.asarray(gammas, dtype=float)
@@ -157,18 +149,10 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
         "n_convergence_failures": np.asarray(failures, dtype=np.int64),
         "n_gamma_neg": np.asarray(int((g_fin < 0.0).sum()), dtype=np.int64),
         "n_gamma_nonneg": np.asarray(int((g_fin >= 0.0).sum()), dtype=np.int64),
-        "gamma_mean": np.asarray(
-            float(g_fin.mean()) if g_fin.size else np.nan
-        ),
-        "gamma_median": np.asarray(
-            float(np.median(g_fin)) if g_fin.size else np.nan
-        ),
-        "gamma_min": np.asarray(
-            float(g_fin.min()) if g_fin.size else np.nan
-        ),
-        "gamma_max": np.asarray(
-            float(g_fin.max()) if g_fin.size else np.nan
-        ),
+        "gamma_mean": np.asarray(float(g_fin.mean()) if g_fin.size else np.nan),
+        "gamma_median": np.asarray(float(np.median(g_fin)) if g_fin.size else np.nan),
+        "gamma_min": np.asarray(float(g_fin.min()) if g_fin.size else np.nan),
+        "gamma_max": np.asarray(float(g_fin.max()) if g_fin.size else np.nan),
     }
 
 
@@ -208,15 +192,13 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     meta_out = {
         "tool": Path(__file__).name,
         "model": MODEL,
         "arch_spec": "vol=EGARCH p=1 o=1 q=1 dist=t mean=Constant rescale=False; "
-                     "o=1 primary, o=0 fallback on exception or degenerate "
-                     "1-step sigma (non-finite/<=0/>1.0)",
+        "o=1 primary, o=0 fallback on exception or degenerate "
+        "1-step sigma (non-finite/<=0/>1.0)",
         "n_spec_o1": int(out["n_spec_o1"]),
         "n_spec_o0": int(out["n_spec_o0"]),
         "n_o1_exception": int(out["n_o1_exception"]),
@@ -234,9 +216,10 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "n_rows": n_rows,
         "n_finite_crps": int(np.isfinite(out["crps_col"]).sum()),
         "elapsed_s": round(time.time() - t0, 3),

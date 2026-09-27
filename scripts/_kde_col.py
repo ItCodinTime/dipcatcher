@@ -78,11 +78,7 @@ def _kde_bandwidth(rets: np.ndarray) -> tuple[float, float]:
     long_vol = ewma_next_sigma(rets)
     recent = rets[-KDE_VOL_RECENT:] if n > KDE_VOL_RECENT else rets
     recent_vol = ewma_next_sigma(recent)
-    ratio = (
-        float(np.clip(recent_vol / long_vol, *KDE_VOL_CLIP))
-        if long_vol > 0.0
-        else 1.0
-    )
+    ratio = float(np.clip(recent_vol / long_vol, *KDE_VOL_CLIP)) if long_vol > 0.0 else 1.0
     return base * ratio, ratio
 
 
@@ -164,9 +160,7 @@ def compute_column(bars_path: Path, cfg: dict) -> dict[str, np.ndarray]:
             crps[row] = c
             for k, tau in enumerate(TAUS):
                 if np.isfinite(q[k]):
-                    pin[row, k] = float(
-                        pinball_loss(np.array([y]), np.array([q[k]]), tau)[0]
-                    )
+                    pin[row, k] = float(pinball_loss(np.array([y]), np.array([q[k]]), tau)[0])
         except Exception:  # noqa: BLE001 - honest NaN, row stays disclosed
             pass
     return {
@@ -199,9 +193,7 @@ def main() -> int:
     t0 = time.time()
     out = compute_column(bars, cfg)
     if out["crps_col"].shape[0] != n_rows:
-        raise ValueError(
-            f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}"
-        )
+        raise ValueError(f"{args.shard.name}: grid mismatch {out['crps_col'].shape[0]} != {n_rows}")
     bw = out["bandwidth"]
     meta_out = {
         "tool": Path(__file__).name,
@@ -212,13 +204,14 @@ def main() -> int:
         "bars_sha256": meta["bars_sha256"],
         "bars_file_sha256": _sha256(bars),
         "asset_names": meta.get("asset_names"),
-        "config": {k: cfg.get(k) for k in
-                   ("origins_per_asset", "lookback", "window", "garch_window",
-                    "taus", "seed")},
+        "config": {
+            k: cfg.get(k)
+            for k in ("origins_per_asset", "lookback", "window", "garch_window", "taus", "seed")
+        },
         "kde": {
             "kernel": "gaussian",
             "bandwidth": "0.9*min(s,IQR/1.34)*n^-1/5*clip(recent_vol/long_vol,"
-                         f"{KDE_VOL_CLIP[0]},{KDE_VOL_CLIP[1]})",
+            f"{KDE_VOL_CLIP[0]},{KDE_VOL_CLIP[1]})",
             "vol_windows": {"recent": KDE_VOL_RECENT, "long": "garch_window"},
             "grid_points": KDE_GRID,
             "grid_span": f"data_range +/- {KDE_TAIL_H}h",
