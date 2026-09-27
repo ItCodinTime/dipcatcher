@@ -54,6 +54,8 @@ dipcatcher = "quant_fund.cli.main:app"
 dev = [
     "pytest>=8.3",
     "pytest-cov>=6.0",
+    "pytest-xdist>=3.6",
+    "pytest-split>=0.10",
     "hypothesis>=6.115",
     "ruff>=0.8",
     "mypy>=1.13",
@@ -157,7 +159,8 @@ testpaths = ["tests/unit", "tests/property", "tests/regression", "tests/end_to_e
 addopts = "-q --strict-markers"
 markers = [
     "network: tests that require internet (disabled by default)",
-    "slow: longer integration tests",
+    "slow: long tests; full suite on schedule/workflow_dispatch, excluded from the PR gate",
+    "smoke: paper, ledger, and analytics modules collected by the CI smoke job",
     "synthetic: uses synthetic market data",
 ]
 filterwarnings = [

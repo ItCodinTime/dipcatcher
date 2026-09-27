@@ -13,6 +13,8 @@ from quant_fund.execution.simulated_broker import SimulatedBroker
 from quant_fund.paper.ledger import load_broker_state, validate_ledger_schema
 from quant_fund.paper.loop import run_paper_loop
 
+pytestmark = pytest.mark.smoke
+
 
 def _bars(n_days: int = 10):
     rows = []
