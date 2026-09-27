@@ -11,16 +11,40 @@ import hashlib
 import json
 import math
 import re
+from datetime import UTC, datetime
 from pathlib import PurePosixPath
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 SCHEMA_VERSION: str = "proofcore/1"
 GENESIS_HASH: str = "0" * 64
 HASH_HEX_LEN: int = 64
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
-_DIGEST_FIELD_NAMES = {"bundle_hash", "bundle_id", "merkle_root", "trial_id"}
+_DIGEST_FIELD_NAMES = {
+    "best_trial_id",
+    "bundle_hash",
+    "bundle_id",
+    "merkle_root",
+    "trial_id",
+}
+
+
+class _FrozenDict(dict[str, object]):
+    """A JSON-serializable mapping that cannot mutate a signed payload."""
+
+    def _immutable(self, *_args: object, **_kwargs: object) -> None:
+        raise TypeError("proof payload is immutable")
+
+    __setitem__ = _immutable  # type: ignore[assignment]
+    __delitem__ = _immutable  # type: ignore[assignment]
+    clear = _immutable  # type: ignore[assignment]
+    pop = _immutable  # type: ignore[assignment]
+    popitem = _immutable  # type: ignore[assignment]
+    setdefault = _immutable  # type: ignore[assignment]
+    update = _immutable  # type: ignore[assignment]
+    __ior__ = _immutable  # type: ignore[assignment]
+
 
 # ---------------------------------------------------------------------------
 # Errors (self-contained; adapters in pit/leakage map these onto
@@ -121,7 +145,7 @@ def merkle_root_hex(leaf_hashes: list[str]) -> str:
     if not leaf_hashes:
         return sha256_hex_bytes(b"")
     for h in leaf_hashes:
-        if _SHA256_HEX.fullmatch(h) is None:
+        if not isinstance(h, str) or _SHA256_HEX.fullmatch(h) is None:
             raise ProofError(f"merkle leaf is not a sha256 hex digest: {h!r}")
     level = [sha256_hex_bytes(b"PC:leaf:" + bytes.fromhex(h)) for h in sorted(leaf_hashes)]
     while len(level) > 1:
@@ -148,7 +172,12 @@ class _Strict(BaseModel):
         name = info.field_name
         if (
             name is not None
-            and (name == "sha256" or name.endswith("_sha256") or name in _DIGEST_FIELD_NAMES)
+            and (
+                name == "sha256"
+                or name.endswith("_sha256")
+                or name.endswith("_hash")
+                or name in _DIGEST_FIELD_NAMES
+            )
             and (not isinstance(value, str) or _SHA256_HEX.fullmatch(value) is None)
         ):
             raise ValueError(f"{name} must be a lowercase sha256 hex digest")
@@ -171,6 +200,11 @@ class EnvFingerprint(_Strict):
         description="name -> exact version for dipcatcher, numpy, polars, scipy, pydantic"
     )
 
+    @model_validator(mode="after")
+    def freeze_packages(self) -> Self:
+        object.__setattr__(self, "packages", _FrozenDict(self.packages))
+        return self
+
 
 class DataAccessRecord(_Strict):
     """One recorded PIT vault asof() read."""
@@ -187,17 +221,51 @@ class DataAccessRecord(_Strict):
         description="sha256 of canonical arrow/parquet payload bytes actually returned",
     )
 
+    @field_validator("asof_utc")
+    @classmethod
+    def normalize_utc(cls, value: str) -> str:
+        try:
+            timestamp = datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("asof_utc must be an ISO-8601 UTC timestamp") from exc
+        if timestamp.tzinfo is None or timestamp.utcoffset() != UTC.utcoffset(timestamp):
+            raise ValueError("asof_utc must include a UTC offset")
+        return timestamp.astimezone(UTC).isoformat()
+
+    @model_validator(mode="after")
+    def freeze_params(self) -> Self:
+        object.__setattr__(self, "params", _FrozenDict(self.params))
+        return self
+
 
 class DataManifestSummary(_Strict):
-    reads: list[DataAccessRecord]
+    reads: tuple[DataAccessRecord, ...]
     merkle_root: str = Field(min_length=HASH_HEX_LEN, max_length=HASH_HEX_LEN)
     n_reads: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def check_read_count(self) -> Self:
+        if self.n_reads != len(self.reads):
+            raise ValueError("n_reads does not match recorded reads")
+        return self
 
 
 class SignatureBlock(_Strict):
     scheme: Literal["hmac-sha256", "none"]
     key_id: str = Field(description="sha256(key)[:16] for hmac-sha256; 'unsigned' for none")
     value: str = Field(description="hex HMAC over canonical bundle bytes minus signature field")
+
+    @model_validator(mode="after")
+    def validate_signature(self) -> Self:
+        if self.scheme == "none":
+            if self.key_id != "unsigned" or self.value != "":
+                raise ValueError("unsigned signature must use unsigned key_id and empty value")
+        elif (
+            re.fullmatch(r"[0-9a-f]{16}", self.key_id) is None
+            or _SHA256_HEX.fullmatch(self.value) is None
+        ):
+            raise ValueError("hmac-sha256 signature requires hex key_id and value")
+        return self
 
 
 class ProofBundleV1(_Strict):
@@ -220,6 +288,11 @@ class ProofBundleV1(_Strict):
     )
     prev_bundle_hash: str = Field(min_length=HASH_HEX_LEN, max_length=HASH_HEX_LEN)
     signature: SignatureBlock
+
+    @model_validator(mode="after")
+    def freeze_metrics(self) -> Self:
+        object.__setattr__(self, "metrics_recompute", _FrozenDict(self.metrics_recompute))
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +333,7 @@ class PitManifest(_Strict):
     created_utc: str
     revision: int = Field(ge=0, description="monotonic per-dataset append counter")
     prev_manifest_sha256: str = Field(min_length=HASH_HEX_LEN, max_length=HASH_HEX_LEN)
-    files: list[PitManifestFile]
+    files: tuple[PitManifestFile, ...]
 
 
 # ---------------------------------------------------------------------------
@@ -330,3 +403,10 @@ class RealityReport(_Strict):
     fdr_q: float = Field(gt=0, lt=1)
     verdict: Literal["pass", "deflated", "insufficient_evidence"]
     report_sha256: str = Field(min_length=HASH_HEX_LEN, max_length=HASH_HEX_LEN)
+
+    @field_validator("bh_fdr_rejects")
+    @classmethod
+    def validate_rejected_trials(cls, value: list[str]) -> list[str]:
+        if any(_SHA256_HEX.fullmatch(trial_id) is None for trial_id in value):
+            raise ValueError("bh_fdr_rejects must contain lowercase sha256 trial ids")
+        return value

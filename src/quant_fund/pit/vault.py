@@ -137,7 +137,7 @@ class PitVault:
             created_utc=_now_iso(),
             revision=0,
             prev_manifest_sha256=GENESIS_HASH,
-            files=[],
+            files=(),
         )
         manifest_mod.write_manifest(self.root, name, manifest, prev_manifest_sha256=GENESIS_HASH)
 
@@ -220,7 +220,7 @@ class PitVault:
                 created_utc=_now_iso(),
                 revision=revision,
                 prev_manifest_sha256=current_sha,
-                files=[*current.files, entry],
+                files=(*current.files, entry),
             )
             manifest_mod.write_manifest(self.root, name, updated, prev_manifest_sha256=current_sha)
             return updated

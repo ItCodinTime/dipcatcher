@@ -61,7 +61,7 @@ def test_create_dataset_layout(vault: PitVault, tmp_path) -> None:
     assert (ds / "manifest.sha256").is_file()
     manifest = read_manifest(vault.root, "silver/bars")
     assert manifest.revision == 0
-    assert manifest.files == []
+    assert not manifest.files
     assert manifest.prev_manifest_sha256 == "0" * 64
     assert (ds / "manifest.sha256").read_text().strip() == "0" * 64
 
