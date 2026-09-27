@@ -176,6 +176,7 @@ nav:
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Paper and shadow: PAPER_SHADOW.md
+      - Backtest-to-live parity: BACKTEST_LIVE_PARITY.md
       - Deterministic simulation: DETERMINISTIC_SIMULATION.md
       - Pre-trade risk: PRETRADE_RISK.md
   - fx-1:

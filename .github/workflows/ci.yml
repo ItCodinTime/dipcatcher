@@ -494,6 +494,29 @@ jobs:
       - name: Market simulator smoke
         run: uv run pytest -q tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
 
+  parity-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Parity unit tests and SYNTHETIC smoke
+        run: make parity-smoke
+      - name: Upload parity smoke report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dipcatcher-parity-smoke
+          path: data/metadata/parity-smoke/
+          if-no-files-found: error
+
   examples:
     runs-on: ubuntu-latest
     timeout-minutes: 20
