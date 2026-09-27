@@ -27,7 +27,7 @@ def _date_keys(dates: NDArray[Any] | list[object] | Array) -> list[str]:
         if isinstance(d, np.datetime64):
             keys.append(str(d))
         elif hasattr(d, "isoformat"):
-            keys.append(d.isoformat())  # type: ignore[no-untyped-call]
+            keys.append(d.isoformat())
         else:
             keys.append(str(d))
     return keys
@@ -57,7 +57,7 @@ def _block_key(value: object) -> object:
     if isinstance(value, np.generic):
         value = value.item()
     if hasattr(value, "isoformat"):
-        return value.isoformat()  # type: ignore[no-untyped-call]
+        return value.isoformat()
     return str(value)
 
 

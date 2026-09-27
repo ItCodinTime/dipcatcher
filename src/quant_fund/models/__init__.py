@@ -7,7 +7,6 @@ Importing the package does not import them.
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any
 
 __all__ = [
     "AdaptiveLassoRanker",
@@ -92,7 +91,7 @@ _EXPORTS: dict[str, str] = {
 }
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> object:
     """Resolve a public model on first access.
 
     ``NauticaRanker`` stays behind this hook: ``lightspeed.ranker`` subclasses

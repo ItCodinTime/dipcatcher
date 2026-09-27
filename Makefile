@@ -28,6 +28,7 @@ coverage: ## PR-gate tests + coverage (threshold in pyproject)
 lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
 	uv run ruff format --check src tests
+	uv run python scripts/check_mypy_strict_allowlist.py
 
 fmt: ## Auto-fix lint + format
 	uv run ruff check --fix src tests

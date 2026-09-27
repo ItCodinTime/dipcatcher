@@ -14,6 +14,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import optimize, stats
 
+from quant_fund.utils.numeric import ScalarObjective, numeric_hessian
+
 Array = NDArray[np.float64]
 
 
@@ -29,28 +31,11 @@ def _check_xy(y: Array, x: Array) -> tuple[Array, Array]:
     return yy, xx
 
 
-def _num_hess(f: object, theta: Array) -> Array:
-    fn = f  # type: ignore[assignment]
-    k = theta.size
-    h = 1e-5 * np.maximum(1.0, np.abs(theta))
-    hh = np.zeros((k, k))
-    f0 = float(fn(theta))  # type: ignore[operator]
-    for i in range(k):
-        for j in range(i, k):
-            ei = np.zeros(k)
-            ej = np.zeros(k)
-            ei[i] = h[i]
-            ej[j] = h[j]
-            fpp = float(fn(theta + ei + ej))  # type: ignore[operator]
-            fpm = float(fn(theta + ei - ej))  # type: ignore[operator]
-            fmp = float(fn(theta - ei + ej))  # type: ignore[operator]
-            fmm = float(fn(theta - ei - ej))  # type: ignore[operator]
-            hh[i, j] = hh[j, i] = (fpp - fpm - fmp + fmm) / (4.0 * h[i] * h[j])
-        _ = f0
-    return hh
+def _num_hess(nll: ScalarObjective, theta: Array) -> Array:
+    return numeric_hessian(nll, theta)
 
 
-def _se_from_hess(nll: object, theta: Array) -> Array:
+def _se_from_hess(nll: ScalarObjective, theta: Array) -> Array:
     try:
         h = _num_hess(nll, theta)
         cov = np.linalg.inv(h)

@@ -47,6 +47,7 @@ from quant_fund.metrics.scoring import (
     crps_student_t,
     rearrange_quantiles,
 )
+from quant_fund.utils.series import as_named_1d, require_same_length
 
 Array = NDArray[np.float64]
 
@@ -72,17 +73,11 @@ class LocationScaleParams:
 
 
 def _as_1d(name: str, x: Array) -> Array:
-    arr = np.asarray(x, dtype=float)
-    if arr.ndim > 1:
-        raise ValueError(f"{name} must be 1d")
-    return arr.reshape(-1)
+    return as_named_1d(name, x)
 
 
 def _require_same_length(*named: tuple[str, Array]) -> None:
-    lengths = {name: arr.shape[0] for name, arr in named}
-    if len(set(lengths.values())) > 1:
-        parts = ", ".join(f"{k}={v}" for k, v in lengths.items())
-        raise ValueError(f"length mismatch: {parts}")
+    require_same_length(*named)
 
 
 def _require_finite(name: str, arr: Array) -> None:

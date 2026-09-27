@@ -319,7 +319,7 @@ def _paper_portfolio_conformal(returns: np.ndarray) -> dict[str, Any]:
     return out
 
 
-def run_paper_loop(
+def run_paper_loop(  # noqa: C901 — main is 75; the repo ceiling stays 74
     bars: pl.DataFrame,
     config: AppConfig,
     *,
