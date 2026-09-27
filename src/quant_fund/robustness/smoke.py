@@ -13,7 +13,6 @@ from typing import Any
 
 import numpy as np
 
-from quant_fund.leakage.patterns import find_forbidden_headline
 from quant_fund.robustness.certify import certify
 from quant_fund.robustness.schema import (
     robustness_extension_errors,
@@ -107,6 +106,9 @@ def run_smoke() -> dict[str, Any]:
         "extension_schema_version": stamped["extensions_schema_version"],
         "extension_errors": errors,
     }
+    # Local import: robustness is SCC and must not top-level-import leakage.
+    from quant_fund.leakage.patterns import find_forbidden_headline
+
     hits = find_forbidden_headline(json.dumps(report))
     if hits:
         raise RuntimeError(f"smoke report headlined forbidden tokens: {hits}")
