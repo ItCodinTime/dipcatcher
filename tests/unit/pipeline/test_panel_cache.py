@@ -114,6 +114,42 @@ def test_panel_cache_key_changes_when_universe_bytes_change(tmp_path) -> None:
     assert first[3] != second[3]
 
 
+def test_panel_cache_key_changes_on_same_stat_rewrite(tmp_path, monkeypatch) -> None:
+    """Same-size rewrites can keep dev, inode, size, mtime_ns, and ctime_ns.
+
+    Freezing the stat signature is the regression for that collision: the
+    digest must still change when the bytes change.
+    """
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
+    monkeypatch.setattr(dataset_module, "_file_signature", lambda path: (7, 7, 11, 7, 7))
+    first = _panel_cache_key(tmp_path, features, labels)
+    assert first is not None
+    features.write_bytes(b"features-v2")
+    second = _panel_cache_key(tmp_path, features, labels)
+    assert second is not None
+    assert first[0] == second[0]
+    assert first[1] != second[1]
+    assert first[2] == second[2]
+    assert first[3] == second[3]
+
+
+def test_panel_cache_key_same_stat_rewrite_without_inode_watch(tmp_path, monkeypatch) -> None:
+    """Platforms without an inode watch recompute the digest instead of trusting stat."""
+    features, labels = _write_cache_key_artifacts(
+        tmp_path, features=b"features-v1", labels=b"labels-v1", universe=b"universe-v1"
+    )
+    monkeypatch.setattr(dataset_module._ARTIFACT_WATCH, "arm", lambda path: False)
+    monkeypatch.setattr(dataset_module, "_file_signature", lambda path: (7, 7, 11, 7, 7))
+    first = _panel_cache_key(tmp_path, features, labels)
+    assert first is not None
+    features.write_bytes(b"features-v2")
+    second = _panel_cache_key(tmp_path, features, labels)
+    assert second is not None
+    assert first[1] != second[1]
+
+
 def test_panel_cache_key_missing_universe_is_uncacheable(tmp_path) -> None:
     features = tmp_path / "features.parquet"
     labels = tmp_path / "labels.parquet"
