@@ -543,9 +543,10 @@ Pairs selection - quant_fund.models.pairs:
 - Zaffran et al. (2022), ICML — AgACI (arXiv:2202.07282); Zaffran et al. (2022), NeurIPS — FACI aggregation under distribution shift. `models/agaci.py`.
 - Gibbs & Candès (2021), NeurIPS 34 — ACI; Koenker & Bassett (1978) — pinball; Cesa-Bianchi & Lugosi (2006) — EG updates; Gaillard, Stoltz & Van Erven (2014), COLT — ML-OGD.
 
-### SOTA canon wave 9 — EnbPI and WATCH (2026-09-27)
-- Xu & Xie (2021). "Conformal prediction interval for dynamic time-series." *ICML*, PMLR 139. Journal form: Xu & Xie (2023), arXiv:2010.09107 — EnbPI, β-optimized LOO residual intervals. `models/enbpi.py`.
+### SOTA canon wave 9 — distributional forecasts and change monitoring (2026-09-27)
 - Prinster, Han, Liu & Saria (2025). "WATCH: Adaptive Monitoring for AI Deployments via Weighted-Conformal Martingales." *ICML*, PMLR 267, arXiv:2505.04608. `metrics/watch.py`.
-- Vovk, Gammerman & Shafer (2005); Vovk (2021), *Statistical Science* 36 / arXiv:2105.08669 — conformal test martingales and the simple jumper.
 - Tibshirani, Foygel Barber, Candès & Ramdas (2019), NeurIPS — conformal prediction under covariate shift (density-ratio weights).
-- Ville (1939) — anytime false-alarm bound on the test martingale.
+- Xu & Xie (2021), ICML, PMLR 139; Xu & Xie (2023), *IEEE TPAMI* 45(10) — EnbPI: ensemble bootstrap conformal intervals for time series, signed-residual width-minimising band (arXiv:2010.09107); Politis & Romano (1992) — circular block bootstrap. `models/enbpi.py`.
+- Meinshausen (2006), *JMLR* 7 — quantile regression forests (leaf-weight conditional CDF). `models/qrf.py`.
+- Duan et al. (2020), ICML — NGBoost: natural gradient boosting for probabilistic prediction (arXiv:1910.03225); Amari (1998) — natural gradient. `models/ngboost_lite.py`.
+- Vovk, Gammerman & Shafer (2005), *Algorithmic Learning in a Random World* — conformal test martingales; Vovk et al. (2021), COPA — Simple Jumper / retrain-on-alarm (arXiv:2012.14246); Fedorova et al. (2012), ICML — plug-in martingales; Ville (1939) — 1/α anytime alarm. `metrics/conformal_martingale.py`.

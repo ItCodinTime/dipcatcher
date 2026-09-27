@@ -1,120 +1,147 @@
-"""Tests for quant_fund.models.enbpi — Xu & Xie EnbPI intervals."""
+"""Tests for quant_fund.models.enbpi — EnbPI (Xu & Xie 2021/2023). SYNTHETIC only."""
 
 import numpy as np
 import pytest
+from sklearn.linear_model import Ridge
 
-from quant_fund.models.enbpi import (
-    EnbPI,
-    block_bootstrap_indices,
-    in_bag_mask,
-    leave_one_out_predictions,
-    optimal_beta,
-    prediction_interval,
-    signed_residuals,
-)
+from quant_fund.models.enbpi import EnbPI, circular_block_bootstrap_indices, enbpi_residual_bounds
 
 
-def test_loo_aggregate_uses_only_out_of_bag_models() -> None:
-    predictions = np.array([[1.0, 10.0], [2.0, 20.0], [3.0, 30.0]])
-    in_bag = np.array([[True, False], [False, True], [True, False]])
-    out = leave_one_out_predictions(predictions, in_bag, aggregate="mean")
-    assert np.allclose(out, [10.0, 2.0, 30.0])
-    med = leave_one_out_predictions(predictions, in_bag, aggregate="median")
-    assert np.allclose(med, out)
+def _ar1_regression(n: int, seed: int, sigma: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+    x = np.zeros(n)
+    eps = rng.normal(0.0, sigma, n)
+    for t in range(1, n):
+        x[t] = 0.6 * x[t - 1] + eps[t]
+    X = np.column_stack([np.roll(x, 1), np.roll(x, 2)])[2:]
+    y = x[2:]
+    return X, y
 
 
-def test_loo_row_with_no_out_of_bag_model_fails_closed() -> None:
-    predictions = np.ones((2, 2))
-    in_bag = np.array([[True, True], [False, True]])
-    with pytest.raises(ValueError, match="out-of-bag"):
-        leave_one_out_predictions(predictions, in_bag)
+def _fit(
+    n_train: int = 300,
+    seed: int = 0,
+    *,
+    aggregate: str = "mean",
+    block_size: int = 1,
+) -> tuple[EnbPI, np.ndarray, np.ndarray]:
+    X, y = _ar1_regression(n_train + 300, seed)
+    model = EnbPI(
+        lambda: Ridge(alpha=1e-3),
+        n_estimators=25,
+        alpha=0.1,
+        seed=seed,
+        aggregate=aggregate,
+        block_size=block_size,
+    )
+    model.fit(X[:n_train], y[:n_train])
+    return model, X[n_train:], y[n_train:]
 
 
-def test_signed_residuals_are_y_minus_loo() -> None:
-    y = np.array([1.0, 2.0, 4.0])
-    loo = np.array([0.0, 2.0, 1.0])
-    assert np.allclose(signed_residuals(y, loo), [1.0, 0.0, 3.0])
-
-
-def test_gaussian_beta_is_near_equal_tailed() -> None:
+def test_block_bootstrap_indices_shape_and_range() -> None:
     rng = np.random.default_rng(0)
-    residuals = rng.normal(0.0, 1.0, 4000)
-    beta = optimal_beta(residuals, alpha=0.1, n_grid=51)
-    assert abs(beta - 0.05) < 0.02
+    idx = circular_block_bootstrap_indices(50, 7, rng)
+    assert idx.shape == (50,)
+    assert idx.min() >= 0 and idx.max() < 50
+    iid = circular_block_bootstrap_indices(50, 1, rng)
+    assert iid.shape == (50,)
+    with pytest.raises(ValueError):
+        circular_block_bootstrap_indices(0, 1, rng)
+    with pytest.raises(ValueError):
+        circular_block_bootstrap_indices(5, 0, rng)
+    with pytest.raises(ValueError):
+        circular_block_bootstrap_indices(5, 6, rng)
 
 
-def test_interval_covers_fresh_gaussian_draws() -> None:
+def test_block_bootstrap_preserves_contiguity() -> None:
     rng = np.random.default_rng(1)
-    residuals = rng.normal(0.0, 1.0, 3000)
-    fresh = rng.normal(0.0, 1.0, 3000)
-    interval = prediction_interval(0.0, residuals, alpha=0.1, n_grid=41)
-    covered = (fresh >= interval.lower) & (fresh <= interval.upper)
-    assert abs(float(np.mean(covered)) - 0.9) < 0.03
-    assert interval.upper > interval.lower
+    idx = circular_block_bootstrap_indices(40, 5, rng)
+    for start in range(0, 40, 5):
+        block = idx[start : start + 5]
+        assert np.all(np.diff(block) % 40 == 1)
 
 
-def test_skewed_residuals_shift_beta_and_still_cover() -> None:
-    rng = np.random.default_rng(2)
-    residuals = rng.exponential(1.0, 4000) - 1.0
-    beta = optimal_beta(residuals, alpha=0.2, n_grid=41)
-    assert beta < 0.08
-    fresh = rng.exponential(1.0, 4000) - 1.0
-    interval = prediction_interval(0.0, residuals, alpha=0.2, n_grid=41)
-    covered = (fresh >= interval.lower) & (fresh <= interval.upper)
-    assert abs(float(np.mean(covered)) - 0.8) < 0.04
+def test_online_coverage_near_nominal_on_stationary_ar1() -> None:
+    covs = []
+    for seed in range(4):
+        model, Xt, yt = _fit(seed=seed)
+        res = model.predict_online(Xt, yt)
+        covs.append(res.coverage)
+    assert 0.85 <= float(np.mean(covs)) <= 0.95
+    assert res.mean_width > 0.0
+    assert np.all(res.lower <= res.upper)
+    assert np.all(res.lower <= res.point) and np.all(res.point <= res.upper)
 
 
-def test_sliding_window_widens_after_a_variance_jump() -> None:
-    rng = np.random.default_rng(3)
-    model = EnbPI(rng.normal(0.0, 1.0, 300), alpha=0.1, batch_size=1)
-    width0 = model.interval(0.0).upper - model.interval(0.0).lower
-    for error in rng.normal(0.0, 4.0, 300):
-        model.observe(float(error), 0.0)
-    width1 = model.interval(0.0).upper - model.interval(0.0).lower
-    assert width1 > width0 * 2.0
-    assert model.n_pending == 0
+def test_residual_bounds_are_the_narrowest_covering_window() -> None:
+    s = np.array([-5.0, -0.2, -0.1, 0.0, 0.1, 0.2, 4.0])
+    lo, hi = enbpi_residual_bounds(s, 0.3)
+    # ceil(0.7 * 7) = 5; the middle five order stats are the narrowest window.
+    assert lo == pytest.approx(-0.2)
+    assert hi == pytest.approx(0.2)
+    with pytest.raises(ValueError):
+        enbpi_residual_bounds(np.array([]), 0.1)
+    with pytest.raises(ValueError):
+        enbpi_residual_bounds(np.array([0.0, np.nan]), 0.1)
 
 
-def test_partial_batch_does_not_slide_the_window() -> None:
-    model = EnbPI(np.array([0.0, 0.0, 0.0]), alpha=0.1, batch_size=2)
-    model.observe(1.0, 0.0)
-    assert model.n_pending == 1
-    assert np.allclose(model.residuals_, [0.0, 0.0, 0.0])
-    model.observe(1.0, 0.0)
-    assert model.n_pending == 0
-    assert np.allclose(model.residuals_, [0.0, 1.0, 1.0])
+def test_interval_matches_signed_residual_bounds() -> None:
+    model, Xt, _ = _fit(seed=1)
+    lo, hi, pt = model.predict_interval(Xt[:4])
+    off_lo, off_hi = enbpi_residual_bounds(model.residuals, model.alpha)
+    np.testing.assert_allclose(lo, pt + off_lo)
+    np.testing.assert_allclose(hi, pt + off_hi)
+    assert off_lo <= off_hi
 
 
-def test_block_bootstrap_indices_stay_in_range_and_form_blocks() -> None:
-    rng = np.random.default_rng(4)
-    iid = block_bootstrap_indices(20, n_bootstrap=5, rng=rng, block_length=1)
-    assert iid.shape == (5, 20)
-    assert iid.min() >= 0 and iid.max() < 20
-    blocks = block_bootstrap_indices(12, n_bootstrap=3, rng=rng, block_length=4)
-    assert blocks.shape == (3, 12)
-    for row in blocks:
-        for start in (0, 4, 8):
-            chunk = row[start : start + 4]
-            assert np.all(np.diff(chunk) == 1)
-    mask = in_bag_mask(iid, n=20)
-    assert mask.shape == (20, 5)
-    assert bool(np.all(mask.any(axis=0)))
+def test_residual_window_slides_and_tracks_variance_shift() -> None:
+    model, Xt, yt = _fit(seed=3)
+    lo, hi, _ = model.predict_interval(Xt[:1])
+    w_before = float(hi[0] - lo[0])
+    # Reveal labels with 4x noise; the residual band should widen.
+    rng = np.random.default_rng(9)
+    y_big = yt + rng.normal(0.0, 4.0, yt.size)
+    model.update(Xt, y_big)
+    lo2, hi2, _ = model.predict_interval(Xt[:1])
+    w_after = float(hi2[0] - lo2[0])
+    assert w_after > w_before
+    assert model.residuals.size == 300  # window length == n_train
+
+
+def test_median_aggregate_and_block_bootstrap_run() -> None:
+    model, Xt, yt = _fit(seed=5, aggregate="median", block_size=10)
+    res = model.predict_online(Xt, yt, batch_size=25)
+    assert 0.8 <= res.coverage <= 0.98
 
 
 def test_fail_closed_edges() -> None:
     with pytest.raises(ValueError):
-        prediction_interval(0.0, np.array([1.0]), alpha=0.0)
+        EnbPI(lambda: Ridge(), n_estimators=1)
     with pytest.raises(ValueError):
-        prediction_interval(np.nan, np.array([1.0, 2.0]))
+        EnbPI(lambda: Ridge(), alpha=1.0)
     with pytest.raises(ValueError):
-        EnbPI(np.array([]))
+        EnbPI(lambda: Ridge(), aggregate="max")
+    m = EnbPI(lambda: Ridge(), n_estimators=5)
+    with pytest.raises(RuntimeError):
+        m.predict_point(np.zeros((2, 2)))
     with pytest.raises(ValueError):
-        EnbPI(np.array([1.0, np.inf]))
+        m.fit(np.zeros((5, 2)), np.zeros(5))
+    X = np.random.default_rng(0).normal(size=(40, 2))
     with pytest.raises(ValueError):
-        leave_one_out_predictions(np.ones((2, 2)), np.zeros((2, 2), dtype=bool), aggregate="trim")
-    model = EnbPI(np.array([0.0, 1.0]))
+        m.fit(X, np.r_[np.nan, np.zeros(39)])
     with pytest.raises(ValueError):
-        model.observe(np.nan, 0.0)
-    rng = np.random.default_rng(0)
+        m.fit(X, np.zeros(39))
+    model, Xt, _ = _fit(seed=2, n_train=80)
     with pytest.raises(ValueError):
-        block_bootstrap_indices(4, 2, rng, block_length=0)
+        model.predict_point(np.zeros((2, Xt.shape[1] + 1)))
+    with pytest.raises(ValueError):
+        model.predict_point(np.full((2, Xt.shape[1]), np.nan))
+
+
+def test_every_point_must_be_out_of_bag_somewhere() -> None:
+    X = np.random.default_rng(0).normal(size=(12, 1))
+    y = X[:, 0]
+    m = EnbPI(lambda: Ridge(), n_estimators=2, block_size=12, alpha=0.2)
+    # Two circular blocks of length 12 always cover all points -> no LOO set.
+    with pytest.raises(ValueError):
+        m.fit(X, y)
