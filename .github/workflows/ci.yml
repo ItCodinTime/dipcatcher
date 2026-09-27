@@ -477,6 +477,23 @@ jobs:
       - name: Parity tests
         run: uv run pytest -q -m native tests/property tests/unit tests/native
 
+  market-sim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: C compiler
+        run: cc --version
+      - name: Market simulator smoke
+        run: uv run pytest -q tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
+
   parity-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -499,23 +516,6 @@ jobs:
           name: dipcatcher-parity-smoke
           path: data/metadata/parity-smoke/
           if-no-files-found: error
-
-  market-sim:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-        with:
-          python-version: "3.12"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - name: Sync
-        run: uv sync --frozen --all-groups --all-extras
-      - name: C compiler
-        run: cc --version
-      - name: Market simulator smoke
-        run: uv run pytest -q tests/unit/market_sim tests/property/test_lob_invariants.py -m "not slow"
 
   examples:
     runs-on: ubuntu-latest
