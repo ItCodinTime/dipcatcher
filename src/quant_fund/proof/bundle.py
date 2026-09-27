@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
 import platform
 import shutil
@@ -47,6 +48,7 @@ from quant_fund.proofcore.contracts import (
     CodeFingerprint,
     DataManifestSummary,
     EnvFingerprint,
+    ProofBundleError,
     ProofBundleV1,
     SignatureBlock,
     canonical_json_bytes,
@@ -325,6 +327,20 @@ def build_bundle(
     metrics_bytes = canonical_json_bytes(round_floats(engine_metrics))
     config_bytes = canonical_json_bytes(round_floats(config_dump))
 
+    # Fail closed at MINT time (ADVERSARIAL §2-H): canonical JSON encodes
+    # NaN/inf as null, which the bundle schema (`metrics_recompute:
+    # dict[str, float]`) then rejects — a degenerate run (e.g. empty trade
+    # log) would otherwise mint a bundle its own verifier cannot parse.
+    metrics_recompute = recompute_headline_metrics(trade_log)
+    non_finite = sorted(key for key, value in metrics_recompute.items() if not math.isfinite(value))
+    if non_finite:
+        raise ProofBundleError(
+            "metrics contain NaN or non-finite values "
+            f"({', '.join(non_finite)}); the run is degenerate (e.g. empty "
+            "trade log) and no verifiable bundle can be minted — fix the run "
+            "instead of notarizing it"
+        )
+
     unsigned: dict[str, Any] = {
         "schema_version": "proofcore/1",
         "created_utc": created_utc or datetime.now(UTC).isoformat(),
@@ -337,7 +353,7 @@ def build_bundle(
         "signal_log_sha256": sha256_hex_bytes(signal_bytes),
         "trade_log_sha256": sha256_hex_bytes(trade_bytes),
         "metrics_sha256": sha256_hex_bytes(metrics_bytes),
-        "metrics_recompute": recompute_headline_metrics(trade_log),
+        "metrics_recompute": metrics_recompute,
         "prev_bundle_hash": chain_head(bundle_dir),
     }
     bundle_id = compute_bundle_id(unsigned)

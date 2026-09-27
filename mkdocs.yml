@@ -144,6 +144,7 @@ nav:
       - Research references: RESEARCH_REFERENCES.md
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
+      - Trading calendars: CALENDARS.md
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
       - Data lake: DATA_LAKE.md
