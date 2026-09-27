@@ -35,6 +35,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "joblib>=1.4",
     "numba>=0.60",
+    "exchange-calendars==4.13.2",
 ]
 
 [project.optional-dependencies]
