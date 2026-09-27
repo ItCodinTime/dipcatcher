@@ -132,3 +132,6 @@ P&L.
 - Not a live broker / real fills
 - Not permission to claim live Sharpe from SYNTHETIC paper smoke
 - Not unsafe parallel causal dates (`w_prev` remains sequential)
+
+Deterministic replay and seeded fault injection of this loop live in
+`docs/DETERMINISTIC_SIMULATION.md`. That harness is simulation-only.
