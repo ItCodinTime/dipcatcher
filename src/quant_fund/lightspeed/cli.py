@@ -5,13 +5,19 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
 
 import typer
 
 ls_app = typer.Typer(
     help="Lightspeed engines (TQQQ rotation, nautica momentum). Research only; no live broker."
 )
+
+
+def _as_map(value: object) -> Mapping[str, object]:
+    """Keep string-keyed receipt mappings; reject malformed nested values."""
+    if not isinstance(value, Mapping):
+        return {}
+    return {key: item for key, item in value.items() if isinstance(key, str)}
 
 
 @ls_app.command("specs")
@@ -180,13 +186,6 @@ def confirm_cmd(
         n_boot=int(n_boot),
         cpu_fraction=float(cpu_fraction),
     )
-
-    def _as_map(value: object) -> Mapping[str, object]:
-        if isinstance(value, dict):
-            return value
-        if not value:
-            return {}
-        return cast(Mapping[str, object], value)
 
     def _slim(window: Mapping[str, object]) -> dict[str, object]:
         gates = _as_map(window.get("gates"))

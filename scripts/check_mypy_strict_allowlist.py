@@ -13,16 +13,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "quality" / "mypy_strict_modules.txt"
+BASELINE = ROOT / "quality" / "mypy_strict_baseline.txt"
+
+
+def _entries(path: Path) -> list[str]:
+    return [
+        stripped
+        for line in path.read_text().splitlines()
+        if (stripped := line.strip()) and not stripped.startswith("#")
+    ]
 
 
 def allowlisted() -> list[str]:
-    lines = [
-        line.strip()
-        for line in ALLOWLIST.read_text().splitlines()
-        if line.strip() and not line.startswith("#")
-    ]
+    lines = _entries(ALLOWLIST)
     if lines != sorted(set(lines)):
         print("mypy strict allowlist must be unique and sorted", file=sys.stderr)
+        raise SystemExit(1)
+    removed = sorted(set(_entries(BASELINE)) - set(lines))
+    if removed:
+        print("strict baseline modules removed from allowlist:", file=sys.stderr)
+        for line in removed:
+            print(f"  {line}", file=sys.stderr)
         raise SystemExit(1)
     missing = [line for line in lines if not (ROOT / line).is_file()]
     if missing:
