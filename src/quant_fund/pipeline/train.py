@@ -100,6 +100,7 @@ from quant_fund.models.realized_garch import (
     parkinson_daily_variance,
 )
 from quant_fund.models.regime import GaussianHMMRegime, SingleStateRegime, VolThresholdRegime
+from quant_fund.models.regime_dist import RegimeDistribution
 from quant_fund.models.rl import (
     LinearThompsonRanker,
     LinUCBRanker,
@@ -821,6 +822,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "gmm",
             "isotonic",
             "stack",
+            "regime",
         },
         "distribution",
     )
@@ -842,6 +844,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "gmm": GMMDistribution(taus, seed=config.train.random_seed),
             "isotonic": IsotonicPitDistribution(taus),
             "stack": StackedDistribution(taus, seed=config.train.random_seed),
+            "regime": RegimeDistribution(taus, seed=config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")
