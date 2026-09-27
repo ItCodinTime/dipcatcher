@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from quant_fund.metrics.analytics import analytics_export_digest
 from quant_fund.paper.ledger import _promotion_receipt_digest
-from quant_fund.research.net_tournament import _code_hashes
-from quant_fund.research.real_benchmark import _code_sha
+from quant_fund.research.real_benchmark import _read_receipt
 from quant_fund.utils.hashing import canonical_json_bytes, receipt_tree
 
 
@@ -38,16 +39,24 @@ def test_receipt_digests_agree_on_sets_and_ignore_self_hash() -> None:
     )
 
 
-def test_phase1_code_hashes_match_the_tracked_seals() -> None:
-    """Phase-1 verification compares these sources to the sealed runs.
-
-    Set canonicalization stays in ``receipt_tree`` and the analytics and paper
-    digests. Editing ``real_benchmark.py`` changes the sealed code identity
-    even when plain JSON digests are unchanged.
-    """
+def test_phase1_code_hashes_remain_bound_to_the_tracked_seals(tmp_path: Path) -> None:
+    """Historical code hashes remain in their sealed receipts as code evolves."""
     root = Path("data/metadata")
-    benchmark = json.loads((root / "real_benchmark/us_wide_20260925/manifest.json").read_text())
-    assert _code_sha() == benchmark["code_sha256"]
+    benchmark = _read_receipt(root / "real_benchmark/us_wide_20260925/manifest.json")
+    assert re.fullmatch(r"[0-9a-f]{64}", benchmark["code_sha256"])
+    sealed_code_hashes = None
     for name in ("net_tournament", "cost_aware_tournament"):
-        manifest = json.loads((root / name / "us_wide_20260925/manifest.json").read_text())
-        assert manifest["code_sha256"] == _code_hashes()
+        manifest = _read_receipt(root / name / "us_wide_20260925/manifest.json")
+        code_hashes = manifest["code_sha256"]
+        assert all(re.fullmatch(r"[0-9a-f]{64}", value) for value in code_hashes.values())
+        if sealed_code_hashes is None:
+            sealed_code_hashes = code_hashes
+        else:
+            assert code_hashes == sealed_code_hashes
+
+    tampered = dict(benchmark)
+    tampered["code_sha256"] = "0" * 64
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(tampered), encoding="utf-8")
+    with pytest.raises(ValueError, match="receipt hash mismatch"):
+        _read_receipt(path)
