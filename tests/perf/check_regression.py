@@ -90,8 +90,9 @@ def main(argv: list[str] | None = None) -> int:
     print(header)
     failures: list[str] = []
     if args.ci:
+        node_names = {name.split("::")[-1] for name in current}
         for suffix in _CI_SUFFIXES:
-            if not any(suffix in name for name in current):
+            if suffix not in node_names:
                 failures.append(f"CI benchmark missing from this run: {suffix}")
     shared = sorted(
         name for name in current if name in baseline and name not in {current_key, baseline_key}

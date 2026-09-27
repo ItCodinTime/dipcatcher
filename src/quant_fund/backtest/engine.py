@@ -157,15 +157,17 @@ def _make_order(
 def _fast_replay_panel_supported(bars: pl.DataFrame, weights: pl.DataFrame) -> bool:
     """Clocks the vectorized matrices can ingest without changing results.
 
-    Empty books and non-datetime clocks (string dates included) stay on the
-    event loop. ``run_backtest_fast`` casts ``event_time`` to integer
-    nanoseconds and indexes the last date for the overlay probe.
+    Empty books, non-datetime clocks, mismatched datetime units, and duplicate
+    bar keys stay on the event loop. The vectorized matrices use raw integer
+    timestamps and replace repeated bar cells, unlike the reference loop.
     """
     if bars.height == 0:
         return False
-    return isinstance(bars.schema.get("event_time"), pl.Datetime) and isinstance(
-        weights.schema.get("event_time"), pl.Datetime
-    )
+    bar_clock = bars.schema.get("event_time")
+    weight_clock = weights.schema.get("event_time")
+    if not isinstance(bar_clock, pl.Datetime) or bar_clock != weight_clock:
+        return False
+    return not bool(bars.select("event_time", "security_id").is_duplicated().any())
 
 
 def _fast_replay_is_complete(config: AppConfig, risk_overlay: BookRiskOverlay | None) -> bool:

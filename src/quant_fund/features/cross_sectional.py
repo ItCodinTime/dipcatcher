@@ -42,7 +42,12 @@ def apply_cross_sectional(
     lo, hi = winsor_p, 1.0 - winsor_p
     eligible = decision_eligible_expr(df)
     use_sector = sector is not None and sector in df.columns
-    src = [f"_cs_src_{col}" for col in columns]
+    # Choose a namespace absent from the input. User columns must survive the
+    # intermediate reductions, even when their names start with ``_cs_``.
+    prefix = "_cs_"
+    while any(name.startswith(prefix) for name in df.columns):
+        prefix = "_" + prefix
+    src = [f"{prefix}src_{col}" for col in columns]
     work = df.with_columns(
         [
             pl.when(eligible).then(pl.col(col)).otherwise(None).alias(name)
@@ -53,16 +58,22 @@ def apply_cross_sectional(
     for col, name in zip(columns, src, strict=True):
         reductions.extend(
             [
-                pl.col(name).quantile(lo).alias(f"_cs_lo_{col}"),
-                pl.col(name).quantile(hi).alias(f"_cs_hi_{col}"),
-                pl.col(name).count().alias(f"_cs_n_{col}"),
+                pl.col(name).quantile(lo).alias(f"{prefix}lo_{col}"),
+                pl.col(name).quantile(hi).alias(f"{prefix}hi_{col}"),
             ]
         )
-    work = work.join(work.group_by("event_time").agg(reductions), on="event_time", how="left")
-    clip = [f"_cs_clip_{col}" for col in columns]
+    work = work.join(
+        work.group_by("event_time").agg(reductions),
+        on="event_time",
+        how="left",
+        maintain_order="left",
+    )
+    clip = [f"{prefix}clip_{col}" for col in columns]
     work = work.with_columns(
         [
-            pl.col(name).clip(pl.col(f"_cs_lo_{col}"), pl.col(f"_cs_hi_{col}")).alias(clipped)
+            pl.col(name)
+            .clip(pl.col(f"{prefix}lo_{col}"), pl.col(f"{prefix}hi_{col}"))
+            .alias(clipped)
             for col, name, clipped in zip(columns, src, clip, strict=True)
         ]
     )
@@ -70,31 +81,37 @@ def apply_cross_sectional(
     for col, clipped in zip(columns, clip, strict=True):
         location.extend(
             [
-                pl.col(clipped).median().alias(f"_cs_med_{col}"),
-                pl.col(clipped).std().alias(f"_cs_sd_{col}"),
+                pl.col(clipped).median().alias(f"{prefix}med_{col}"),
+                pl.col(clipped).std().alias(f"{prefix}sd_{col}"),
             ]
         )
-    work = work.join(work.group_by("event_time").agg(location), on="event_time", how="left")
-    dev = [f"_cs_dev_{col}" for col in columns]
+    work = work.join(
+        work.group_by("event_time").agg(location),
+        on="event_time",
+        how="left",
+        maintain_order="left",
+    )
+    dev = [f"{prefix}dev_{col}" for col in columns]
     work = work.with_columns(
         [
-            (pl.col(clipped) - pl.col(f"_cs_med_{col}")).abs().alias(name)
+            (pl.col(clipped) - pl.col(f"{prefix}med_{col}")).abs().alias(name)
             for col, clipped, name in zip(columns, clip, dev, strict=True)
         ]
     )
     work = work.join(
         work.group_by("event_time").agg(
             [
-                pl.col(name).median().alias(f"_cs_mad_{col}")
+                pl.col(name).median().alias(f"{prefix}mad_{col}")
                 for col, name in zip(columns, dev, strict=True)
             ]
         ),
         on="event_time",
         how="left",
+        maintain_order="left",
     )
     work = work.with_columns(
         [
-            pl.col(name).rank("average").over("event_time").alias(f"_cs_rk_{col}")
+            pl.col(name).rank("average").over("event_time").alias(f"{prefix}rk_{col}")
             for col, name in zip(columns, src, strict=True)
         ]
     )
@@ -104,43 +121,49 @@ def apply_cross_sectional(
         # null keys, so the key is (is_null, filled label) instead of the raw
         # column the window expression grouped on.
         work = work.with_columns(
-            pl.col(sector).is_null().alias("_cs_sec_null"),
-            pl.col(sector).cast(pl.Utf8).fill_null("").alias("_cs_sec"),
+            pl.col(sector).is_null().alias(f"{prefix}sec_null"),
+            pl.col(sector).cast(pl.Utf8).fill_null("").alias(f"{prefix}sec"),
         )
-        sec_keys = ["event_time", "_cs_sec_null", "_cs_sec"]
+        sec_keys = ["event_time", f"{prefix}sec_null", f"{prefix}sec"]
         sec_loc: list[pl.Expr] = []
         for col, clipped in zip(columns, clip, strict=True):
             sec_loc.extend(
                 [
-                    pl.col(clipped).median().alias(f"_cs_smed_{col}"),
-                    pl.col(clipped).std().alias(f"_cs_ssd_{col}"),
+                    pl.col(clipped).median().alias(f"{prefix}smed_{col}"),
+                    pl.col(clipped).std().alias(f"{prefix}ssd_{col}"),
                 ]
             )
-        work = work.join(work.group_by(sec_keys).agg(sec_loc), on=sec_keys, how="left")
-        sdev = [f"_cs_sdev_{col}" for col in columns]
+        work = work.join(
+            work.group_by(sec_keys).agg(sec_loc),
+            on=sec_keys,
+            how="left",
+            maintain_order="left",
+        )
+        sdev = [f"{prefix}sdev_{col}" for col in columns]
         work = work.with_columns(
             [
-                (pl.col(clipped) - pl.col(f"_cs_smed_{col}")).abs().alias(name)
+                (pl.col(clipped) - pl.col(f"{prefix}smed_{col}")).abs().alias(name)
                 for col, clipped, name in zip(columns, clip, sdev, strict=True)
             ]
         )
         work = work.join(
             work.group_by(sec_keys).agg(
                 [
-                    pl.col(name).median().alias(f"_cs_smad_{col}")
+                    pl.col(name).median().alias(f"{prefix}smad_{col}")
                     for col, name in zip(columns, sdev, strict=True)
                 ]
             ),
             on=sec_keys,
             how="left",
+            maintain_order="left",
         )
     final: list[pl.Expr] = []
     for col, clipped in zip(columns, clip, strict=True):
         z = _robust_z_from_parts(
             pl.col(clipped),
-            pl.col(f"_cs_med_{col}"),
-            pl.col(f"_cs_mad_{col}"),
-            pl.col(f"_cs_sd_{col}"),
+            pl.col(f"{prefix}med_{col}"),
+            pl.col(f"{prefix}mad_{col}"),
+            pl.col(f"{prefix}sd_{col}"),
             eligible,
         )
         final.extend(
@@ -148,7 +171,10 @@ def apply_cross_sectional(
                 pl.when(eligible).then(pl.col(clipped)).otherwise(None).alias(f"winsor_{col}"),
                 z.alias(f"cs_z_{col}"),
                 pl.when(eligible)
-                .then((pl.col(f"_cs_rk_{col}") - 0.5) / pl.col(f"_cs_n_{col}"))
+                .then(
+                    (pl.col(f"{prefix}rk_{col}") - 0.5)
+                    / pl.col(f"{prefix}src_{col}").count().over("event_time")
+                )
                 .otherwise(None)
                 .alias(f"cs_pct_{col}"),
             ]
@@ -157,14 +183,14 @@ def apply_cross_sectional(
             final.append(
                 _robust_z_from_parts(
                     pl.col(clipped),
-                    pl.col(f"_cs_smed_{col}"),
-                    pl.col(f"_cs_smad_{col}"),
-                    pl.col(f"_cs_ssd_{col}"),
+                    pl.col(f"{prefix}smed_{col}"),
+                    pl.col(f"{prefix}smad_{col}"),
+                    pl.col(f"{prefix}ssd_{col}"),
                     eligible,
                 ).alias(f"cs_z_sector_{col}")
             )
     work = work.with_columns(final)
-    drop = [name for name in work.columns if name.startswith("_cs_")]
+    drop = [name for name in work.columns if name.startswith(prefix)]
     return work.drop(drop)
 
 

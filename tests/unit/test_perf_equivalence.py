@@ -6,7 +6,9 @@ are exact. Security-master rows match the previous per-symbol scan.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 import polars as pl
@@ -14,6 +16,7 @@ import pytest
 
 from quant_fund.backtest.engine import (
     _fast_replay_is_complete,
+    _fast_replay_panel_supported,
     _run_backtest_event_loop,
     run_backtest,
 )
@@ -25,6 +28,7 @@ from quant_fund.data.adapters.hf_ohlcv_1m import (
 )
 from quant_fund.features.cross_sectional import apply_cross_sectional, decision_eligible_expr
 from quant_fund.features.engine import CROSS_SECTIONAL_COLUMNS, compute_base_features
+from tests.perf import check_regression
 from tests.perf.synthetic import daily_ohlcv, minute_bars
 
 _SCALE_FLOOR = 1e-12
@@ -124,6 +128,21 @@ def test_cross_section_empty_columns_and_empty_frame() -> None:
     _assert_frames_equal(got, ref)
 
 
+def test_cross_section_preserves_user_columns_in_temporary_namespace() -> None:
+    frame = pl.DataFrame(
+        {
+            "event_time": [datetime(2020, 1, 2, tzinfo=UTC)] * 3,
+            "x": [1.0, 3.0, 2.0],
+            "_cs_src_x": ["a", "b", "c"],
+            "_cs_user": [10, 20, 30],
+            "__cs_sec": ["first", "second", "third"],
+        }
+    )
+    got = apply_cross_sectional(frame, ["x"], 0.0)
+    ref = _reference_apply_cross_sectional(frame, ["x"], 0.0)
+    _assert_frames_equal(got, ref)
+
+
 def test_security_master_matches_row_scan() -> None:
     now = datetime(2024, 5, 1, 12, 30, tzinfo=UTC)
     bars = minute_bars(6, 4, seed=19)
@@ -214,6 +233,57 @@ def test_backtest_fast_dispatch_matches_event_loop(tmp_path: object) -> None:
     ref_nav = ref.equity["nav"].to_numpy()
     assert nav.shape == ref_nav.shape
     assert np.array_equal(nav, ref_nav)
+
+
+def test_backtest_mixed_datetime_units_stay_on_reference_path(tmp_path: object) -> None:
+    from pathlib import Path
+
+    bars, weights = _book(n_symbols=2, n_days=8)
+    bars = bars.with_columns(pl.col("event_time").cast(pl.Datetime("ns", "UTC")))
+    assert bars.schema["event_time"] != weights.schema["event_time"]
+    assert _fast_replay_panel_supported(bars, weights) is False
+    config = _backtest_config()
+    config.data.root = Path(str(tmp_path))
+    got = run_backtest(bars, weights, config)
+    ref = _run_backtest_event_loop(bars, weights, config)
+    assert got.equity.equals(ref.equity) and got.fills.equals(ref.fills)
+
+
+def test_backtest_duplicate_bars_stay_on_reference_path(tmp_path: object) -> None:
+    from pathlib import Path
+
+    bars, weights = _book(n_symbols=2, n_days=8)
+    duplicate = bars.head(1).with_columns(pl.lit(None).cast(pl.Float64).alias("adv"))
+    bars = pl.concat([bars, duplicate])
+    assert _fast_replay_panel_supported(bars, weights) is False
+    config = _backtest_config()
+    config.data.root = Path(str(tmp_path))
+    got = run_backtest(bars, weights, config)
+    ref = _run_backtest_event_loop(bars, weights, config)
+    assert got.equity.equals(ref.equity) and got.fills.equals(ref.fills)
+
+
+def test_perf_ci_presence_requires_exact_benchmark_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(check_regression, "_CI_SUFFIXES", ("test_required",))
+    payload = {
+        "benchmarks": [
+            {
+                "fullname": "tests/perf/test_benchmarks.py::test_calibration_matmul",
+                "stats": {"median": 1.0},
+            },
+            {
+                "fullname": "tests/perf/test_benchmarks.py::fake_test_required",
+                "stats": {"median": 1.0},
+            },
+        ]
+    }
+    current = tmp_path / "current.json"
+    baseline = tmp_path / "baseline.json"
+    current.write_text(json.dumps(payload), encoding="utf-8")
+    baseline.write_text(json.dumps(payload), encoding="utf-8")
+    assert check_regression.main([str(current), str(baseline), "--ci"]) == 1
 
 
 def test_backtest_skips_fast_path_when_overlay_artifact_exists(tmp_path: object) -> None:
