@@ -53,6 +53,7 @@ dipcatcher = "quant_fund.cli.main:app"
 [dependency-groups]
 dev = [
     "pytest>=8.3",
+    "pytest-benchmark>=5.1",
     "pytest-cov>=6.0",
     "pytest-xdist>=3.6",
     "pytest-split>=0.10",
@@ -162,6 +163,7 @@ markers = [
     "slow: long tests; full suite on schedule/workflow_dispatch, excluded from the PR gate",
     "smoke: paper, ledger, and analytics modules collected by the CI smoke job",
     "synthetic: uses synthetic market data",
+    "perf_full: larger synthetic performance benchmarks (not the CI fast subset)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
