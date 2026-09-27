@@ -271,3 +271,26 @@ jobs:
         run: uv sync --frozen --all-groups --all-extras
       - name: Examples gallery
         run: make examples
+
+  pretrade-risk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Pre-trade unit and property tests
+        run: uv run pytest -q tests/unit/pretrade tests/property/test_pretrade_risk.py
+      - name: Hot-path latency gate
+        run: uv run python -m quant_fund.pretrade.bench --gate --json-out pretrade-latency.json
+      - name: Upload latency report
+        uses: actions/upload-artifact@v7
+        with:
+          name: pretrade-risk-latency
+          path: pretrade-latency.json
+          if-no-files-found: error
