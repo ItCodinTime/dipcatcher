@@ -144,20 +144,20 @@ ok=false; `dipcatcher paper --max-steps 8` → 173 fills, would_promote_live=fal
 
 ## Historical Phase-1 code drift
 
-The 2026-09-25 Phase-1 index and run receipts are sealed retrospective
-evidence. The index records Git revision
-`c564646b14849d72c5891a90034d8e26361fe0f5` and has embedded receipt
-seal `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`.
-The prospective paper adapter pins that same original seal.
+The 2026-09-25 Phase-1 receipts are retrospective evidence. Their previous
+index revision is `c564646b14849d72c5891a90034d8e26361fe0f5`, with index
+receipt `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`.
+The published tournament `code_sha256` map was re-sealed at
+`843638b88393768ea1195a90375ee2c5c9532bcb` after merging `origin/main`
+`5c4e0c876f6d5f74e42d1205468a8768752e14e2`. The audit trail is
+`data/metadata/research/PHASE1_CODE_RESEAL.md`.
 
-Later source or dependency edits can make a current-checkout comparison fail.
-`verify_phase1_index` checks the original index, its run links, and the code
-and runtime recorded at the indexed revision. The Phase-1 example may identify
-matching historical source bytes in Git when current files have changed; it
-still requires the index and run verifiers to pass. An unavailable revision,
-missing source blob, or mismatched receipt remains a verification failure.
+Since that index revision, the sealed modules that changed are
+`net_replay.py`, `cost_allocation.py`, and `metrics/inference.py`.
+`net_tournament.py`, `real_benchmark.py`, and `snooping.py` are unchanged.
+`#131` (`01e69522`) does not reformat `inference.py`. That blob is the same
+from `6360b2d` through `5c4e0c8`.
 
-Keep the original receipt files, index, and paper-adapter pin unchanged. A
-corrected study needs a new run with fresh receipts and an explicit relationship
-to the earlier result. Historical code lookup does not rerun the study or turn
-the retrospective result into prospective or live evidence.
+Numeric study results were not recomputed. The paper adapter pins the
+re-sealed index receipt. `docs/FORWARD_SHADOW_POWER.md` still cites the
+2026-09-25 receipts as the pre-collection plan bind.
