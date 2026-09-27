@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from arch.bootstrap import optimal_block_length as arch_optimal_block_length
 
-from quant_fund.metrics.inference import optimal_block_length
+from quant_fund.metrics.inference import bootstrap_sharpe_ci, optimal_block_length
 from quant_fund.metrics.scoring import coverage
 
 
@@ -69,3 +69,13 @@ def test_coverage_masks_nonfinite() -> None:
     assert coverage(
         np.array([0.0, 5.0]), np.array([-1.0, 0.0]), np.array([0.5, 2.0])
     ) == pytest.approx(0.5)
+
+
+def test_bootstrap_sharpe_ci_known_answer() -> None:
+    # Constant series: Sharpe is undefined; must fail closed to NaN, never
+    # mint an astronomical value from float noise in np.std.
+    lo, hi, pt = bootstrap_sharpe_ci(np.full(20, 0.01), n_boot=50, block=2, seed=0)
+    assert np.isnan(lo) and np.isnan(hi) and np.isnan(pt)
+    x = np.random.default_rng(0).normal(0.5, 1.0, size=200)
+    _, _, pt2 = bootstrap_sharpe_ci(x, n_boot=100, seed=4)
+    assert pt2 == pytest.approx(float(x.mean() / x.std(ddof=1) * math.sqrt(252)))
