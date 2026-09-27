@@ -2,7 +2,8 @@
 
 Not a research score. Medians and sample variances are infrastructure timings.
 The test records both backends and, when Rust is loaded, requires a speedup
-only on the Python-loop kernels the profile identified.
+only on the Python-loop kernels the profile identified. EMA, RSI, and
+Bollinger are scipy / sliding-window kernels and are timed, not gated.
 """
 
 from __future__ import annotations
@@ -26,12 +27,11 @@ pytestmark = [
     ),
 ]
 
-# Minimum median speedup. Loop kernels are far above this; reductions that
-# NumPy already implements in C are not gated.
+# Minimum median speedup. Loop kernels are far above this. Reductions NumPy
+# already implements in C are not gated. EMA, RSI, and Bollinger used to be
+# Python loops (floors 5x / 5x / 8x); they are now scipy.signal and sliding
+# windows, so a Rust speedup floor would fail on a faster Python side.
 _MIN_SPEEDUP = {
-    "bollinger": 8.0,
-    "rsi": 5.0,
-    "ema": 5.0,
     "book_features": 3.0,
     "turnover_series": 3.0,
     "hash_many": 1.5,
