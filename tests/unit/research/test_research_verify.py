@@ -106,6 +106,10 @@ from quant_fund.research.catalog import (
 from quant_fund.research.catalog import (
     REQUIRED_BENCHMARK_FAMILIES as CATALOG_REQUIRED,
 )
+from quant_fund.research.receipt_schema import (
+    migrate_research_receipt,
+    unavailable_overfitting_block,
+)
 from quant_fund.research.verify import (
     REQUIRED_BENCHMARK_FAMILIES,
     _receipt_digest,
@@ -181,6 +185,7 @@ def _receipt(tmp_path: Path) -> Path:
             for name in REQUIRED_BENCHMARK_FAMILIES
         },
         "families": {name: {"executed": True} for name in REQUIRED_BENCHMARK_FAMILIES},
+        "backtest_overfitting": unavailable_overfitting_block(),
         "artifacts": {
             "immutable_json": str(immutable / f"{run_id}.json"),
             "immutable_markdown": str(immutable / f"{run_id}.md"),
@@ -3281,3 +3286,97 @@ def test_catalog_h23_h42_consistency_requires_rows() -> None:
         northset_h23_h28_consistency_errors({"session_reconstructs_daily_rate": float("nan")}, [])
         == []
     )
+
+
+def test_verify_accepts_schema_v1_without_overfitting_block(tmp_path: Path) -> None:
+    """Legacy notebooks predate the block and stay valid. Their numbers are untouched."""
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload["schema_version"] = 1
+    payload.pop("backtest_overfitting")
+    payload["artifacts"]["immutable_json_sha256"] = _receipt_digest(payload)
+    text = json.dumps(payload)
+    path.write_text(text)
+    immutable = Path(payload["artifacts"]["immutable_json"])
+    immutable.write_text(text)
+    result = verify_research_artifact(path)
+    assert result["valid"] is True
+    assert result["errors"] == []
+
+
+def test_verify_rejects_schema_v2_without_overfitting_block(tmp_path: Path) -> None:
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload.pop("backtest_overfitting")
+    path.write_text(json.dumps(payload))
+    result = verify_research_artifact(path)
+    assert result["valid"] is False
+    assert "backtest_overfitting_missing" in result["errors"]
+
+
+def test_verify_rejects_unknown_research_schema(tmp_path: Path) -> None:
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload["schema_version"] = 3
+    path.write_text(json.dumps(payload))
+    result = verify_research_artifact(path)
+    assert result["valid"] is False
+    assert "invalid_research_receipt_schema_version" in result["errors"]
+
+
+def test_verify_rejects_overfitting_block_with_forbidden_key(tmp_path: Path) -> None:
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload["backtest_overfitting"] = {**unavailable_overfitting_block(), "sharpe": 1.0}
+    path.write_text(json.dumps(payload))
+    result = verify_research_artifact(path)
+    assert result["valid"] is False
+    assert "backtest_overfitting_forbidden_metrics" in result["errors"]
+
+
+def test_verify_rejects_dsr_above_psr(tmp_path: Path) -> None:
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload["backtest_overfitting"] = {
+        **unavailable_overfitting_block(),
+        "n_trials": 4,
+        "n_trials_effective": 2,
+        "metrics_status": "computed",
+        "pbo": 0.4,
+        "psr": 0.5,
+        "dsr": 0.9,
+        "dsr_counted_trials": 0.4,
+        "min_trl": 12.0,
+    }
+    path.write_text(json.dumps(payload))
+    result = verify_research_artifact(path)
+    assert result["valid"] is False
+    assert "backtest_overfitting_dsr_above_psr" in result["errors"]
+
+
+def test_migrate_schema_v1_keeps_existing_fields_and_does_not_invent_metrics(
+    tmp_path: Path,
+) -> None:
+    path = _receipt(tmp_path)
+    payload = json.loads(path.read_text())
+    payload["schema_version"] = 1
+    payload.pop("backtest_overfitting")
+    payload["rankers"] = [
+        {"name": "ridge_public", "mean_ic": 0.01},
+        {"name": "ridge_oracle", "mean_ic": 0.02},
+        {"name": "_pairwise_dm_summary"},
+    ]
+    families = payload["families"]
+    migrated = migrate_research_receipt(payload)
+    assert payload["schema_version"] == 1
+    assert "backtest_overfitting" not in payload
+    assert migrated["schema_version"] == RESEARCH_RECEIPT_SCHEMA_VERSION
+    assert migrated["families"] == families
+    assert migrated["rankers"] == payload["rankers"]
+    block = migrated["backtest_overfitting"]
+    assert block["metrics_status"] == "legacy_uncomputed"
+    assert block["migrated_from_schema"] == 1
+    assert block["n_trials"] == 2
+    assert block["pbo"] is None
+    assert block["dsr"] is None
+    assert migrate_research_receipt(migrated)["backtest_overfitting"] == block

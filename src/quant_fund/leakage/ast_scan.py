@@ -1,19 +1,31 @@
 """AST linter engine (stdlib ast only — no third-party parser).
 
-Implements the LH001..LH012 rule pack (DESIGN.md §6.1). Detection is purely
-syntactic and deliberately conservative: a rule fires only on the exact
-pattern its spec row describes, and per-rule path allowlists in
-``leakage/rules.py`` codify the legitimate sites at HEAD.
+Implements the LH001..LH014 rule pack (DESIGN.md §6.1 + ADVERSARIAL §1a
+hardening). Detection is purely syntactic and deliberately conservative: a
+rule fires only on the exact pattern its spec row describes, and per-rule
+path allowlists in ``leakage/rules.py`` codify the legitimate sites at HEAD.
+
+Residual ceiling (documented, ADVERSARIAL §1a): numpy/pandas index arithmetic
+(`px[1:] - px[:-1]`), dict lookups at `dates[i+1]`, single numbers far outside
+the proximity window, manually computed Sharpe fed to PSR without a
+``sharpe_ratio`` call, cross-file helper indirection, and runtime-only
+values remain out of reach of a syntactic tripwire. The runtime watchdog
+(leakage/watchdog.py) and the proof layer are the barrier; this linter is
+the tripwire.
 """
 
 from __future__ import annotations
 
 import ast
 import fnmatch
+import hashlib
+import io
 import re
+import tokenize
 from pathlib import Path
 
 from quant_fund.leakage.rules import (
+    LH008_LITERAL_ALLOWLIST,
     LH009_EXEMPT_GLOBS,
     LH011_LAZY_WHITELIST,
     LH011_PACKAGES,
@@ -26,10 +38,19 @@ _PRICE_EXACT_NAMES = frozenset({"close", "mid", "price", "bars", "px", "nav"})
 _UNIVERSE_NAME_RE = re.compile(r"universe|members|tickers|tape_ids", re.IGNORECASE)
 _FWD_DIFF_NAME_RE = re.compile(r"^(delta|d_|chg_)", re.IGNORECASE)
 _TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.]{0,6}$")
-_SCALER_NAME_RE = re.compile(r"scaler|standardscaler|rank_gauss", re.IGNORECASE)
+# ADVERSARIAL §1a-E16: lowercase ticker tuples evade the uppercase-only
+# ticker regex; match case-insensitively.
+_TICKER_CI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,6}$")
+# ADVERSARIAL §1a-E6: `normalizer`/`preprocessor` attribute names evaded the
+# scaler-name regex.
+_SCALER_NAME_RE = re.compile(r"scal|rank_gauss|norm|preproc", re.IGNORECASE)
 _FOLD_FUNC_RE = re.compile(r"fold", re.IGNORECASE)
 _PSR_CALL_NAMES = frozenset({"probabilistic_sharpe", "min_track_record_length", "deflated_sharpe"})
 _SHARPE_CALL_NAMES = frozenset({"sharpe_ratio"})
+_BLOCKED_IO_NAMES = frozenset({"read_parquet", "scan_parquet"})
+# ADVERSARIAL §1a-E13: parquet reads hidden inside SQL strings (duckdb.sql).
+_SQL_PARQUET_RE = re.compile(r"read_parquet\s*\(|read_csv\s*\(|\.parquet", re.IGNORECASE)
+_FSTRING_NUMSPEC_RE = re.compile(r"\d")
 
 
 def _is_allowlisted(rule_id: str, path_str: str) -> bool:
@@ -39,6 +60,19 @@ def _is_allowlisted(rule_id: str, path_str: str) -> bool:
 
 def _exempt_by_globs(path_str: str, globs: frozenset[str]) -> bool:
     return any(fnmatch.fnmatch(path_str, g) or fnmatch.fnmatch(path_str, f"*/{g}") for g in globs)
+
+
+def _fold_str(node: ast.AST) -> str | None:
+    """Constant-fold a string expression: literal or ``+``-concatenation of
+    literals (ADVERSARIAL §1a-F4/E12 — string concatenation evasion)."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _fold_str(node.left)
+        right = _fold_str(node.right)
+        if left is not None and right is not None:
+            return left + right
+    return None
 
 
 def _neg_int_literal(node: ast.AST) -> bool:
@@ -60,6 +94,13 @@ def _receiver_price_like(receiver: ast.AST) -> bool:
         return name.lower() in _PRICE_EXACT_NAMES or bool(_PRICE_NAME_RE.search(name))
     if isinstance(receiver, ast.Attribute):
         return bool(_PRICE_NAME_RE.search(receiver.attr))
+    if isinstance(receiver, ast.Subscript):
+        key = receiver.slice
+        return (
+            isinstance(key, ast.Constant)
+            and isinstance(key.value, str)
+            and bool(_PRICE_NAME_RE.search(key.value))
+        )
     if isinstance(receiver, ast.Call):
         # pl.col("close").shift(-1) — inspect the column-name literal.
         func = receiver.func
@@ -75,6 +116,11 @@ def _receiver_price_like(receiver: ast.AST) -> bool:
             if isinstance(first, ast.Name):
                 name = first.id
                 return name.lower() in _PRICE_EXACT_NAMES or bool(_PRICE_NAME_RE.search(name))
+        # ADVERSARIAL §1a-E4: a negative shift on a rolling statistic
+        # (`rolling_mean(21).shift(k)`, k negative) centers the window on the
+        # future regardless of the inner receiver's name.
+        if func_name.startswith("rolling"):
+            return True
     return False
 
 
@@ -149,17 +195,58 @@ class _Finding:
         self.message = message
 
 
+def _shift_period_expr(call: ast.Call) -> ast.AST | None:
+    """The period argument of a ``.shift`` call: positional or ``periods=``
+    keyword form (ADVERSARIAL §1a-E3)."""
+    if call.args:
+        return call.args[0]
+    for kw in call.keywords:
+        if kw.arg == "periods":
+            return kw.value
+    return None
+
+
+def _is_negative_shift_period(expr: ast.AST, assigns: dict[str, ast.AST]) -> bool:
+    """True if the shift period provably resolves to a negative int.
+
+    Handles literals (``-1``) and single-assignment names (``k = -HALF``,
+    ``h = -horizon`` — ADVERSARIAL §1a-E4/E14) via scope-level constant
+    resolution. Unresolvable expressions are conservatively clean.
+    """
+    resolved = _resolve_expr(expr, assigns)
+    if _neg_int_literal(resolved):
+        return True
+    if isinstance(resolved, ast.UnaryOp) and isinstance(resolved.op, ast.USub):
+        operand = _resolve_expr(resolved.operand, assigns)
+        return (
+            isinstance(operand, ast.Constant)
+            and isinstance(operand.value, int)
+            and not isinstance(operand.value, bool)
+            and operand.value > 0
+        )
+    return False
+
+
 def _check_lh001(tree: ast.AST, path_str: str) -> list[_Finding]:
     out: list[_Finding] = []
+    parents = _build_parent_map(tree)
     for node in ast.walk(tree):
-        if (
+        if not (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
             and node.func.attr == "shift"
-            and node.args
-            and _neg_int_literal(node.args[0])
-            and _receiver_price_like(node.func.value)
         ):
+            continue
+        period = _shift_period_expr(node)
+        if period is None:
+            continue
+        _, funcs = _enclosing_scopes(node, parents)
+        scope: ast.AST = funcs[-1] if funcs else tree
+        # Innermost-scope names shadow module-level constants (E4/E14 define
+        # the shift amount at module scope, e.g. `HALF = 10; k = -HALF`).
+        assigns = _scope_assignments(tree)  # type: ignore[arg-type]
+        assigns.update(_scope_assignments(scope))  # type: ignore[arg-type]
+        if _is_negative_shift_period(period, assigns) and _receiver_price_like(node.func.value):
             out.append(
                 _Finding(
                     "LH001",
@@ -192,6 +279,18 @@ def _check_lh002(tree: ast.AST, path_str: str) -> list[_Finding]:
     return out
 
 
+def _fit_consumes_fold_param(node: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True if the fit's first argument references one of *func*'s parameters
+    (i.e. the caller sliced the fold; ADVERSARIAL §1a-E7 — a function merely
+    NAMED `*fold*` that fits a global/frame attribute is not a fold scope).
+    """
+    if not node.args:
+        return False
+    params = {a.arg for a in (*func.args.posonlyargs, *func.args.args, *func.args.kwonlyargs)}
+    names = {n.id for n in ast.walk(node.args[0]) if isinstance(n, ast.Name)}
+    return bool(names & params)
+
+
 def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
     out: list[_Finding] = []
     parents = _build_parent_map(tree)
@@ -217,7 +316,11 @@ def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
             )
             for f in fors
         )
-        in_fold_func = any(_FOLD_FUNC_RE.search(f.name) for f in funcs)
+        # A fold-NAMED function is a safe scope only if the fit consumes one
+        # of the function's own parameters (caller-sliced fold data).
+        in_fold_func = any(
+            _FOLD_FUNC_RE.search(f.name) and _fit_consumes_fold_param(node, f) for f in funcs
+        )
         if not in_fold_loop and not in_fold_func:
             out.append(
                 _Finding(
@@ -232,15 +335,20 @@ def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
 
 def _check_lh004(tree: ast.AST, path_str: str) -> list[_Finding]:
     out: list[_Finding] = []
+    parents = _build_parent_map(tree)
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and _call_name(node) == "join_asof"):
             continue
+        _, funcs = _enclosing_scopes(node, parents)
+        scope: ast.AST = funcs[-1] if funcs else tree
+        assigns = _scope_assignments(scope)  # type: ignore[arg-type]
         for kw in node.keywords:
-            if (
-                kw.arg in ("on", "left_on")
-                and isinstance(kw.value, ast.Constant)
-                and kw.value.value == "event_time"
-            ):
+            if kw.arg not in ("on", "left_on"):
+                continue
+            # ADVERSARIAL §1a-E17: the keyword value may hide behind a
+            # single-assignment name (`key = "event_time"`).
+            resolved = _resolve_expr(kw.value, assigns)
+            if isinstance(resolved, ast.Constant) and resolved.value == "event_time":
                 out.append(
                     _Finding(
                         "LH004",
@@ -267,10 +375,13 @@ def _check_lh005(tree: ast.AST, path_str: str) -> list[_Finding]:
         if not (isinstance(target, ast.Name) and _UNIVERSE_NAME_RE.search(target.id)):
             continue
         value = node.value
-        if not (isinstance(value, ast.List) and len(value.elts) >= 5):
+        # ADVERSARIAL §1a-E16: tuples and lowercase tickers are the same leak.
+        if not (isinstance(value, (ast.List, ast.Tuple)) and len(value.elts) >= 5):
             continue
         if all(
-            isinstance(e, ast.Constant) and isinstance(e.value, str) and _TICKER_RE.match(e.value)
+            isinstance(e, ast.Constant)
+            and isinstance(e.value, str)
+            and _TICKER_CI_RE.match(e.value)
             for e in value.elts
         ):
             out.append(
@@ -406,40 +517,68 @@ def _check_lh007(tree: ast.AST, path_str: str) -> list[_Finding]:
     return out
 
 
+def _lh008_allowed(path_str: str, value: str) -> bool:
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return any(
+        (path_str == path or path_str.endswith(f"/{path}")) and digest in digests
+        for path, digests in LH008_LITERAL_ALLOWLIST.items()
+    )
+
+
 def _check_lh008(tree: ast.AST, path_str: str) -> list[_Finding]:
     from quant_fund.leakage.patterns import find_forbidden_headline
 
     out: list[_Finding] = []
     docstrings = _docstring_constant_ids(tree)
+    parents = _build_parent_map(tree)
     for node in ast.walk(tree):
+        value: str | None = None
         if (
             isinstance(node, ast.Constant)
             and isinstance(node.value, str)
             and id(node) not in docstrings
             and len(node.value) > 0
-            # Identifier-like literals (dict keys, column names such as
-            # "corr_spike_1sigma_pnl") are never prose headlines.
-            and any(ch.isspace() for ch in node.value)
+            # Skip identifier-like keys while checking compact output labels
+            # such as "Sharpe:2.1" and "P&L=$4,200".
+            and (not node.value.isidentifier())
         ):
-            tokens = find_forbidden_headline(node.value)
-            if tokens:
-                out.append(
-                    _Finding(
-                        "LH008",
-                        node.lineno,
-                        node.col_offset,
-                        f"string literal headlines forbidden metric token(s): {', '.join(tokens)}",
-                    )
+            value = node.value
+        elif (
+            # ADVERSARIAL §1a-F4: constant-fold "a" + "b" string concatenation
+            # (top-most Add node only; nested parts are visited as Constants).
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Add)
+            and not isinstance(parents.get(id(node)), ast.BinOp)
+        ):
+            folded = _fold_str(node)
+            if folded and not folded.isidentifier():
+                value = folded
+        if value is None or not isinstance(node, ast.expr):
+            continue
+        tokens = find_forbidden_headline(value)
+        if tokens and not _lh008_allowed(path_str, value):
+            out.append(
+                _Finding(
+                    "LH008",
+                    node.lineno,
+                    node.col_offset,
+                    f"string literal headlines forbidden metric token(s): {', '.join(tokens)}",
                 )
+            )
     return out
 
 
 def _check_lh009(tree: ast.AST, path_str: str) -> list[_Finding]:
-    if _exempt_by_globs(path_str, LH009_EXEMPT_GLOBS):
+    # tests/** is exempt EXCEPT the seeded-leak fixture suite, which must stay
+    # scannable (same carve-out as LH005, DESIGN.md §6.4).
+    if "leakage_fixtures" not in path_str and _exempt_by_globs(path_str, LH009_EXEMPT_GLOBS):
         return []
     out: list[_Finding] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and _call_name(node) in ("read_parquet", "scan_parquet"):
+        if not isinstance(node, ast.Call):
+            continue
+        name = _call_name(node)
+        if name in ("read_parquet", "scan_parquet"):
             out.append(
                 _Finding(
                     "LH009",
@@ -448,6 +587,32 @@ def _check_lh009(tree: ast.AST, path_str: str) -> list[_Finding]:
                     "direct parquet read outside the data layer bypasses the PIT choke point",
                 )
             )
+        # ADVERSARIAL §1a-E12: getattr(pl, "read_" + "parquet")(path).
+        elif name == "getattr" and len(node.args) >= 2:
+            attr = _fold_str(node.args[1])
+            if attr is not None and attr in _BLOCKED_IO_NAMES:
+                out.append(
+                    _Finding(
+                        "LH009",
+                        node.lineno,
+                        node.col_offset,
+                        f"dynamic getattr(.., {attr!r}) parquet read bypasses the PIT choke point",
+                    )
+                )
+        # ADVERSARIAL §1a-E13: duckdb.sql("select * from read_parquet(...)").
+        elif name == "sql":
+            for arg in node.args:
+                folded = _fold_str(arg)
+                if folded is not None and _SQL_PARQUET_RE.search(folded):
+                    out.append(
+                        _Finding(
+                            "LH009",
+                            node.lineno,
+                            node.col_offset,
+                            "parquet read embedded in a SQL string bypasses the PIT choke point",
+                        )
+                    )
+                    break
     return out
 
 
@@ -505,20 +670,21 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
     for node in ast.walk(tree):
         if not isinstance(node, (ast.Import, ast.ImportFrom)):
             continue
-        module: str | None = None
-        if isinstance(node, ast.ImportFrom) and node.module:
-            module = node.module
+        modules: list[str] = []
+        if isinstance(node, ast.ImportFrom):
+            if node.level:
+                parts = Path(path_str).parts
+                quant_index = parts.index("quant_fund")
+                package_parts = list(parts[quant_index:-1])
+                if node.level > len(package_parts):
+                    modules = ["quant_fund.__invalid_relative_import__"]
+                else:
+                    base = package_parts[: len(package_parts) - node.level + 1]
+                    modules = [".".join([*base, *([node.module] if node.module else [])])]
+            elif node.module:
+                modules = [node.module]
         elif isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.startswith("quant_fund."):
-                    module = alias.name
-        if module is None or not module.startswith("quant_fund."):
-            continue
-        if not isinstance(node, (ast.Import, ast.ImportFrom)):
-            continue
-        sub = module.split(".")[1]
-        if sub == package:
-            continue  # intra-package imports are always fine
+            modules = [alias.name for alias in node.names]
         # Function-level (lazy) imports may use the lazy whitelist.
         cur = parents.get(id(node))
         nested = False
@@ -528,17 +694,156 @@ def _check_lh011(tree: ast.AST, path_str: str) -> list[_Finding]:
                 break
             cur = parents.get(id(cur))
         allowed = whitelist | (lazy_whitelist if nested else frozenset())
-        if sub not in allowed:
-            assert isinstance(node, (ast.Import, ast.ImportFrom))
-            out.append(
-                _Finding(
-                    "LH011",
-                    node.lineno,
-                    node.col_offset,
-                    f"quant_fund.{package} imports non-whitelisted quant_fund.{sub} "
-                    f"({'lazy ' if nested else ''}import; whitelist: {sorted(allowed) or 'none'})",
+        for module in modules:
+            if not module.startswith("quant_fund."):
+                continue
+            sub = module.split(".")[1]
+            if sub == package:
+                continue  # intra-package imports are always fine
+            if sub not in allowed:
+                out.append(
+                    _Finding(
+                        "LH011",
+                        node.lineno,
+                        node.col_offset,
+                        f"quant_fund.{package} imports non-whitelisted quant_fund.{sub} "
+                        f"({'lazy ' if nested else ''}import; whitelist: {sorted(allowed) or 'none'})",
+                    )
                 )
+    return out
+
+
+def _check_lh013(tree: ast.AST, path_str: str, source: str) -> list[_Finding]:
+    """Warning-severity headline channels (ADVERSARIAL §1a E8/E9/E10/F2/F6):
+
+    - COMMENTS via tokenize (comments are invisible to the AST);
+    - DOCSTRINGS (LH008 excludes them, but they render into published docs);
+    - f-string templates whose number arrives at runtime
+      (``f"Sharpe was {sr:.2f}"`` — a forbidden token plus a numeric format
+      spec or spelled-out numeral);
+    - spelled-out numerals in any string channel
+      (``"Sharpe, which exceeded two"``).
+    """
+    from quant_fund.leakage.patterns import (
+        find_forbidden_headline,
+        find_forbidden_token_mentions,
+        find_spelled_out_headline,
+    )
+
+    out: list[_Finding] = []
+
+    def _fire(line: int, col: int, tokens: list[str], channel: str) -> None:
+        out.append(
+            _Finding(
+                "LH013",
+                line,
+                col,
+                f"{channel} headlines forbidden metric token(s): {', '.join(tokens)}",
             )
+        )
+
+    # comments
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+            if tok.type != tokenize.COMMENT:
+                continue
+            text = tok.string.lstrip("#").strip()
+            tokens = find_forbidden_headline(text) or find_spelled_out_headline(text)
+            if tokens and not _lh008_allowed(path_str, text):
+                _fire(tok.start[0], tok.start[1], tokens, "comment")
+    except tokenize.TokenError:
+        pass
+
+    docstrings = _docstring_constant_ids(tree)
+    for node in ast.walk(tree):
+        # docstrings
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) in docstrings
+        ):
+            tokens = find_forbidden_headline(node.value) or find_spelled_out_headline(node.value)
+            if tokens and not _lh008_allowed(path_str, node.value):
+                _fire(node.lineno, node.col_offset, tokens, "docstring")
+        # spelled-out numerals in non-docstring string literals (digit forms
+        # stay with LH008 at error severity)
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.value
+            and not node.value.isidentifier()
+            and not find_forbidden_headline(node.value)
+        ):
+            tokens = find_spelled_out_headline(node.value)
+            if tokens and not _lh008_allowed(path_str, node.value):
+                _fire(node.lineno, node.col_offset, tokens, "string literal (spelled-out numeral)")
+        # f-string templates: forbidden token + numeric format spec
+        elif isinstance(node, ast.JoinedStr):
+            literal = "".join(
+                part.value
+                for part in node.values
+                if isinstance(part, ast.Constant) and isinstance(part.value, str)
+            )
+            if not literal or not find_forbidden_token_mentions(literal):
+                continue
+            has_numeric_spec = any(
+                isinstance(part, ast.FormattedValue)
+                and part.format_spec is not None
+                and bool(_FSTRING_NUMSPEC_RE.search(ast.unparse(part.format_spec)))
+                for part in node.values
+            )
+            tokens = (
+                find_forbidden_headline(literal)
+                or (find_forbidden_token_mentions(literal) if has_numeric_spec else [])
+                or find_spelled_out_headline(literal)
+            )
+            if tokens:
+                _fire(node.lineno, node.col_offset, tokens, "f-string template")
+    return out
+
+
+def _check_lh014(tree: ast.AST, path_str: str, findings: list[_Finding]) -> list[_Finding]:
+    """Interprocedural-lite (ADVERSARIAL §1a-E2 shape): flag call sites of
+    functions whose own body produced a finding. Single-level, single-file:
+    cross-file helpers are the documented residual ceiling.
+    """
+    out: list[_Finding] = []
+    functions = [
+        node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    leaky: dict[str, set[str]] = {}
+    for func in functions:
+        end = func.end_lineno or func.lineno
+        hits = {f.rule_id for f in findings if func.lineno <= f.line <= end}
+        # the helper's own LH014 call-site findings don't propagate upward
+        hits.discard("LH014")
+        if hits:
+            leaky.setdefault(func.name, set()).update(hits)
+    if not leaky:
+        return out
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        name = node.func.id
+        if name not in leaky:
+            continue
+        # skip recursive self-calls
+        enclosing = [
+            f
+            for f in functions
+            if f.lineno <= node.lineno <= (f.end_lineno or f.lineno) and f.name == name
+        ]
+        if enclosing:
+            continue
+        out.append(
+            _Finding(
+                "LH014",
+                node.lineno,
+                node.col_offset,
+                f"call to helper `{name}` whose body trips {', '.join(sorted(leaky[name]))}; "
+                "the leakage travels with the helper",
+            )
+        )
     return out
 
 
@@ -556,16 +861,20 @@ _CHECKERS = {
     "LH011": _check_lh011,
 }
 
+_ALL_RULES = frozenset(_CHECKERS) | {"LH012", "LH013", "LH014"}
+
 
 def scan_file(path: Path, *, rules: set[str] | None = None) -> list[_Finding]:
     """Scan one .py file; never raises on parse errors (LH012 instead)."""
     path_str = path.as_posix()
-    enabled = rules if rules is not None else set(_CHECKERS)
+    enabled = rules if rules is not None else set(_ALL_RULES)
     findings: list[_Finding] = []
     try:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
     except (SyntaxError, ValueError, UnicodeDecodeError) as exc:
+        if "LH012" not in enabled:
+            return []
         line = getattr(exc, "lineno", None) or 1
         return [
             _Finding("LH012", int(line), 0, f"unparseable file: {exc.__class__.__name__}: {exc}")
@@ -576,6 +885,10 @@ def scan_file(path: Path, *, rules: set[str] | None = None) -> list[_Finding]:
         if _is_allowlisted(rule_id, path_str):
             continue
         findings.extend(checker(tree, path_str))
+    if "LH013" in enabled and not _is_allowlisted("LH013", path_str):
+        findings.extend(_check_lh013(tree, path_str, source))
+    if "LH014" in enabled and not _is_allowlisted("LH014", path_str):
+        findings.extend(_check_lh014(tree, path_str, findings))
     findings.sort(key=lambda f: (f.line, f.col, f.rule_id))
     return findings
 
@@ -587,6 +900,8 @@ def collect_py_files(paths: list[Path]) -> list[Path]:
             files.append(p)
         elif p.is_dir():
             files.extend(sorted(p.rglob("*.py")))
+        else:
+            raise ValueError(f"scan target is missing or is not a Python file/directory: {p}")
     # de-duplicate, stable order
     seen: set[str] = set()
     out: list[Path] = []

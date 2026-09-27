@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+
 from quant_fund.research.explainability import build_report, write_report
 from quant_fund.research.explainability.report import EXPLAINABILITY_REPORT_SCHEMA
 

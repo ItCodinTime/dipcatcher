@@ -83,20 +83,18 @@ def _report_entries(
     errors: list[str] = []
     for path in report_paths:
         resolved = Path(path).resolve()
+        try:
+            relative = resolved.relative_to(receipt_dir)
+        except ValueError:
+            errors.append(f"report_outside_receipt_root:{path}")
+            continue
         if not resolved.is_file():
             errors.append(f"report_missing:{path}")
             continue
-        try:
-            relative = resolved.relative_to(receipt_dir)
-            location = relative.as_posix()
-            inside = True
-        except ValueError:
-            location = str(resolved)
-            inside = False
         entries.append(
             {
-                "path": location,
-                "inside_receipt_root": inside,
+                "path": relative.as_posix(),
+                "inside_receipt_root": True,
                 "sha256": hash_file(resolved),
                 "bytes": resolved.stat().st_size,
                 "kind": _KIND_BY_SUFFIX.get(resolved.suffix.lower(), "file"),
@@ -138,6 +136,8 @@ def attach_explainability_sidecar(
 
     entries, errors = _report_entries(paths, receipt_dir)
     if errors:
+        if any(error.startswith("report_outside_receipt_root:") for error in errors):
+            raise ValueError("; ".join(errors))
         raise FileNotFoundError("; ".join(errors))
 
     sidecar = {
@@ -175,15 +175,16 @@ def attach_explainability_report(
 ) -> dict[str, Path]:
     """Write report files under ``<receipt_dir>/explainability/`` and attach the sidecar."""
     receipt = Path(receipt_path)
+    if not receipt.is_file():
+        raise FileNotFoundError(f"receipt not found: {receipt}")
     out_dir = Path(report_dir) if report_dir is not None else receipt.parent / "explainability"
+    try:
+        out_dir.resolve().relative_to(receipt.resolve().parent)
+    except ValueError:
+        raise ValueError(f"report_outside_receipt_root:{out_dir}") from None
     paths = write_report(report, out_dir)
     sidecar = attach_explainability_sidecar(receipt, paths, generated_at=generated_at)
     return {**paths, "sidecar": sidecar}
-
-
-def _resolve_report_path(entry_path: str, receipt_dir: Path) -> Path:
-    candidate = Path(entry_path)
-    return candidate if candidate.is_absolute() else receipt_dir / candidate
 
 
 def verify_explainability_sidecar(
@@ -213,6 +214,15 @@ def verify_explainability_sidecar(
     if not isinstance(payload, dict) or payload.get("schema") != EXPLAINABILITY_SIDECAR_SCHEMA:
         errors.append("sidecar_schema_mismatch")
         payload = {}
+    expected_payload_hash = payload.get("sidecar_sha256_payload")
+    unsigned_payload = {k: v for k, v in payload.items() if k != "sidecar_sha256_payload"}
+    actual_payload_hash = hash_bytes(
+        json.dumps(unsigned_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    if expected_payload_hash != actual_payload_hash:
+        errors.append("sidecar_payload_hash_mismatch")
+    if payload.get("claim") != "research_only":
+        errors.append("sidecar_claim_mismatch")
 
     raw_receipt = payload.get("receipt")
     receipt_info = raw_receipt if isinstance(raw_receipt, dict) else {}
@@ -236,7 +246,16 @@ def verify_explainability_sidecar(
             if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
                 errors.append(f"sidecar_report_entry_invalid:{index}")
                 continue
-            resolved = _resolve_report_path(entry["path"], receipt_dir)
+            candidate = Path(entry["path"])
+            if candidate.is_absolute() or entry.get("inside_receipt_root") is not True:
+                errors.append(f"sidecar_report_outside_receipt_root:{entry['path']}")
+                continue
+            resolved = (receipt_dir / candidate).resolve()
+            try:
+                resolved.relative_to(receipt_dir)
+            except ValueError:
+                errors.append(f"sidecar_report_outside_receipt_root:{entry['path']}")
+                continue
             if not resolved.is_file():
                 errors.append(f"sidecar_report_missing:{entry['path']}")
                 continue
@@ -274,7 +293,7 @@ def explainability_artifact_entry(
         try:
             location = path.resolve().relative_to(root).as_posix()
         except ValueError:
-            location = str(path.resolve())
+            raise ValueError(f"report outside receipt root: {path}") from None
         entry[kind] = location
         entry[f"{kind}_sha256"] = hash_file(path)
     return entry

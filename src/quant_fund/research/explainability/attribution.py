@@ -69,8 +69,12 @@ def _validate_xy(
     yy = np.asarray(y, dtype=float).ravel()
     if xx.ndim != 2 or xx.shape[0] == 0:
         raise ValueError("x must be a non-empty 2-D array")
+    if xx.shape[1] == 0:
+        raise ValueError("x must contain at least one feature")
     if xx.shape[0] != yy.shape[0]:
         raise ValueError(f"x/y length mismatch: {xx.shape[0]} vs {yy.shape[0]}")
+    if not np.isfinite(xx).all() or not np.isfinite(yy).all():
+        raise ValueError("x and y must be finite")
     return xx, yy
 
 
@@ -137,8 +141,6 @@ def permutation_attribution(
     y_eval = yy[eval_idx]
 
     baseline = float(spec(y_eval, predict(x_eval)))
-    if not np.isfinite(baseline):
-        warnings.append("baseline score is not finite; importances may be unreliable")
 
     deltas = np.zeros((n_features, n_repeats), dtype=float)
     for j in range(n_features):
@@ -147,6 +149,8 @@ def permutation_attribution(
             x_perm = x_eval.copy()
             x_perm[:, j] = x_eval[perm, j]
             deltas[j, rep] = float(spec(y_eval, predict(x_perm))) - baseline
+    if not np.isfinite(deltas).all():
+        raise ValueError("permutation score deltas must be finite")
 
     means = deltas.mean(axis=1)
     stds = deltas.std(axis=1, ddof=1) if n_repeats > 1 else np.zeros(n_features)
@@ -196,6 +200,8 @@ def shap_attribution(
     n_rows, n_features = xx.shape
     names = _resolve_feature_names(feature_names, n_features)
     spec = resolve_score(scoring)
+    if max_rows < 1:
+        raise ValueError("max_rows must be >= 1")
     rng = np.random.default_rng(int(seed))
 
     eval_idx = np.arange(n_rows)
@@ -205,8 +211,6 @@ def shap_attribution(
     y_eval = yy[eval_idx]
     baseline = float(spec(y_eval, predict(x_eval)))
 
-    # Deterministic seeding for the explainer's internal sampling.
-    np.random.seed(int(seed))
     explainer = shap.explainers.Permutation(
         predict,
         x_eval,
@@ -218,6 +222,8 @@ def shap_attribution(
     values = np.asarray(explanation.values, dtype=float)
     if values.ndim != 2 or values.shape[1] != n_features:
         raise ValueError(f"unexpected shap value shape {values.shape}")
+    if not np.isfinite(values).all():
+        raise ValueError("shap values must be finite")
     means = np.abs(values).mean(axis=0)
     stds = np.abs(values).std(axis=0)
     return AttributionResult(

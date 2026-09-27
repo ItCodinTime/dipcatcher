@@ -13,6 +13,7 @@ ranking heads, whose ``predict`` returns a continuous score).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -46,7 +47,32 @@ class ProperScoreSpec:
     expects_matrix: bool = False
 
     def __call__(self, y: NDArray[np.float64], pred: NDArray[np.float64]) -> float:
-        return float(self.fn(y, pred))
+        actual = np.asarray(y, dtype=float)
+        forecast = np.asarray(pred, dtype=float)
+        if actual.ndim != 1 or forecast.ndim not in (1, 2):
+            raise ValueError(
+                "score requires one-dimensional labels and vector or matrix predictions"
+            )
+        if forecast.shape[0] != actual.shape[0]:
+            raise ValueError("prediction rows must match labels")
+        if not np.isfinite(actual).all() or not np.isfinite(forecast).all():
+            raise ValueError("labels and predictions must be finite")
+        if self.expects_matrix:
+            if forecast.ndim != 2:
+                raise ValueError("score requires matrix predictions")
+        elif forecast.ndim == 2:
+            if forecast.shape[1] != 1:
+                raise ValueError("point score requires one prediction column")
+            forecast = forecast[:, 0]
+        if self.name == "brier":
+            if not np.isin(actual, (0.0, 1.0)).all():
+                raise ValueError("Brier labels must be binary")
+            if np.any((forecast < 0.0) | (forecast > 1.0)):
+                raise ValueError("Brier predictions must be probabilities in [0, 1]")
+        value = float(self.fn(actual, forecast))
+        if not math.isfinite(value):
+            raise ValueError("proper score must be finite")
+        return value
 
 
 def pinball(tau: float = 0.5) -> ProperScoreSpec:

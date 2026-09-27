@@ -24,13 +24,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 from quant_fund.research.explainability.attribution import (
     AttributionResult,
+    _validate_xy,
     permutation_attribution,
     shap_attribution,
 )
@@ -101,47 +102,56 @@ class ExplainabilityReport:
                     for b in self.drift.blocks
                 ],
             }
-        return {
-            "schema": EXPLAINABILITY_REPORT_SCHEMA,
-            "model": {"name": self.model_name, "family": self.model_family},
-            "scoring": self.scoring,
-            "baseline_score": self.baseline_score,
-            "synthetic": bool(self.synthetic),
-            "generated_at": self.generated_at,
-            "seed": self.seed,
-            "n_rows": self.n_rows,
-            "n_features": len(self.feature_names),
-            "dataset_sha256": self.dataset_sha256,
-            "feature_names": list(self.feature_names),
-            "importances": [
+        return cast(
+            "dict[str, Any]",
+            _json_safe(
                 {
-                    "feature": a.feature,
-                    "importance_mean": a.importance_mean,
-                    "importance_std": a.importance_std,
-                    "rank": a.rank,
-                }
-                for a in self.attribution.attributions
-            ],
-            "partial_dependence": [
-                {
-                    "feature": c.feature,
-                    "grid": list(c.grid),
-                    "mean_curve": list(c.mean_curve),
-                }
-                for c in self.pd_curves
-            ],
-            "drift": drift_dict,
-            "shap": (
-                [
-                    {"feature": a.feature, "mean_abs_shap": a.importance_mean, "rank": a.rank}
-                    for a in self.shap.attributions
-                ]
-                if self.shap is not None
-                else None
+                    "schema": EXPLAINABILITY_REPORT_SCHEMA,
+                    "model": {"name": self.model_name, "family": self.model_family},
+                    "scoring": self.scoring,
+                    "baseline_score": self.baseline_score,
+                    "synthetic": bool(self.synthetic),
+                    "generated_at": self.generated_at,
+                    "seed": self.seed,
+                    "n_rows": self.n_rows,
+                    "n_features": len(self.feature_names),
+                    "dataset_sha256": self.dataset_sha256,
+                    "feature_names": list(self.feature_names),
+                    "importances": [
+                        {
+                            "feature": a.feature,
+                            "importance_mean": a.importance_mean,
+                            "importance_std": a.importance_std,
+                            "rank": a.rank,
+                        }
+                        for a in self.attribution.attributions
+                    ],
+                    "partial_dependence": [
+                        {
+                            "feature": c.feature,
+                            "grid": list(c.grid),
+                            "mean_curve": list(c.mean_curve),
+                        }
+                        for c in self.pd_curves
+                    ],
+                    "drift": drift_dict,
+                    "shap": (
+                        [
+                            {
+                                "feature": a.feature,
+                                "mean_abs_shap": a.importance_mean,
+                                "rank": a.rank,
+                            }
+                            for a in self.shap.attributions
+                        ]
+                        if self.shap is not None
+                        else None
+                    ),
+                    "warnings": list(self.warnings),
+                    "claim": "research_only",
+                },
             ),
-            "warnings": list(self.warnings),
-            "claim": "research_only",
-        }
+        )
 
     def to_markdown(self) -> str:
         return _render_markdown(self)
@@ -150,11 +160,23 @@ class ExplainabilityReport:
         return _render_html(self)
 
 
+def _json_safe(value: Any) -> Any:
+    """Represent undefined diagnostics as JSON null, never nonstandard NaN."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    return value
+
+
 def _dataset_digest(x: NDArray[np.float64], y: NDArray[np.float64]) -> str:
-    """Deterministic content hash of the eval matrix + label vector."""
-    xx = np.ascontiguousarray(np.asarray(x, dtype=np.float64))
-    yy = np.ascontiguousarray(np.asarray(y, dtype=np.float64).ravel())
-    return hash_bytes(xx.tobytes() + yy.tobytes() + np.asarray(xx.shape).tobytes())
+    """Portable little-endian content hash of eval features and labels."""
+    xx = np.ascontiguousarray(np.asarray(x, dtype="<f8"))
+    yy = np.ascontiguousarray(np.asarray(y, dtype="<f8").ravel())
+    shape = np.asarray(xx.shape, dtype="<i8")
+    return hash_bytes(xx.tobytes() + yy.tobytes() + shape.tobytes())
 
 
 def _resolve_names(model: Any, explicit: list[str] | None, n_features: int) -> list[str]:
@@ -213,13 +235,10 @@ def build_report(
         predict_fn = model_predict_fn(model)
     else:
         predict_fn = predict
-    xx = np.asarray(x, dtype=float)
-    yy = np.asarray(y, dtype=float).ravel()
-    if xx.ndim != 2 or xx.shape[0] == 0:
-        raise ValueError("x must be a non-empty 2-D array")
-    if xx.shape[0] != yy.shape[0]:
-        raise ValueError(f"x/y length mismatch: {xx.shape[0]} vs {yy.shape[0]}")
+    xx, yy = _validate_xy(x, y)
     n_rows, n_features = xx.shape
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1")
     names = _resolve_names(model, feature_names, n_features)
     spec = resolve_score(scoring)
 
@@ -628,7 +647,10 @@ def write_report(report: ExplainabilityReport, out_dir: Path) -> dict[str, Path]
     }
     payload = (
         json.dumps(
-            json.loads(canonical_json_bytes(report.to_dict())), indent=2, sort_keys=True
+            json.loads(canonical_json_bytes(report.to_dict())),
+            indent=2,
+            sort_keys=True,
+            allow_nan=False,
         ).encode("utf-8")
         + b"\n"
     )

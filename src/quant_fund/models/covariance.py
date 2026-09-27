@@ -111,6 +111,42 @@ def sample(returns: Array) -> tuple[Array, dict[str, float | str]]:
     }
 
 
+try:
+    from numba import njit as _njit
+except Exception:  # pragma: no cover - numba is a required dependency
+
+    def _njit(*_a: object, **_k: object) -> object:  # type: ignore[no-redef]
+        def _deco(fn: object) -> object:
+            return fn
+
+        if len(_a) == 1 and callable(_a[0]) and not _k:
+            return _a[0]
+        return _deco
+
+
+@_njit(cache=True)
+def _ewma_cov_nb(x: np.ndarray, lam: float) -> np.ndarray:
+    """RiskMetrics recursion. Each element reads only its own previous value."""
+    t_n, n = x.shape
+    cov = np.empty((n, n), dtype=np.float64)
+    for i in range(n):
+        shock_i = x[0, i]
+        for j in range(n):
+            cov[i, j] = shock_i * x[0, j]
+    one = 1.0 - lam
+    for t in range(1, t_n):
+        for i in range(n):
+            shock_i = x[t, i]
+            for j in range(n):
+                cov[i, j] = lam * cov[i, j] + one * shock_i * x[t, j]
+    for i in range(n):
+        for j in range(i + 1, n):
+            mid = 0.5 * (cov[i, j] + cov[j, i])
+            cov[i, j] = mid
+            cov[j, i] = mid
+    return cov
+
+
 def ewma_cov(returns: Array, lam: float = 0.94, *, min_rows: int = 2) -> Array:
     r"""One-step-ahead RiskMetrics covariance \(H_{t+1}\).
 
@@ -124,12 +160,10 @@ def ewma_cov(returns: Array, lam: float = 0.94, *, min_rows: int = 2) -> Array:
     ``ewma`` / named ``optimizer.covariance=ewma`` use this matrix.
     """
     _validate_lambda(lam)
-    x = dcc_trailing_complete_window(returns, min_rows=min_rows)
-    cov = np.outer(x[0], x[0])
-    for t in range(1, x.shape[0]):
-        shock = x[t]
-        cov = lam * cov + (1.0 - lam) * np.outer(shock, shock)
-    return 0.5 * (cov + cov.T)
+    x = np.ascontiguousarray(
+        dcc_trailing_complete_window(returns, min_rows=min_rows), dtype=np.float64
+    )
+    return np.asarray(_ewma_cov_nb(x, float(lam)), dtype=float)
 
 
 def ledoit_wolf_cov(returns: Array) -> Array:

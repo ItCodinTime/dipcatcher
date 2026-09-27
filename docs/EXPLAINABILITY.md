@@ -29,8 +29,9 @@ gates and not evidence of live profitability.
    `≤ ln 2`), and top-k overlap. Drift is flagged when
    `min_spearman < spearman_floor` (0.6), `max_js > js_ceiling` (0.1), or
    `mean_topk_overlap < topk_floor` (0.5) — tunable heuristics, not gates.
-4. **Optional SHAP path** (`shap_attribution`): `shap` (added as a project
-   dependency, `shap>=0.52`) is imported lazily; the permutation explainer
+4. **Optional SHAP path** (`shap_attribution`): install the `explainability`
+   extra (`uv sync --extra explainability`) for `shap>=0.52`; it is imported
+   lazily. The permutation explainer
    yields mean-|SHAP| importances as a supplementary view. It is labeled as
    prediction-space, not a proper-loss decomposition. If `shap` is missing,
    the permutation path is unaffected and `build_report` records a warning.
@@ -117,6 +118,9 @@ break `immutable_receipt_mismatch`).
 
 - Permutation importance is associational, not causal; correlated features
   split credit arbitrarily (standard caveat — report discloses it).
+- Supply a held-out, point-in-time-safe evaluation frame. This module cannot
+  establish feature availability or detect leakage in an upstream dataset;
+  its scores and attributions inherit the quality of that frame.
 - Drift thresholds are diagnostics heuristics for research review, not
   promotion gates; small blocks make Spearman noisy on near-tied tails.
 - The SHAP path is prediction-space mean-|value|; it is a supplementary

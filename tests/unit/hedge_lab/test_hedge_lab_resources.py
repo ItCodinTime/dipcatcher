@@ -79,10 +79,20 @@ def test_allocate_float64_workspace_shape() -> None:
     assert arr.dtype == np.float64
 
 
-def test_cap_blas_threads_sets_env() -> None:
-    n = resources.cap_blas_threads(0.5)
+def test_cap_blas_threads_sets_env(monkeypatch: pytest.MonkeyPatch) -> None:
     import os
 
+    # Register the keys with monkeypatch before the function writes them so
+    # the worker process does not keep the cap after this test.
+    for name in (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ):
+        monkeypatch.setenv(name, "1")
+    n = resources.cap_blas_threads(0.5)
     assert n == max(1, int((os.cpu_count() or 1) * 0.5))
     assert os.environ["OMP_NUM_THREADS"] == str(n)
     assert os.environ["MKL_NUM_THREADS"] == str(n)

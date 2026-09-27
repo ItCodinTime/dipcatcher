@@ -70,12 +70,14 @@ def partial_dependence_1d(
 ) -> PartialDependenceCurve:
     """Compute the 1-D partial dependence of ``predict`` on column ``feature_index``.
 
-    Every eval row contributes equally; non-finite feature values are frozen
-    to the grid value like any other row (predict's own NaN policy applies).
+    Every eval row contributes equally. Non-finite features and predictions
+    fail closed so omitted values cannot make a curve look better.
     """
     xx = np.asarray(x, dtype=float)
     if xx.ndim != 2 or xx.shape[0] == 0:
         raise ValueError("x must be a non-empty 2-D array")
+    if not np.isfinite(xx).all():
+        raise ValueError("x must be finite")
     n_rows, n_features = xx.shape
     j = int(feature_index)
     if not 0 <= j < n_features:
@@ -105,8 +107,11 @@ def partial_dependence_1d(
             preds = preds.reshape(-1, 1)
         if preds.ndim != 2 or preds.shape[0] != n_rows:
             raise ValueError(f"predict returned unexpected shape {preds.shape}")
-        with np.errstate(invalid="ignore"):
-            col_means = np.nanmean(preds, axis=0)
+        if not np.isfinite(preds).all():
+            raise ValueError("partial-dependence predictions must be finite")
+        col_means = preds.mean(axis=0)
+        if not np.isfinite(col_means).all():
+            raise ValueError("partial-dependence means must be finite")
         rows.append(tuple(float(v) for v in col_means.tolist()))
     name = feature_name if feature_name is not None else f"x{j}"
     return PartialDependenceCurve(

@@ -55,18 +55,15 @@ class ParquetMarketProvider:
         pq = self.root / f"{name}.parquet"
         csv = self.root / f"{name}.csv"
         if pq.exists():
-            return pl.read_parquet(pq)
+            # memory_map is the zero-copy path for local parquet. Polars already
+            # defaults it on; keep it explicit so a future default change cannot
+            # silently copy the file into the process.
+            return pl.read_parquet(pq, memory_map=True)
         if csv.exists():
             return pl.read_csv(csv, try_parse_dates=True)
         return pl.DataFrame()
 
-    def get_bars(
-        self,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        security_ids: list[str] | None = None,
-    ) -> pl.DataFrame:
-        df = self._load("bars")
+    def _validate_bars(self, df: pl.DataFrame) -> pl.DataFrame:
         if df.is_empty():
             return df
         missing = sorted(_BAR_COLUMNS - set(df.columns))
@@ -112,13 +109,93 @@ class ParquetMarketProvider:
             raise PointInTimeError("bars adapter contains invalid OHLCV values")
         if df.select(["event_time", "security_id"]).is_duplicated().any():
             raise PointInTimeError("bars adapter contains duplicate event_time/security_id rows")
+        return df
+
+    def _filter_bars(
+        self,
+        df: pl.DataFrame,
+        start: datetime | None,
+        end: datetime | None,
+        security_ids: list[str] | None,
+        columns: list[str] | None,
+    ) -> pl.DataFrame:
+        if df.is_empty():
+            return df
         if start is not None:
             df = df.filter(pl.col("event_time") >= start)
         if end is not None:
             df = df.filter(pl.col("event_time") <= end)
         if security_ids is not None:
             df = df.filter(pl.col("security_id").is_in(security_ids))
+        if columns is not None:
+            df = df.select(columns)
         return df
+
+    def _get_bars_windowed(
+        self,
+        path: Path,
+        start: datetime | None,
+        end: datetime | None,
+        security_ids: list[str] | None,
+        columns: list[str] | None,
+    ) -> pl.DataFrame:
+        """Validate on the check columns, then collect with predicate pushdown.
+
+        A bad row outside the requested window still fails the full-file
+        checks. The unfiltered wide frame is not materialized when the caller
+        asks for a time window, an id list, or a column projection.
+        """
+        lf = pl.scan_parquet(path)
+        n_rows = lf.select(pl.len()).collect().item()
+        if n_rows == 0:
+            return pl.read_parquet(path, memory_map=True)
+        schema_names = set(lf.collect_schema().names())
+        needed = [
+            "event_time",
+            "available_time",
+            "ingested_time",
+            "source",
+            "security_id",
+            "revision_id",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        ]
+        if any(name not in schema_names for name in needed):
+            return self._filter_bars(
+                self._validate_bars(self._load("bars")), start, end, security_ids, columns
+            )
+        narrow = pl.read_parquet(path, columns=needed, memory_map=True)
+        self._validate_bars(narrow)
+        out = lf
+        if start is not None:
+            out = out.filter(pl.col("event_time") >= start)
+        if end is not None:
+            out = out.filter(pl.col("event_time") <= end)
+        if security_ids is not None:
+            out = out.filter(pl.col("security_id").is_in(security_ids))
+        if columns is not None:
+            out = out.select(columns)
+        return out.collect()
+
+    def get_bars(
+        self,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        security_ids: list[str] | None = None,
+        columns: list[str] | None = None,
+    ) -> pl.DataFrame:
+        pq = self.root / "bars.parquet"
+        windowed = (
+            start is not None or end is not None or security_ids is not None or columns is not None
+        )
+        if pq.exists() and windowed:
+            return self._get_bars_windowed(pq, start, end, security_ids, columns)
+        return self._filter_bars(
+            self._validate_bars(self._load("bars")), start, end, security_ids, columns
+        )
 
     def get_corporate_actions(
         self,

@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
-
 from quant_fund.models.ranking import RidgeRanker
+
 from quant_fund.research.explainability import (
     brier,
     crps_quantiles,

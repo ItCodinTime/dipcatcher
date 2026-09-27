@@ -30,6 +30,7 @@ from scipy.stats import spearmanr
 
 from quant_fund.research.explainability.attribution import (
     AttributionResult,
+    _validate_xy,
     permutation_attribution,
 )
 from quant_fund.research.explainability.scoring import PredictFn, ProperScoreSpec
@@ -122,12 +123,7 @@ def attribution_drift(
     ``np.random.SeedSequence(seed).spawn(n_blocks)`` so the whole table is
     deterministic under one seed.
     """
-    xx = np.asarray(x, dtype=float)
-    yy = np.asarray(y, dtype=float).ravel()
-    if xx.ndim != 2 or xx.shape[0] == 0:
-        raise ValueError("x must be a non-empty 2-D array")
-    if xx.shape[0] != yy.shape[0]:
-        raise ValueError(f"x/y length mismatch: {xx.shape[0]} vs {yy.shape[0]}")
+    xx, yy = _validate_xy(x, y)
     n_rows, n_features = xx.shape
     n_blocks = int(n_blocks)
     if n_blocks < 2:
@@ -136,11 +132,21 @@ def attribution_drift(
         raise ValueError(f"cannot split {n_rows} rows into {n_blocks} blocks")
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
+    if not all(np.isfinite(v) for v in (spearman_floor, js_ceiling, topk_floor)):
+        raise ValueError("drift thresholds must be finite")
+    if not (-1.0 <= spearman_floor <= 1.0 and 0.0 <= js_ceiling <= np.log(2.0)):
+        raise ValueError("drift thresholds are outside their statistic ranges")
+    if not 0.0 <= topk_floor <= 1.0:
+        raise ValueError("topk_floor must be in [0, 1]")
 
     if times is not None:
         tt = np.asarray(times)
-        if tt.shape[0] != n_rows:
+        if tt.ndim != 1 or tt.shape[0] != n_rows:
             raise ValueError(f"times length {tt.shape[0]} != x rows {n_rows}")
+        if tt.dtype.kind in "Mm" and np.isnat(tt).any():
+            raise ValueError("times must not contain NaT")
+        if tt.dtype.kind in "fi" and not np.isfinite(tt).all():
+            raise ValueError("times must be finite")
         order = np.argsort(tt, kind="stable")
     else:
         order = np.arange(n_rows)

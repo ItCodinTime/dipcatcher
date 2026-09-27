@@ -8,12 +8,16 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from quant_fund.research.catalog import (
     BENCHMARK_CATALOG_VERSION,
     REQUIRED_BENCHMARK_FAMILIES,
     RESEARCH_RECEIPT_SCHEMA_VERSION,
 )
+from quant_fund.research.receipt_schema import unavailable_overfitting_block
+from quant_fund.research.verify import _receipt_digest, verify_research_artifact
+from quant_fund.utils.hashing import hash_bytes, hash_file
+
+import quant_fund.research.explainability.receipt as receipt_module
 from quant_fund.research.explainability import (
     attach_explainability_report,
     attach_explainability_sidecar,
@@ -23,8 +27,6 @@ from quant_fund.research.explainability import (
     verify_explainability_sidecar,
     write_report,
 )
-from quant_fund.research.verify import _receipt_digest, verify_research_artifact
-from quant_fund.utils.hashing import hash_file
 
 from .conftest import FEATURES
 
@@ -87,6 +89,7 @@ def _sealed_receipt(tmp_path: Path) -> Path:
             for name in REQUIRED_BENCHMARK_FAMILIES
         },
         "families": {name: {"executed": True} for name in REQUIRED_BENCHMARK_FAMILIES},
+        "backtest_overfitting": unavailable_overfitting_block(),
         "artifacts": {
             "immutable_json": str(immutable / f"{run_id}.json"),
             "immutable_markdown": str(immutable / f"{run_id}.md"),
@@ -159,6 +162,29 @@ def test_sidecar_detects_receipt_tampering(planted_model, tmp_path: Path) -> Non
     assert "sidecar_receipt_hash_mismatch" in binding["errors"]
 
 
+def test_sidecar_detects_its_own_payload_tampering(planted_model, tmp_path: Path) -> None:
+    receipt = _sealed_receipt(tmp_path)
+    paths = attach_explainability_report(receipt, _small_report(planted_model))
+    payload = json.loads(paths["sidecar"].read_text())
+    payload["generated_at"] = "rewritten"
+    paths["sidecar"].write_text(json.dumps(payload))
+    binding = verify_explainability_sidecar(receipt)
+    assert binding["valid"] is False
+    assert "sidecar_payload_hash_mismatch" in binding["errors"]
+
+
+def test_attach_report_rejects_external_output_before_writing(
+    planted_model, tmp_path: Path
+) -> None:
+    receipt_root = tmp_path / "receipt"
+    receipt_root.mkdir()
+    receipt = _sealed_receipt(receipt_root)
+    outside = tmp_path / "outside"
+    with pytest.raises(ValueError, match="report_outside_receipt_root"):
+        attach_explainability_report(receipt, _small_report(planted_model), report_dir=outside)
+    assert not outside.exists()
+
+
 def test_sidecar_binds_run_id(planted_model, tmp_path: Path) -> None:
     receipt = _sealed_receipt(tmp_path)
     report = _small_report(planted_model)
@@ -199,18 +225,54 @@ def test_verify_sidecar_missing_and_malformed(tmp_path: Path) -> None:
 
 
 def test_explicit_sidecar_paths_outside_receipt_root(tmp_path: Path) -> None:
-    """Reports may live outside the receipt dir; the entry is flagged honestly."""
+    """Reports outside the receipt root cannot be attached or read."""
     (tmp_path / "research_root").mkdir()
     receipt = _sealed_receipt(tmp_path / "research_root")
     outside = tmp_path / "elsewhere"
     outside.mkdir()
     report_file = outside / "explainability.md"
     report_file.write_text("# report\n")
-    sidecar = attach_explainability_sidecar(receipt, [report_file])
+    with pytest.raises(ValueError, match="report_outside_receipt_root"):
+        attach_explainability_sidecar(receipt, [report_file])
+    link = receipt.parent / "linked-report.md"
+    link.symlink_to(report_file)
+    with pytest.raises(ValueError, match="report_outside_receipt_root"):
+        attach_explainability_sidecar(receipt, [link])
+    with pytest.raises(ValueError, match="report outside receipt root"):
+        explainability_artifact_entry(outside, receipt.parent)
+
+
+def test_verify_rejects_outside_report_before_reading_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    receipt_root = tmp_path / "receipt_root"
+    receipt_root.mkdir()
+    receipt = _sealed_receipt(receipt_root)
+    inside = receipt_root / "explainability.md"
+    inside.write_text("# inside\n")
+    sidecar = attach_explainability_sidecar(receipt, [inside])
+    outside = tmp_path / "outside.md"
+    outside.write_text("# outside\n")
     payload = json.loads(sidecar.read_text())
-    assert payload["reports"][0]["inside_receipt_root"] is False
-    binding = verify_explainability_sidecar(receipt)
-    assert binding["valid"] is True
+    payload["reports"][0]["path"] = "../outside.md"
+    payload["reports"][0]["sha256"] = hash_file(outside)
+    unsigned = {key: value for key, value in payload.items() if key != "sidecar_sha256_payload"}
+    payload["sidecar_sha256_payload"] = hash_bytes(
+        json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode()
+    )
+    sidecar.write_text(json.dumps(payload))
+
+    original_hash_file = receipt_module.hash_file
+
+    def guarded_hash_file(path: Path) -> str:
+        if Path(path).resolve() == outside.resolve():
+            raise AssertionError("outside report was read")
+        return original_hash_file(path)
+
+    monkeypatch.setattr(receipt_module, "hash_file", guarded_hash_file)
+    result = verify_explainability_sidecar(receipt)
+    assert result["valid"] is False
+    assert any("sidecar_report_outside_receipt_root" in error for error in result["errors"])
 
 
 def test_optional_artifact_entry_for_new_receipts(planted_model, tmp_path: Path) -> None:
