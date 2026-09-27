@@ -1,0 +1,295 @@
+"""Proof bundle verifier (DESIGN.md §5.5) — fixes A1 F2.
+
+Fail-closed, ordered checks; every failed check appends a machine-readable
+reason and flips ``ok`` to False. The verifier NEVER raises for a bad bundle
+(malformed input is just another failed check) and NEVER trusts the bundle's
+own metric claims: headline metrics are independently recomputed from the
+trade-log bytes via ``metrics/returns.py`` and compared against
+``metrics_recompute`` at rtol=1e-9 / atol=1e-12 (§8.2).
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+import polars as pl
+from pydantic import BaseModel, ValidationError
+
+from quant_fund.proof.bundle import (
+    METRIC_KEYS,
+    chain_head,
+    compute_bundle_id,
+    env_fingerprint,
+    load_chain,
+    recompute_headline_metrics,
+    sidecar_paths,
+    signing_payload_bytes,
+)
+from quant_fund.proof.recorder import read_leaf_hash
+from quant_fund.proof.sign import HmacSha256Signer
+from quant_fund.proofcore.contracts import (
+    GENESIS_HASH,
+    SCHEMA_VERSION,
+    ProofBundleV1,
+    SignatureUnavailableError,
+    merkle_root_hex,
+    sha256_hex_bytes,
+)
+
+__all__ = ["RECOMPUTE_RTOL", "RECOMPUTE_ATOL", "VerificationResult", "verify_bundle"]
+
+#: §8.2 — same machine, deterministic engine; anything looser hides tampering.
+RECOMPUTE_RTOL = 1e-9
+RECOMPUTE_ATOL = 1e-12
+
+
+class VerificationResult(BaseModel):
+    """Machine-readable verification outcome (DESIGN.md §5.5)."""
+
+    ok: bool
+    reasons: list[str]
+    env_mismatch: bool
+    metrics_match: dict[str, bool]
+
+
+def _metric_close(a: float, b: float) -> bool:
+    if math.isnan(a) and math.isnan(b):
+        return True
+    if math.isnan(a) or math.isnan(b):
+        return False
+    return math.isclose(a, b, rel_tol=RECOMPUTE_RTOL, abs_tol=RECOMPUTE_ATOL)
+
+
+def _infer_bundle_dir(bundle_path: Path) -> Path:
+    parent = bundle_path.parent
+    if parent.name == "bundles":
+        return parent.parent
+    return parent
+
+
+def _check_chain(payload: dict[str, Any], bundle_dir: Path, reasons: list[str]) -> None:
+    """Check 3: prev_bundle_hash links into the bundles.jsonl head."""
+    try:
+        chain = load_chain(bundle_dir)
+    except (OSError, ValidationError, KeyError, json.JSONDecodeError) as exc:
+        reasons.append(f"chain:unreadable:{exc.__class__.__name__}")
+        return
+    for index, prior in enumerate(chain):
+        expected_prev = chain[index - 1].bundle_id if index else GENESIS_HASH
+        if prior.prev_bundle_hash != expected_prev:
+            reasons.append(f"chain:link_broken_at_index:{index}")
+    head = chain[-1].bundle_id if chain else GENESIS_HASH
+    bundle_id = str(payload.get("bundle_id", ""))
+    if bundle_id in {entry.bundle_id for entry in chain}:
+        position = next(i for i, entry in enumerate(chain) if entry.bundle_id == bundle_id)
+        expected_prev = chain[position - 1].bundle_id if position else GENESIS_HASH
+        if payload.get("prev_bundle_hash") != expected_prev:
+            reasons.append("chain:bundle_prev_mismatch")
+    elif payload.get("prev_bundle_hash") != head:
+        reasons.append("chain:prev_not_head")
+
+
+def _check_signature(payload: dict[str, Any], strict: bool, reasons: list[str]) -> None:
+    """Check 4: HMAC verify (strict) or report scheme='none' as a reason."""
+    signature = payload.get("signature") or {}
+    scheme = signature.get("scheme")
+    if scheme == "none":
+        if strict:
+            reasons.append("signature:unsigned_strict")
+        return
+    if scheme != "hmac-sha256":
+        reasons.append(f"signature:unknown_scheme:{scheme}")
+        return
+    try:
+        signer = HmacSha256Signer.from_env()
+    except SignatureUnavailableError:
+        reasons.append("signature:key_unavailable")
+        return
+    if signature.get("key_id") != signer.key_id:
+        reasons.append("signature:key_id_mismatch")
+        return
+    if not signer.verify(signing_payload_bytes(payload), str(signature.get("value", ""))):
+        reasons.append("signature:hmac_mismatch")
+
+
+def _check_data_manifest(bundle: ProofBundleV1, reasons: list[str]) -> None:
+    """Check 5: recompute per-read leaf hashes + Merkle root."""
+    manifest = bundle.data_manifest
+    if manifest.n_reads != len(manifest.reads):
+        reasons.append("data_manifest:n_reads_mismatch")
+    try:
+        recomputed = merkle_root_hex([read_leaf_hash(read) for read in manifest.reads])
+    except Exception as exc:  # malformed leaf -> failed check, never a raise
+        reasons.append(f"data_manifest:leaf_error:{exc.__class__.__name__}")
+        return
+    if recomputed != manifest.merkle_root:
+        reasons.append("data_manifest:merkle_root_mismatch")
+
+
+def _check_sidecars(
+    bundle: ProofBundleV1, bundle_dir: Path, reasons: list[str]
+) -> dict[str, bytes]:
+    """Check 6: re-hash signal_log/trade_log/metrics sidecar files."""
+    sidecars = sidecar_paths(bundle_dir, bundle.bundle_id)
+    expected = {
+        "signal_log": bundle.signal_log_sha256,
+        "trade_log": bundle.trade_log_sha256,
+        "metrics": bundle.metrics_sha256,
+    }
+    contents: dict[str, bytes] = {}
+    for kind, path in sidecars.items():
+        if kind == "config":
+            continue
+        if not path.exists():
+            reasons.append(f"sidecar:{kind}:missing")
+            continue
+        data = path.read_bytes()
+        if sha256_hex_bytes(data) != expected[kind]:
+            reasons.append(f"sidecar:{kind}_sha256_mismatch")
+        contents[kind] = data
+    return contents
+
+
+def _check_metrics_recompute(
+    bundle: ProofBundleV1,
+    trade_log_bytes: bytes | None,
+    reasons: list[str],
+) -> dict[str, bool]:
+    """Check 7 (A1 F2): RECOMPUTE metrics from trade log bytes and compare."""
+    metrics_match: dict[str, bool] = {}
+    recorded = bundle.metrics_recompute
+    if trade_log_bytes is None:
+        for key in METRIC_KEYS:
+            metrics_match[key] = False
+        reasons.append("metrics_recompute:no_trade_log")
+        return metrics_match
+    try:
+        trade_log = pl.read_parquet(io.BytesIO(trade_log_bytes))
+        recomputed = recompute_headline_metrics(trade_log)
+    except Exception as exc:
+        for key in METRIC_KEYS:
+            metrics_match[key] = False
+        reasons.append(f"metrics_recompute:recompute_error:{exc.__class__.__name__}")
+        return metrics_match
+    for key in METRIC_KEYS:
+        if key not in recorded:
+            metrics_match[key] = False
+            reasons.append(f"metrics_recompute:missing_key:{key}")
+            continue
+        match = _metric_close(float(recorded[key]), float(recomputed[key]))
+        metrics_match[key] = match
+        if not match:
+            reasons.append(f"metrics_recompute:{key}")
+    extra = sorted(set(recorded) - set(METRIC_KEYS))
+    if extra:
+        reasons.append(f"metrics_recompute:unexpected_keys:{','.join(extra)}")
+    return metrics_match
+
+
+def verify_bundle(
+    bundle_path: Path,
+    *,
+    bundle_dir: Path | None = None,
+    replay: bool = False,
+    strict_signature: bool = True,
+    trusted_head: str | None = None,
+    pit_root: Path | None = None,
+) -> VerificationResult:
+    """Verify one proof bundle. Fail-closed ordered checks (§5.5); never raises.
+
+    1. schema validation (pydantic) + schema_version == 'proofcore/1'
+    2. bundle_id self-hash recompute
+    3. chain: prev_bundle_hash links into bundles.jsonl head (if bundle_dir given)
+    4. signature: HMAC verify (strict) or report scheme='none' as reason
+    5. data_manifest: recompute per-read leaf hashes + Merkle root
+    6. re-hash signal_log/trade_log/metrics sidecar files
+    7. RECOMPUTE metrics from trade log bytes and compare (rtol 1e-9, atol 1e-12)
+    8. env_fingerprint comparison -> env_mismatch warning (A3 F5.2, non-fatal)
+    9. replay: re-run with recorded seed/config, identical bundle minus created_utc
+    """
+    reasons: list[str] = []
+    env_mismatch = False
+    metrics_match: dict[str, bool] = {}
+    bundle_path = Path(bundle_path)
+    if bundle_dir is None:
+        bundle_dir = _infer_bundle_dir(bundle_path)
+    bundle_dir = Path(bundle_dir)
+
+    # Check 1 — schema validation.
+    try:
+        raw: dict[str, Any] = json.loads(bundle_path.read_bytes())
+    except (OSError, json.JSONDecodeError) as exc:
+        return VerificationResult(
+            ok=False,
+            reasons=[f"schema:unreadable:{exc.__class__.__name__}"],
+            env_mismatch=False,
+            metrics_match={},
+        )
+    if not isinstance(raw, dict):
+        raw = {}
+    if raw.get("schema_version") != SCHEMA_VERSION:
+        reasons.append(f"schema:version:{raw.get('schema_version')!r}")
+    try:
+        bundle = ProofBundleV1.model_validate(raw)
+    except ValidationError as exc:
+        return VerificationResult(
+            ok=False,
+            reasons=[*reasons, f"schema:invalid:{exc.error_count()}errors"],
+            env_mismatch=False,
+            metrics_match={},
+        )
+
+    # Check 2 — self-hash.
+    if compute_bundle_id(raw) != bundle.bundle_id:
+        reasons.append("bundle_id:self_hash_mismatch")
+
+    # Check 3 — chain linkage (only when a chain dir is available).
+    chain_path = bundle_dir / "bundles.jsonl"
+    if chain_path.exists():
+        _check_chain(raw, bundle_dir, reasons)
+    elif trusted_head is not None:
+        reasons.append("chain:unavailable_for_trusted_head")
+
+    # §5.6 — trusted head: the stored chain must terminate at trusted_head.
+    if trusted_head is not None and chain_path.exists() and chain_head(bundle_dir) != trusted_head:
+        reasons.append("chain:trusted_head_mismatch")
+
+    # Check 4 — signature.
+    _check_signature(raw, strict_signature, reasons)
+
+    # Check 5 — data manifest Merkle recompute.
+    _check_data_manifest(bundle, reasons)
+
+    # Check 6 — sidecar hashes.
+    sidecar_bytes = _check_sidecars(bundle, bundle_dir, reasons)
+
+    # Check 7 — metric recomputation from trade-log bytes (A1 F2).
+    metrics_match = _check_metrics_recompute(bundle, sidecar_bytes.get("trade_log"), reasons)
+
+    # Check 8 — env fingerprint (warning only, A3 F5.2).
+    current_env = env_fingerprint().model_dump(mode="json")
+    if current_env != bundle.env.model_dump(mode="json"):
+        env_mismatch = True
+
+    # Check 9 — optional deterministic replay.
+    if replay:
+        from quant_fund.proof.replay import replay_bundle
+
+        replay_ok, replay_detail = replay_bundle(
+            bundle_path,
+            bundle_dir=bundle_dir,
+            pit_root=pit_root,
+        )
+        if not replay_ok:
+            reasons.append(f"replay:{replay_detail}")
+
+    return VerificationResult(
+        ok=not reasons,
+        reasons=reasons,
+        env_mismatch=env_mismatch,
+        metrics_match=metrics_match,
+    )
