@@ -144,6 +144,7 @@ nav:
       - Research references: RESEARCH_REFERENCES.md
       - Institutional readiness: INSTITUTIONAL_READINESS.md
   - Data sources:
+      - Trading calendars: CALENDARS.md
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
       - Data lake: DATA_LAKE.md
@@ -228,7 +229,6 @@ nav:
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
-  - Market replay viewer: REPLAY_VIZ.md
   - API reference:
       - Research evidence service: RESEARCH_API.md
       - api/index.md
