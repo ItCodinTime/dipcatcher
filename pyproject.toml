@@ -55,6 +55,7 @@ fx1 = "fx1.cli:app"
 # evaluate, and verify fx-1.
 quant = "quant_fund.cli.main:app"
 dipcatcher = "quant_fund.cli.main:app"
+verify-ledger = "quant_fund.audit.cli:main"
 mc-engine = "quant_fund.mc_engine.cli:app"
 
 [dependency-groups]
