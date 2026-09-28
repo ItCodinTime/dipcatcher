@@ -269,10 +269,10 @@ def test_lh001_function_allowlist_still_flags_nested_helper(tmp_path: Path) -> N
     """A helper nested inside the label function is a different function and stays scanned."""
     rel = Path("src/quant_fund/microstructure/candle_book_features.py")
     source = (
-        "def forward_close_return_labels(close):\n"
-        "    def leaked_close_feature(series):\n"
-        "        return series.shift(-1)\n"
-        "    return leaked_close_feature(close)\n"
+        "def forward_close_return_labels(frame):\n"
+        "    def leaked_close_feature(close):\n"
+        "        return close.shift(-1)\n"
+        "    return leaked_close_feature(frame)\n"
     )
     path = tmp_path / rel
     path.parent.mkdir(parents=True)
@@ -280,7 +280,7 @@ def test_lh001_function_allowlist_still_flags_nested_helper(tmp_path: Path) -> N
     report = scan_paths([path], rules={"LH001"})
     lh001 = [f for f in report.findings if f.rule_id == "LH001"]
     assert len(lh001) == 1
-    assert lh001[0].snippet == "return series.shift(-1)"
+    assert lh001[0].snippet == "return close.shift(-1)"
 
 
 @pytest.mark.parametrize("headline", ["Sharpe:2.1", "P&L=$4,200"])
