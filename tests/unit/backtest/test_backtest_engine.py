@@ -333,6 +333,7 @@ def test_export_backtest_metrics_json_keeps_previous_receipt_on_replace_failure(
     tmp_path, monkeypatch
 ) -> None:
     import quant_fund.backtest.engine as engine
+    import quant_fund.utils.atomicio as atomicio
 
     result = engine.BacktestResult(
         equity=pl.DataFrame({"event_time": [], "nav": []}),
@@ -347,7 +348,7 @@ def test_export_backtest_metrics_json_keeps_previous_receipt_on_replace_failure(
     def fail_replace(_source, _destination):
         raise OSError("simulated publication failure")
 
-    monkeypatch.setattr(engine.os, "replace", fail_replace)
+    monkeypatch.setattr(atomicio.os, "replace", fail_replace)
     with pytest.raises(OSError, match="simulated publication failure"):
         engine.export_backtest_metrics_json(result, out)
 

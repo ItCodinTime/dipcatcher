@@ -7,11 +7,9 @@ moves. Rejected orders are skipped (not silently unconstrained).
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any, cast
 
 import numpy as np
@@ -36,6 +34,7 @@ from quant_fund.portfolio.risk_gate import check_order, funded
 from quant_fund.risk.overlay import BookRiskOverlay
 from quant_fund.schemas.errors import KillSwitchActive, RiskGateRejected
 from quant_fund.schemas.orders import Order, OrderSide, OrderStatus
+from quant_fund.utils.atomicio import atomic_write_text
 
 
 class StaleValuationError(RuntimeError):
@@ -742,26 +741,7 @@ def cost_sensitivity(
 
 def _atomic_write_text(path: Path, content: str) -> None:
     """Publish a text artifact atomically so readers never see partial JSON."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary: Path | None = None
-    try:
-        with NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            temporary = Path(handle.name)
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        temporary = None
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
+    atomic_write_text(path, content)
 
 
 def export_backtest_metrics_json(

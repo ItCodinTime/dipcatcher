@@ -32,6 +32,7 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.inference import bootstrap_sharpe_ci
 from quant_fund.metrics.overfitting import deflated_sharpe, moments_from_returns
 from quant_fund.metrics.returns import max_drawdown
+from quant_fund.utils.atomicio import atomic_write_parquet, atomic_write_text
 
 _NY = ZoneInfo("America/New_York")
 _ROOT = Path(__file__).resolve().parents[3]
@@ -466,7 +467,7 @@ def fetch_yahoo_panel(spec: dict[str, Any], cache: Path) -> tuple[pl.DataFrame, 
     prepared = prepare_bars(panel)
     cache.mkdir(parents=True, exist_ok=True)
     parquet_path = cache / "bars.parquet"
-    prepared.write_parquet(parquet_path)
+    atomic_write_parquet(prepared, parquet_path)
     from quant_fund.proofcore.contracts import sha256_hex_bytes
 
     digest = sha256_hex_bytes(parquet_path.read_bytes())
@@ -753,8 +754,7 @@ def write_results_markdown(path: Path, receipt: dict[str, Any], audit_entry_hash
             "",
         ]
     )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(path, "\n".join(lines) + "\n")
 
 
 def _fmt(value: object) -> str:
@@ -874,9 +874,10 @@ def run_sweep(
     with ProvenanceDB(db) as prov:
         stored = prov.trials()
     ledger.parent.mkdir(parents=True, exist_ok=True)
-    with ledger.open("w", encoding="utf-8") as handle:
-        for row in stored:
-            handle.write(json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n")
+    atomic_write_text(
+        ledger,
+        "".join(json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n" for row in stored),
+    )
     write_trial_csv(stored, csv_out)
 
     return_rows: list[dict[str, Any]] = []
@@ -900,7 +901,7 @@ def run_sweep(
                 )
     returns_frame = pl.DataFrame(return_rows)
     returns_file = returns_path or (_ROOT / "research" / "reality" / "returns.parquet")
-    returns_frame.write_parquet(returns_file)
+    atomic_write_parquet(returns_frame, returns_file)
     from quant_fund.proofcore.contracts import sha256_hex_bytes
 
     returns_sha = sha256_hex_bytes(returns_file.read_bytes())
@@ -954,9 +955,9 @@ def run_sweep(
     )
     safe["receipt_sha256"] = sha256_hex_bytes(encoded)
     receipt_file = receipt_path or (_ROOT / "research" / "reality" / "receipt.json")
-    receipt_file.write_text(
+    atomic_write_text(
+        receipt_file,
         json.dumps(safe, indent=2, sort_keys=True, allow_nan=False) + "\n",
-        encoding="utf-8",
     )
     from quant_fund.audit.ledger import AuditLedger
     from quant_fund.audit.record import record_research_receipt
@@ -968,7 +969,7 @@ def run_sweep(
     signer = Ed25519Signer.generate()
     audit = AuditLedger(audit_root, signer=signer, sign_every=1)
     entry = record_research_receipt(audit, receipt_file)
-    (audit_root / "trust_pub.hex").write_text(signer.public_key_hex + "\n", encoding="utf-8")
+    atomic_write_text(audit_root / "trust_pub.hex", signer.public_key_hex + "\n")
     results = results_path or (_ROOT / "docs" / "REALITY_TRIAL_2026.md")
     write_results_markdown(results, safe, entry.entry_hash)
     print(

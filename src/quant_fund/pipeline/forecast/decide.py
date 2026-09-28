@@ -32,6 +32,7 @@ from quant_fund.portfolio.interval_risk import apply_interval_caps, interval_ref
 from quant_fund.portfolio.optimizer import optimize_mean_variance
 from quant_fund.schemas.errors import OptimizationInfeasible
 from quant_fund.schemas.forecast import AssetForecast, IntervalMethod, MarketState
+from quant_fund.utils.atomicio import atomic_write_parquet
 
 from .artifacts import (
     _load_probability_calibrator,
@@ -611,7 +612,7 @@ def optimize_asof(
     out = pl.DataFrame(payload)
     if persist:
         Path(config.data.root).joinpath("gold").mkdir(parents=True, exist_ok=True)
-        out.write_parquet(Path(config.data.root) / "gold" / "target_weights.parquet")
+        atomic_write_parquet(out, Path(config.data.root) / "gold" / "target_weights.parquet")
     _ = diag
     return out
 

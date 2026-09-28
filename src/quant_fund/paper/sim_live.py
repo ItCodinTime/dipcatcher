@@ -40,6 +40,7 @@ from quant_fund.paper.quantile_signals import (
     load_deep_bars,
     quantile_panels_to_weights,
 )
+from quant_fund.utils.atomicio import atomic_write_text
 
 
 def _sha256(path: Path) -> str:
@@ -472,7 +473,7 @@ def run_sim_live(
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = out_dir / f"sim_live_{effective_run_id}.json"
-    receipt_path.write_text(json.dumps(receipt, indent=2, default=str))
+    atomic_write_text(receipt_path, json.dumps(receipt, indent=2, default=str))
     return SimLiveResult(
         run_id=effective_run_id,
         receipt_path=receipt_path,

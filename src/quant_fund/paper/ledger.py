@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
-import tempfile
 from datetime import datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
@@ -14,6 +12,8 @@ import polars as pl
 
 from quant_fund.execution.simulated_broker import BrokerSnapshot, OrderRecord, SimulatedBroker
 from quant_fund.metrics.analytics import analytics_export_digest, validate_analytics_export
+from quant_fund.utils import atomicio
+from quant_fund.utils.atomicio import atomic_write_parquet, atomic_write_text
 from quant_fund.utils.hashing import hash_bytes, receipt_tree
 
 
@@ -64,43 +64,15 @@ def _nan() -> float:
 
 
 def _fsync_directory(path: Path) -> None:
-    """Make an atomic replacement visible after a host crash when supported."""
-    try:
-        fd = os.open(path, os.O_RDONLY)
-    except OSError:
-        return
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+    atomicio._fsync_directory(path)
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
-    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    temporary_path = Path(temporary)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
-        _fsync_directory(path.parent)
-    finally:
-        temporary_path.unlink(missing_ok=True)
+    atomic_write_text(path, text)
 
 
 def _atomic_write_parquet(frame: pl.DataFrame, path: Path) -> None:
-    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".parquet", dir=path.parent)
-    temporary_path = Path(temporary)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            frame.write_parquet(handle)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
-        _fsync_directory(path.parent)
-    finally:
-        temporary_path.unlink(missing_ok=True)
+    atomic_write_parquet(frame, path)
 
 
 def _order_row(rec: OrderRecord, asof: datetime | None) -> dict[str, Any]:

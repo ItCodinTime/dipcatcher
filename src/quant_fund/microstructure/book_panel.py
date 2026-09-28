@@ -21,6 +21,7 @@ from quant_fund.microstructure.book_metrics import (
     book_metrics_from_snapshot,
 )
 from quant_fund.schemas.order_book import OrderBookSnapshot
+from quant_fund.utils.atomicio import atomic_write_parquet
 
 # Required interchange columns (join keys + top-of-book + depth metrics).
 BOOK_PANEL_REQUIRED: tuple[str, ...] = (
@@ -147,7 +148,7 @@ def write_book_panel(frame: pl.DataFrame, path: Path | str) -> Path:
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     panel = validate_book_panel(frame)
-    panel.write_parquet(out)
+    atomic_write_parquet(panel, out)
     return out
 
 

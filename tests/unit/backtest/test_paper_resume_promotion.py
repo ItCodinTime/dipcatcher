@@ -8,6 +8,7 @@ import polars as pl
 import pytest
 
 import quant_fund.paper.ledger as ledger_module
+import quant_fund.utils.atomicio as atomicio
 from quant_fund.config.loader import load_config
 from quant_fund.monitoring.kill_switch import HALT_NEW_ORDERS
 from quant_fund.paper.ledger import PaperLedger, load_broker_state, promotion_dry_run
@@ -216,7 +217,7 @@ def test_paper_receipt_atomic_publish_preserves_previous_on_replace_failure(tmp_
     def fail_replace(_source, _destination):
         raise OSError("simulated receipt publish failure")
 
-    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    monkeypatch.setattr(atomicio.os, "replace", fail_replace)
     with pytest.raises(OSError, match="simulated receipt publish failure"):
         ledger.write_promotion_dry_run({"version": 2, "status": "complete"})
 
@@ -236,7 +237,7 @@ def test_paper_ledger_atomic_parquet_publish_preserves_previous_on_replace_failu
     def fail_replace(_source, _destination):
         raise OSError("simulated parquet publish failure")
 
-    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    monkeypatch.setattr(atomicio.os, "replace", fail_replace)
     ledger.record_shadow_equity({"event_time": "2024-01-02", "nav": 1.1})
     with pytest.raises(OSError, match="simulated parquet publish failure"):
         ledger.flush()
@@ -255,7 +256,7 @@ def test_paper_analytics_export_atomic_publish_preserves_previous_on_replace_fai
     def fail_replace(_source, _destination):
         raise OSError("simulated analytics publish failure")
 
-    monkeypatch.setattr(ledger_module.os, "replace", fail_replace)
+    monkeypatch.setattr(atomicio.os, "replace", fail_replace)
     with pytest.raises(OSError, match="simulated analytics publish failure"):
         ledger.write_analytics_export({"version": 2, "status": "complete"})
 

@@ -40,6 +40,7 @@ from quant_fund.pipeline.dataset import (
 from quant_fund.pipeline.forecast import build_causal_weight_panel, clear_forecast_caches
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.risk.overlay import BookRiskOverlay
+from quant_fund.utils.atomicio import atomic_write_parquet, atomic_write_text
 
 
 class HedgeLabProtocol(BaseModel):
@@ -202,7 +203,7 @@ def run_hedge_lab(
     weights = build_causal_weight_panel(cfg, dates)
     if not weights.is_empty():
         for art in arts:
-            weights.write_parquet(art / "weights.parquet")
+            atomic_write_parquet(weights, art / "weights.parquet")
     # Valuation tape is the full silver lake (union calendar). Membership-filtered
     # gold is for signals only: a name that rotates out of top-N ADV must still
     # be markable so the book can flatten instead of going stale.
@@ -263,7 +264,7 @@ def run_hedge_lab(
             boot_m = moving_block_bootstrap_ci(rets_m, n_boot=boot_n)
         if not result_m.equity.is_empty():
             for art in arts:
-                result_m.equity.write_parquet(art / "equity_mirror.parquet")
+                atomic_write_parquet(result_m.equity, art / "equity_mirror.parquet")
         mirror_blob = {
             "status": "ok",
             "enabled": True,
@@ -323,7 +324,7 @@ def run_hedge_lab(
         raise AssertionError("hedge-lab research twin leaked nested forbidden keys")
     if not result.equity.is_empty():
         for art in arts:
-            result.equity.write_parquet(art / "equity.parquet")
+            atomic_write_parquet(result.equity, art / "equity.parquet")
     ram_claim_stats: dict[str, Any] = {"status": "skipped"}
     claimed = None
     do_claim = proto.claim_ram if claim_ram is None else bool(claim_ram)
@@ -370,11 +371,11 @@ def run_hedge_lab(
     }
     dest = root / "metadata" / "hedge_lab_receipt.json"
     payload = json.dumps(receipt, indent=2, default=str)
-    dest.write_text(payload, encoding="utf-8")
+    atomic_write_text(dest, payload)
     published = dest
     for art in arts:
         published = art / "latest.json"
-        published.write_text(payload, encoding="utf-8")
+        atomic_write_text(published, payload)
     receipt["receipt_path"] = str(dest)
     receipt["artifact_path"] = str(published)
     del claimed

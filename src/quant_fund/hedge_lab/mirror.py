@@ -21,6 +21,7 @@ from numpy.typing import NDArray
 from quant_fund.hedge_lab.scoreboard import book_economic_scoreboard
 from quant_fund.models.asset_pricing import date_groups
 from quant_fund.models.cs_papers import _mean_date_ic
+from quant_fund.utils.atomicio import atomic_write_text
 from quant_fund.validation.walk_forward import timestamp_ns, walk_forward
 
 Array = NDArray[np.float64]
@@ -318,10 +319,10 @@ def run_file_tape_mirror(
     root = cfg.data.root
     out = Path(root) / "metadata" / f"mirror_anti_{label}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
+    atomic_write_text(out, json.dumps(receipt, indent=2, default=str))
     public = Path("artifacts") / "hedge_lab" / "mirror_latest.json"
     public.parent.mkdir(parents=True, exist_ok=True)
-    public.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
+    atomic_write_text(public, json.dumps(receipt, indent=2, default=str))
     receipt["receipt_path"] = str(out)
     receipt["artifact_path"] = str(public)
     return receipt

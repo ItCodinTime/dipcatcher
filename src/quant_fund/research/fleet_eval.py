@@ -19,12 +19,10 @@ correctness evidence, not market data.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any
 
 import numpy as np
@@ -56,6 +54,7 @@ from quant_fund.models.regime_dist import RegimeDistribution
 from quant_fund.models.skew_t import skew_t_ppf
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.research.receipt_v2 import build_receipt_v2, seal_receipt
+from quant_fund.utils.atomicio import publish_text_once
 from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 from quant_fund.utils.reproducibility import git_revision
 
@@ -767,37 +766,7 @@ def run_distribution_fleet(
 
 def _atomic_write_text(path: Path, content: str) -> None:
     """Publish a complete immutable text artifact without replacing an existing one."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.is_symlink():
-        raise FileExistsError(f"receipt path is a symlink: {path}")
-    if path.exists():
-        if path.read_text(encoding="utf-8") != content:
-            raise FileExistsError(f"receipt already exists with different content: {path}")
-        return
-    temporary_path: Path | None = None
-    try:
-        with NamedTemporaryFile(
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            mode="w",
-            encoding="utf-8",
-            delete=False,
-        ) as temporary:
-            temporary_path = Path(temporary.name)
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        try:
-            os.link(temporary_path, path)
-        except FileExistsError:
-            if path.is_symlink() or path.read_text(encoding="utf-8") != content:
-                raise FileExistsError(
-                    f"receipt already exists with different content: {path}"
-                ) from None
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+    publish_text_once(path, content)
 
 
 def fleet_v1_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
