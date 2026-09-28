@@ -387,6 +387,65 @@ def mixture_stability_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def mixture_stability_consistency_errors(body: Mapping[str, Any]) -> list[str]:
+    """Re-derive leader/p_leader/CI coherence from the embedded mixer
+    reports — catches a tampered ``leader`` or ``regret_ci``."""
+    payload = body.get("payload")
+    if not isinstance(payload, Mapping):
+        return []
+    shards = payload.get("shards")
+    if not isinstance(shards, list):
+        return []
+    errors: list[str] = []
+    for report in shards:
+        if not isinstance(report, Mapping):
+            continue
+        tag = report.get("shard", "?")
+        mixers = report.get("mixers")
+        if not isinstance(mixers, Mapping):
+            continue
+        for mixer_name, mix in mixers.items():
+            if not isinstance(mix, Mapping):
+                continue
+            loc = f"{tag}:{mixer_name}"
+            w_obs = mix.get("w_obs")
+            if isinstance(w_obs, Mapping) and w_obs:
+                total = sum(float(w) for w in w_obs.values())
+                if not np.isclose(total, 1.0, atol=1e-6):
+                    errors.append(f"weights_not_simplex:{loc}")
+                want_leader = max(w_obs, key=lambda k: float(w_obs[k]))
+                leader = mix.get("leader")
+                p_leader = mix.get("p_leader")
+                if p_leader is None:
+                    if leader is not None:
+                        errors.append(f"leader_defined_when_uniform:{loc}")
+                elif leader != want_leader:
+                    errors.append(f"leader_mismatch:{loc}")
+                if isinstance(p_leader, Mapping):
+                    for name, p in p_leader.items():
+                        if p is None or not 0.0 <= float(p) <= 1.0:
+                            errors.append(f"p_leader_out_of_range:{loc}:{name}")
+                    stability = mix.get("leader_stability")
+                    if (
+                        leader is not None
+                        and leader in p_leader
+                        and (
+                            stability is None
+                            or not np.isclose(float(stability), float(p_leader[leader]), atol=1e-12)
+                        )
+                    ):
+                        errors.append(f"leader_stability_mismatch:{loc}")
+            regret_ci = mix.get("regret_ci")
+            if isinstance(regret_ci, list) and len(regret_ci) == 3:
+                lo, med, hi = (float(x) for x in regret_ci)
+                if not lo <= med <= hi:
+                    errors.append(f"regret_ci_not_ordered:{loc}")
+        bv = report.get("bound_violations")
+        if bv is not None and (not isinstance(bv, int) or bv < 0):
+            errors.append(f"bound_violations_invalid:{tag}")
+    return errors
+
+
 def write_mixture_stability_receipt(receipt: Mapping[str, Any], out_dir: Path) -> Path:
     """Write the sealed receipt under ``receipts/`` keyed by content digest."""
     errors = mixture_stability_contract_errors(receipt)
@@ -425,6 +484,7 @@ __all__ = [
     "MIXTURE_STABILITY_SCHEMA",
     "MIXERS",
     "format_mixture_stability_table",
+    "mixture_stability_consistency_errors",
     "mixture_stability_contract_errors",
     "run_mixture_stability",
     "run_mixture_stability_eval",

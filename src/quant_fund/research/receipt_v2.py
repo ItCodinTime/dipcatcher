@@ -386,6 +386,12 @@ def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
+    if payload.get("kind") == "mixture_stability_eval":
+        from quant_fund.research.mixture_stability import (
+            mixture_stability_consistency_errors,
+        )
+
+        return mixture_stability_consistency_errors(payload)
     return []
 
 
