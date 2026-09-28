@@ -70,4 +70,7 @@ jobs:
       - name: Ruff format check
         run: uvx ruff@0.16.8 format --check replay/scripts tests/unit/replay_viz
       - name: Fixture generator unit tests
-        run: uvx --from pytest==9.1.1 pytest tests/unit/replay_viz -q
+        # Isolated pytest, on purpose: this job does not sync the lab env.
+        # The repo conftest imports quant_fund (polars and the rest). These
+        # tests load replay/scripts/gen_fixture.py by path and do not use it.
+        run: uvx --from pytest==9.1.1 pytest tests/unit/replay_viz -q --noconftest

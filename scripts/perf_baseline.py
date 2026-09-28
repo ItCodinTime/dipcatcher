@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Performance-baseline regression harness for quant_fund hot paths.
 
-Records median-of-5 wall timings for pure-CPU benchmarks over the repo's
-scoring / inference / multiple-testing kernels, then compares a new run
-against a stored baseline. A bench regresses when it is slower than
-``threshold`` x baseline (default 1.25, in the style of pybroker's CI
-gate); >threshold speedups are reported as informational ratchet
+Each bench is timed min-of-7 alongside a single-threaded calibration
+workload timed in the same loop; the gated quantity is the **normalized ratio**
+``bench_seconds / calibration_seconds``, medianed across repeats. Sustained
+CPU contention inflates numerator and denominator alike, so the ratio cancels
+it (the convention used by tests/perf/check_regression.py); transient spikes
+are discarded by the per-iteration min/median. This makes baselines
+cross-machine comparable to first order — a CI-recorded baseline is a fair
+reference for a PR run on a different runner. A bench regresses when its
+normalized ratio exceeds ``threshold`` x baseline (default 1.5, matching the
+tests/perf +50% gate); >threshold speedups are reported as informational ratchet
 opportunities, not failures. Benches missing from either file fail the
 comparison closed. Timing harness only — research diagnostic, not market
 evidence; no live-PnL claim.
@@ -46,39 +51,53 @@ from quant_fund.metrics.scoring import crps_from_quantiles  # noqa: E402
 from quant_fund.metrics.snooping import reality_check  # noqa: E402
 from quant_fund.utils.reproducibility import git_revision  # noqa: E402
 
-REPEATS = 5
-DEFAULT_THRESHOLD = 1.25
+REPEATS = 7
+# 1.5x on normalized ratios matches the tests/perf gate convention (+50%
+# over baseline). Measured worst-case drift under a 20-way yes-storm on a
+# 10-core machine was ~1.26x; genuine kernel regressions are far above that.
+DEFAULT_THRESHOLD = 1.5
 WATERMARK = "research-only; no live-PnL claim"
 
 BenchFn = Callable[[np.random.Generator, int], object]
 
 
 def _bench_crps_quantiles(rng: np.random.Generator, n: int) -> float:
-    """CRPS-from-quantiles over a 19-point equispaced quantile grid."""
+    """CRPS-from-quantiles over a 19-point equispaced quantile grid, 8 inner reps."""
     taus = np.linspace(0.05, 0.95, 19)
-    y = rng.normal(size=n)
-    quantiles = y[:, None] + rng.normal(0.0, 0.5, size=(n, taus.size)) + (taus[None, :] - 0.5)
-    return float(crps_from_quantiles(y, quantiles, taus))
+    out = 0.0
+    for _ in range(8):
+        y = rng.normal(size=n)
+        quantiles = y[:, None] + rng.normal(0.0, 0.5, size=(n, taus.size)) + (taus[None, :] - 0.5)
+        out = float(crps_from_quantiles(y, quantiles, taus))
+    return out
 
 
 def _bench_stationary_bootstrap(rng: np.random.Generator, n: int) -> np.ndarray:
-    """Stationary bootstrap index matrix, B=1000 draws on ``n`` dates."""
+    """Stationary bootstrap index matrix, B=1000 draws on ``n`` dates, 5 inner reps."""
     mean_block = float(min(12.0, max(1.0, n / 4.0)))
     out: NDArray[np.intp] = stationary_bootstrap_indices(n, 1000, mean_block, rng)
+    for _ in range(4):
+        out = stationary_bootstrap_indices(n, 1000, mean_block, rng)
     return out
 
 
 def _bench_reality_check_battery(rng: np.random.Generator, n: int) -> object:
-    """White reality check on 6 rankers x ``n`` dates, B=1000 (INFLIGHT hot path)."""
-    f = rng.normal(0.0, 1.0, size=(n, 6))
-    f += np.linspace(-0.05, 0.15, 6)[None, :]
-    return reality_check(f, n_boot=1000)
+    """White reality check on 6 rankers x ``n`` dates, B=1000, 4 inner reps."""
+    out = None
+    for _ in range(4):
+        f = rng.normal(0.0, 1.0, size=(n, 6))
+        f += np.linspace(-0.05, 0.15, 6)[None, :]
+        out = reality_check(f, n_boot=1000)
+    return out
 
 
 def _bench_conformal_quantile(rng: np.random.Generator, n: int) -> float:
-    """Split-conformal quantile of ``n`` absolute residual scores."""
-    scores = np.abs(rng.normal(size=n))
-    return float(conformal_quantile(scores, 0.1))
+    """Split-conformal quantile of ``n`` absolute residual scores, 5 inner reps."""
+    out = 0.0
+    for _ in range(5):
+        scores = np.abs(rng.normal(size=n))
+        out = float(conformal_quantile(scores, 0.1))
+    return out
 
 
 def _bench_e_bh(rng: np.random.Generator, n: int) -> object:
@@ -90,10 +109,16 @@ def _bench_e_bh(rng: np.random.Generator, n: int) -> object:
 
 
 def _bench_energy_score(rng: np.random.Generator, n: int) -> float:
-    """Energy score of an (n, 8) Gaussian ensemble against one observation."""
-    ensemble = rng.normal(0.0, 1.0, size=(n, 8))
-    observation = rng.normal(0.0, 1.0, size=8)
-    return float(energy_score(ensemble, observation))
+    """Energy score of an (n, 8) Gaussian ensemble against one observation, 5 reps.
+
+    ``n`` stays moderate: the cdist pairwise matrix is O(n^2) memory.
+    """
+    out = 0.0
+    for _ in range(5):
+        ensemble = rng.normal(0.0, 1.0, size=(n, 8))
+        observation = rng.normal(0.0, 1.0, size=8)
+        out = float(energy_score(ensemble, observation))
+    return out
 
 
 BENCHES: dict[str, BenchFn] = {
@@ -108,18 +133,38 @@ BENCHES: dict[str, BenchFn] = {
 # Fixed input sizes; tests monkeypatch this dict with tiny sizes so record()
 # stays fast. Keys must stay exactly in sync with BENCHES (validated at record
 # and compare time — a drifted registry fails closed rather than silently
-# dropping a bench).
+# dropping a bench). Sizes are chosen so each bench runs ~0.25-0.6s per timed
+# iteration: sub-50ms medians made the gate flaky on timer noise alone
+# (measured 1.3-1.7x run-to-run on a quiet machine).
 BENCH_SIZES: dict[str, int] = {
-    "crps_quantiles": 20_000,
-    "stationary_bootstrap": 600,
-    "reality_check_battery": 240,
-    "conformal_quantile": 200_000,
-    "e_bh": 2_000,
-    "energy_score": 2_000,
+    "crps_quantiles": 100_000,
+    "stationary_bootstrap": 3_000,
+    "reality_check_battery": 2_000,
+    "conformal_quantile": 4_000_000,
+    "e_bh": 20_000,
+    "energy_score": 4_000,
 }
 
 # Per-bench fixed seeds so timings are reproducible run to run.
 BENCH_SEEDS: dict[str, int] = {name: 20_260_927 + 1_000 * i for i, name in enumerate(BENCHES)}
+
+# Calibration workload: fixed single-threaded numpy sort+scale timed inside
+# each repeat iteration. Deliberately NOT a BLAS matmul: multithreaded BLAS
+# collapses differently than the single-threaded/memory-bound benches under
+# scheduler contention, which left ratios inflated ~1.5x under a yes-storm.
+# A sort shares the benches' CPU+memory-bandwidth profile, so the normalized
+# ratio cancels sustained load to first order (same normalization idea as
+# tests/perf/check_regression.py, single-threaded variant).
+_CALIBRATION_N = 4_000_000
+_CALIBRATION_REPS = 4
+
+
+def _bench_calibration(rng: np.random.Generator) -> float:
+    """Reference workload used to normalize contention out of bench timings."""
+    out = 0.0
+    for _ in range(_CALIBRATION_REPS):
+        out += float(np.sort(rng.normal(size=_CALIBRATION_N))[-1])
+    return out
 
 
 class BaselineError(ValueError):
@@ -135,17 +180,31 @@ def _check_registry() -> None:
         )
 
 
-def _time_bench(fn: BenchFn, seed: int, size: int) -> float:
+def _time_bench(fn: BenchFn, seed: int, size: int) -> tuple[float, float, float]:
+    """Time *fn* for ``REPEATS`` iterations, interleaved with calibration runs.
+
+    Returns ``(min_seconds, normalized, calibration_seconds)`` where
+    ``normalized`` is the median per-iteration ratio ``bench / calibration``.
+    """
     rng = np.random.default_rng(seed)
-    timings = []
+    timings: list[float] = []
+    cal_timings: list[float] = []
+    ratios: list[float] = []
     for _ in range(REPEATS):
         start = time.perf_counter()
         fn(rng, size)
         timings.append(time.perf_counter() - start)
-    median = float(statistics.median(timings))
-    if not math.isfinite(median) or median <= 0.0:
-        raise RuntimeError(f"non-finite or non-positive median timing: {median!r}")
-    return median
+        start = time.perf_counter()
+        _bench_calibration(rng)
+        cal_timings.append(time.perf_counter() - start)
+        ratios.append(timings[-1] / cal_timings[-1])
+    best = float(min(timings))
+    normalized = float(statistics.median(ratios))
+    cal_best = float(min(cal_timings))
+    for value, label in ((best, "min"), (normalized, "normalized"), (cal_best, "calibration")):
+        if not math.isfinite(value) or value <= 0.0:
+            raise RuntimeError(f"non-finite or non-positive {label} timing: {value!r}")
+    return best, normalized, cal_best
 
 
 def record(output_path: Path | str) -> dict[str, Any]:
@@ -153,8 +212,11 @@ def record(output_path: Path | str) -> dict[str, Any]:
     _check_registry()
     benches = {}
     for name, fn in BENCHES.items():
+        best, normalized, cal_best = _time_bench(fn, BENCH_SEEDS[name], BENCH_SIZES[name])
         benches[name] = {
-            "median_seconds": _time_bench(fn, BENCH_SEEDS[name], BENCH_SIZES[name]),
+            "normalized": normalized,
+            "min_seconds": best,
+            "calibration_seconds": cal_best,
             "repeats": REPEATS,
         }
     payload = {
@@ -186,15 +248,15 @@ def _load_baseline(path: Path | str) -> dict[str, dict[str, float]]:
     for name, entry in raw["benches"].items():
         if not isinstance(name, str) or not isinstance(entry, dict):
             raise BaselineError(f"{source}: bench entries must map names to objects")
-        median = entry.get("median_seconds")
-        if not isinstance(median, (int, float)) or isinstance(median, bool):
-            raise BaselineError(f"{source}: {name}.median_seconds must be a number")
-        if not math.isfinite(float(median)) or float(median) <= 0.0:
-            raise BaselineError(f"{source}: {name}.median_seconds must be finite and > 0")
+        normalized = entry.get("normalized")
+        if not isinstance(normalized, (int, float)) or isinstance(normalized, bool):
+            raise BaselineError(f"{source}: {name}.normalized must be a number")
+        if not math.isfinite(float(normalized)) or float(normalized) <= 0.0:
+            raise BaselineError(f"{source}: {name}.normalized must be finite and > 0")
         repeats = entry.get("repeats", REPEATS)
         if not isinstance(repeats, int) or isinstance(repeats, bool) or repeats < 1:
             raise BaselineError(f"{source}: {name}.repeats must be a positive integer")
-        out[name] = {"median_seconds": float(median), "repeats": repeats}
+        out[name] = {"normalized": float(normalized), "repeats": repeats}
     return out
 
 
@@ -203,8 +265,8 @@ class CompareResult:
     """Outcome of comparing a current run against a stored baseline.
 
     ``regressions`` and ``speedups`` are tuples of
-    (name, baseline_seconds, current_seconds, ratio). ``missing`` holds bench
-    names present in exactly one file. ``passed`` is False when any
+    (name, baseline_normalized, current_normalized, ratio). ``missing`` holds
+    bench names present in exactly one file. ``passed`` is False when any
     regression or any missing bench exists (fail closed); informational
     speedups never fail the comparison.
     """
@@ -234,8 +296,8 @@ def compare(
     regressions: list[tuple[str, float, float, float]] = []
     speedups: list[tuple[str, float, float, float]] = []
     for name in sorted(set(baseline) & set(current)):
-        base = baseline[name]["median_seconds"]
-        cur = current[name]["median_seconds"]
+        base = baseline[name]["normalized"]
+        cur = current[name]["normalized"]
         ratio = cur / base
         row = (name, base, cur, ratio)
         if ratio > threshold:
@@ -253,9 +315,9 @@ def compare(
 def _format_compare(result: CompareResult) -> str:
     lines = []
     for name, base, cur, ratio in result.regressions:
-        lines.append(f"REGRESSION {name}: {base:.6f}s -> {cur:.6f}s ({ratio:.2f}x)")
+        lines.append(f"REGRESSION {name}: {base:.4f} -> {cur:.4f} normalized ({ratio:.2f}x)")
     for name, base, cur, ratio in result.speedups:
-        lines.append(f"speedup    {name}: {base:.6f}s -> {cur:.6f}s ({ratio:.2f}x)")
+        lines.append(f"speedup    {name}: {base:.4f} -> {cur:.4f} normalized ({ratio:.2f}x)")
     for name in result.missing:
         lines.append(f"missing    {name}")
     lines.append("PASS" if result.passed else "FAIL")
