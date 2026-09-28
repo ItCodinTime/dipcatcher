@@ -80,7 +80,9 @@ def tsmom_book_returns(
     t_len, n_names = r.shape
     w = np.zeros((t_len, n_names), dtype=float)
     step = max(int(rebalance_every), 1)
-    delay = max(int(delay), 0)
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: weights at t may only read data through t-1")
+    delay = int(delay)
     start = lookback + delay
     prev: Array | None = None
     for t in range(start, t_len):
@@ -171,7 +173,9 @@ def topk_long_returns(
     k = max(int(top_k), 1)
     w = np.zeros((t_len, n_names), dtype=float)
     step = max(int(rebalance_every), 1)
-    delay = max(int(delay), 0)
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: weights at t may only read data through t-1")
+    delay = int(delay)
     warm = max(int(lookback), int(sma), int(crash_lookback))
     start = warm + delay
     held: list[int] | None = None
@@ -235,7 +239,9 @@ def antonacci_returns(
     pos_s = np.zeros(n, dtype=float)
     pos_t = np.zeros(n, dtype=float)
     step = max(int(rebalance_every), 1)
-    delay = max(int(delay), 0)
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: weights at t may only read data through t-1")
+    delay = int(delay)
     start = lookback + delay
     last = (0.0, 0.0)
     for t in range(start, n):
@@ -281,7 +287,9 @@ def risk_parity_blend(
     t_len, n_s = mat.shape
     w = np.zeros((t_len, n_s), dtype=float)
     lb = max(int(lookback), 8)
-    delay = max(int(delay), 0)
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: weights at t may only read data through t-1")
+    delay = int(delay)
     for t in range(lb + delay, t_len):
         end = t - delay + 1
         window = mat[end - lb : end]

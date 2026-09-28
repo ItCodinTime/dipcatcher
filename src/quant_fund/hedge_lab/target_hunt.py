@@ -124,10 +124,11 @@ def pair_spread_returns(
         elif cur != 0.0 and abs(z) <= exit_z:
             cur = 0.0
         pos[i] = cur
-    if delay > 0:
-        shifted = np.zeros(n)
-        shifted[delay:] = pos[:-delay]
-        pos = shifted
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: position at t may only read data through t-1")
+    shifted = np.zeros(n)
+    shifted[int(delay) :] = pos[: -int(delay)]
+    pos = shifted
     ry = np.zeros(n)
     rx = np.zeros(n)
     ry[1:] = y[1:] / np.maximum(y[:-1], _EPS) - 1.0

@@ -248,7 +248,9 @@ def etf_dual_momentum(
     t_len, n_names = px.shape
     w = np.zeros((t_len, n_names), dtype=float)
     step = max(int(rebalance_every), 1)
-    delay = max(int(delay), 0)
+    if int(delay) < 1:
+        raise ValueError("delay must be >= 1: weights at t may only read data through t-1")
+    delay = int(delay)
     start = int(lookback) + delay
     held: Array | None = None
     for t in range(start, t_len):
