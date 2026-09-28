@@ -19,6 +19,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.special import kolmogorov
 
+from quant_fund.utils.numeric import midrank
+
 Array = NDArray[np.float64]
 
 
@@ -83,7 +85,7 @@ def energy_test(
 def _cvm_statistic(x: Array, y: Array) -> float:
     nx, ny = x.size, y.size
     pooled = np.concatenate([x, y])
-    ranks = np.argsort(np.argsort(pooled)) + 1
+    ranks = midrank(pooled)  # midranks: cross-sample ties must not depend on row order
     rx = ranks[:nx]
     ry = ranks[nx:]
     i = np.arange(1, nx + 1)

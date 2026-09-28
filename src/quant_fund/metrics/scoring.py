@@ -10,6 +10,7 @@ from scipy.special import betaln, erf
 from scipy.stats import t as student_t
 
 from quant_fund.metrics.probability import pit_ks
+from quant_fund.utils.numeric import midrank
 from quant_fund.utils.series import as_named_1d, require_same_length
 
 Array = NDArray[np.float64]
@@ -838,15 +839,7 @@ def rank_ic(pred: Array, realized: Array) -> float:
 
 
 def _rankdata(x: Array) -> Array:
-    order = np.argsort(x, kind="mergesort")
-    ranks = np.empty_like(order, dtype=float)
-    ranks[order] = np.arange(1, x.size + 1, dtype=float)
-    # average ties
-    _, inv, counts = np.unique(x, return_inverse=True, return_counts=True)
-    if np.any(counts > 1):
-        sums = np.bincount(inv, weights=ranks)
-        ranks = sums[inv] / counts[inv]
-    return ranks
+    return midrank(x)
 
 
 def icir(ics: Array, annualize: bool = False, periods_per_year: float = 252.0) -> float:

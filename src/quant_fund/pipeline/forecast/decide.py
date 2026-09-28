@@ -32,6 +32,7 @@ from quant_fund.portfolio.interval_risk import apply_interval_caps, interval_ref
 from quant_fund.portfolio.optimizer import optimize_mean_variance
 from quant_fund.schemas.errors import OptimizationInfeasible
 from quant_fund.schemas.forecast import AssetForecast, IntervalMethod, MarketState
+from quant_fund.utils.numeric import midrank
 
 from .artifacts import (
     _load_probability_calibrator,
@@ -182,9 +183,8 @@ def forecast_asof(
                 if "cs_pct_mom_20" in day.columns
                 else np.zeros(day.height)
             )
-    # percentile ranks within the day
-    order = scores.argsort().argsort()
-    pct = (order + 0.5) / max(len(scores), 1)
+    # percentile ranks within the day (midranks — tied scores share a percentile)
+    pct = (midrank(scores) - 0.5) / max(len(scores), 1)
     if config.fusion.apply_probability_calibration:
         calibrator = _load_probability_calibrator(config, asof=asof)
         if "cs_pct_mom_20" not in day.columns:
@@ -220,8 +220,7 @@ def forecast_asof(
             scores[i] = (1.0 - blend) * float(scores[i]) + blend * float(hit.forecast.rank_score)
             alpha[i] = (1.0 - blend) * float(alpha[i]) + blend * mu
             conf[i] = (1.0 - blend) * float(conf[i]) + blend * float(hit.forecast.confidence)
-        order = scores.argsort().argsort()
-        pct = (order + 0.5) / max(len(scores), 1)
+        pct = (midrank(scores) - 0.5) / max(len(scores), 1)
         conf = np.clip(conf, 0.2, 1.0)
     regime = np.ones(day.height)
     tail = np.clip(vol * 0.1, 0, None)

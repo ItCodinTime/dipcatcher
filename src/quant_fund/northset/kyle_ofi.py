@@ -25,6 +25,7 @@ from numpy.typing import NDArray
 
 from quant_fund.metrics.cross_section import date_ic_series
 from quant_fund.metrics.inference import mean_tstat
+from quant_fund.utils.numeric import midrank
 
 Array = NDArray[np.float64]
 
@@ -529,9 +530,9 @@ def kyle_lambda_ofi_depth_corr(
     else:
         x = np.asarray([d_map[k] for k in shared], dtype=float)
         y = np.asarray([o_map[k] for k in shared], dtype=float)
-        # rank Spearman
-        rx = x.argsort().argsort().astype(float)
-        ry = y.argsort().argsort().astype(float)
+        # rank Spearman (midranks — ordinal ranks would depend on row order under ties)
+        rx = midrank(x)
+        ry = midrank(y)
         if np.std(rx) < 1e-18 or np.std(ry) < 1e-18:
             spearman = float("nan")
         else:

@@ -15,6 +15,7 @@ from scipy import stats
 
 from quant_fund.metrics.inference import mean_tstat
 from quant_fund.models.asset_pricing import date_groups
+from quant_fund.utils.numeric import midrank
 
 _IC_STD_FLOOR = 1e-15
 
@@ -62,15 +63,8 @@ def _block_key(value: object) -> object:
 
 
 def _average_rank(x: Array) -> Array:
-    """Average ranks, mergesort for ties. Matches ``scoring._rankdata``."""
-    order = np.argsort(x, kind="mergesort")
-    ranks = np.empty(x.shape[0], dtype=float)
-    ranks[order] = np.arange(1, x.shape[0] + 1, dtype=float)
-    _uniq, inverse, counts = np.unique(x, return_inverse=True, return_counts=True)
-    if np.any(counts > 1):
-        sums = np.bincount(inverse, weights=ranks)
-        ranks = sums[inverse] / counts[inverse]
-    return ranks
+    """Average ranks, mergesort for ties. Canonical impl: ``utils.numeric.midrank``."""
+    return midrank(x)
 
 
 def _pearson_pair(pred: Array, realized: Array) -> float:
