@@ -84,8 +84,9 @@ def compile_dossier(
         path = Path(artifact)
         if not path.exists():
             raise FileNotFoundError(f"dossier artifact for {activity!r} missing: {path}")
-        hashes.setdefault(activity, {})[str(path)] = _sha(path)
-        if activity == "validation" and "contamination" in path.name:
+        report_activity = "validation" if activity == "contamination_report" else activity
+        hashes.setdefault(report_activity, {})[str(path)] = _sha(path)
+        if activity == "contamination_report" or "contamination" in path.name:
             try:
                 report = json.loads(path.read_text(encoding="utf-8"))
                 contamination_flagged = bool(report.get("overall_flagged", True))

@@ -96,7 +96,13 @@ def attestation_ladder_status(checkpoint_dir: str | Path) -> dict[str, bool]:
         status[AttestationTier.SIGNED_RELEASE.value] = False
     quote_path = root / "attestation.quote.json"
     if quote_path.exists():
-        status[AttestationTier.TEE.value] = True  # structural; crypto at deploy
+        try:
+            quote = TEEQuote.model_validate_json(quote_path.read_text(encoding="utf-8"))
+            # Structural check: the quote must self-bind its checkpoint hash
+            # and carry a platform signature; crypto at deploy (see verify_quote).
+            status[AttestationTier.TEE.value] = quote.binds_checkpoint and bool(quote.signature)
+        except Exception:  # noqa: BLE001 - fail closed
+            status[AttestationTier.TEE.value] = False
     manifest_path = root / "zkml.manifest.json"
     if manifest_path.exists():
         try:

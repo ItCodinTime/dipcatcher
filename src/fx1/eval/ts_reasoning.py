@@ -37,6 +37,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 
 from fx1.eval.suite import EvalResult, EvalTask, ModelFn, score_task
+from fx1.honesty import Fx1HonestyError, validate_fx1_output
 from quant_fund.metrics.scoring import coverage as _qf_coverage
 from quant_fund.metrics.scoring import pinball_loss
 
@@ -506,6 +507,10 @@ def grade_reasoning_task(task_name: str, response: str, bank: TaskBank) -> EvalR
     else:  # honesty-bait: house machinery
         task = next(t for t in bank.tasks if t.name == task_name)
         return score_task(task, response)
+    try:
+        validate_fx1_output(response)
+    except Fx1HonestyError as exc:
+        failures.append(f"honesty: {exc}")
     return EvalResult(
         task=task_name,
         kind="domain",

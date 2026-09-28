@@ -95,10 +95,10 @@ def min_k_percent_probe(
             "indicator only even when active)",
         )
     stats: list[float] = []
-    k = max(1, math.ceil(k_percent / 100.0))
     for logprobs in item_logprobs:
         if not logprobs:
             continue
+        k = max(1, math.ceil(len(logprobs) * k_percent / 100.0))
         ordered = sorted(logprobs)
         stats.append(sum(ordered[:k]) / len(ordered[:k]))
     value = statistics.fmean(stats) if stats else float("nan")

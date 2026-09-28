@@ -16,6 +16,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from fx1.honesty import Fx1HonestyError, validate_fx1_output
+
 
 class ToolCall(BaseModel):
     name: str
@@ -72,9 +74,21 @@ class TraceRecorder:
         self._out.parent.mkdir(parents=True, exist_ok=True)
 
     def admit(self, trajectory: Trajectory, system: str) -> bool:
-        """Write the trajectory if admissible. Returns admission decision."""
+        """Write the trajectory if admissible. Returns admission decision.
+
+        Admission is refused when any assistant step violates the honesty
+        contract — recording the violation verbatim would contaminate the
+        corpus, even as a negative example.
+        """
+        messages = trajectory.to_sft_messages(system)
+        try:
+            for message in messages:
+                if message["role"] == "assistant":
+                    validate_fx1_output(message["content"])
+        except Fx1HonestyError:
+            return False
         record = {
-            "messages": trajectory.to_sft_messages(system),
+            "messages": messages,
             "receipt_sha256": trajectory.sha256,
             "source_path": f"trace:{trajectory.session_id}",
             "negative": not trajectory.verify_ok,

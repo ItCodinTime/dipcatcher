@@ -10,10 +10,13 @@ with no verdict teaches nothing verifiable.
 from __future__ import annotations
 
 import hashlib
+import math
 from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
+
+from fx1.honesty import FORBIDDEN_HEADLINE_TOKENS
 
 
 class GateVerdict(StrEnum):
@@ -94,10 +97,17 @@ _ALLOWED_SCORE_TOKENS = frozenset(
 
 def validate_trace_scores(scores: dict[str, float]) -> None:
     """Fail-closed: every score key must contain an allowed proper-score token."""
-    for key in scores:
+    for key, value in scores.items():
         tokens = set(key.lower().replace("-", "_").split("_"))
+        if tokens & FORBIDDEN_HEADLINE_TOKENS:
+            raise ValueError(
+                f"score key {key!r} is a forbidden headline metric, not a "
+                "recognized proper score; fx-1 traces carry scientific scores only"
+            )
         if not tokens & _ALLOWED_SCORE_TOKENS:
             raise ValueError(
                 f"score key {key!r} is not a recognized proper score; "
                 "fx-1 traces carry scientific scores only"
             )
+        if not math.isfinite(value):
+            raise ValueError(f"score {key!r} is not finite: {value!r}")

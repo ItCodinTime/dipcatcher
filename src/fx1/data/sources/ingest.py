@@ -25,6 +25,7 @@ from fx1.data.corpus import SFTExample
 from fx1.data.ledger import CorpusLedger
 from fx1.data.sources.base import FetchResult
 from fx1.data.sources.registry import get_spec
+from fx1.honesty import Fx1HonestyError, validate_fx1_output
 
 _TRANSFORM_PATH = Path(__file__).resolve()
 
@@ -124,6 +125,26 @@ def fetch_to_example(result: FetchResult, system: str) -> IngestDecision:
         )
 
     excerpt = result.text[:4000]
+    assistant = (
+        f"Payload from {spec.display} (`{result.api}`), "
+        f"observation date {result.as_of or 'n/a'}:\n```\n{excerpt}\n```\n"
+        f"Provenance: `{provenance}`.\nThis establishes only what the "
+        "source returned for that observation window; it is "
+        "research/backtest evidence, not live performance, and any "
+        "downstream claim must remain traceable to this payload hash."
+    )
+    try:
+        validate_fx1_output(assistant)
+    except Fx1HonestyError:
+        return IngestDecision(
+            accepted=False,
+            reason=(
+                "honesty gate: payload text violates the contract as quoted "
+                "(forbidden headline or live claim); refusing to quote it "
+                "into the corpus"
+            ),
+            payload_sha256=result.payload_sha256,
+        )
     example = SFTExample(
         messages=[
             {"role": "system", "content": system},
@@ -135,12 +156,7 @@ def fetch_to_example(result: FetchResult, system: str) -> IngestDecision:
             },
             {
                 "role": "assistant",
-                "content": f"Payload from {spec.display} (`{result.api}`), "
-                f"observation date {result.as_of or 'n/a'}:\n```\n{excerpt}\n```\n"
-                f"Provenance: `{provenance}`.\nThis establishes only what the "
-                "source returned for that observation window; it is "
-                "research/backtest evidence, not live performance, and any "
-                "downstream claim must remain traceable to this payload hash.",
+                "content": assistant,
             },
         ],
         receipt_sha256=result.payload_sha256,

@@ -203,7 +203,7 @@ def test_attestation_ladder_status(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("FX1_SIGNING_KEY", raising=False)
     status = attestation_ladder_status(tmp_path)
     assert status == {"signed_release": False, "tee": False, "selective_zkml": False}
-    (tmp_path / "attestation.quote.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "attestation.quote.json").write_text(_quote().model_dump_json(), encoding="utf-8")
     proof = tmp_path / "proof.bin"
     proof.write_bytes(b"zk")
     (tmp_path / "zkml.manifest.json").write_text(

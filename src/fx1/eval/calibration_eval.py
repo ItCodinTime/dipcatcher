@@ -419,7 +419,11 @@ def run_calibration_eval(
         except ValueError:  # degenerate constant forecasts: fail closed below
             z = math.nan
     passed = bool(
-        math.isfinite(ece) and ece <= ece_threshold and math.isfinite(z) and abs(z) <= z_threshold
+        n_unparseable == 0
+        and math.isfinite(ece)
+        and ece <= ece_threshold
+        and math.isfinite(z)
+        and abs(z) <= z_threshold
     )
     return CalibrationReport(
         seed=seed,

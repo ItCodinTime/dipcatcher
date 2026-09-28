@@ -22,8 +22,8 @@ def _claims_live(payload: object) -> bool:
     """Fail-closed scan: any mapping key token implying a live claim."""
     if isinstance(payload, dict):
         for key, value in payload.items():
-            token = str(key).lower().replace("-", "_")
-            if token == "live_pnl_claim" and value is True:
+            token = str(key).lower().replace("-", "_").replace("_", "")
+            if token == "livepnlclaim" and (value is True or str(value).lower() == "true"):
                 return True
             if _claims_live(value):
                 return True
@@ -53,7 +53,8 @@ def ledger_examples(path: str | Path, system: str) -> list[SFTExample]:
                     {
                         "role": "assistant",
                         "content": (
-                            f"No. Artifact {digest[:16]}… asserts a live P&L claim, "
+                            f"No. Artifact {digest[:16]}… asserts a live-trading "
+                            "performance claim, "
                             "which the honesty contract forbids as fx-1 evidence. "
                             "I will not summarize it as a result."
                         ),

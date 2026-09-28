@@ -17,8 +17,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-# Mirrors the lab's forbidden research-headline tokens.
-_FORBIDDEN_TOKENS = frozenset({"sharpe", "sortino", "calmar", "pnl", "nav"})
+from fx1.honesty import FORBIDDEN_HEADLINE_TOKENS
+
+# Shared with fx1.honesty so bench honesty cannot drift from the contract.
+_FORBIDDEN_TOKENS = FORBIDDEN_HEADLINE_TOKENS
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,8 @@ def detect_dip_events(
     peak_date = ""
     in_dip = False
     for i, (price, date) in enumerate(zip(closes, dates, strict=True)):
+        if not math.isfinite(price):
+            raise ValueError(f"close at index {i} is not finite: {price!r}")
         if price >= peak:
             peak, peak_date = price, date
             in_dip = False

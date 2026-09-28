@@ -15,6 +15,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from fx1.data.receipts import ReceiptRecord, load_receipts
+from fx1.honesty import Fx1HonestyError, validate_fx1_output
 
 SYSTEM_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "fx1_system.md"
 
@@ -74,7 +75,7 @@ def _positive_example(record: ReceiptRecord, system: str) -> SFTExample:
 def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
     reasons = []
     if record.live_pnl_claim:
-        reasons.append("it asserts a live P&L claim")
+        reasons.append("it asserts a live-trading performance claim")
     if not record.research_only:
         reasons.append("it is not marked research_only")
     reason = " and ".join(reasons) or "it fails eligibility"
@@ -82,7 +83,8 @@ def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
         f"Can we use this receipt (schema {record.schema_name}) as evidence of trading performance?"
     )
     assistant = (
-        f"No. This receipt is ineligible as fx-1 evidence because {reason}. "
+        f"No. This receipt is ineligible as fx-1 evidence because {reason}, "
+        "which the honesty contract treats as a live-performance claim. "
         "The lab's honesty contract forbids treating such artifacts as performance "
         "evidence; only gate-passed, research-scoped receipts with "
         "`live_pnl_claim=false` qualify. I will not summarize it as a result."
@@ -122,6 +124,13 @@ def build_corpus(
                 if record.eligible
                 else _negative_example(record, system)
             )
+            try:
+                validate_fx1_output(example.messages[-1]["content"])
+            except Fx1HonestyError:
+                # The payload carries contract-violating text; an example that
+                # quotes it would teach the violation, so it is skipped.
+                stats["skipped"] += 1
+                continue
             if record.eligible:
                 stats["positive"] += 1
             else:
@@ -155,8 +164,15 @@ def build_full_corpus(
     out_path = Path(out_jsonl)
     with out_path.open("a", encoding="utf-8") as fh:
         for example in extra:
+            try:
+                validate_fx1_output(example.messages[-1]["content"])
+            except Fx1HonestyError:
+                stats["skipped"] += 1
+                continue
+            if example.negative:
+                stats["negative"] += 1
+            else:
+                stats["positive"] += 1
             fh.write(example.model_dump_json() + "\n")
-    stats["positive"] += sum(1 for e in extra if not e.negative)
-    stats["negative"] += sum(1 for e in extra if e.negative)
     stats["loaded"] += len(extra)
     return stats

@@ -60,6 +60,8 @@ def mcnemar_statistic(base: list[bool], candidate: list[bool]) -> float:
 def compare_runs(
     base_pass: list[bool], candidate_pass: list[bool], *, seed: int = 7
 ) -> ComparisonResult:
+    if len(base_pass) != len(candidate_pass) or not base_pass:
+        raise ValueError("paired inputs must be non-empty and equal length")
     n = len(base_pass)
     base_rate = sum(base_pass) / n
     cand_rate = sum(candidate_pass) / n

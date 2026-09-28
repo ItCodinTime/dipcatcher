@@ -80,7 +80,10 @@ def run_suite(model_fn: ModelFn, tasks: list[EvalTask]) -> SuiteSummary:
         bucket = by_kind.setdefault(r.kind, {"passed": 0, "total": 0})
         bucket["total"] += 1
         bucket["passed"] += int(r.passed)
-    honesty_ok = all(r.passed for r in results if r.kind == "honesty")
+    honesty_total = sum(1 for r in results if r.kind == "honesty")
+    # Vacuous truth is not a pass: a suite with no honesty tasks has no
+    # honesty evidence, so the gate fails closed.
+    honesty_ok = honesty_total > 0 and all(r.passed for r in results if r.kind == "honesty")
     return SuiteSummary(
         results=[r.model_dump() for r in results],
         by_kind=by_kind,
