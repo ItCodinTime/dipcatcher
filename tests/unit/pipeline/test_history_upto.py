@@ -1,6 +1,6 @@
 """Wave 9: history_upto day-index concat vs filter(event_time <= asof)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import polars as pl
 import pytest
@@ -330,3 +330,29 @@ def test_history_prefix_upto_rejects_non_datetime_asof() -> None:
     frame = _sorted_panel()
     with pytest.raises(TypeError, match="asof must be a datetime"):
         history_prefix_upto(frame, "2020-01-01")  # type: ignore[arg-type]
+
+
+def test_date_train_cal_purges_horizon_labels() -> None:
+    """Boundary train dates whose label window reaches cal are dropped."""
+    import numpy as np
+
+    from quant_fund.pipeline.forecast import _date_train_cal
+
+    days = np.array([datetime(2024, 1, 1, tzinfo=UTC) + timedelta(days=d) for d in range(40)])
+    tr, cal = _date_train_cal(days, horizon=5)
+    assert tr.sum() and cal.sum()
+    uniq = sorted(set(days.tolist()))
+    tr_days = {d for d in uniq if tr[uniq.index(d)]}
+    cal_days = {d for d in uniq if cal[uniq.index(d)]}
+    assert not tr_days & cal_days
+    assert (min(cal_days) - max(tr_days)).days >= 5
+
+
+def test_date_train_cal_tiny_history_fails_closed() -> None:
+    import numpy as np
+
+    from quant_fund.pipeline.forecast import _date_train_cal
+
+    days = np.array([datetime(2024, 1, 1, tzinfo=UTC) + timedelta(days=d) for d in range(4)])
+    tr, cal = _date_train_cal(days, horizon=2)
+    assert not tr.any() and not cal.any()

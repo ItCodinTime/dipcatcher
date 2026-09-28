@@ -91,7 +91,7 @@ def conformal_sets_asof(
     x, y, dates, feats, ids = design_matrix(hist, label)
     if x.shape[0] < 24:
         return None
-    tr, cal = _date_train_cal(dates)
+    tr, cal = _date_train_cal(dates, horizon=horizon_bars)
     if int(tr.sum()) < 8 or int(cal.sum()) < 8:
         return None
     taus = [alpha / 2.0, 1.0 - alpha / 2.0]

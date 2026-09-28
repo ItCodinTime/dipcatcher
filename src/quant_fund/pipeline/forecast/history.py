@@ -320,16 +320,26 @@ def _align_col(frame: pl.DataFrame, dates: np.ndarray, ids: np.ndarray, name: st
     )
 
 
-def _date_train_cal(dates: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Split on unique dates so a session is never half-train, half-cal."""
+def _date_train_cal(dates: np.ndarray, *, horizon: int = 1) -> tuple[np.ndarray, np.ndarray]:
+    """Split on unique dates, purged — a session is never half-train, half-cal.
+
+    Without the purge the last ``horizon`` train dates keep labels realized
+    inside the cal window: the fitted distribution already saw cal outcomes,
+    understating cal scores and narrowing intervals at the boundary.
+    Emptied sides come back all-False so callers fail closed.
+    """
     keys = _date_keys(dates)
     uniq = sorted(set(keys))
     empty = np.zeros(len(keys), dtype=bool)
     if len(uniq) < 6:
         return empty, empty
     cut = min(max(int(0.7 * len(uniq)), 3), len(uniq) - 2)
-    train_keys = set(uniq[:cut])
     cal_keys = set(uniq[cut:])
+    # Session-index purge: the last `horizon` train sessions carry label
+    # windows reaching the cal start — drop them (same rule as purge_mask
+    # over the observed-session index).
+    h = max(int(horizon), 0)
+    train_keys = set(uniq[: max(cut - h, 0)])
     tr = np.array([k in train_keys for k in keys], dtype=bool)
     cal = np.array([k in cal_keys for k in keys], dtype=bool)
     return tr, cal
