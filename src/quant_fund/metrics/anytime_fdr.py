@@ -19,6 +19,23 @@
    every time t under arbitrary dependence (their Theorem 1). Test level
    alpha_t = alpha * gamma_t * (|R_{t-1}| + 1); reject hypothesis t iff
    e_t >= 1/alpha_t.
+4. e-LORD (Zhang, Wei, Ren & Zou, 2025, ICML, arXiv:2506.01452, Algorithm 1):
+   generalized alpha-investing (e-GAI) on e-values. Instead of e-LOND's
+   pre-specified gamma sequence, a wealth-alpha_investing recursion spends a
+   fraction omega_t of the remaining alpha-wealth,
+   alpha_t = omega_t * (alpha - sum_{j<t} alpha_j/(R_{j-1}+1)) * (R_{t-1}+1),
+   with omega_{t+1} = omega_1 * (1 + sum_{j<=t-R_t} phi^j - sum_{j<=R_t} psi^j)
+   (their Eq. 9, the risk-averse-investing update).
+5. e-SAFFRON (same paper, Algorithm 2): the adaptive counterpart that
+   discounts the FDP estimate Storey-style — only tests with weak evidence
+   (e_j < 1/lambda) drain the wealth budget alpha*(1-lambda):
+   alpha_t = omega_t * (alpha(1-lambda) - spent_t) * (R_{t-1}+1), where
+   spent_t = sum_{j<t} alpha_j * 1{e_j<1/lambda} / (R_{j-1}+1). Following the
+   authors' reference implementation (eSAFFRON.R), the level is capped at
+   lambda so a rejected hypothesis is never charged as a likely null; this
+   makes the procedure strictly more conservative than the uncapped Eq. (10)
+   and is the reason the paper's lambda->0 reduction to e-LORD does not hold
+   verbatim here.
 
 No Sharpe/Sortino/P&L content — discovery counts and FDR only.
 """
@@ -35,7 +52,15 @@ Array = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
 IntArray = NDArray[np.int64]
 
-__all__ = ["EbhResult", "ELond", "StoppedEbhResult", "e_bh", "stopped_e_bh"]
+__all__ = [
+    "ELond",
+    "ELord",
+    "ESaffron",
+    "EbhResult",
+    "StoppedEbhResult",
+    "e_bh",
+    "stopped_e_bh",
+]
 
 _INF = float("inf")
 
@@ -300,3 +325,222 @@ class ELond:
         self._levels.append(alpha_t)
         self._rejections.append(reject)
         return reject
+
+
+def _check_omega1(omega1: float) -> float:
+    w = float(omega1)
+    if not np.isfinite(w) or not 0.0 < w < 0.5:
+        raise ValueError("omega1 must lie in the open interval (0, 0.5)")
+    return w
+
+
+def _check_intensity(name: str, value: float) -> float:
+    v = float(value)
+    if not np.isfinite(v) or not 0.0 <= v <= 0.5:
+        raise ValueError(f"{name} must lie in the closed interval [0, 0.5]")
+    return v
+
+
+class _EGaiBase:
+    """Shared e-GAI machinery (Zhang, Wei, Ren & Zou 2025, arXiv:2506.01452).
+
+    All e-GAI procedures test hypothesis t at a level
+    ``alpha_t = cap(omega_t * remaining_wealth_t * (R_{t-1} + 1))`` and reject
+    iff ``e_t >= 1/alpha_t``; the subclass hooks below fix the wealth budget,
+    which submitted e-values drain it, and whether the level is capped. The
+    allocation coefficient follows the RAI recursion (their Eq. 9)
+
+        omega_{t+1} = omega_1 * (1 + sum_{j=1}^{t-R_t} phi^j
+                                     - sum_{j=1}^{R_t} psi^j),
+
+    maintained here through incremental geometric sums: on a non-rejection
+    sum_phi <- phi*(1 + sum_phi) appends the next power; on a rejection
+    sum_psi <- psi*(1 + sum_psi) likewise. With omega_1 in (0, 0.5) and
+    phi, psi in [0, 0.5] (their Remark 3.3 sufficient box) omega_t stays
+    strictly inside (0, 1), so levels stay nonnegative; a nonpositive or
+    non-finite level is additionally treated as alpha-death — the hypothesis
+    is not rejected and no wealth is charged — rather than evaluated against
+    the 1/alpha_t threshold.
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        omega1: float,
+        phi: float,
+        psi: float,
+        e_values: Iterable[float] | None = None,
+    ) -> None:
+        self._alpha = _check_alpha(alpha)
+        self._omega1 = _check_omega1(omega1)
+        self._phi = _check_intensity("phi", phi)
+        self._psi = _check_intensity("psi", psi)
+        self._n = 0
+        self._rejected = 0
+        self._sum_phi = 0.0
+        self._sum_psi = 0.0
+        self._omega = self._omega1
+        self._wealth_used = 0.0
+        self._levels: list[float] = []
+        self._rejections: list[bool] = []
+        if e_values is not None:
+            for e in e_values:
+                self.submit(e)
+
+    def _budget(self) -> float:
+        """Total alpha-wealth the procedure may ever spend."""
+        return self._alpha
+
+    def _cap(self, level: float) -> float:
+        """Post-process the raw level (identity for e-LORD)."""
+        return level
+
+    def _charges(self, e_value: float) -> bool:
+        """Whether this submission drains wealth (all do for e-LORD)."""
+        return True
+
+    @property
+    def omega(self) -> float:
+        """Allocation coefficient omega_{t+1} for the next test, in (0, 1)."""
+        return float(self._omega)
+
+    @property
+    def remaining_wealth(self) -> float:
+        """Unspent alpha-wealth (budget minus charged levels)."""
+        return float(self._budget() - self._wealth_used)
+
+    @property
+    def num_submitted(self) -> int:
+        return self._n
+
+    @property
+    def num_rejected(self) -> int:
+        return self._rejected
+
+    @property
+    def levels(self) -> tuple[float, ...]:
+        """The realized test levels alpha_t (post-cap)."""
+        return tuple(self._levels)
+
+    @property
+    def rejections(self) -> tuple[bool, ...]:
+        """Per-hypothesis rejection decisions, in submission order."""
+        return tuple(self._rejections)
+
+    def submit(self, e_value: float) -> bool:
+        """Test the next hypothesis in the stream; True iff it is rejected."""
+        e = float(e_value)
+        if not np.isfinite(e) or e < 0.0:
+            raise ValueError("submitted e-values must be finite and nonnegative")
+        self._n += 1
+        raw_level = self._omega * self.remaining_wealth * float(self._rejected + 1)
+        alpha_t = self._cap(raw_level)
+        if not np.isfinite(alpha_t) or alpha_t <= 0.0:
+            alpha_t = 0.0  # alpha-death: never reject on a nonpositive level
+        reject = alpha_t > 0.0 and bool(e >= 1.0 / alpha_t)
+        if self._charges(e):
+            self._wealth_used += alpha_t / float(self._rejected + 1)
+        if reject:
+            self._rejected += 1
+            self._sum_psi = self._psi * (1.0 + self._sum_psi)
+        else:
+            self._sum_phi = self._phi * (1.0 + self._sum_phi)
+        self._omega = self._omega1 * (1.0 + self._sum_phi - self._sum_psi)
+        self._levels.append(alpha_t)
+        self._rejections.append(reject)
+        return reject
+
+
+class ELord(_EGaiBase):
+    """e-LORD: generalized alpha-investing FDR control on a stream of e-values
+    (Zhang, Wei, Ren & Zou 2025, Algorithm 1).
+
+    alpha_1 = alpha*omega_1 and for t >= 2,
+
+        alpha_t = omega_t * (alpha - sum_{j<t} alpha_j/(R_{j-1}+1))
+                  * (R_{t-1} + 1),
+
+    i.e. every test — rejected or not — spends alpha_j/(R_{j-1}+1) of the
+    total wealth alpha. Theorem 3.1 of the paper: choosing levels so that
+    this charged-wealth estimate stays <= alpha yields FDR <= alpha at every
+    t for valid online e-values (E[e_t | F_{t-1}] <= 1 under the null),
+    under arbitrary cross-hypothesis dependence. Unlike e-LOND the spend is
+    data-driven, so long stretches without discoveries can exhaust the
+    wealth (alpha-death); the paper recommends omega_1 = O(1/T).
+
+    Parameters
+    ----------
+    alpha : FDR level in (0, 1).
+    omega1 : initial allocation coefficient in (0, 0.5); default 1e-3 suits
+        streams of order 10^3 hypotheses (paper suggests omega_1 ~ 1/T).
+    phi : non-rejection stimulation intensity in [0, 0.5] (default 0.5);
+        phi = 0 freezes omega_t = omega_1.
+    psi : rejection risk-regulation intensity in [0, 0.5] (default 0.5).
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        omega1: float = 1e-3,
+        phi: float = 0.5,
+        psi: float = 0.5,
+        e_values: Iterable[float] | None = None,
+    ) -> None:
+        super().__init__(alpha, omega1, phi, psi, e_values)
+
+
+class ESaffron(_EGaiBase):
+    """e-SAFFRON: adaptive e-GAI with a Storey-style FDP estimate
+    (Zhang, Wei, Ren & Zou 2025, Algorithm 2).
+
+    alpha_1 = alpha*(1-lambda)*omega_1 and for t >= 2,
+
+        alpha_t = min(lambda, omega_t * rw_t * (R_{t-1} + 1)),
+
+        rw_t = alpha*(1-lambda)
+               - sum_{j<t} alpha_j * 1{e_j < 1/lambda} / (R_{j-1} + 1).
+
+    Only submissions with e_j < 1/lambda — weak evidence, likely nulls —
+    drain the budget alpha*(1-lambda); the min(lambda, .) cap follows the
+    authors' reference implementation (functions/eSAFFRON.R) so a rejected
+    hypothesis is never charged, matching SAFFRON's candidacy logic. This is
+    strictly more conservative than the paper's uncapped Eq. (10) — under
+    the uncapped formula e-SAFFRON with lambda = 0 reduces to e-LORD
+    (their remark after Algorithm 2), which the cap deliberately breaks.
+    Proposition 3.4: the adaptive estimate still overestimates FDP in
+    expectation, so FDR <= alpha at every t under arbitrary dependence for
+    valid online e-values. e-SAFFRON dominates e-LORD when the alternative
+    proportion is non-negligible, because rejections stop draining wealth.
+
+    Parameters
+    ----------
+    alpha : FDR level in (0, 1).
+    lam : candidacy threshold lambda in (0, 1); the paper's default 0.1
+        (Remark 3.5) — smaller than p-SAFFRON's 0.5 because the e-value
+        budget alpha*(1-lambda) is never replenished.
+    omega1, phi, psi : as for :class:`ELord`.
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        lam: float = 0.1,
+        omega1: float = 1e-3,
+        phi: float = 0.5,
+        psi: float = 0.5,
+        e_values: Iterable[float] | None = None,
+    ) -> None:
+        lam_val = float(lam)
+        if not np.isfinite(lam_val) or not 0.0 < lam_val < 1.0:
+            raise ValueError("lam must lie in the open interval (0, 1)")
+        self._lam = lam_val
+        super().__init__(alpha, omega1, phi, psi, e_values)
+
+    def _budget(self) -> float:
+        return self._alpha * (1.0 - self._lam)
+
+    def _cap(self, level: float) -> float:
+        return min(self._lam, level)
+
+    def _charges(self, e_value: float) -> bool:
+        return bool(e_value < 1.0 / self._lam)

@@ -27,6 +27,9 @@ ALL_BENCHES = set(pb.BENCHES)
 @pytest.fixture
 def tiny_sizes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pb, "BENCH_SIZES", dict(TINY_SIZES))
+    # The calibration workload is sized for CI stability, not test speed.
+    monkeypatch.setattr(pb, "_CALIBRATION_N", 2_000)
+    monkeypatch.setattr(pb, "_CALIBRATION_REPS", 2)
 
 
 def _record(tmp_path, name: str = "base.json") -> dict:
@@ -45,8 +48,9 @@ def test_record_produces_valid_baseline(tiny_sizes, tmp_path, monkeypatch) -> No
     assert set(benches) == ALL_BENCHES
     for name, entry in benches.items():
         assert entry["repeats"] == pb.REPEATS
-        median = entry["median_seconds"]
-        assert math.isfinite(median) and median > 0.0, name
+        assert entry["normalized"] > 0.0 and math.isfinite(entry["normalized"]), name
+        best = entry["min_seconds"]
+        assert math.isfinite(best) and best > 0.0, name
 
 
 def test_record_sizes_hook_is_used(tiny_sizes, tmp_path, monkeypatch) -> None:
@@ -72,7 +76,7 @@ def test_compare_flags_two_x_slowdown_at_default_threshold(
     pb.record(base)
     current = json.loads(base.read_text(encoding="utf-8"))
     name = "crps_quantiles"
-    current["benches"][name]["median_seconds"] *= 2.0
+    current["benches"][name]["normalized"] *= 2.0
     cur = tmp_path / "cur.json"
     cur.write_text(json.dumps(current), encoding="utf-8")
     result = pb.compare(base, cur)
@@ -102,7 +106,7 @@ def test_compare_flags_speedups_as_informational(tiny_sizes, tmp_path, monkeypat
     pb.record(base)
     current = json.loads(base.read_text(encoding="utf-8"))
     name = "conformal_quantile"
-    current["benches"][name]["median_seconds"] *= 0.25
+    current["benches"][name]["normalized"] *= 0.25
     cur = tmp_path / "cur.json"
     cur.write_text(json.dumps(current), encoding="utf-8")
     result = pb.compare(base, cur)
@@ -114,7 +118,7 @@ def test_compare_fail_closed_unknown_bench_name(tiny_sizes, tmp_path, monkeypatc
     base = tmp_path / "base.json"
     pb.record(base)
     current = json.loads(base.read_text(encoding="utf-8"))
-    current["benches"]["not_a_real_bench"] = {"median_seconds": 1e-3, "repeats": 5}
+    current["benches"]["not_a_real_bench"] = {"normalized": 1e-3, "repeats": 5}
     cur = tmp_path / "cur.json"
     cur.write_text(json.dumps(current), encoding="utf-8")
     with pytest.raises(pb.BaselineError, match="unknown bench"):
@@ -132,11 +136,11 @@ def test_compare_fail_closed_malformed_json(tmp_path) -> None:
         pb.compare(good, bad)
 
 
-def test_compare_fail_closed_bad_shape_and_bad_median(tmp_path) -> None:
+def test_compare_fail_closed_bad_shape_and_bad_min(tmp_path) -> None:
     base = tmp_path / "base.json"
-    base.write_text(json.dumps({"benches": {"e_bh": {"median_seconds": 0.0}}}), encoding="utf-8")
+    base.write_text(json.dumps({"benches": {"e_bh": {"normalized": 0.0}}}), encoding="utf-8")
     cur = tmp_path / "cur.json"
-    cur.write_text(json.dumps({"benches": {"e_bh": {"median_seconds": 1e-3}}}), encoding="utf-8")
+    cur.write_text(json.dumps({"benches": {"e_bh": {"normalized": 1e-3}}}), encoding="utf-8")
     with pytest.raises(pb.BaselineError, match="finite and > 0"):
         pb.compare(base, cur)
     shape = tmp_path / "shape.json"
@@ -174,7 +178,7 @@ def test_cli_compare_failure_exit_code(tiny_sizes, tmp_path, monkeypatch, capsys
     base = tmp_path / "base.json"
     pb.record(base)
     current = json.loads(base.read_text(encoding="utf-8"))
-    current["benches"]["stationary_bootstrap"]["median_seconds"] *= 2.0
+    current["benches"]["stationary_bootstrap"]["normalized"] *= 2.0
     cur = tmp_path / "cur.json"
     cur.write_text(json.dumps(current), encoding="utf-8")
     assert pb.main(["compare", "--baseline", str(base), "--current", str(cur)]) == 1
