@@ -6535,6 +6535,10 @@
       "src": "quant_fund.research.sota_protocol"
     },
     {
+      "dst": "quant_fund.utils.hashing",
+      "src": "quant_fund.research.sota_protocol"
+    },
+    {
       "dst": "quant_fund.northset.benches",
       "src": "quant_fund.research.verify"
     },
@@ -9183,7 +9187,7 @@
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 22,
+      "imports": 23,
       "src": "quant_fund.research"
     },
     {

@@ -362,7 +362,7 @@ flowchart LR
   quant_fund_research -->|1| quant_fund_reporting
   quant_fund_research -->|1| quant_fund_robustness
   quant_fund_research -->|1| quant_fund_schemas
-  quant_fund_research -->|22| quant_fund_utils
+  quant_fund_research -->|23| quant_fund_utils
   quant_fund_research -->|7| quant_fund_validation
   quant_fund_risk -->|6| quant_fund_metrics
   quant_fund_risk -->|2| quant_fund_models
