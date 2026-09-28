@@ -138,6 +138,7 @@ nav:
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Receipt v2: RECEIPT_V2.md
+      - Receipt sealing conventions: RECEIPT_SEALING.md
       - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
       - Formal verification: FORMAL_VERIFICATION.md
