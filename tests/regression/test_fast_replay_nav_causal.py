@@ -78,9 +78,9 @@ def test_sizing_nav_invariant_to_held_name_same_bar_close(tmp_path, b_close: flo
     cfg = _cfg(tmp_path)
     bars, weights = _panel(b_close)
     # Causal NAV 2e6 → desired A 12000 → delta +2000 from the prior 10000.
-    assert _a_fill_qty(run_backtest(bars, weights, cfg, initial_nav=2e6, fast=True)) == pytest.approx(
-        2000.0
-    )
+    assert _a_fill_qty(
+        run_backtest(bars, weights, cfg, initial_nav=2e6, fast=True)
+    ) == pytest.approx(2000.0)
     assert _a_fill_qty(
         run_backtest(bars, weights, cfg, initial_nav=2e6, fast=False)
     ) == pytest.approx(2000.0)
