@@ -433,7 +433,7 @@ def candle_feature_cols_ic_implies_mean_honesty_errors(blob: object) -> list[str
         return []
     try:
         from quant_fund.microstructure.bench import FEATURE_COLS
-    except Exception:
+    except ImportError:
         return []
     unit01 = {
         "depth_imbalance_abs",
@@ -1053,7 +1053,7 @@ def candle_feature_cols_ic_completeness_honesty_errors(blob: object) -> list[str
         return []
     try:
         from quant_fund.microstructure.bench import FEATURE_COLS
-    except Exception:
+    except ImportError:
         return []
     n_scored = blob.get("n_scored")
     try:
