@@ -84,7 +84,9 @@ def execute_impact_trial(
         raise ValueError("quantity, slices, stride, and start must be positive")
     if side not in (1, -1):
         raise ValueError("side must be +1 or -1")
-    last = start_event + (n_slices - 1) * every
+    slice_qty = max(1, quantity // n_slices)
+    children = -(-quantity // slice_qty)
+    last = start_event + (children - 1) * every
     if last >= max_events:
         raise ValueError("metaorder schedule must finish before max_events")
     hook = _Arrival(start_event)
@@ -92,7 +94,7 @@ def execute_impact_trial(
         start_event=start_event,
         side=side,
         qty=quantity,
-        slice_qty=max(1, quantity // n_slices),
+        slice_qty=slice_qty,
         every=every,
         agent_id=META_AGENT,
     )

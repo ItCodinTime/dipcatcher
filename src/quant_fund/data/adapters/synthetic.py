@@ -8,7 +8,6 @@ import numpy as np
 import polars as pl
 
 from quant_fund.data.calendars import session_days
-from quant_fund.utils.seeds import set_global_seed
 
 SOURCE = "synthetic"
 REVISION = "SYNTHETIC"
@@ -25,8 +24,9 @@ class SyntheticMarketProvider:
 
     `planted_signal` at close t is a labeled SYNTHETIC oracle for r_{t+1}.
     It is an AR(1) residual known at t; next-day residual mean is
-    `oracle_beta * planted_signal_t`. Recovery is a correctness test, not
-    evidence of live edge.
+    `oracle_beta * planted_signal_t` scaled by the day's vol regime
+    (1x in the first half of the panel, 2x in the second). Recovery is a
+    correctness test, not evidence of live edge.
     """
 
     def __init__(
@@ -45,7 +45,6 @@ class SyntheticMarketProvider:
         seed_i = int(seed)
         if seed_i < 0 or seed_i > 2**32 - 1:
             raise ValueError("seed must be between 0 and 2**32 - 1")
-        set_global_seed(seed_i)
         self.n_assets = int(n_assets)
         self.n_days = int(n_days)
         self.seed = seed_i
@@ -87,7 +86,7 @@ class SyntheticMarketProvider:
         split_i = int(0.6 * t)
         prices[split_i:, 1] *= 0.5
         volumes = rng.integers(200_000, 800_000, size=(t, n)).astype(float)
-        ingested = datetime.now(tz=TZ)
+        ingested = _close_ts(self.days[-1])
 
         bar_rows: list[dict[str, object]] = []
         for j in range(n):
@@ -157,7 +156,7 @@ class SyntheticMarketProvider:
         for j in range(n):
             sid = "SEC_MKT" if j == 0 else f"SEC_{j:04d}"
             ticker = "MKT" if j == 0 else f"S{j:04d}"
-            valid_to = _close_ts(self.days[-16]) if j == n - 1 else None
+            valid_to = _close_ts(self.days[t - 14]) if j == n - 1 else None
             valid_from = _close_ts(self.days[0])
             master_rows.append(
                 {

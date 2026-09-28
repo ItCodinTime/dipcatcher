@@ -126,6 +126,8 @@ class EcologyConfig:
         probs = (self.noise_limit_prob, self.noise_market_prob, self.noise_cancel_prob)
         if any(p < 0.0 for p in probs) or sum(probs) <= 0.0:
             raise ValueError("noise probabilities must be non-negative and not all zero")
+        if sum(probs) > 1.0:
+            raise ValueError("noise probabilities must sum to at most 1.0")
         if not 0.0 < self.execution_start_frac < 1.0:
             raise ValueError("execution_start_frac must be in (0, 1)")
         if self.strategy_nav <= 0.0 or self.strategy_max_weight <= 0.0:

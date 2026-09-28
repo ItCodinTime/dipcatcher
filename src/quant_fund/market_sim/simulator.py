@@ -252,7 +252,7 @@ class Simulator:
         self.strategy = strategy
         self.hook = hook
         self.metaorders = metaorders
-        self.meta_sent: dict[int, int] = {m.agent_id: 0 for m in metaorders}
+        self.meta_sent: dict[int, int] = {i: 0 for i in range(len(metaorders))}
         self.rng = np.random.default_rng(cfg.seed)
         self.book = OrderBook(debug=debug_book)
         self.agents = build_agents(cfg, self.rng, self.book.price_max)
@@ -497,16 +497,16 @@ class Simulator:
             self._apply_action(agent, action)
 
     def _meta(self) -> None:
-        for order in self.metaorders:
+        for i, order in enumerate(self.metaorders):
             if self.event_index < order.start_event:
                 continue
-            sent = self.meta_sent.get(order.agent_id, 0)
+            sent = self.meta_sent.get(i, 0)
             if sent >= order.qty:
                 continue
             if (self.event_index - order.start_event) % order.every != 0:
                 continue
             qty = min(order.slice_qty, order.qty - sent)
-            self.meta_sent[order.agent_id] = sent + qty
+            self.meta_sent[i] = sent + qty
             self.inject("market", order.side, qty, agent=order.agent_id)
 
     def _strategy_bar(self) -> None:
