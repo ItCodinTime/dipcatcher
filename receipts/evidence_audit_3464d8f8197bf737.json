@@ -1,0 +1,93 @@
+{
+  "code_files": {
+    "evidence_audit.py": "7c30b69bbcb62a4682195e77b3d2e1b8f5abb36899543fbd710478a98002ce47"
+  },
+  "code_sha256": "900125ab5136ebed5e32720944b254724fc4861d18899834d142a8f800a926a8",
+  "data_label": "META",
+  "dataset_hash": "b91b978722482d22d546e0947a62d21ca6a4e30efff980781341c46049cb7f6e",
+  "environment": {
+    "blas": {
+      "found": true,
+      "name": "accelerate",
+      "version": null
+    },
+    "byteorder": "little",
+    "fingerprint_sha256": "207a7ded44205cd3554555ff934f3b8bc709709ad1635770d1a75739a5be6aab",
+    "implementation": "CPython",
+    "lapack": {
+      "found": true,
+      "name": "accelerate",
+      "version": null
+    },
+    "machine": "arm64",
+    "packages": {
+      "numpy": "2.5.3",
+      "polars": "1.44.2",
+      "scipy": "1.18.1"
+    },
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.14",
+    "threadpools": []
+  },
+  "generated_at": "2026-09-28T06:22:08.701025+00:00",
+  "git_revision": "b3b489d52ee8f9e0a6e817bcb320e8a4b3f2b1c6",
+  "kind": "evidence_audit",
+  "live_pnl_claim": false,
+  "params_hash": "310f4d153960b0eefb359a85344a67e97474b12e4cf51a0275440e00aa555918",
+  "payload": {
+    "check_index": true,
+    "duplicate_seals": {},
+    "files": [
+      {
+        "digest_convention": "canonical_json",
+        "errors": [],
+        "file": "capacity_eval_cd0854242ed8a9ec.json",
+        "file_sha256": "e0a6c8250891cd5065edfc3bb385e6fdd640e5ca376cac496420815ab16881ed",
+        "filename_digest_ok": true,
+        "kind": "capacity_overlay_eval",
+        "schema": "capacity_overlay.v1",
+        "sealed": true,
+        "valid": true,
+        "verdict": null
+      },
+      {
+        "digest_convention": "canonical_json",
+        "errors": [],
+        "file": "fleet_eval_5ddf15b0dc7d3ca1.json",
+        "file_sha256": "67713fe534eb3c4a508e4c0211836026af4f9efe8c27cd2cc7d69118a9cd1b98",
+        "filename_digest_ok": true,
+        "kind": "distribution_fleet_eval",
+        "schema": "fleet_eval.v1",
+        "sealed": true,
+        "valid": true,
+        "verdict": null
+      },
+      {
+        "digest_convention": "canonical_json",
+        "errors": [],
+        "file": "rankic_eval_9ebdad7da83e7348.json",
+        "file_sha256": "ff139132f80998e336918077dffacfe6d7a660305d025ca635cdcbe7837251d4",
+        "filename_digest_ok": true,
+        "kind": "cross_sectional_rankic_eval",
+        "schema": "cross_sectional_rankic.v1",
+        "sealed": true,
+        "valid": true,
+        "verdict": null
+      }
+    ],
+    "findings": [],
+    "index_fresh": null,
+    "live_pnl_claim": false,
+    "n_files": 3,
+    "n_invalid_sealed": 0,
+    "n_sealed": 3,
+    "n_unsealed": 0,
+    "n_valid": 3,
+    "receipts_dir": "receipts",
+    "schema": "evidence_audit.v1"
+  },
+  "receipt_sha256": "3464d8f8197bf73712dfdbe29e13668a345d29279659d08ae9bae9bb351f42f0",
+  "schema": "receipt.v2",
+  "schema_version": 2,
+  "verdict": "pass"
+}

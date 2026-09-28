@@ -94,6 +94,10 @@ def receipt_paths(root: Path) -> list[Path]:
         paths.extend(directory.glob("*.json"))
         paths.extend(directory.glob("*.json.gz"))
     paths.extend((root / "receipts").glob("*.json"))
+    # Pre-envelope artifacts retained for provenance (see
+    # receipts/legacy-unsealed/README.md) — rendered, but outside the
+    # seal-verified set audited by verify-all / receipts-reverify.
+    paths.extend((root / "receipts" / "legacy-unsealed").glob("*.json"))
     paths.extend((root / ".dsh-24x7").glob("evidence-incumbent-vectorbt*.json"))
     unique = sorted({path.resolve() for path in paths}, key=lambda path: _rel(root, path))
     missing = [path for path in unique if not path.is_file()]
@@ -143,7 +147,7 @@ def build_report(root: Path) -> tuple[str, list[str]]:
             root,
             loaded,
             "qlib incumbent parity",
-            [root / "receipts" / "incumbent_bench_qlib.json"],
+            [root / "receipts" / "legacy-unsealed" / "incumbent_bench_qlib.json"],
             incumbent_key="qlib",
         ),
         _incumbent_section(
@@ -469,7 +473,7 @@ def _incumbent_section(
 
 
 def _dip_section(root: Path, loaded: dict[Path, Any]) -> list[str]:
-    path = root / "receipts" / "dip_bench_crypto_1d_20260925.json"
+    path = root / "receipts" / "legacy-unsealed" / "dip_bench_crypto_1d_20260925.json"
     payload = _obj(loaded[path])
     lines = [
         "## Crypto dip bench",
@@ -538,8 +542,8 @@ def _dip_section(root: Path, loaded: dict[Path, Any]) -> list[str]:
 
 def _other_section(root: Path, loaded: dict[Path, Any]) -> list[str]:
     handled = {
-        _rel(root, root / "receipts" / "incumbent_bench_qlib.json"),
-        _rel(root, root / "receipts" / "dip_bench_crypto_1d_20260925.json"),
+        _rel(root, root / "receipts" / "legacy-unsealed" / "incumbent_bench_qlib.json"),
+        _rel(root, root / "receipts" / "legacy-unsealed" / "dip_bench_crypto_1d_20260925.json"),
     }
     paths = [
         path

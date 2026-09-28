@@ -47,7 +47,9 @@ EQUITY_SOURCES = (
     ),
 )
 
-ADAPTIVE_MIX_RECEIPT = "adaptive_mix_20asset_1d_20260922.json"
+# Pre-envelope artifact kept for provenance under receipts/legacy-unsealed/
+# (unsealed; outside the verify-all audited set — see that dir's README).
+ADAPTIVE_MIX_RECEIPT = "legacy-unsealed/adaptive_mix_20asset_1d_20260922.json"
 
 
 def _canonical_json_bytes(value: Any) -> bytes:
