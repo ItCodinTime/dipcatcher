@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from quant_fund.proof import replay
-from quant_fund.proof.bundle import METRIC_KEYS, canonical_json_bytes, round_floats
+from quant_fund.proof.bundle import METRIC_KEYS, canonical_json_bytes
 from quant_fund.proof.recorder import InMemoryRecorder, make_read_record
 from quant_fund.proof.replay import (
     ROW_HASH_FIELDS,
@@ -77,8 +77,14 @@ def make_spec(
 
 
 def canonical_spec(spec: RunSpec) -> RunSpec:
-    """The spec as the config sidecar round-trips it (mint applies round_floats)."""
-    dumped = json.loads(canonical_json_bytes(round_floats(spec.model_dump(mode="json"))))
+    """The spec as the config sidecar round-trips it.
+
+    Integration reconciliation (spec_sha256, ONE canonical form): the mint
+    writes the UNROUNDED canonical json dump (``round_config=False`` in
+    build_bundle), so the round-trip is a pure json serialize/parse — floats
+    keep full double precision, no 12-digit rounding anywhere.
+    """
+    dumped = json.loads(canonical_json_bytes(spec.model_dump(mode="json")))
     return RunSpec.model_validate(dumped)
 
 
@@ -652,8 +658,9 @@ def test_row_count_divergence(tmp_path: Path) -> None:
 
 
 def test_default_executor_unavailable_on_wave2_base(tmp_path: Path) -> None:
-    """Without an injected executor, the lazy runner import fails closed
-    (wave2-base has no run_proven yet; W6 adds it)."""
+    """Without an injected executor, the default executor drives the real
+    W6 runner; this fixture's spec has no label declaration, so the runner
+    fails closed and replay maps the raise to runner_unavailable."""
     _, bundle_dir, bundle_path, _, _ = mint_fixture(tmp_path)
     ok, detail = replay_bundle(bundle_path, bundle_dir=bundle_dir, pit_root=None)
     assert not ok
@@ -731,17 +738,25 @@ def test_derive_window_seeds_matches_spec_commitment() -> None:
 
 def test_env_probe_fallbacks(monkeypatch: pytest.MonkeyPatch) -> None:
     """Probe failures degrade to deterministic sentinels, never crash."""
+    import importlib.metadata
 
-    class _BrokenModule:
-        def __getattr__(self, name: str) -> Any:
-            raise RuntimeError("no attrs")
+    from quant_fund.proofcore import ci
 
-    import sys
+    # Version probe (integration: importlib.metadata over the fx-1 dist —
+    # layering forbids importing the quant_fund root from proofcore).
+    def _no_dist(name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError(name)
 
-    monkeypatch.setitem(sys.modules, "quant_fund", _BrokenModule())
+    monkeypatch.setattr(ci.importlib.metadata, "version", _no_dist)
+    assert ci.quant_fund_version() == "dev"
     assert replay._current_env_fingerprint_contracts().endswith("|dev")
+    monkeypatch.undo()
+    assert ci.quant_fund_version() != "quant_fund-dev"  # real version or dev
 
-    monkeypatch.setattr(replay.shutil, "which", lambda _name: None)
+    # Code fingerprint delegates to proofcore.ci (integration reconciliation);
+    # the git-missing fallback path itself is covered by W8's
+    # test_fingerprint_fallback.py.
+    monkeypatch.setattr(ci, "code_fingerprint", lambda: "nogit")
     assert replay._current_code_fingerprint() == "nogit"
 
     def _missing(name: str) -> str:
@@ -763,19 +778,40 @@ def test_default_executor_no_entry_point(tmp_path: Path, monkeypatch: pytest.Mon
     assert detail == "runner_unavailable:quant_fund.proof.runner has no run_proven entry point"
 
 
-def test_code_fingerprint_git_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    class _Proc:
-        returncode = 0
-        stdout = "deadbee" + "0" * 33 + "\n"
+def test_code_fingerprint_delegates_to_proofcore_ci(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Integration reconciliation: replay's code-fingerprint probe is the
+    SAME helper the runner mints with (git sha, or the W8 §7.2 src-tree
+    fallback outside worktrees — covered by test_fingerprint_fallback.py)."""
+    from quant_fund.proofcore import ci
 
-    monkeypatch.setattr(replay.subprocess, "run", lambda *a, **k: _Proc())
-    assert replay._current_code_fingerprint() == _Proc.stdout.strip()
+    sentinel = "deadbee" + "0" * 33
+    monkeypatch.setattr(ci, "code_fingerprint", lambda: sentinel)
+    assert replay._current_code_fingerprint() == sentinel
 
-    def _raise(*a: Any, **k: Any) -> Any:
-        raise OSError("no git binary")
 
-    monkeypatch.setattr(replay.subprocess, "run", _raise)
-    assert replay._current_code_fingerprint() == "nogit"
+def test_env_fingerprint_dual_accept_dev_shim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Compat shim (expires wave 3): bundles minted with the W6 dev literal
+    ``...|quant_fund-dev`` still pass the env gate alongside the canonical
+    §2.2 form."""
+    from quant_fund.proofcore import ci
+
+    _, bundle_dir, bundle_path, _, _ = mint_fixture(
+        tmp_path,
+        env_doc={
+            "env_fingerprint": "devmachine|3.12.0|quant_fund-dev",
+            "code_fingerprint": ci.code_fingerprint(),
+        },
+    )
+    monkeypatch.setattr(
+        replay, "_current_env_fingerprint", lambda: "devmachine|3.12.0|quant_fund-dev"
+    )
+    monkeypatch.setattr(replay, "_current_env_fingerprint_contracts", ci.env_fingerprint)
+    ok, detail = replay_bundle(
+        bundle_path, bundle_dir=bundle_dir, pit_root=None, executor=fake_executor
+    )
+    assert ok, detail
 
 
 def test_default_executor_runner_import_error(
