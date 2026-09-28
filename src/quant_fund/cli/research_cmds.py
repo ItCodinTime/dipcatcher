@@ -551,11 +551,53 @@ def expert_mixture_cmd(
     typer.echo(f"receipt={path}")
 
 
+@app.command("mixture-stability")
+def mixture_stability_cmd(
+    n_train: int = typer.Option(512, help="Fit window per shard."),
+    n_eval: int = typer.Option(256, help="Causal mixing horizon per shard."),
+    alpha: float = typer.Option(0.05, help="Fixed-share mass reintroduced per row."),
+    n_boot: int = typer.Option(500, help="Stationary-bootstrap replicates."),
+    block: float | None = typer.Option(
+        None, help="Mean bootstrap block; None = Politis–White optimal."
+    ),
+    seed: int = typer.Option(0, help="Shard/head/bootstrap seed."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Stationary-bootstrap confidence on the expert-mixture weights.
+
+    Re-runs each mixer's weight recursion on block-resampled loss histories:
+    per-head final-weight bands, leader-selection probabilities, leader
+    stability, and a regret CI. Proper scores only; SYNTHETIC, receipt.v2.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "mixture-stability is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.mixture_stability import (
+        format_mixture_stability_table,
+        run_mixture_stability_eval,
+        write_mixture_stability_receipt,
+    )
+
+    try:
+        frame, receipt = run_mixture_stability_eval(
+            seed=seed, n_train=n_train, n_eval=n_eval, alpha=alpha, n_boot=n_boot, block=block
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_mixture_stability_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_mixture_stability_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
     "expert_mixture_cmd",
     "fleet",
+    "mixture_stability_cmd",
     "rankic",
     "research",
     "verify_identities",

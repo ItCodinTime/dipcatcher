@@ -268,6 +268,15 @@ Each: pinned artifact + sha256, zero-shot, native output honored
       HAR-RV, realized-GARCH, dip_garch_t and RV baselines with QLIKE/MSE on
       cumulative h-step realized variance, NW loss diffs vs `har`, sealed
       receipts). Real-data vol cells still open.
+- [x] P3.8 Mixture-stability lane: stationary-bootstrap confidence on the
+      expert-mixture weights — the inferential layer under P1.x mixing.
+      `research/mixture_stability.py` + `dipcatcher mixture-stability`:
+      block-bootstrap the per-row pinball loss tensor (Politis–Romano,
+      Politis–White block length), re-run each mixer's recursion per
+      replicate → final-weight bands, leader-selection probabilities,
+      leader stability, and a bootstrap CI on regret vs the best fixed
+      expert. Convexity bound re-verified pathwise on every replicate;
+      uniform mixer reports null selection stats (no phantom argmax).
 
 ### P4 — Industry-grade bar (the open one)
 
