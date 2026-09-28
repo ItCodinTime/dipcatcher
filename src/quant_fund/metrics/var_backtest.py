@@ -6,6 +6,8 @@ References:
 - Haas (2001): TUFF — time until first failure.
 - Basel Committee (1996): traffic-light zones for 99% VaR over 250 days.
 - Berkowitz, Christoffersen & Pelletier (2011): censored-normal transform.
+- Engle & Manganelli (2004): Dynamic Quantile test — joint conditional-coverage
+  Wald test on the hit regression (JBES 22(4)).
 """
 
 from __future__ import annotations
@@ -152,4 +154,66 @@ def basel_zone(hits: Array, alpha: float = 0.99) -> dict[str, float | str]:
         "failures": float(x),
         "n": float(n),
         "tail_prob": tail,
+    }
+
+
+def dq_test(
+    hits: Array,
+    alpha: float = 0.99,
+    lags: int = 4,
+    instruments: Array | None = None,
+) -> dict[str, float]:
+    """Engle & Manganelli (2004) Dynamic Quantile test.
+
+    ``Hit_t = I(exceedance_t) - p`` is regressed on an intercept, ``lags`` of
+    its own lags, and any caller-supplied instruments (columns of
+    ``instruments``, row-aligned with ``hits``; NaN-free required). Under
+    correct conditional coverage ``Hit`` has zero conditional mean given all
+    instruments, so ``DQ = beta' X'X beta / (p (1-p)) ~ chi2(df)`` with
+    ``df = number of regressors``.
+
+    This is strictly more powerful than Christoffersen's lag-1 Markov test:
+    it detects violation clustering at longer lags and dependence on the
+    forecast level itself when the VaR series is passed as an instrument.
+    """
+    h = _hits(hits)
+    if not (0.5 < alpha < 1.0):
+        raise ValueError("alpha should be a tail level in (0.5, 1)")
+    if lags < 1 or lags > 50:
+        raise ValueError("lags must be in [1, 50]")
+    p = 1.0 - alpha
+    n = h.size
+    if n <= lags + 2:
+        raise ValueError(f"hit series too short for {lags} lags")
+    extra: Array | None = None
+    if instruments is not None:
+        extra = np.asarray(instruments, dtype=float)
+        if extra.ndim == 1:
+            extra = extra.reshape(-1, 1)
+        if extra.ndim != 2 or extra.shape[0] != n:
+            raise ValueError("instruments must be (n,) or (n, k) aligned with hits")
+        if not np.all(np.isfinite(extra)):
+            raise ValueError("instruments must be finite")
+    hit = h - p
+    cols = [np.ones(n - lags)]
+    cols.extend(hit[lags - k : n - k] for k in range(1, lags + 1))
+    if extra is not None:
+        cols.extend(extra[lags:, j] for j in range(extra.shape[1]))
+    x = np.column_stack(cols)
+    xtx = x.T @ x
+    try:
+        beta = np.linalg.solve(xtx, x.T @ hit[lags:])
+    except np.linalg.LinAlgError as exc:
+        raise ValueError(
+            "hit regression is singular — DQ test undefined "
+            "(e.g. an all-zero or all-one hit series)"
+        ) from exc
+    stat = float(beta @ xtx @ beta / (p * (1.0 - p)))
+    df = float(x.shape[1])
+    return {
+        "statistic": stat,
+        "pvalue": float(1.0 - stats.chi2.cdf(stat, x.shape[1])),
+        "df": df,
+        "lags": float(lags),
+        "n": float(n - lags),
     }
