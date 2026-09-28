@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 735,
+  "module_count": 736,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -1989,6 +1989,14 @@
     {
       "dst": "quant_fund.config.models",
       "src": "quant_fund.execution.costs"
+    },
+    {
+      "dst": "quant_fund.config.models",
+      "src": "quant_fund.execution.maker_taker_probe"
+    },
+    {
+      "dst": "quant_fund.execution.simulated_broker",
+      "src": "quant_fund.execution.maker_taker_probe"
     },
     {
       "dst": "quant_fund.config.models",
@@ -6095,7 +6103,7 @@
       "src": "quant_fund.research.cost_surface"
     },
     {
-      "dst": "quant_fund.execution.simulated_broker",
+      "dst": "quant_fund.execution.maker_taker_probe",
       "src": "quant_fund.research.cost_surface"
     },
     {
@@ -7335,6 +7343,7 @@
     "quant_fund.execution.costs",
     "quant_fund.execution.impact",
     "quant_fund.execution.implementation_shortfall",
+    "quant_fund.execution.maker_taker_probe",
     "quant_fund.execution.simulated_broker",
     "quant_fund.features",
     "quant_fund.features._kernels",
@@ -8412,12 +8421,12 @@
     },
     {
       "dst": "quant_fund.config",
-      "imports": 2,
+      "imports": 3,
       "src": "quant_fund.execution"
     },
     {
       "dst": "quant_fund.execution",
-      "imports": 5,
+      "imports": 6,
       "src": "quant_fund.execution"
     },
     {

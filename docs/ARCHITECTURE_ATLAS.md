@@ -223,7 +223,7 @@ flowchart LR
   quant_fund_data -->|14| quant_fund_schemas
   quant_fund_data -->|8| quant_fund_utils
   quant_fund_diffbacktest -->|1| quant_fund_metrics
-  quant_fund_execution -->|2| quant_fund_config
+  quant_fund_execution -->|3| quant_fund_config
   quant_fund_execution -->|1| quant_fund_monitoring
   quant_fund_execution -->|1| quant_fund_portfolio
   quant_fund_execution -->|2| quant_fund_schemas
@@ -596,7 +596,7 @@ sequenceDiagram
 | `quant_fund.config` | 3 |
 | `quant_fund.data` | 33 |
 | `quant_fund.diffbacktest` | 5 |
-| `quant_fund.execution` | 6 |
+| `quant_fund.execution` | 7 |
 | `quant_fund.features` | 9 |
 | `quant_fund.formal` | 4 |
 | `quant_fund.fusion` | 2 |
@@ -636,7 +636,7 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **735**
+- Modules scanned: **736**
 - Packages: **65**
 - Cross-package import edges: **248**
 
