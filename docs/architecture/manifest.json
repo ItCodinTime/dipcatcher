@@ -6279,6 +6279,10 @@
       "src": "quant_fund.research.identity_sweep"
     },
     {
+      "dst": "quant_fund.research.receipt_v2",
+      "src": "quant_fund.research.identity_sweep"
+    },
+    {
       "dst": "quant_fund.schemas.order_book",
       "src": "quant_fund.research.identity_sweep"
     },
@@ -6448,6 +6452,10 @@
     },
     {
       "dst": "quant_fund.research.fleet_eval",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
+      "dst": "quant_fund.research.identity_sweep",
       "src": "quant_fund.research.receipt_v2"
     },
     {
@@ -9168,7 +9176,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 102,
       "src": "quant_fund.research"
     },
     {
