@@ -1530,6 +1530,7 @@ def compare_return_bases(
             net_cap=net_cap,
             label=mode,
         )
+        _attach_window_reports(scored, spec)
         winner = select_winner(scored)
         pbo = pbo_on_pre_holdout(scored, spec)
         modes[mode] = {
