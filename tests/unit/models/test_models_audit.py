@@ -10,7 +10,7 @@ import pytest
 from quant_fund.models.ar_estimation import levinson_durbin
 from quant_fund.models.diffusion_index import diffusion_index_forecast, sw_factors
 from quant_fund.models.duration import _nll_weibull
-from quant_fund.models.factor_models import bai_ng_factors
+from quant_fund.models.factor_models import bai_ng_factors, double_sorted_factors
 from quant_fund.models.fgls_ar1 import prais_winsten
 from quant_fund.models.gas import gas_vol_fit, gas_vol_forecast
 from quant_fund.models.nonlinear_filters import particle_filter
@@ -325,6 +325,56 @@ def test_figarch_aparch_reject_penalty(monkeypatch):
         mod.fit_figarch(r)
     with pytest.raises(ValueError, match="APARCH"):
         mod.fit_aparch(r)
+
+
+def test_double_sorted_factors_permutation_invariant_under_ties():
+    # tie group straddling a cell boundary must land in one cell regardless
+    # of storage order: permuting asset order must not change the output.
+    rng = np.random.default_rng(7)
+    t, n = 6, 12
+    a = rng.normal(size=(t, n))
+    b = rng.normal(size=(t, n))
+    # inject tie groups that straddle the cuts=3 bin boundaries
+    a[:, 3:6] = 0.5
+    b[:, 8:11] = -0.2
+    r = rng.normal(size=(t, n))
+    base = double_sorted_factors(r, a, b, cuts=3)
+    for _ in range(20):
+        perm = rng.permutation(n)
+        out = double_sorted_factors(r[:, perm], a[:, perm], b[:, perm], cuts=3)
+        assert np.allclose(base["factor_a"], out["factor_a"])
+        assert np.allclose(base["factor_b"], out["factor_b"])
+        assert np.allclose(
+            np.nan_to_num(base["grid"], nan=-1.0),
+            np.nan_to_num(out["grid"], nan=-1.0),
+        )
+
+
+def test_double_sorted_factors_no_asset_dropped():
+    # every asset lands in exactly one grid cell — with 1-based midranks the
+    # naive rank*cuts//n formula pushes rank n into cell `cuts` and drops it.
+    # oracle: scipy rankdata('average') partition vs the returned grid means.
+    from scipy.stats import rankdata
+
+    rng = np.random.default_rng(3)
+    t, n, cuts = 5, 12, 3
+    r = rng.normal(size=(t, n))
+    a = rng.normal(size=(t, n))
+    b = rng.normal(size=(t, n))
+    a[0, :3] = 0.9  # tie group across the top boundary
+    out = double_sorted_factors(r, a, b, cuts=cuts)
+    for s in range(t):
+        qa = ((rankdata(a[s], method="average") - 1.0) * cuts // n).astype(int)
+        qb = ((rankdata(b[s], method="average") - 1.0) * cuts // n).astype(int)
+        for i in range(cuts):
+            for j in range(cuts):
+                sel = (qa == i) & (qb == j)
+                cell = out["grid"][s, i, j]
+                if np.any(sel):
+                    assert np.isfinite(cell)
+                    assert cell == pytest.approx(float(r[s, sel].mean()))
+                else:
+                    assert not np.isfinite(cell)
 
 
 def test_gp_regression_penalty_falls_back_to_defaults(monkeypatch):

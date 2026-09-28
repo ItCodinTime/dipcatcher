@@ -31,7 +31,7 @@ audited paths verified (guards, index math, formula spot-check); no defect.
 | diffusion_index | FIXED | h-step forecast evaluated the design row at `t = T-1-h` (last fitted row) instead of the true origin `t = T-1`; forecast was stale by h steps. |
 | duration | FIXED | `_nll_weibull` missed the `(gamma-1)*ln(1/psi)` term in the eps->x density transform; psi coefficient was -1 instead of -gamma, biasing WACD fits for gamma != 1. |
 | dynamic_panel | FIXED | `ar2_coef` computed the lag-1 correlation of differenced residuals; the Arellano-Bond AR(2) test needs lag-2. |
-| factor_models | FIXED | `bai_ng_factors` on a zero-variance panel divided by zero and silently returned `r_max-1`; now raises. |
+| factor_models | FIXED | `bai_ng_factors` on a zero-variance panel divided by zero and silently returned `r_max-1`; now raises. `double_sorted_factors` binned cells via ordinal `argsort`∘`argsort` ranks — tie groups straddling a cell boundary split by storage order (output not permutation-invariant); now bins via `midrank` so each tie group stays in one cell. |
 | fgls_ar1 | FIXED | `_rho_from_resid` could return `|rho| >= 1` (denominator over lagged-only terms), making the Prais-Winsten transform `sqrt(1-rho^2)` invalid; now raises. |
 | filters | FIXED | `ravn_uhlig_lambda` docstring stated `1600*(4/ppy)^4` (inverted); code correctly computes `1600*(ppy/4)^4`. Docstring corrected. |
 | garch_ext | FIXED | `fit_figarch`/`fit_aparch` accepted a 1e12 penalty as `best.fun`; now raises. |
@@ -102,7 +102,7 @@ audited paths verified (guards, index math, formula spot-check); no defect.
 | ets | CLEAN | ETS (error-trend-seasonal) recursion reviewed; degenerate inputs raise. |
 | event_study | CLEAN | Event-window alignment reviewed; abnormal-return estimation windows verified causal. |
 | expectile | CLEAN | ALS expectile iteration verified; tau guards present. |
-| factor_models | FIXED | See above (bai_ng zero-variance). PCA/Fama-MacBeth/gics paths reviewed. |
+| factor_models | FIXED | See above (bai_ng zero-variance; double-sort midrank binning). PCA/Fama-MacBeth/gics paths reviewed. |
 | fgls_ar1 | FIXED | See above (rho bounds). PW/CO transform indexing verified. |
 | fhs | CLEAN | Filtered historical simulation reviewed; scale/sigma causality verified. |
 | filters | FIXED | See above (docstring). HP/BK/Hamilton filter boundary handling verified. |

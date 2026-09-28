@@ -52,6 +52,22 @@ def positive_integral_count(value: object) -> int:
     return int(numeric)
 
 
+def midrank(x: Array) -> Array:
+    """Average ranks (1-based), ties share the group mean — scipy ``rankdata``
+    ``'average'`` semantics. Ordinal ranks (``argsort`` of ``argsort``) break
+    ties by position, so downstream values change when input rows are permuted;
+    midranks are permutation-invariant."""
+    v = np.asarray(x, dtype=float)
+    order = np.argsort(v, kind="mergesort")
+    ranks = np.empty(v.shape[0], dtype=float)
+    ranks[order] = np.arange(1, v.shape[0] + 1, dtype=float)
+    _uniq, inverse, counts = np.unique(v, return_inverse=True, return_counts=True)
+    if np.any(counts > 1):
+        sums = np.bincount(inverse, weights=ranks)
+        ranks = sums[inverse] / counts[inverse]
+    return ranks
+
+
 def require_upper_tail_alpha(alpha: float) -> float:
     """Require a loss-quantile alpha in (0.5, 1)."""
     level = float(alpha)
