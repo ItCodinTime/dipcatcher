@@ -513,9 +513,48 @@ def capacity(
     typer.echo(f"receipt={path}")
 
 
+@app.command("expert-mixture")
+def expert_mixture_cmd(
+    n_train: int = typer.Option(512, help="Fit window per shard."),
+    n_eval: int = typer.Option(256, help="Causal mixing horizon per shard."),
+    alpha: float = typer.Option(0.05, help="Fixed-share mass reintroduced per row."),
+    seed: int = typer.Option(0, help="Shard/head seed."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Online expert-mixture over the SYNTHETIC distribution fleet.
+
+    Mixes every head's quantile grid row-by-row with weights driven only by
+    losses realized strictly before the row: uniform / EWA / fixed-share
+    (Herbster–Warmuth). Proper scores only; regret vs the best fixed expert
+    is the headline — never dominance. SYNTHETIC, receipt.v2 sealed.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "expert-mixture is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.expert_mixture import (
+        format_expert_mixture_table,
+        run_expert_mixture_eval,
+        write_expert_mixture_receipt,
+    )
+
+    try:
+        frame, receipt = run_expert_mixture_eval(
+            seed=seed, n_train=n_train, n_eval=n_eval, alpha=alpha
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_expert_mixture_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_expert_mixture_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
+    "expert_mixture_cmd",
     "fleet",
     "rankic",
     "research",
