@@ -55,3 +55,35 @@ def test_fail_closed() -> None:
         resampled_weights(np.array([0.1]), np.array([[0.1]]))  # one asset
     with pytest.raises(ValueError):
         resampled_weights(np.array([0.1, 0.2]), np.eye(2), objective="nope")
+
+
+def test_non_psd_covariance_is_refused() -> None:
+    # numpy would sample this anyway (warn-and-project); the allocator layer
+    # rejects the same matrix, so resampled efficiency must too.
+    rng = np.random.default_rng(4)
+    mu = np.array([0.05, 0.05])
+    not_psd = np.array([[1.0, 2.0], [2.0, 1.0]])  # eigvals -1, +3
+    with pytest.raises(ValueError, match="semidefinite"):
+        resampled_weights(mu, not_psd, n_obs=80, n_sims=5, rng=rng)
+    with pytest.raises(ValueError, match="semidefinite"):
+        min_variance_weights(not_psd)
+    with pytest.raises(ValueError, match="semidefinite"):
+        max_sharpe_weights(mu, not_psd)
+
+
+def test_asymmetric_covariance_is_refused() -> None:
+    mu = np.array([0.05, 0.05])
+    skew = np.array([[1.0, 0.9], [0.1, 1.0]])
+    with pytest.raises(ValueError, match="symmetric"):
+        resampled_weights(mu, skew, n_obs=80, n_sims=5, rng=np.random.default_rng(5))
+
+
+def test_numerically_psd_covariance_passes() -> None:
+    # Eigenvalue a hair below zero at machine noise must not be refused.
+    rng = np.random.default_rng(6)
+    a = rng.standard_normal((3, 3))
+    cov = a @ a.T / 3.0
+    cov[0, 0] -= 1e-13  # tiny negative perturbation inside the 1e-12 scale tol
+    cov = (cov + cov.T) / 2.0
+    w = min_variance_weights(cov)
+    assert abs(float(w.sum()) - 1.0) < 1e-8

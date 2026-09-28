@@ -62,7 +62,7 @@ def git_worktree_sha256() -> str:
             "data/metadata/paper/",
             "htmlcov/",
         )
-        additions = bytearray()
+        entries: list[tuple[bytes, bytes]] = []
         for raw_path in untracked.split(b"\0"):
             if not raw_path:
                 continue
@@ -71,11 +71,9 @@ def git_worktree_sha256() -> str:
                 continue
             file_path = Path(path)
             if file_path.is_file():
-                additions.extend(raw_path)
-                additions.extend(b"\0")
-                additions.extend(file_path.read_bytes())
+                entries.append((raw_path, file_path.read_bytes()))
         tracked = _tracked_changes(git, _parse_name_status(name_status or b""))
-        return _fingerprint(tracked, bytes(additions))
+        return _fingerprint(tracked, _additions_blob(entries))
     except (OSError, subprocess.SubprocessError):
         return "UNKNOWN"
 
@@ -323,6 +321,26 @@ def content_address(path: Path) -> ContentAddress:
         declared_size=stored_size,
         kind="blob",
     )
+
+
+def _additions_blob(entries: list[tuple[bytes, bytes]]) -> bytes:
+    """Length-frame untracked ``(path, bytes)`` pairs for the fingerprint.
+
+    Plain ``path\\0bytes`` concatenation is not injective: file "a" holding
+    ``x\\0b\\0y`` plus file "b" holding ``y`` produces the same blob as "a"=x,
+    "b"=``y`` — a crafted tree could collide fingerprints. Framing each entry
+    with its byte length (the same scheme tracked files use) removes it.
+    Sorted by path so the blob is independent of ``ls-files`` ordering.
+    """
+    blob = bytearray()
+    for raw_path, content in sorted(entries, key=lambda item: item[0]):
+        blob.extend(raw_path)
+        blob.extend(b"\0")
+        blob.extend(str(len(content)).encode("ascii"))
+        blob.extend(b"\0")
+        blob.extend(content)
+        blob.extend(b"\0")
+    return bytes(blob)
 
 
 def _fingerprint(tracked: list[tuple[bytes, bytes]], additions: bytes) -> str:

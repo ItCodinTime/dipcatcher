@@ -44,7 +44,7 @@ def finite_1d(values: Array) -> Array:
 
 
 def as_named_1d(name: str, values: Array) -> Array:
-    """Reject rank > 1. A row vector is flattened; a matrix is an error."""
+    """Reject rank > 1 — even a (1, n) row vector; reshape before calling."""
     array = np.asarray(values, dtype=float)
     if array.ndim > 1:
         raise ValueError(f"{name} must be 1d")

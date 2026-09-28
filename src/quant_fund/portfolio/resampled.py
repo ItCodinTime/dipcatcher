@@ -32,6 +32,14 @@ def _check(mu: Array, cov: Array) -> tuple[Array, Array]:
         raise ValueError("mu (n,) and cov (n, n) must be finite and conformable")
     if n < 2:
         raise ValueError("need at least two assets")
+    # ``multivariate_normal`` tolerates non-PSD covariances with a warning and
+    # silently samples from the PSD projection — a resampled-estimates routine
+    # built on doctored draws must refuse the matrix outright.
+    scale = max(float(np.abs(c).max()), 1e-12)
+    if np.max(np.abs(c - c.T)) > 1e-6 * scale:
+        raise ValueError("cov must be symmetric")
+    if np.linalg.eigvalsh(c).min() < -1e-12 * scale:
+        raise ValueError("cov must be positive semidefinite")
     return m, c
 
 
@@ -53,8 +61,13 @@ def max_sharpe_weights(mu: Array, cov: Array, long_only: bool = True) -> Array:
         return float(-float(w @ m) / np.sqrt(var))
 
     res = minimize(neg_sharpe, x0, method="SLSQP", bounds=_bounds(n, long_only), constraints=cons)
+    if not res.success:
+        raise ValueError(f"max-Sharpe optimization failed: {res.message}")
     w = np.asarray(res.x, dtype=float)
-    return np.asarray(w / w.sum(), dtype=float)
+    total = float(w.sum())
+    if not np.isfinite(total) or abs(total) < 1e-12:
+        raise ValueError("max-Sharpe optimization returned a degenerate weight vector")
+    return np.asarray(w / total, dtype=float)
 
 
 def min_variance_weights(cov: Array, long_only: bool = True) -> Array:
@@ -71,8 +84,13 @@ def min_variance_weights(cov: Array, long_only: bool = True) -> Array:
         bounds=_bounds(n, long_only),
         constraints=cons,
     )
+    if not res.success:
+        raise ValueError(f"min-variance optimization failed: {res.message}")
     w = np.asarray(res.x, dtype=float)
-    return np.asarray(w / w.sum(), dtype=float)
+    total = float(w.sum())
+    if not np.isfinite(total) or abs(total) < 1e-12:
+        raise ValueError("min-variance optimization returned a degenerate weight vector")
+    return np.asarray(w / total, dtype=float)
 
 
 def resampled_weights(

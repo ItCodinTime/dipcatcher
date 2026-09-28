@@ -248,3 +248,18 @@ def test_smudged_lfs_file_matching_pointer_is_clean(
     assert git_worktree_sha256() == hash_bytes(b"")
     payload.write_bytes(original + b"!")
     assert git_worktree_sha256() != hash_bytes(b"")
+
+
+def test_additions_blob_is_injective_under_path_content_repacking() -> None:
+    """Untracked entries are length-framed: a file's bytes can no longer be
+    reparsed as another file's ``path\\0`` header — the old concat scheme
+    collided on crafted trees."""
+    from quant_fund.utils.reproducibility import _additions_blob
+
+    set_a = _additions_blob([(b"a", b"x\x00b\x00y"), (b"b", b"y")])
+    set_b = _additions_blob([(b"a", b"x"), (b"b", b"y")])
+    assert set_a != set_b
+    # Order-insensitive: sorted by path inside the helper.
+    assert _additions_blob([(b"z", b"1"), (b"a", b"2")]) == _additions_blob(
+        [(b"a", b"2"), (b"z", b"1")]
+    )
