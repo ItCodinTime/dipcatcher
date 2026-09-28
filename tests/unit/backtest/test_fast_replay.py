@@ -431,7 +431,7 @@ def test_fast_flag_true_refuses_unsupported_panels():
     with pytest.raises(ValueError, match="fast replay"):
         run_backtest(mixed, weights, cfg, fast=True)
     dup = pl.concat([bars, bars.head(1)])
-    with pytest.raises(ValueError, match="fast replay"):
+    with pytest.raises(ValueError, match="duplicate bars"):
         run_backtest(dup, weights, cfg, fast=True)
     empty = pl.DataFrame(schema=bars.schema)
     with pytest.raises(ValueError, match="fast replay"):
@@ -448,7 +448,7 @@ def test_run_backtest_fast_direct_refuses_unsupported_panels():
     with pytest.raises(ValueError, match="fast replay"):
         run_backtest_fast(mixed, weights, cfg)
     dup = pl.concat([bars, bars.head(1)])
-    with pytest.raises(ValueError, match="fast replay"):
+    with pytest.raises(ValueError, match="duplicate bars"):
         run_backtest_fast(dup, weights, cfg)
     empty = pl.DataFrame(schema=bars.schema)
     with pytest.raises(ValueError, match="fast replay"):
