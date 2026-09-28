@@ -479,15 +479,22 @@ def abdi_ranaldo_spread(bars: pl.DataFrame) -> float:
 
 
 def volume_over_range(bars: pl.DataFrame) -> pl.DataFrame:
-    """Volume / (high − low). High values are a liquidity proxy, not a return claim."""
+    """Volume / (high − low). High values are a liquidity proxy, not a return claim.
+
+    A flat or invalid bar (``high <= low``, null, or non-finite) is
+    undefined — the floor-clip would otherwise emit ``volume / 1e-12``,
+    a finite-but-meaningless liquidity score.
+    """
     required = ("security_id", "event_time", "high", "low", "volume")
     missing = [c for c in required if c not in bars.columns]
     if missing:
         raise ValueError(f"bars missing columns: {missing}")
+    rng = pl.col("high") - pl.col("low")
     return bars.with_columns(
-        (pl.col("volume") / (pl.col("high") - pl.col("low")).clip(lower_bound=_FLOOR)).alias(
-            "volume_over_range"
-        )
+        pl.when(rng.is_finite() & (rng > 0.0) & pl.col("volume").is_finite())
+        .then(pl.col("volume") / rng)
+        .otherwise(None)
+        .alias("volume_over_range")
     )
 
 
@@ -633,12 +640,27 @@ def _volume_clock_vpin(
         acc_buy += max(b, 0.0)
         acc_sell += max(s, 0.0)
         vol = acc_buy + acc_sell
-        if vol >= bucket_volume:
-            tox = abs(acc_buy - acc_sell) / vol
+        # Easley volume clock: each bucket is exactly ``bucket_volume``.
+        # When a row overflows the bucket, its remainder is carried into
+        # the next bucket split proportionally to the row's buy/sell
+        # composition — discarding it would inflate bucket volume and
+        # corrupt the toxicity mean. One large row can fill several
+        # buckets, so this is a loop, not an if.
+        while vol >= bucket_volume:
+            # The excess comes from this row's contribution; split it by
+            # the row's own buy/sell mix (excess < b + s always, since
+            # the accumulator was below the boundary entering this row).
+            row_vol = b + s
+            excess = vol - bucket_volume
+            frac = min(excess / row_vol, 1.0) if row_vol > 0.0 else 0.0
+            ex_buy = frac * b
+            ex_sell = frac * s
+            tox = abs((acc_buy - ex_buy) - (acc_sell - ex_sell)) / bucket_volume
             bucket_tox.append(float(tox))
             last = float(np.mean(bucket_tox[-int(window) :]))
-            acc_buy = 0.0
-            acc_sell = 0.0
+            acc_buy = ex_buy
+            acc_sell = ex_sell
+            vol = acc_buy + acc_sell
         out[i] = last
     return out
 

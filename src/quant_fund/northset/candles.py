@@ -29,7 +29,25 @@ def candle_geometry(bars: pl.DataFrame) -> pl.DataFrame:
         raise ValueError(f"bars missing required columns: {missing}")
     if bars.height == 0:
         raise ValueError("bars must be non-empty")
-    rng = (pl.col("high") - pl.col("low")).clip(lower_bound=1e-12)
+    # A bar's geometry is only defined when OHLC are finite, positive, and
+    # consistent (high >= low, open/close inside the range). Flat bars
+    # (high == low) have zero denominator — their geometry is undefined,
+    # not ``x / 1e-12``. Clipping the range upward would flag corrupt or
+    # degenerate bars (e.g. a nonzero body on a flat bar becomes
+    # "marubozu"), so all range-derived columns are null on invalid bars.
+    ohlc_ok = (
+        pl.col("open").is_finite()
+        & pl.col("high").is_finite()
+        & pl.col("low").is_finite()
+        & pl.col("close").is_finite()
+        & (pl.col("open") > 0.0)
+        & (pl.col("high") > 0.0)
+        & (pl.col("low") > 0.0)
+        & (pl.col("close") > 0.0)
+        & (pl.col("high") >= pl.col("low"))
+        & (pl.col("high") - pl.col("low") > 0.0)
+    )
+    rng = pl.col("high") - pl.col("low")
     body = pl.col("close") - pl.col("open")
     body_frac = body.abs() / rng
     upper = (pl.col("high") - pl.max_horizontal(pl.col("open"), pl.col("close"))) / rng
@@ -39,6 +57,7 @@ def candle_geometry(bars: pl.DataFrame) -> pl.DataFrame:
         pl.col("open").shift(1).over("security_id").alias("prev_open"),
     )
     prev_body = pl.col("prev_close") - pl.col("prev_open")
+    prev_ok = pl.col("prev_open").is_finite() & pl.col("prev_close").is_finite()
     bull_engulf = (
         (body > 0.0)
         & (prev_body < 0.0)
@@ -51,35 +70,49 @@ def candle_geometry(bars: pl.DataFrame) -> pl.DataFrame:
         & (pl.col("open") >= pl.col("prev_close"))
         & (pl.col("close") <= pl.col("prev_open"))
     )
+
+    def _flag(expr: pl.Expr, needs_prev: bool = False) -> pl.Expr:
+        ok = ohlc_ok & prev_ok if needs_prev else ohlc_ok
+        return pl.when(ok).then(expr.cast(pl.Float64)).otherwise(None)
+
     return df.with_columns(
-        (body / pl.col("close")).alias("candle_body_ret"),
-        body_frac.alias("candle_body_frac"),
-        upper.alias("candle_upper_wick_frac"),
-        lower.alias("candle_lower_wick_frac"),
-        (lower - upper).alias("wick_skew"),
-        ((pl.col("high") - pl.col("low")) / pl.col("close")).alias("candle_range_frac"),
-        pl.when(pl.col("close") > pl.col("open"))
+        pl.when(ohlc_ok).then(body / pl.col("close")).otherwise(None).alias("candle_body_ret"),
+        pl.when(ohlc_ok).then(body_frac).otherwise(None).alias("candle_body_frac"),
+        pl.when(ohlc_ok).then(upper).otherwise(None).alias("candle_upper_wick_frac"),
+        pl.when(ohlc_ok).then(lower).otherwise(None).alias("candle_lower_wick_frac"),
+        pl.when(ohlc_ok).then(lower - upper).otherwise(None).alias("wick_skew"),
+        pl.when(ohlc_ok)
+        .then((pl.col("high") - pl.col("low")) / pl.col("close"))
+        .otherwise(None)
+        .alias("candle_range_frac"),
+        pl.when(ohlc_ok & (pl.col("close") > pl.col("open")))
         .then(pl.lit(1.0))
-        .when(pl.col("close") < pl.col("open"))
+        .when(ohlc_ok & (pl.col("close") < pl.col("open")))
         .then(pl.lit(-1.0))
-        .otherwise(pl.lit(0.0))
+        .when(ohlc_ok)
+        .then(pl.lit(0.0))
+        .otherwise(None)
         .alias("candle_direction"),
-        (pl.col("open") / pl.col("prev_close") - 1.0).alias("candle_gap"),
-        ((2.0 * pl.col("close") - pl.col("high") - pl.col("low")) / rng).alias(
-            "close_location_value"
+        pl.when(ohlc_ok & pl.col("prev_close").is_finite() & (pl.col("prev_close") > 0.0))
+        .then(pl.col("open") / pl.col("prev_close") - 1.0)
+        .otherwise(None)
+        .alias("candle_gap"),
+        pl.when(ohlc_ok)
+        .then((2.0 * pl.col("close") - pl.col("high") - pl.col("low")) / rng)
+        .otherwise(None)
+        .alias("close_location_value"),
+        _flag(body_frac < _DOJI_BODY).alias("candle_doji"),
+        _flag((lower > _HAMMER_LOWER) & (body_frac < _HAMMER_BODY) & (upper < _HAMMER_UPPER)).alias(
+            "candle_hammer"
         ),
-        (body_frac < _DOJI_BODY).cast(pl.Float64).alias("candle_doji"),
-        ((lower > _HAMMER_LOWER) & (body_frac < _HAMMER_BODY) & (upper < _HAMMER_UPPER))
-        .cast(pl.Float64)
-        .alias("candle_hammer"),
-        (bull_engulf | bear_engulf).cast(pl.Float64).alias("candle_engulfing"),
-        ((body_frac < _SPIN_BODY) & (upper > _SPIN_WICK) & (lower > _SPIN_WICK))
-        .cast(pl.Float64)
-        .alias("candle_spinning_top"),
-        (body_frac > _MARUBOZU_BODY).cast(pl.Float64).alias("candle_marubozu"),
-        ((upper > _STAR_UPPER) & (body_frac < _STAR_BODY) & (lower < _STAR_LOWER))
-        .cast(pl.Float64)
-        .alias("candle_shooting_star"),
+        _flag(bull_engulf | bear_engulf, needs_prev=True).alias("candle_engulfing"),
+        _flag((body_frac < _SPIN_BODY) & (upper > _SPIN_WICK) & (lower > _SPIN_WICK)).alias(
+            "candle_spinning_top"
+        ),
+        _flag(body_frac > _MARUBOZU_BODY).alias("candle_marubozu"),
+        _flag((upper > _STAR_UPPER) & (body_frac < _STAR_BODY) & (lower < _STAR_LOWER)).alias(
+            "candle_shooting_star"
+        ),
     )
 
 

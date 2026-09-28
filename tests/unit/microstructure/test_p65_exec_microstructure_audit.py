@@ -147,8 +147,10 @@ def test_ofi_cks_known_answers() -> None:
 
 
 def test_vpin_buy_minus_sell_equals_ofi() -> None:
-    # bucket_volume=1 forces every nonzero-volume row to complete a bucket, so
-    # vpin_i = tox_i = |buy_i - sell_i| / (buy_i + sell_i) with window=2 mean.
+    # bucket_volume=1 gives unit-volume buckets (Easley volume clock): a
+    # row of volume V completes V buckets, all at that row's toxicity, so
+    # the window mean collapses to the row's own tox.
+    # vpin_i = tox_i = |buy_i - sell_i| / (buy_i + sell_i).
     # CKS legs (buy = bid_up*q^B_n + ask_up*q^A_{n-1};
     #            sell = bid_dn*q^B_{n-1} + ask_dn*q^A_n):
     #   t1 buy=12+10=22 sell=0+10=10 -> tox=12/32=0.375
@@ -160,8 +162,8 @@ def test_vpin_buy_minus_sell_equals_ofi() -> None:
     vpin = out["vpin"].to_numpy()
     assert math.isnan(vpin[0])
     assert vpin[1] == pytest.approx(12.0 / 32.0)
-    assert vpin[2] == pytest.approx((12.0 / 32.0 + 10.0 / 26.0) / 2.0)
-    assert vpin[3] == pytest.approx((10.0 / 26.0 + 6.0 / 22.0) / 2.0)
+    assert vpin[2] == pytest.approx(10.0 / 26.0)
+    assert vpin[3] == pytest.approx(6.0 / 22.0)
 
 
 # --- amihud_illiquidity ---------------------------------------------------
