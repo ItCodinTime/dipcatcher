@@ -35,7 +35,7 @@ class AuditRoot:
 
 #: One manifest per source tree; each floor may only increase.
 ROOTS = (
-    AuditRoot(ROOT / "src" / "quant_fund", ROOT / "quality" / "audit_coverage.json", 446),
+    AuditRoot(ROOT / "src" / "quant_fund", ROOT / "quality" / "audit_coverage.json", 508),
     AuditRoot(ROOT / "src" / "fx1", ROOT / "quality" / "audit_coverage_fx1.json", 65),
 )
 

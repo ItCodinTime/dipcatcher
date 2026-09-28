@@ -173,8 +173,9 @@
       "status": "audited"
     },
     "research": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "status": "audited",
+      "n_modules": 62,
+      "doc": "docs/AUDIT_LEDGER.md"
     },
     "risk": {
       "doc": "docs/AUDIT_FRONTIER.md",
