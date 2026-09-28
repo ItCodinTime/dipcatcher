@@ -51,6 +51,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
             "conf_t",
             "fhs_skew",
             "regime",
+            "patchtst",
         },
         "distribution",
     )
@@ -58,7 +59,7 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
     label = config.train.distribution_target
     df = panel(config, label=label)
     x, y, dates, feats, ids = design_matrix(df, label)
-    if model_name in {"fhs_skew", "regime"} and (
+    if model_name in {"fhs_skew", "regime", "patchtst"} and (
         ids.size == 0
         or np.unique(ids).size != 1
         or np.unique(dates).size != dates.size
@@ -69,6 +70,10 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
     taus = config.quantiles.levels
 
     def make_model() -> Any:
+        if model_name == "patchtst":
+            # torch-optional neural head — imported lazily so the nn extra is
+            # only required when this head is actually selected.
+            return _patchtst(taus, config)
         catalog = {
             "empirical": EmpiricalDistribution(taus),
             "gaussian": GaussianDistribution(taus),
@@ -123,6 +128,12 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
     path = Path(config.data.root) / "metadata" / f"dist_{model_name}.joblib"
     model.save(path)
     return {"metrics": metrics, "run_id": run_id, "path": str(path)}
+
+
+def _patchtst(taus: Any, config: AppConfig) -> Any:
+    from quant_fund.models.patchtst import PatchTSTDistribution
+
+    return PatchTSTDistribution(list(taus), seed=int(config.train.random_seed))
 
 
 def train_distribution_auto(config: AppConfig) -> dict[str, Any]:

@@ -237,9 +237,22 @@ Each: pinned artifact + sha256, zero-shot, native output honored
       warmup (`lookback`) disclosed in metadata. DLinear already exists as
       `models/dlinear.py` (sota_protocol path baseline). Fleet cell still
       open.
-- [ ] P2.8 Patch-Transformer reference line per arXiv:2602.06909 finding
+- [x] P2.8 Patch-Transformer reference line per arXiv:2602.06909 finding
       (generic transformer ~SOTA when pretrained at scale) — likely
       infeasible to pretrain; document as bounded.
+      Bounded reference landed: `PatchTSTDistribution` in
+      `models/patchtst.py` — direct deterministic CPU torch implementation
+      of the PatchTST line (Nie et al. 2023, arXiv:2211.14730):
+      non-overlapping patches (leading remainder dropped, never padded) →
+      linear embed + learnable positional → TransformerEncoder
+      (batch_first, norm_first, dropout=0 for determinism) → flatten →
+      linear to the scoring tau grid, pinball loss, seeded + single-thread
+      via the shared `_QuantileSequenceBase`. Wired into
+      `FLEET_HEAD_REGISTRY` (`fleet --models patchtst`) and
+      `train distribution --model patchtst` under the single-series gate.
+      The bound is documented honestly: this is the *architecture*
+      reference, not the pretrained-at-scale claim — local training on one
+      series cannot reproduce the foundation-model regime.
 
 ### P3 — New cells & domains (widen the scope claim)
 
