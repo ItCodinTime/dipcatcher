@@ -340,6 +340,62 @@ def verify_receipt_cmd(
     raise typer.Exit(code=0 if result["valid"] else 1)
 
 
+@app.command("multih-fleet")
+def multih_fleet_cmd(
+    models: str | None = typer.Option(
+        None, help="Comma-separated fleet head names (default: all)."
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all SYNTHETIC shards)."
+    ),
+    horizons: str = typer.Option("1,5,20", "--horizons"),
+    n_train: int = typer.Option(200, help="Leading fit bars."),
+    n_eval: int = typer.Option(40, help="Scored origins per shard/horizon."),
+    n: int = typer.Option(400, help="Shard length in bars."),
+    seed: int = typer.Option(11),
+    out_dir: Path = typer.Option(Path("receipts")),
+) -> None:
+    """P3.2 — score the fleet at horizons h∈{1,5,20} on identical origins.
+
+    One-step heads are extended honestly: ``iid_sqrt`` (mean ×h, dispersion
+    ×√h) and ``empirical_ratio`` (causal trailing h-sum/1-step dispersion
+    ratio); ``hstep_*`` heads also emit their native h-blocks. Proper
+    scores only on realized h-step sums — SYNTHETIC correctness evidence.
+    """
+    from quant_fund.research.multih_fleet import (
+        multih_factories,
+        resolve_shard_generators,
+        run_multih_fleet_eval,
+        write_multih_receipt,
+    )
+
+    horizon_set = tuple(int(h.strip()) for h in horizons.split(",") if h.strip())
+    try:
+        factories = multih_factories(
+            (0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95),
+            seed,
+            None if models is None else models.split(","),
+        )
+        gens = resolve_shard_generators(None if shards is None else shards.split(","))
+        rows, receipt = run_multih_fleet_eval(
+            factories,
+            gens,
+            horizons=horizon_set,
+            n_train=int(n_train),
+            n_eval=int(n_eval),
+            n=int(n),
+            seed=int(seed),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_multih_receipt(receipt, out_dir)
+    ok = [r for r in rows if r.status == "ok"]
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    for key, winner in sorted(receipt["payload"]["leaders"].items()):
+        typer.echo(f"  {key}: {winner}")
+    typer.echo(f"rows={len(rows)} ok={len(ok)} receipt={path}")
+
+
 @app.command("vol-bench")
 def vol_bench(
     config: Path = typer.Option(Path("configs/research.yaml")),
@@ -517,6 +573,7 @@ __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
     "fleet",
+    "multih_fleet_cmd",
     "rankic",
     "research",
     "verify_identities",

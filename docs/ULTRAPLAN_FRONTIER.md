@@ -245,8 +245,14 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 
 - [ ] P3.1 Hourly (1h) cell: deep bars exist remotely; same walk-forward
       protocol; watch microstructure-noise caveat (disclose).
-- [ ] P3.2 Multi-horizon: h∈{1,5,20} daily + {1,6} 4h on identical origins
-      (megaplan Phase D); targets emit native paths, challengers use P1.10.
+- [x] P3.2 Multi-horizon (daily half): `research/multih_fleet.py` +
+      `quant multih-fleet` — identical origins, h∈{1,5,20}; 1-step heads
+      extended via `iid_sqrt` (μ×h, σ×√h) and causal `empirical_ratio`
+      (trailing h-sum/1-step dispersion), `hstep_*` scored on native blocks;
+      proper scores on realized h-step sums; sealed `multih_fleet_eval`
+      receipt. Result: empirical_ratio wins clustered/break shards, native
+      hstep wins where horizon structure matters — the construction
+      discriminates as designed. 4h {1,6} remains remote-gated (P3.1 bars).
 - [ ] P3.3 Second domain: Stooq US equity dailies (remote `data/file_us`
       tapes) OR Binance non-USDT quotes — requires same bar-integrity
       hashing + availability-time discipline.
