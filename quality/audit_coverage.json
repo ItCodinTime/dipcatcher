@@ -64,8 +64,8 @@
       "status": "audited"
     },
     "hmm": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 4,
+      "status": "audited"
     },
     "labels": {
       "doc": "docs/AUDIT_FRONTIER.md",
