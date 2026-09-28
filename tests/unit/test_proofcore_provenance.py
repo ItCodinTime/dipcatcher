@@ -7,6 +7,7 @@ over a real duckdb file in tmp_path.
 from __future__ import annotations
 
 import json
+from typing import Literal
 
 import pytest
 
@@ -33,7 +34,7 @@ def _bundle(bundle_id: str, *, prev: str = GENESIS_HASH, created: str) -> ProofB
         created_utc=created,
         run_kind="backtest",
         code=CodeFingerprint(git_revision="a26be34", worktree_sha256=_HEX, dirty=False),
-        data_manifest=DataManifestSummary(reads=[], merkle_root=_HEX, n_reads=0),
+        data_manifest=DataManifestSummary(reads=(), merkle_root=_HEX, n_reads=0),
         config_sha256=_HEX,
         seed=7,
         env=EnvFingerprint(
@@ -53,7 +54,12 @@ def _bundle(bundle_id: str, *, prev: str = GENESIS_HASH, created: str) -> ProofB
     )
 
 
-def _trial(trial_id: str, bundle_hash: str, *, family: str = "discovery") -> TrialLedgerRow:
+def _trial(
+    trial_id: str,
+    bundle_hash: str,
+    *,
+    family: Literal["calibration", "discovery", "bound"] = "discovery",
+) -> TrialLedgerRow:
     return TrialLedgerRow(
         trial_id=trial_id,
         bundle_hash=bundle_hash,
