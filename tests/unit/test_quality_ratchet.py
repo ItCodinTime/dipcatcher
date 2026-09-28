@@ -29,6 +29,12 @@ MCCABE_CEILING = 74
 # count at 7d2e01e (75). This branch narrows three of them, so the tree is
 # at 72. New handlers that push the total above main fail this test.
 EXCEPT_EXCEPTION_CEILING = 75
+# `# type: ignore[...]` comments under src/quant_fund. This is origin/main's
+# count at the branch point (218). Each one is an escape from the type
+# contract; new ignores must bump this constant with justification in the
+# comment, and fixes may lower it.
+TYPE_IGNORE_CEILING = 218
+_TYPE_IGNORE_RE = re.compile(r"#\s*type:\s*ignore")
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
@@ -94,3 +100,12 @@ def test_no_bare_except_and_exception_ceiling() -> None:
                 broad += 1
     assert bare == 0
     assert broad <= EXCEPT_EXCEPTION_CEILING
+
+
+def test_type_ignore_ceiling_not_raised() -> None:
+    count = 0
+    for path in (ROOT / "src" / "quant_fund").rglob("*.py"):
+        for line in path.read_text().splitlines():
+            if _TYPE_IGNORE_RE.search(line):
+                count += 1
+    assert count <= TYPE_IGNORE_CEILING
