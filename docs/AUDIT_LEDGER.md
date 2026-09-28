@@ -62,14 +62,19 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `models/` (142 modules) | Child session `b95e8bcbd3a0426285a47725ec48086c` — estimator-by-estimator verification |
 | `research/` (29 modules) | Child session `3dca4dedd8634a5182f3e7a94e0cd15d` — lane/receipt audit |
 
-## fx1 (the gated product — out of manifest scope)
+## fx1 (the gated product — `quality/audit_coverage_fx1.json`)
+
+Parallel manifest, same schema + ratchet tests: 65/66 modules `audited`
+(`__init__.py` waived as package surface). Directory pins: eval 14, forecast
+11, bench 3, serve 5, data 14, train 9; root modules audited individually.
 
 | Area | Verified | Findings → fix |
 |---|---|---|
 | `honesty.py` + `data/` | Child audit — regex evasions, corpus screening, contamination floor, vacuous honesty gate | #321 |
 | `eval/` | Deterministic seeded banks, contract-validated prompts, unparseable answers counted (never propagated), degenerate forecasts fail closed NaN, `passed` requires finite ECE AND finite \|Z\| | — |
 | `serve/` | HMAC-env signing (never hardcoded), fail-closed compare_digest verify, structural TEE + zkML manifests with honest crypto delegation | #321 (TEE existence-only status) |
-| `train/` / `bench/` / `forecast/` | `bench/dip.py` verified: causal dip detection (fires below running peak only), recovery windows bounded at data end → `None` never imputed, out-of-range probabilities raise, `assert_bench_output_honest` mirrors the forbidden-token contract inside the bench itself; `forecast/` forward labels explicitly marked "do not pass to predict"; `train/` wrappers over verified eval paths | — |
+| `bench/` + `forecast/` | `bench/dip.py` verified: causal dip detection (fires below running peak only), recovery windows bounded at data end → `None` never imputed, out-of-range probabilities raise, `assert_bench_output_honest` mirrors the forbidden-token contract inside the bench itself; `forecast/evaluate.py`: `assert_no_label_overlap` per fold, walk-forward fails closed on empty folds, finite-masked metrics; `runner.py` decision-time machinery (`_at_decision`, late-release flag) | — |
+| `train/` + root modules | `train/pipeline.py`: hard stage gates, mandatory pre-training honesty gate (`eval_base` blocks TRAIN when `honesty_gate_passed` is false), corpus dedup/decontamination vs eval prompts, frozen split manifest; `train/receipts.py`: receipt pins SHA-256 of config/corpus/split/eval_base + git rev + dirty flag + env fingerprint with forced `live_pnl_claim=False`/`research_only=True`; `default_trainer` fails closed (no local GPU trainer — injectable); `reward.py`: executable honesty-contract reward (forbidden-headline/live-claim/synthetic-unlabeled → low score); `hypotheses.py`: only gate-resolved traces admissible; `mrm.py`: dossier sections cite artifact hashes, missing artifact fails closed | — |
 
 ## Rules
 

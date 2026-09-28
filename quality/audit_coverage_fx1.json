@@ -1,0 +1,83 @@
+{
+  "schema_version": "audit-coverage/v1",
+  "statuses": {
+    "audited": "every module reviewed line-by-line for honesty/causality/determinism contracts",
+    "partial": "some modules reviewed; remainder pending",
+    "pending": "not yet audited",
+    "waived": "exempt with reason"
+  },
+  "directories": {
+    "eval": {
+      "status": "audited",
+      "n_modules": 14,
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "forecast": {
+      "status": "audited",
+      "n_modules": 11,
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "bench": {
+      "status": "audited",
+      "n_modules": 3,
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "serve": {
+      "status": "audited",
+      "n_modules": 5,
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "data": {
+      "status": "audited",
+      "n_modules": 14,
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "train": {
+      "status": "audited",
+      "n_modules": 9,
+      "doc": "docs/AUDIT_LEDGER.md"
+    }
+  },
+  "modules": {
+    "__init__.py": {
+      "status": "waived",
+      "reason": "package surface only"
+    },
+    "cli.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "doctor.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "harness.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "honesty.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "hypotheses.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "modelcard.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "mrm.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "reward.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    },
+    "sbom.py": {
+      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md"
+    }
+  }
+}
