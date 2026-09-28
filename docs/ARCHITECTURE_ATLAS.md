@@ -575,7 +575,7 @@ sequenceDiagram
 | `fx1.cli` | 1 |
 | `fx1.data` | 14 |
 | `fx1.doctor` | 1 |
-| `fx1.eval` | 13 |
+| `fx1.eval` | 14 |
 | `fx1.forecast` | 11 |
 | `fx1.harness` | 1 |
 | `fx1.honesty` | 1 |
@@ -636,7 +636,7 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **733**
+- Modules scanned: **734**
 - Packages: **65**
 - Cross-package import edges: **248**
 
