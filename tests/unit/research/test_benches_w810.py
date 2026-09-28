@@ -52,9 +52,15 @@ def test_benches_return_clean_finite_blobs() -> None:
 def test_anytime_valid_controls_fdr_and_detects() -> None:
     blob = bench_anytime_valid()
     assert blob["null_fdr_empirical"] <= 0.10
+    assert blob["esaffron_null_fa_rate"] <= 0.10
     assert blob["detector_null_fa_rate"] <= 0.10
     assert blob["detector_alarm_time"] > 600.0
     assert blob["e_bh_rejected"] >= 8.0
+    # e-GAI alpha-investing spends data-driven levels; with 10 planted
+    # strong signals among 50 tests it should discover at least as many
+    # as the fixed-schedule e-LOND.
+    assert blob["esaffron_rejected"] >= blob["elond_rejected"]
+    assert 0.0 < blob["esaffron_remaining_wealth"] < 0.05
 
 
 def test_energy_score_propriety_gap_positive() -> None:
