@@ -177,10 +177,7 @@ class IOGuard:
 
     def _is_allowlisted(self, path: Path) -> bool:
         resolved = _resolve(path)
-        for entry in self._allowlist:
-            if resolved == entry or resolved.is_relative_to(entry):
-                return True
-        return False
+        return any(resolved == entry or resolved.is_relative_to(entry) for entry in self._allowlist)
 
     # -- interception entry points (called by the wrappers) -------------------
 
