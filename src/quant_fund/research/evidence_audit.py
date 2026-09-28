@@ -229,6 +229,58 @@ def evidence_audit_contract_errors(receipt: object) -> list[str]:
     return errors
 
 
+def evidence_audit_consistency_errors(body: object) -> list[str]:
+    """Re-derive the audit's counts and verdict from the sealed file rows —
+    catches a tampered summary without re-reading the receipts directory."""
+    if not isinstance(body, dict):
+        return []
+    payload = body.get("payload")
+    if not isinstance(payload, dict):
+        return []
+    files = payload.get("files")
+    if not isinstance(files, list):
+        return []
+    errors: list[str] = []
+    n_sealed = sum(1 for r in files if isinstance(r, dict) and r.get("sealed"))
+    n_valid = sum(1 for r in files if isinstance(r, dict) and r.get("valid"))
+    checks = {
+        "n_files": len(files),
+        "n_sealed": n_sealed,
+        "n_unsealed": len(files) - n_sealed,
+        "n_valid": n_valid,
+        "n_invalid_sealed": n_sealed
+        - sum(1 for r in files if isinstance(r, dict) and r.get("sealed") and r.get("valid")),
+    }
+    for key, want in checks.items():
+        if payload.get(key) != want:
+            errors.append(f"count_mismatch:{key}")
+    findings = payload.get("findings")
+    if isinstance(findings, list):
+        expected = [
+            f"{r['file']}:sealed_receipt_invalid"
+            for r in files
+            if isinstance(r, dict) and r.get("sealed") and not r.get("valid")
+        ]
+        embedded = {str(f) for f in findings}
+        for want_finding in expected:
+            if want_finding not in embedded:
+                errors.append(f"finding_missing:{want_finding}")
+        want_verdict = "pass" if not findings else "fail"
+        if body.get("verdict") != want_verdict:
+            errors.append("verdict_findings_inconsistent")
+    dup = payload.get("duplicate_seals")
+    if isinstance(dup, dict):
+        names_in_files = {r.get("file") for r in files if isinstance(r, dict) and r.get("file")}
+        for seal, names in dup.items():
+            if not isinstance(seal, str) or len(seal) != 64:
+                errors.append("duplicate_seal_key_not_hex64")
+            if not isinstance(names, list) or len(names) < 2:
+                errors.append(f"duplicate_seal_group_too_small:{str(seal)[:16]}")
+            elif not set(names).issubset(names_in_files):
+                errors.append(f"duplicate_seal_unknown_file:{str(seal)[:16]}")
+    return errors
+
+
 def write_evidence_audit_receipt(
     receipt: dict[str, Any], out_dir: Path | str = Path("receipts")
 ) -> Path:

@@ -386,6 +386,10 @@ def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
+    if payload.get("kind") == "evidence_audit":
+        from quant_fund.research.evidence_audit import evidence_audit_consistency_errors
+
+        return evidence_audit_consistency_errors(payload)
     return []
 
 
