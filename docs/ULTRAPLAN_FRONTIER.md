@@ -314,6 +314,15 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 - [ ] P5.1 Multi-sleeve dev study: carry + time-series momentum + x-sectional
       reversal (Kakushadze-style BTC-factor residual mean-reversion);
       sleeve-level risk-parity / vol-target overlay.
+      Landed (bounded): `research/sleeve_study.py` runs funding-carry,
+      slow-trend (time-series momentum) and sweep-reclaim sleeves solo through
+      `run_perp_backtest`, then a trailing-NAV risk-parity mix, then the mix
+      under a chained VolTargetScaler + DrawdownGovernor overlay —
+      telemetry-only metrics + sealed `sleeve_study_eval.v1` receipt via
+      `dipcatcher sleeve-study --dev`. The Kakushadze residual-MR sleeve is
+      substituted by `sweep_reclaim` (liquidity-sweep reversal) — the scoped
+      substitution is recorded in the receipt params; a true BTC-factor
+      residual-MR remains open pending a factor-residual construction.
 - [x] P5.2 Vol-targeting overlay (`research/capacity_overlay.py::
       vol_target_scales`): delay-1 trailing/EWMA σ estimate -> clip(
       target/σ, 0, max_leverage); warmup neutral, unmeasurable vol

@@ -583,6 +583,54 @@ def cost_surface(
     typer.echo(format_cost_surface_table(combined))
 
 
+@app.command("sleeve-study")
+def sleeve_study(
+    n_names: int = typer.Option(8, help="Names in the synthetic perp book."),
+    n_bars: int = typer.Option(168, help="Hourly bars per name (>= 96)."),
+    alloc_window: int = typer.Option(20, help="Trailing-NAV allocation window."),
+    vol_target: float = typer.Option(0.15, help="Annualized vol target for the overlay."),
+    dd_threshold: float = typer.Option(0.25, help="Drawdown-governor hard bound."),
+    seed: int = typer.Option(11, help="Base seed."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """P5.1 multi-sleeve dev study on a seeded SYNTHETIC perp book.
+
+    Runs funding-carry, slow-trend and sweep-reclaim sleeves solo through
+    ``run_perp_backtest``, then a trailing-NAV risk-parity mix, then the mix
+    under a chained vol-target + drawdown-governor overlay. Reports turnover,
+    decomposed cost, exposure, overlay scale-factor dispersion and
+    allocation HHI — telemetry only, never a P&L or live-trading claim.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "sleeve-study is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.sleeve_study import (
+        _synth_perp_book,
+        format_sleeve_study_table,
+        run_sleeve_study,
+        write_sleeve_study_receipt,
+    )
+
+    try:
+        bars, funding = _synth_perp_book(seed, n_names, n_bars)
+        frame, receipt = run_sleeve_study(
+            bars,
+            funding,
+            seed=seed,
+            alloc_window=alloc_window,
+            vol_target=vol_target,
+            dd_threshold=dd_threshold,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_sleeve_study_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_sleeve_study_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "capacity",
     "cost_surface",
@@ -590,6 +638,7 @@ __all__ = [
     "fleet",
     "rankic",
     "research",
+    "sleeve_study",
     "verify_identities",
     "verify_receipt_cmd",
     "vol_bench",
