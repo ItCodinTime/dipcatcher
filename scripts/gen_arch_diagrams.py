@@ -560,14 +560,19 @@ def render_coverage(modules: list[str], edges: Counter[tuple[str, str]]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _rel(path: Path) -> str:
+    """Repo-relative keys are always POSIX-style, on every platform."""
+    return path.as_posix()
+
+
 def generated_artifacts(root: Path) -> dict[str, str]:
     """Return ``{repo-relative path: content}`` for every generated file."""
     modules, edges, module_edges = collect_graph(root)
     return {
-        str(ARCH_DIR / "module_deps.mmd"): render_module_deps(modules, edges),
-        str(ARCH_DIR / "data_flow.mmd"): render_data_flow(),
-        str(ARCH_DIR / "paper_loop_sequence.mmd"): render_paper_loop(),
-        str(ARCH_DIR / "manifest.json"): json.dumps(
+        _rel(ARCH_DIR / "module_deps.mmd"): render_module_deps(modules, edges),
+        _rel(ARCH_DIR / "data_flow.mmd"): render_data_flow(),
+        _rel(ARCH_DIR / "paper_loop_sequence.mmd"): render_paper_loop(),
+        _rel(ARCH_DIR / "manifest.json"): json.dumps(
             {
                 "schema_version": SCHEMA_VERSION,
                 "generator": GENERATOR,
@@ -589,15 +594,19 @@ def generated_artifacts(root: Path) -> dict[str, str]:
 def generated_blocks(artifacts: dict[str, str]) -> dict[str, str]:
     """Atlas-doc embed blocks keyed by marker name."""
     return {
-        "module_deps": "```mermaid\n" + artifacts[str(ARCH_DIR / "module_deps.mmd")] + "```",
-        "data_flow": "```mermaid\n" + artifacts[str(ARCH_DIR / "data_flow.mmd")] + "```",
-        "paper_loop": "```mermaid\n" + artifacts[str(ARCH_DIR / "paper_loop_sequence.mmd")] + "```",
+        "module_deps": "```mermaid\n" + artifacts[_rel(ARCH_DIR / "module_deps.mmd")] + "```",
+        "data_flow": "```mermaid\n" + artifacts[_rel(ARCH_DIR / "data_flow.mmd")] + "```",
+        "paper_loop": "```mermaid\n"
+        + artifacts[_rel(ARCH_DIR / "paper_loop_sequence.mmd")]
+        + "```",
         "coverage": render_coverage(
-            json.loads(artifacts[str(ARCH_DIR / "manifest.json")])["modules"],
+            json.loads(artifacts[_rel(ARCH_DIR / "manifest.json")])["modules"],
             Counter(
                 {
                     (e["src"], e["dst"]): e["imports"]
-                    for e in json.loads(artifacts[str(ARCH_DIR / "manifest.json")])["package_edges"]
+                    for e in json.loads(artifacts[_rel(ARCH_DIR / "manifest.json")])[
+                        "package_edges"
+                    ]
                 }
             ),
         ),
@@ -635,7 +644,7 @@ def write_all(root: Path) -> list[str]:
     if atlas.is_file():
         text = splice_blocks(atlas.read_text(encoding="utf-8"), generated_blocks(artifacts))
         atlas.write_text(text, encoding="utf-8")
-        written.append(str(ATLAS_DOC))
+        written.append(_rel(ATLAS_DOC))
     return written
 
 
@@ -655,12 +664,12 @@ def stale_artifacts(root: Path) -> list[str]:
         try:
             expected = splice_blocks(atlas.read_text(encoding="utf-8"), generated_blocks(artifacts))
         except ValueError:
-            stale.append(str(ATLAS_DOC))
+            stale.append(_rel(ATLAS_DOC))
         else:
             if atlas.read_text(encoding="utf-8") != expected:
-                stale.append(str(ATLAS_DOC))
+                stale.append(_rel(ATLAS_DOC))
     else:
-        stale.append(str(ATLAS_DOC))
+        stale.append(_rel(ATLAS_DOC))
     return sorted(stale)
 
 

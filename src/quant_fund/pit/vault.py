@@ -241,7 +241,9 @@ class PitVault:
                 ) as temporary:
                     temporary_path = Path(temporary.name)
                 frame.write_parquet(temporary_path)
-                with temporary_path.open("rb") as handle:
+                # r+b: fsync needs a write-capable descriptor on Windows;
+                # an rb handle raises OSError(EBADF) there.
+                with temporary_path.open("r+b") as handle:
                     os.fsync(handle.fileno())
                 # link() is an atomic exclusive publish: it cannot replace a part
                 # created by another writer or a crashed earlier append.

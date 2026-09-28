@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 import polars as pl
@@ -17,7 +17,16 @@ def _safe_destination(root: str | Path, source: str, filename: str | None) -> Pa
     if not source or source in {".", ".."} or "/" in source or "\\" in source:
         raise SourceError("source must be a non-empty path-safe label")
     base = (Path(root) / "raw" / "sources").resolve()
-    relative_name = Path(filename or f"{source}.parquet")
+    name = filename or f"{source}.parquet"
+    win_name = PureWindowsPath(name)
+    if (
+        PurePosixPath(name).is_absolute()
+        or win_name.is_absolute()
+        or win_name.drive
+        or name.startswith("\\")
+    ):
+        raise SourceError("source output filename must be relative")
+    relative_name = Path(name)
     if relative_name.is_absolute():
         raise SourceError("source output filename must be relative")
     destination = (base / relative_name).resolve()
