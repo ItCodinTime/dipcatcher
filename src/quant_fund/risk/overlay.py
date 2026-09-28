@@ -69,9 +69,13 @@ class BookRiskOverlay:
         self.scales: list[float] = []
         self.n_halt = 0
         self.n_scaled = 0
+        self.ruined = False
 
     def preview_scale(self) -> float:
-        scale = self._scale_from_history()
+        if self.ruined:
+            scale = 0.0
+        else:
+            scale = self._scale_from_history()
         self.scales.append(float(scale))
         if scale <= 1e-12:
             self.n_halt += 1
@@ -80,8 +84,13 @@ class BookRiskOverlay:
         return float(scale)
 
     def observe(self, nav_close: float) -> None:
-        if np.isfinite(nav_close) and nav_close > 0:
-            self.navs.append(float(nav_close))
+        # A non-positive NAV is ruin; a non-finite one is unmeasurable. Both
+        # trip the overlay permanently — it must not keep sizing after the
+        # book can no longer satisfy its own drawdown budget.
+        if not np.isfinite(nav_close) or nav_close <= 0:
+            self.ruined = True
+            return
+        self.navs.append(float(nav_close))
 
     def _scale_from_history(self) -> float:
         prior_scale = min(1.0, self.vol_target / 0.20)
@@ -157,6 +166,7 @@ class BookRiskOverlay:
             "kelly_fraction": self.kelly_fraction,
             "crc_alpha": self.crc_alpha,
             "n_observe": int(len(self.navs)),
+            "ruined": bool(self.ruined),
             "n_halt": int(self.n_halt),
             "n_scaled": int(self.n_scaled),
             "last_scale": last,

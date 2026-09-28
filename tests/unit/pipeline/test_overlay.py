@@ -91,3 +91,33 @@ def test_scaler_is_causal_inside_engine(tmp_path) -> None:
     gross_p = plain.equity["gross"].to_list()
     assert gross_g[-1] < gross_p[-1] * 0.3
     assert res.metrics["live_pnl_claim"] is False
+
+
+def test_book_overlay_halts_permanently_after_ruin() -> None:
+    from quant_fund.risk.overlay import BookRiskOverlay
+
+    overlay = BookRiskOverlay()
+    for nav in (100.0, 110.0, 112.0):
+        overlay.observe(nav)
+        assert overlay.preview_scale() > 0.0
+    # Ruin: book goes to zero — the overlay must never size again.
+    overlay.observe(0.0)
+    assert overlay.ruined is True
+    assert overlay.preview_scale() == 0.0
+    assert overlay.n_halt > 0
+    # Recovery NAV does not resurrect the book.
+    overlay.observe(120.0)
+    assert overlay.preview_scale() == 0.0
+    assert overlay.snapshot()["ruined"] is True
+
+
+def test_book_overlay_treats_nonfinite_nav_as_ruin() -> None:
+    import math
+
+    from quant_fund.risk.overlay import BookRiskOverlay
+
+    overlay = BookRiskOverlay()
+    overlay.observe(100.0)
+    overlay.observe(math.nan)
+    assert overlay.ruined is True
+    assert overlay.preview_scale() == 0.0
