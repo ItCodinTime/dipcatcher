@@ -187,6 +187,7 @@ class _State:
     exec_mark: dict[str, float] = field(default_factory=dict)
     close_mark: dict[str, float] = field(default_factory=dict)
     marked_today: set[str] = field(default_factory=set)
+    pre_exec_marks: dict[str, float] = field(default_factory=dict)
     snaps: dict[int, _Snap] = field(default_factory=dict)
     last_target: dict[str, float] = field(default_factory=dict)
     cost_sum: dict[str, float] = field(
@@ -413,6 +414,10 @@ def _ingest(state: _State, rows: list[dict[str, Any]], *, use_open: bool, stale_
     for sid in close_mark:
         if sid not in marked:
             next_ages[sid] = next_ages.get(sid, 0) + 1
+    # Marks knowable at execution time are the pre-update marks; valuing a
+    # non-executing name at this bar's own close leaks future prices into
+    # open-time sizing and gating, mirroring pre_exec_marks in the engine.
+    state.pre_exec_marks = dict(state.last_marks)
     state.last_marks = dict(close_mark)
     state.mark_ages = next_ages
     state.exec_mark = exec_mark
@@ -631,7 +636,7 @@ def _try_commit(
     except KillSwitchActive:
         state.halt_count += 1
         return False
-    nav_prices = {**state.last_marks, **state.exec_mark}
+    nav_prices = {**state.pre_exec_marks, **state.exec_mark}
     current_w, gross_after, net_after = _projected_exposures(
         state.book, nav_prices, sid, delta, nav
     )
@@ -756,7 +761,7 @@ def _rebalance_next_open(
     kill: KillSwitch,
 ) -> None:
     """One next-open rebalance. Legacy zero-extra specs follow ``run_backtest``."""
-    nav_prices = {**state.last_marks, **state.exec_mark}
+    nav_prices = {**state.pre_exec_marks, **state.exec_mark}
     nav = state.book.nav(nav_prices)
     state.nav_checked = True
     if nav <= 0:
@@ -964,7 +969,7 @@ def _rebalance_path(
     bars: pl.DataFrame,
     kill: KillSwitch,
 ) -> None:
-    nav_prices = {**state.last_marks, **state.exec_mark}
+    nav_prices = {**state.pre_exec_marks, **state.exec_mark}
     nav = state.book.nav(nav_prices)
     state.nav_checked = True
     if nav <= 0:
@@ -1278,7 +1283,7 @@ def _mark_equity(
     if state.stopped:
         return
     if not state.nav_checked:
-        nav_open = state.book.nav({**state.last_marks, **state.exec_mark})
+        nav_open = state.book.nav({**state.pre_exec_marks, **state.exec_mark})
         if nav_open <= 0:
             state.stopped = True
             return
