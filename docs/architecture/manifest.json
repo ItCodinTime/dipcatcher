@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 734,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -3331,6 +3331,14 @@
       "src": "quant_fund.models.pairs"
     },
     {
+      "dst": "quant_fund.models.base",
+      "src": "quant_fund.models.patchtst"
+    },
+    {
+      "dst": "quant_fund.models.nbeats",
+      "src": "quant_fund.models.patchtst"
+    },
+    {
       "dst": "quant_fund.metrics.scoring",
       "src": "quant_fund.models.posthoc_calibration"
     },
@@ -4736,6 +4744,10 @@
     },
     {
       "dst": "quant_fund.models.lgbm_q2",
+      "src": "quant_fund.pipeline.train.distribution"
+    },
+    {
+      "dst": "quant_fund.models.patchtst",
       "src": "quant_fund.pipeline.train.distribution"
     },
     {
@@ -6203,6 +6215,10 @@
       "src": "quant_fund.research.fleet_eval"
     },
     {
+      "dst": "quant_fund.models.patchtst",
+      "src": "quant_fund.research.fleet_eval"
+    },
+    {
       "dst": "quant_fund.models.qar",
       "src": "quant_fund.research.fleet_eval"
     },
@@ -7504,6 +7520,7 @@
     "quant_fund.models.ordered",
     "quant_fund.models.pairs",
     "quant_fund.models.panel_coint",
+    "quant_fund.models.patchtst",
     "quant_fund.models.poet",
     "quant_fund.models.point_process",
     "quant_fund.models.posthoc_calibration",
@@ -8663,7 +8680,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 65,
+      "imports": 67,
       "src": "quant_fund.models"
     },
     {
@@ -8883,7 +8900,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 72,
+      "imports": 73,
       "src": "quant_fund.pipeline"
     },
     {
@@ -9128,7 +9145,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 57,
+      "imports": 58,
       "src": "quant_fund.research"
     },
     {
