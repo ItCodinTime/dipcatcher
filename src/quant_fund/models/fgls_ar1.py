@@ -43,7 +43,13 @@ def _ols(y: Array, x: Array) -> Array:
 def _rho_from_resid(resid: Array) -> float:
     num = float(np.dot(resid[1:], resid[:-1]))
     den = float(np.dot(resid[:-1], resid[:-1]))
-    return num / den if den > 0 else 0.0
+    rho = num / den if den > 0 else 0.0
+    # The Prais-Winsten transform requires |rho| < 1; outside that range the
+    # AR(1) residual model is invalid, so fail closed instead of degrading
+    # silently to a near-zero first-observation weight.
+    if not np.isfinite(rho) or abs(rho) >= 1.0:
+        raise ValueError("estimated rho outside (-1, 1); residuals are not AR(1)-stationary")
+    return rho
 
 
 def _se(y: Array, x: Array, beta: Array) -> Array:

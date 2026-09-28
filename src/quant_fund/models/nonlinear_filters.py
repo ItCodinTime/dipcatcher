@@ -166,13 +166,18 @@ def particle_filter(
         mx = ll.max()
         if not np.isfinite(mx):
             raise ValueError("observation likelihood returned all -inf")
+        # SIS weight recursion: w_t ∝ w_{t-1} * p(y_t|x_t). The previous
+        # weights must carry over between resampling events — resetting to
+        # exp(lw) discards the accumulated importance weights.
         lw = ll - mx
-        w = np.exp(lw)
+        w = w * np.exp(lw)
         tot = w.sum()
         if tot <= 0 or not np.isfinite(tot):
             raise ValueError("particle degeneracy: zero total weight")
         w /= tot
-        loglik += mx + math.log(tot / n_particles)
+        # Incremental marginal likelihood: log(sum_i w_prev_i * exp(lw_i));
+        # reduces to mx + log(tot_raw/N) when the previous weights are uniform.
+        loglik += mx + math.log(tot)
         ess[t] = 1.0 / float(w @ w)
         if ess[t] < resample_frac * n_particles:
             parts = parts[systematic(w)]

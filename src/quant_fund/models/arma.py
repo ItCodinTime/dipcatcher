@@ -54,6 +54,8 @@ def arma_css(y: Array, p: int, q: int) -> dict[str, Array | float]:
 
     par0 = np.zeros(p + q)
     res = optimize.minimize(ssr, par0, method="BFGS")
+    if not np.isfinite(res.fun) or res.fun >= 1e14:
+        raise ValueError("ARMA CSS optimization did not converge to a finite SSR")
     phi = res.x[:p]
     theta = res.x[p : p + q]
     e = _css_residuals(yd, phi, theta)[m:]

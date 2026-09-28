@@ -202,6 +202,8 @@ def bai_ng_factors(returns: Array, r_max: int = 8) -> dict[str, Array]:
     cov = z.T @ z / t
     vals = np.linalg.eigvalsh(cov)[::-1]
     total = float(vals.sum())
+    if total <= 0.0:
+        raise ValueError("panel has zero total variance; cannot select factors")
     cnt = min(n, t)
     r_max = max(1, min(r_max, cnt - 1))
     # V(r): residual variance of the r-factor approximation.

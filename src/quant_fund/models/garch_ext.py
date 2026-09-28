@@ -110,7 +110,7 @@ def fit_figarch(
         )
         if best is None or res.fun < best.fun:
             best = res
-    if best is None or not np.isfinite(best.fun):
+    if best is None or not np.isfinite(best.fun) or best.fun >= 1e12:
         raise ValueError("FIGARCH QMLE failed to converge")
     phi, d, beta = best.x
     sigma2 = figarch_variance(v, phi, d, beta)
@@ -191,7 +191,7 @@ def fit_aparch(
         )
         if best is None or res.fun < best.fun:
             best = res
-    if best is None or not np.isfinite(best.fun):
+    if best is None or not np.isfinite(best.fun) or best.fun >= 1e12:
         raise ValueError("APARCH QMLE failed")
     omega, alpha, gamma, beta, delta = best.x
     sigma2 = aparch_variance(v, omega, alpha, gamma, beta, delta)

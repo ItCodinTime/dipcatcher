@@ -94,7 +94,7 @@ def dcc_fit(returns: Array) -> dict[str, Array | float]:
         stage2_nll, np.array([0.04, 0.93]), method="Nelder-Mead", options={"maxiter": 2000}
     )
     a, b = float(res.x[0]), float(res.x[1])
-    if not np.isfinite(res.fun) or a + b >= 0.999:
+    if not np.isfinite(res.fun) or res.fun >= 1e12 or a + b >= 0.999:
         raise ValueError("DCC stage-2 fit failed")
     # final paths
     q = qbar.copy()

@@ -142,11 +142,12 @@ def arellano_bond(y: Array, max_lag_inst: int = 3) -> dict[str, Array | float]:
     G = np.einsum("ntm,tn->m", Zi, -end_mat) / N  # d g / d rho
     denom = float(G @ W @ G)
     var_rho = 1.0 / max(N * denom, 1e-20)
-    # AR(2) test on differenced residuals (per-unit pooled correlation).
-    du1 = du[:-1].reshape(-1)
-    du2 = du[1:].reshape(-1)
-    if np.std(du2) > 0 and np.std(du1) > 0:
-        ar2 = float(np.corrcoef(du1, du2)[0, 1])
+    # AR(2) test on differenced residuals: second-order serial correlation
+    # (lag 2 in the t dimension). du is (Tm, N); pairing t with t+2 per unit.
+    if du.shape[0] >= 3:
+        du1 = du[:-2].reshape(-1)
+        du2 = du[2:].reshape(-1)
+        ar2 = float(np.corrcoef(du1, du2)[0, 1]) if np.std(du2) > 0 and np.std(du1) > 0 else np.nan
     else:
         ar2 = np.nan
     return {

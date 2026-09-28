@@ -277,11 +277,11 @@ class RealizedGARCHVol(JoblibMixin):
 
         try:
             result = minimize(objective, x0, method="L-BFGS-B", options={"maxiter": 400})
-            if (not bool(result.success)) or (not np.isfinite(result.fun)):
+            if (not bool(result.success)) or (not np.isfinite(result.fun)) or result.fun >= 1e12:
                 result = minimize(objective, x0, method="Nelder-Mead", options={"maxiter": 800})
         except (ValueError, FloatingPointError, TypeError):
             return None
-        if not bool(result.success) or not np.isfinite(result.fun):
+        if not bool(result.success) or not np.isfinite(result.fun) or result.fun >= 1e12:
             return None
         params = self._unpack(np.asarray(result.x, dtype=float))
         path = self._filter_path(params, returns_percent, measure_percent)

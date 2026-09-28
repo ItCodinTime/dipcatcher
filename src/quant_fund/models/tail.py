@@ -46,8 +46,8 @@ class ScaledHistoricalTail(JoblibMixin):
 
     def __init__(self, alpha: float = 0.95) -> None:
         self.alpha = alpha
-        self.z_var = 0.0
-        self.z_es = 0.0
+        self.z_var: float | None = None
+        self.z_es: float | None = None
 
     def fit(
         self,
@@ -72,6 +72,8 @@ class ScaledHistoricalTail(JoblibMixin):
     def predict_var_es(
         self, scale: NDArray[np.float64]
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        if self.z_var is None or self.z_es is None:
+            raise RuntimeError("scaled historical tail model has not been fitted")
         sc = np.maximum(np.asarray(scale, dtype=float).reshape(-1), 1e-8)
         return self.z_var * sc, self.z_es * sc
 
@@ -106,7 +108,7 @@ class DrawdownClassifier(JoblibMixin):
     def predict_proba(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         x = np.where(np.isfinite(x), x, 0.0)
         if not hasattr(self.model, "coef_"):
-            return np.full(x.shape[0], 0.05)
+            raise RuntimeError("drawdown classifier has not been fitted")
         return np.asarray(self.model.predict_proba(x)[:, 1], dtype=np.float64)
 
     def predict(self, x: NDArray[np.float64]) -> NDArray[np.float64]:

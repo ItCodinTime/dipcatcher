@@ -247,7 +247,10 @@ def ou_mle(x: Array, dt: float = 1.0) -> dict[str, float]:
     if abs(denom) < 1e-18:
         raise ValueError("x has no variation for OU fit")
     phi = (n * s_xy - s_x * s_y) / denom
-    phi = float(np.clip(phi, 1e-6, 0.999999))
+    # phi = exp(-theta dt) must lie in (0, 1); outside that the series does
+    # not follow a stationary OU transition and any result would be fiction.
+    if not np.isfinite(phi) or phi <= 0.0 or phi >= 1.0:
+        raise ValueError("estimated phi outside (0, 1); series is not mean-reverting OU")
     mu = (s_y - phi * s_x) / (n * (1.0 - phi))
     resid = x1 - (mu + phi * (x0 - mu))
     sigma_eps2 = float(resid @ resid / n)

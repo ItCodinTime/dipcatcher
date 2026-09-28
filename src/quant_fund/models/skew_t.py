@@ -101,6 +101,8 @@ def skew_t_fit(x: Array) -> dict[str, float]:
         (np.log(sigma0) - 3, np.log(sigma0) + 3),
     ]
     res = minimize(nll, x0, method="L-BFGS-B", bounds=bounds)
+    if not np.isfinite(res.fun) or res.fun >= 1e12:
+        raise ValueError("skew-t MLE did not converge to a finite likelihood")
     nu, lam, mu, log_sigma = res.x
     return {
         "nu": float(nu),

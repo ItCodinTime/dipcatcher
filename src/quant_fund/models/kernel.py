@@ -87,7 +87,9 @@ def fit_gp_regression(
             method="Nelder-Mead",
             options={"maxiter": 80, "xatol": 1e-3},
         )
-        if np.isfinite(res.fun):
+        # res.fun == 1e12 is the invalid-parameter penalty, not an optimum;
+        # fall back to the starting hyperparameters as for a failed fit.
+        if np.isfinite(res.fun) and res.fun < 1e12:
             ell, s, nz = np.exp(res.x)
         else:
             ell, s, nz = l0, s0, n0

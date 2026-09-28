@@ -138,7 +138,7 @@ def garch_midas_fit(
     theta_hat[2] = float(np.clip(theta_hat[2], 0.0, 0.999))
     theta_hat[5] = float(np.clip(theta_hat[5], w2_lo, w2_hi))
     out = paths(theta_hat)
-    if out is None or not np.isfinite(res.fun):
+    if out is None or not np.isfinite(res.fun) or res.fun >= 1e12:
         raise ValueError("GARCH-MIDAS fit failed")
     tau, g = out
     return {

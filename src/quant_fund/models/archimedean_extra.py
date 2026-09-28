@@ -117,6 +117,8 @@ def joe_fit(u: Array) -> dict[str, float]:
         return -float(np.log(val).sum())
 
     res = minimize_scalar(nll, bounds=(1.0001, 20.0), method="bounded")
+    if not np.isfinite(res.fun) or res.fun >= 1e12:
+        raise ValueError("Joe copula MLE did not converge to a finite likelihood")
     return {"theta": float(res.x), "loglik": float(-res.fun)}
 
 

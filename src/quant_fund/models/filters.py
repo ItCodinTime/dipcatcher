@@ -48,7 +48,7 @@ def hp_filter(y: Array, lam: float = 1600.0) -> dict[str, Array]:
 
 
 def ravn_uhlig_lambda(periods_per_year: float) -> float:
-    """Ravn–Uhlig (2002) lambda: ``1600 * (4 / periods_per_year)**4``.
+    """Ravn–Uhlig (2002) lambda: ``1600 * (periods_per_year / 4)**4``.
 
     Quarterly 1600, annual 6.25, monthly 129600.
     """

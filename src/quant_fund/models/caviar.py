@@ -105,7 +105,9 @@ def caviar_fit(
             res = optimize.minimize(obj, b0, method="Powell", options={"maxiter": 300})
         except Exception:
             continue
-        if np.isfinite(res.fun) and res.fun < best_val:
+        # res.fun == 1e12 is the invalid-parameter penalty, not a real
+        # optimum — keeping it would produce a q path of None downstream.
+        if np.isfinite(res.fun) and res.fun < 1e12 and res.fun < best_val:
             best_val = float(res.fun)
             best_beta = np.asarray(res.x, dtype=float)
     if not np.isfinite(best_val):

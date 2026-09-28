@@ -88,7 +88,9 @@ def fit_midas(
         except ValueError:
             return 1e12
         mid = Xr @ w
-        e = yr - (a + b * mid + c * yl)
+        # yl[0] is NaN when ar_lag=False, so the c*yl term must be skipped
+        # rather than multiplied through.
+        e = yr - (a + b * mid + c * yl) if ar_lag else yr - (a + b * mid)
         out = float(e @ e)
         return out if np.isfinite(out) else 1e12
 
@@ -111,7 +113,7 @@ def fit_midas(
         )
         if best is None or res.fun < best.fun:
             best = res
-    if best is None or not np.isfinite(best.fun):
+    if best is None or not np.isfinite(best.fun) or best.fun >= 1e12:
         raise ValueError("MIDAS fit failed")
     a, b, t1, t2, c = unpack(best.x)
     w = beta_weights(k_lags, t1, t2)

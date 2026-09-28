@@ -112,6 +112,8 @@ def svensson_fit(maturities: Array, yields: Array) -> dict[str, Array | float]:
             if s < best_ssr:
                 best_ssr, best = s, (float(l1), float(l2))
     res = optimize.minimize(ssr_of, np.array(best), method="Nelder-Mead")
+    if not np.isfinite(res.fun) or res.fun >= 1e12:
+        raise ValueError("Svensson lambda fit landed on the invalid-region penalty")
     lam1_hat, lam2_hat = float(res.x[0]), float(res.x[1])
     betas, ssr = solve(lam1_hat, lam2_hat)
     L = svensson_loadings(m, lam1_hat, lam2_hat)

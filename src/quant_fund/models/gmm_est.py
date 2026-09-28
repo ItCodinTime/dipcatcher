@@ -77,6 +77,8 @@ def gmm_2step(
 
     # step 1
     r1 = optimize.minimize(obj, t0, args=(np.eye(q),), method="BFGS")
+    if not np.isfinite(r1.fun) or r1.fun >= 1e14:
+        raise ValueError("GMM step-1 optimization did not converge to a finite objective")
     m1 = np.asarray(fn(r1.x), dtype=np.float64)
     s = _nw_cov(m1, max_lag)
     try:
@@ -86,6 +88,8 @@ def gmm_2step(
 
     # step 2
     r2 = optimize.minimize(obj, r1.x, args=(w2,), method="BFGS")
+    if not np.isfinite(r2.fun) or r2.fun >= 1e14:
+        raise ValueError("GMM step-2 optimization did not converge to a finite objective")
     theta = r2.x
     m2 = np.asarray(fn(theta), dtype=np.float64)
     g2 = m2.mean(axis=0)

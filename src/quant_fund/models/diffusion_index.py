@@ -114,11 +114,10 @@ def diffusion_index_forecast(
         se = np.sqrt(np.maximum(np.diag(cov), 0.0))
     except np.linalg.LinAlgError:
         se = np.full(Xg.shape[1], np.nan)
-    # One-step-ahead forecast at the last available t = rows-1.
+    # h-step-ahead forecast from the true forecast origin t = T-1 (the last
+    # observed row), producing y_{T-1+h} — a value not yet observed.
     x_last = np.array(
-        [1.0]
-        + [F[rows - 1, j] for j in range(k)]
-        + [yv[rows - lag_] for lag_ in range(1, ar_lags + 1)]
+        [1.0] + [F[T - 1, j] for j in range(k)] + [yv[T - lag_] for lag_ in range(1, ar_lags + 1)]
     )
     fc = float(x_last @ beta)
     return {

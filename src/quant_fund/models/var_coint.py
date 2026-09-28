@@ -168,7 +168,12 @@ def engle_granger(y: Array, x: Array, max_lag: int | None = None) -> dict[str, f
     """
     yv = np.asarray(y, dtype=float).reshape(-1)
     xv = np.asarray(x, dtype=float).reshape(-1)
-    if yv.size != xv.size or yv.size < 30 or not np.all(np.isfinite(yv)):
+    if (
+        yv.size != xv.size
+        or yv.size < 30
+        or not np.all(np.isfinite(yv))
+        or not np.all(np.isfinite(xv))
+    ):
         raise ValueError("y and x must be finite equal-length >= 30")
     t = yv.size
     xm = np.column_stack([np.ones(t), xv])
@@ -245,17 +250,26 @@ def johansen_test(y: Array, p: int = 2, det: int = 0) -> dict[str, Array]:
     cv_trace5 = np.array([3.76, 9.24, 15.41, 22.85, 31.52, 41.30, 52.20, 64.28, 77.48, 91.78])
     cv_max5 = np.array([3.76, 11.22, 17.66, 24.90, 32.88, 41.50, 50.94, 61.05, 72.08, 84.09])
     shift = 3.0 if det == 1 else 0.0  # constant shifts the distribution right
-    dim = np.arange(1, n + 1)
-    cv_t = np.array([cv_trace5[min(d - 1, 9)] + shift for d in dim])
-    cv_m = np.array([cv_max5[min(d - 1, 9)] + shift for d in dim])
+    # MHM tables are indexed by the n-r dimension (number of independent
+    # combinations under H0: rank <= r): trace[r] uses the n-r column.
+    cv_t = np.array([cv_trace5[min(n - r - 1, 9)] + shift for r in range(n)])
+    cv_m = np.array([cv_max5[min(n - r - 1, 9)] + shift for r in range(n)])
     return {
         "trace": trace,
         "max_eig": maxe,
         "eigvals": lam,
         "cv_trace5": cv_t,
         "cv_max5": cv_m,
-        "rank_trace": np.array([float(np.sum(trace < cv_t))], dtype=float),
-        "rank_max": np.array([float(np.sum(maxe < cv_m))], dtype=float),
+        # Rank = first r whose test does NOT reject H0 (Johansen sequential
+        # procedure). n = full rank (every hypothesis rejected).
+        "rank_trace": np.array(
+            [float(np.argmax(trace < cv_t)) if np.any(trace < cv_t) else float(n)],
+            dtype=float,
+        ),
+        "rank_max": np.array(
+            [float(np.argmax(maxe < cv_m)) if np.any(maxe < cv_m) else float(n)],
+            dtype=float,
+        ),
     }
 
 
@@ -302,7 +316,10 @@ def vecm_fit(y: Array, p: int = 2, rank: int = 1) -> dict[str, Array]:
     xfull = np.column_stack([ect, xr]) if xr.shape[1] else ect
     bf, *_ = np.linalg.lstsq(xfull, dyy, rcond=None)
     resid = dyy - xfull @ bf
-    gamma = bf[rank:].reshape(n, p - 1, n).transpose(1, 0, 2) if p > 1 else np.zeros((0, n, n))
+    # bf[rank:] has (p-1)*n rows grouped by lag: [lag1_v1..lag1_vn,
+    # lag2_v1..lag2_vn, ...]; each row carries coefficients for the n
+    # equations. Gamma_i[eq, var] requires a per-block transpose.
+    gamma = bf[rank:].reshape(p - 1, n, n).transpose(0, 2, 1) if p > 1 else np.zeros((0, n, n))
     return {
         "alpha": alpha,
         "beta": beta,

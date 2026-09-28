@@ -64,7 +64,7 @@ def levinson_durbin(acov: Array, p: int) -> dict[str, Array | float]:
         phi = new_phi
         e *= 1.0 - kref**2
         if e <= 0.0:
-            e = 1e-12
+            raise ValueError("autocovariance sequence is not positive-definite (|reflection| >= 1)")
     return {"ar": phi[:p], "sigma2": float(e), "reflection": reflection}
 
 

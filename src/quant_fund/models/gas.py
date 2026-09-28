@@ -124,6 +124,8 @@ def gas_vol_fit(
         "vol": np.sqrt(f),
         "loglik": float(-res.fun),
         "converged": float(res.success),
+        # numeric flag (dict is Array|float-typed): 1.0 = unit, 0.0 = inv_sqrt
+        "unit_scaling": float(scaling == "unit"),
     }
     if dist == "t":
         ret["nu"] = float(res.x[3])
@@ -135,7 +137,8 @@ def gas_vol_forecast(fit: dict[str, Array | float], y_last: float, dist: str = "
     f = np.asarray(fit["f"], dtype=float)
     omega, A, B = float(fit["omega"]), float(fit["A"]), float(fit["B"])
     nu = float(fit.get("nu", 8.0))
+    unit = float(fit.get("unit_scaling", 0.0)) > 0.5
     y = float(y_last)
     s, info = _score_t(y, f[-1], nu) if dist == "t" else _score_gauss(y, f[-1])
-    u_last = s / np.sqrt(info)
+    u_last = s * 2.0 * f[-1] if unit else s / np.sqrt(info)
     return float(omega + A * u_last + B * f[-1])

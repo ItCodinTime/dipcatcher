@@ -57,12 +57,13 @@ def _nll_weibull(theta: Array, x: Array) -> float:
     lam = math.exp(gammaln(1.0 + 1.0 / gamma))  # scale for mean-1 eps
     z = x / psi / lam
     # eps ~ Weibull(gamma, lam): f(e) = (g/lam)(e/lam)^{g-1} exp(-(e/lam)^g)
-    # x = psi*eps -> loglik = sum[ ln g - ln psi - g ln lam + (g-1) ln x - (x/(psi lam))^g ]
+    # x = psi*eps -> loglik = sum[ ln g - g ln psi - g ln lam + (g-1) ln(x/psi... )
+    # expanded: ln g - ln psi - g ln lam + (g-1)(ln x - ln psi) - z^g
     ll = np.sum(
         np.log(gamma)
         - np.log(psi)
         - gamma * np.log(lam)
-        + (gamma - 1.0) * np.log(np.maximum(x, 1e-300))
+        + (gamma - 1.0) * np.log(np.maximum(x / psi, 1e-300))
         - z**gamma
     )
     return float(-ll)
