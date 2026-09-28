@@ -5,7 +5,7 @@ Scope: `inference.py`, `snooping.py`, `bootstrap.py`, `scoring.py`,
 its docstring (formula, degrees of freedom, multiple-testing correction, block
 length, seed determinism). Verdicts: `correct`, `fixed` (with failing test),
 `suspicious-but-unproven`, `unverifiable`. Reproducing/known-answer tests live in
-`tests/unit/metrics/test_stats_audit.py` (43 tests, deterministic, offline,
+`tests/unit/metrics/test_stats_audit.py` (45 tests, deterministic, offline,
 synthetic data only).
 
 ## Bugs fixed (each in its own commit)
@@ -32,6 +32,15 @@ synthetic data only).
    the exact failure mode this codebase documents against in
    `newey_west_variance`. Now fails closed to (NaN, NaN, NaN) when
    `std <= 1e-15`, matching the module's degenerate-input convention.
+4. `two_way_clustered_mean_tstat` — **FIXED** (second pass). The Cameron–
+   Gelbach–Miller 2011 third term must be the variance clustered on the
+   (a, b) intersection cells; the code used the White/observation-level
+   diagonal `sum resid^2 / n^2`. The two coincide only when every (a,b)
+   cell is a singleton; with multi-observation cells the discrepancy can
+   raise or lower the t-stat (not a conservative approximation). Now
+   clusters on unique (a,b) pairs. KAT: 8-observation panel with cell sums
+   -5, 3, -3, 5 -> V = 68/64 = 1.0625 (vs the buggy 94/64), t = 4.5/sqrt(V);
+   singleton-cell KAT unchanged (V = 31/36).
 
 ## inference.py
 
@@ -42,7 +51,7 @@ synthetic data only).
 | `mean_tstat` | NW-HAC t, t(n-1) df | correct | KAT t=4.4721, p=0.020835 on [1,2,3,4]; t(n-1) is conservative vs asymptotic N — documented choice |
 | `grouped_mean_tstat` | cluster at group level then NW | correct | KAT on 3 group means [1.5,3.5,5.5]: t=3.7123, df=2 |
 | `overlap_aware_hac_lags` | Hansen–Hodrick horizon rule | correct | `max(1.5 n^{1/3}, h-1)`; float-floor artifact at perfect cubes (n=1000 -> 14 not 15) — benign, off-by-one on a heuristic default |
-| `two_way_clustered_mean_tstat` | Cameron–Gelbach–Miller 2011 two-way | suspicious-but-unproven | `V_{a∩b}` is approximated by the White/diagonal variance, which equals the CGM intersection-cluster term only when every (a,b) cell is a singleton; also no `G/(G-1)` finite-sample factor. KAT on singleton-cell panel matches hand-computed V=31/36 exactly |
+| `two_way_clustered_mean_tstat` | Cameron–Gelbach–Miller 2011 two-way | **fixed** | Third term now clusters on the (a,b) intersection cells (V_{a∩b}); previously used the White/diagonal variance — equal only for singleton cells. KAT on a non-singleton panel pins V = 68/64 exactly; singleton-cell KAT still matches V = 31/36. Remaining note: no `G/(G-1)` finite-sample factor |
 | `wild_cluster_bootstrap_two_way_p` | cluster-robust wild bootstrap | suspicious-but-unproven | Rademacher weights applied within level-`a` clusters only; not a true Menzel-style two-way wild bootstrap. Documented as a research approximation |
 | `diebold_mariano` | Diebold–Mariano 1995 / HLN small-sample | correct | KAT: d=[1,-1,2,0], lags=0 -> stat 0.8944, p=0.4370; tie handling, `preferred` mapping, lags passthrough verified |
 | `onesided_from_twosided` | standard | correct | KAT: (2.0,0.1)->0.05 greater, (-2.0,0.1)->0.95 |
@@ -118,7 +127,35 @@ synthetic data only).
   same seed -> identical results verified (SPA repeat-call equality).
 - Degrees of freedom: t(n-1) / t(G-1) / chi2 conventions all verified against
   the cited estimators; `two_way_clustered` df = min(na,nb)-1 flagged above.
-- Multiple-testing: BH (correct), StepM step-down (correct), MCS elimination
+- Multiple-testing: BH (correct — step-up rank-cumulation includes all ties
+  at the boundary automatically), StepM step-down (correct), MCS elimination
   (correct), SPA recentering (correct vs arch).
 - No function mints a headline Sharpe/P&L claim; all degenerate inputs fail
   closed or return NaN per the module convention.
+
+## Second pass (P6.2 re-audit)
+
+A fresh independent audit re-verified every verdict above; one flagged item
+was proven and fixed (`two_way_clustered_mean_tstat`, bug 4). Additional
+verifications and observations:
+
+- `crps_student_t` verified to ~1e-12 against quadrature of the quantile
+  integral definition (nu in {2.5, 5, 10, 30}), beyond the nu->inf Gaussian
+  limit checked in the first pass.
+- `jobson_korkie_memmel` verified against Monte-Carlo variance of the
+  Sharpe-difference on correlated series (ratio ~1.0–1.04, within MC error).
+- `spa_test` re-diffed against `arch.bootstrap.SPA`: identical lower/consistent
+  recentering thresholds (`-sqrt(2 ln ln T)` on studentized means) and the
+  max(0, max t_k) statistic.
+- `interval_width` masks inverted intervals while `coverage` counts them as
+  misses — deliberate asymmetry: coverage detects malformation, width reports
+  well-formed intervals only. Documented, not a bug.
+- `subsampling` (`subsample_statistic`), `wild_cluster_bootstrap_two_way_p`,
+  and the frozen `crps_from_quantiles` convention remain as documented in the
+  table — primitive/approximation/frozen respectively, not fixable without
+  breaking the frozen spec or inventing a non-canonical estimator.
+- Caller audit: `sweep_research` event-level panels can hit non-singleton
+  (event_time, security_id) cells, so fix 4 is material there; all other
+  callers (research/agent, benches/families, sota_evidence, net_tournament,
+  reality_sweep, analytics) pass proper-score metrics under compliant key
+  names — no FORBIDDEN-metric violations found.

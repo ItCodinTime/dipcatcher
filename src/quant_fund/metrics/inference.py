@@ -123,7 +123,9 @@ def two_way_clustered_mean_tstat(
 ) -> tuple[float, float, float, int, int, int]:
     """Cameron–Gelbach–Miller two-way clustered t for E[x] = 0.
 
-    Sandwich of the mean: ``V = V_a + V_b − V_white`` on demeaned residuals.
+    Sandwich of the mean: ``V = V_a + V_b − V_{a∩b}`` on demeaned residuals,
+    where ``V_{a∩b}`` clusters on the (a, b) intersection cells — it equals
+    the White/diagonal variance only when every cell is a singleton.
     Degrees of freedom are ``min(G_a, G_b) − 1``. Returns
     ``(mean, t, p, n, n_a, n_b)``. Degenerate when either way has < 2 clusters.
     """
@@ -149,12 +151,21 @@ def two_way_clustered_mean_tstat(
         np.add.at(sums, inv, resid)
         return float(np.dot(sums, sums) / (n * n)), g
 
-    v_white = float(np.dot(resid, resid) / (n * n))
     v_a, n_a = _cluster_var(a)
     v_b, n_b = _cluster_var(b)
-    if not np.isfinite(v_a) or not np.isfinite(v_b) or n_a < 2 or n_b < 2:
+    # CGM third term: cluster on the (a, b) intersection cells, not the
+    # observation-level (White) diagonal — the two coincide only when every
+    # cell is a singleton.
+    _, code_a = np.unique(a, return_inverse=True)
+    uniq_b, code_b = np.unique(b, return_inverse=True)
+    v_ab, _ = _cluster_var((code_a * int(uniq_b.size) + code_b).astype(np.float64))
+    if (
+        (not np.isfinite(v_a) or not np.isfinite(v_b) or not np.isfinite(v_ab))
+        or n_a < 2
+        or n_b < 2
+    ):
         return mu, float("nan"), float("nan"), n, n_a, n_b
-    var = v_a + v_b - v_white
+    var = v_a + v_b - v_ab
     if var <= 0.0:
         return mu, float("nan"), float("nan"), n, n_a, n_b
     t_stat = mu / float(np.sqrt(var))

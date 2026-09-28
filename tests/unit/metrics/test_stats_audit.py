@@ -129,6 +129,44 @@ def test_two_way_clustered_mean_tstat_known_answer() -> None:
     assert p == pytest.approx(2.0 * stats.t.sf(3.5 / math.sqrt(31.0 / 36.0), df=1))
 
 
+def test_two_way_clustered_mean_tstat_intersection_cells_known_answer() -> None:
+    """CGM's third term clusters on the (a, b) intersection cells.
+
+    resid = [-3.5,-1.5,0.5,2.5,-2.5,-0.5,1.5,3.5]; cell sums -5, 3, -3, 5:
+    V_a = 8/64, V_b = 128/64, V_{a∩b} = 68/64 -> V = 68/64 = 1.0625.
+    (The White diagonal would give 42/64 -> V = 94/64 — the old approximation,
+    wrong whenever an (a,b) cell holds more than one observation.)
+    df = min(2, 2) - 1 = 1.
+    """
+    y = np.array([1.0, 3.0, 5.0, 7.0, 2.0, 4.0, 6.0, 8.0])
+    a = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    b = np.array([0, 0, 1, 1, 0, 0, 1, 1])
+    mu, t, p, n, na, nb = two_way_clustered_mean_tstat(y, a, b)
+    assert (mu, n, na, nb) == (pytest.approx(4.5), 8, 2, 2)
+    assert t == pytest.approx(4.5 / math.sqrt(1.0625))
+    assert p == pytest.approx(2.0 * stats.t.sf(4.5 / math.sqrt(1.0625), df=1))
+
+
+def test_two_way_clustered_intersection_equals_white_on_singletons() -> None:
+    """When every (a,b) cell is a singleton, V_{a∩b} is exactly the
+    White/observation-level diagonal — the two estimators must coincide."""
+    rng = np.random.default_rng(31)
+    y = rng.normal(size=60)
+    a = np.repeat(np.arange(12), 5)
+    b = np.tile(np.arange(5), 12)  # each (a,b) pair occurs exactly once
+    resid = y - float(np.mean(y))
+
+    def cvar(groups: np.ndarray) -> float:
+        u, inv = np.unique(groups, return_inverse=True)
+        s = np.zeros(u.size)
+        np.add.at(s, inv, resid)
+        return float(s @ s / (y.size * y.size))
+
+    v_white_form = cvar(a) + cvar(b) - float(resid @ resid) / (y.size * y.size)
+    mu, t, _p, *_ = two_way_clustered_mean_tstat(y, a, b)
+    assert t == pytest.approx(float(np.mean(y)) / math.sqrt(v_white_form))
+
+
 def test_diebold_mariano_known_answers() -> None:
     d = np.array([1.0, -1.0, 2.0, 0.0])
     res = diebold_mariano(
