@@ -277,6 +277,7 @@ class SimulatedBroker:
             decision_price=decision_price,
             market_predicted_vol=market_predicted_vol,
             keep_residual=order.limit_price is not None,
+            maker=order.limit_price is not None,
         )
 
     def _rest_order(self, order: Order) -> OrderRecord:
@@ -388,6 +389,7 @@ class SimulatedBroker:
                 sigma=sigma,
                 keep_residual=True,
                 fill_time=bar_time,
+                maker=True,
             )
             if rec.order.status is OrderStatus.REJECTED:
                 # A triggered order that fails the gate cancels rather than
@@ -410,8 +412,14 @@ class SimulatedBroker:
         market_predicted_vol: float | None = None,
         keep_residual: bool = False,
         fill_time: datetime | None = None,
+        maker: bool = False,
     ) -> OrderRecord:
         """Participation cap → risk gate → costs → cash → fill bookkeeping.
+
+        ``maker`` marks passive touched-limit fills: commission is charged
+        at ``costs.maker_commission_bps`` and the spread/impact legs zero
+        out (the order rests; it neither crosses the spread nor impacts
+        price — see ``total_cost``).
 
         ``keep_residual`` re-rests the unfilled remainder of a working
         (limit) order as PARTIAL; one-shot marketable orders leave it off.
@@ -475,7 +483,7 @@ class SimulatedBroker:
             self.history.append(rec)
             return rec
 
-        costs = total_cost(exec_qty, price, adv_dollars, sigma, self.config.costs)
+        costs = total_cost(exec_qty, price, adv_dollars, sigma, self.config.costs, maker=maker)
         notional = exec_qty * price
         # Cash check for buys
         if exec_qty > 0 and self.cash < notional + float(costs["total"]):
@@ -517,6 +525,7 @@ class SimulatedBroker:
             slippage=drift_slippage,
             turnover_cost=float(costs["turnover_bps"]),
             is_partial=abs(exec_qty) + 1e-12 < abs(requested_signed),
+            is_maker=maker,
             decision_price=decision_price,
         )
         filled = order.model_copy(update={"status": OrderStatus.FILLED, "quantity": abs(exec_qty)})

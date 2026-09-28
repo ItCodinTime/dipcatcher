@@ -513,8 +513,79 @@ def capacity(
     typer.echo(f"receipt={path}")
 
 
+@app.command("cost-surface")
+def cost_surface(
+    bands: str = typer.Option(
+        "0,0.0025,0.005,0.01,0.02,0.04",
+        help="Comma-separated no-trade band grid for the hysteresis surface.",
+    ),
+    maker_bps: float = typer.Option(0.5, help="Maker commission in bps."),
+    taker_bps: float = typer.Option(1.0, help="Taker commission in bps."),
+    n_books: int = typer.Option(2, help="Seeded synthetic books (>=1)."),
+    n_names: int = typer.Option(8, help="Names per book."),
+    n_bars: int = typer.Option(96, help="Bars per book."),
+    seed: int = typer.Option(11, help="Base seed."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """P5.4 execution-cost surface on SYNTHETIC books (dev-only).
+
+    (a) Hysteresis robustness surface — the same causal churn-target stream
+    is passed through ``banded_targets`` over the band grid and replayed
+    through ``run_backtest``, reporting turnover, decomposed cost and
+    banded-vs-raw tracking RMSE. (b) Maker/taker fee delta — the identical
+    order stream is driven through ``SimulatedBroker`` as marketable taker
+    orders versus limit orders pegged at decision close, reporting fee bps
+    per filled dollar, maker fill rate and residual unfilled notional.
+    Sealed ``cost_surface_eval`` receipt. Dev diagnostic only — never a
+    market or live-P&L claim.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "cost-surface is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.cost_surface import (
+        _churn_targets,
+        _synth_bars,
+        format_cost_surface_table,
+        run_cost_surface,
+        write_cost_surface_receipt,
+    )
+
+    try:
+        band_tuple = tuple(float(x) for x in bands.split(","))
+        if n_books < 1:
+            raise ValueError("n_books must be >= 1")
+        import polars as pl
+
+        all_rows: list[dict] = []
+        receipts = []
+        for b in range(n_books):
+            bars = _synth_bars(seed + 97 * b, n_names, n_bars)
+            targets = _churn_targets(seed + 193 * b, bars, amplitude=0.03)
+            frame, receipt = run_cost_surface(
+                bars,
+                targets,
+                bands=band_tuple,
+                maker_commission_bps=maker_bps,
+                taker_commission_bps=taker_bps,
+                seed=seed,
+            )
+            receipts.append(receipt)
+            all_rows.extend(frame.to_dicts())
+        combined = pl.DataFrame(all_rows)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    for receipt in receipts:
+        path = write_cost_surface_receipt(receipt, out_dir)
+        typer.echo(f"receipt={path}")
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_cost_surface_table(combined))
+
+
 __all__ = [
     "capacity",
+    "cost_surface",
     "execution_sensitivity_cmd",
     "fleet",
     "rankic",

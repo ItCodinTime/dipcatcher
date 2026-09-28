@@ -96,6 +96,9 @@ class Fill(BaseModel):
     # is an adverse-drift diagnostic and is not deducted from cash.
     turnover_cost: float = 0.0
     is_partial: bool = False
+    # True when the fill came from a resting limit order touched by the bar
+    # (passive/maker economics) rather than a marketable order.
+    is_maker: bool = False
     # Price at decision time (signal bar close) when the caller supplies it;
     # enables signed implementation-shortfall decomposition downstream.
     decision_price: float | None = None

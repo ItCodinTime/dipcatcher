@@ -177,6 +177,9 @@ class QuantileConfig(StrictConfigModel):
 
 class CostConfig(StrictConfigModel):
     commission_bps: float = 1.0
+    # Touched-limit (passive) fills charge this rate instead of
+    # ``commission_bps``. None means makers pay the taker rate.
+    maker_commission_bps: float | None = None
     half_spread_bps: float = 5.0
     impact_y: float = 0.1
     bps_per_turnover: float = 0.0
@@ -189,12 +192,16 @@ class CostConfig(StrictConfigModel):
     def non_negative_costs(self) -> CostConfig:
         for name in (
             "commission_bps",
+            "maker_commission_bps",
             "half_spread_bps",
             "impact_y",
             "bps_per_turnover",
             "borrow_bps_per_year",
             "financing_bps_per_year",
         ):
+            value = getattr(self, name)
+            if value is None:
+                continue
             value = float(getattr(self, name))
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be finite and non-negative")

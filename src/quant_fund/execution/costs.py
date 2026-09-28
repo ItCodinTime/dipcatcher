@@ -58,7 +58,13 @@ def total_cost(
     adv_dollars: float,
     sigma: float,
     config: CostConfig,
+    maker: bool = False,
 ) -> dict[str, float | str]:
+    """Decomposed per-fill cost. ``maker=True`` is the passive-limit leg:
+    commission at ``maker_commission_bps`` (falls back to ``commission_bps``),
+    zero spread (the order rests rather than crossing) and zero impact
+    (a passive print does not move the market) — a disclosed simplification
+    of the limit-at-touch model, not a claim about queue position."""
     if not np.isfinite(quantity) or not np.isfinite(price) or price <= 0:
         raise ValueError("quantity must be finite and price must be finite and positive")
     if not np.isfinite(adv_dollars) or adv_dollars <= 0:
@@ -80,9 +86,18 @@ def total_cost(
             "label": "FRICTIONLESS RESEARCH ONLY",
         }
     notional = abs(quantity) * price
-    commission = commission_cost(notional, config.commission_bps)
-    spread = half_spread_cost(notional, config.half_spread_bps)
-    impact = sqrt_impact(quantity, price, adv_dollars, sigma, config.impact_y)
+    commission_bps = (
+        (
+            config.commission_bps
+            if config.maker_commission_bps is None
+            else config.maker_commission_bps
+        )
+        if maker
+        else config.commission_bps
+    )
+    commission = commission_cost(notional, commission_bps)
+    spread = 0.0 if maker else half_spread_cost(notional, config.half_spread_bps)
+    impact = 0.0 if maker else sqrt_impact(quantity, price, adv_dollars, sigma, config.impact_y)
     bps_to = abs(notional) * config.bps_per_turnover / 1e4
     total = commission + spread + impact + bps_to
     return {
@@ -92,5 +107,5 @@ def total_cost(
         "borrow": 0.0,
         "turnover_bps": bps_to,
         "total": total,
-        "label": "costed",
+        "label": "costed_maker" if maker else "costed",
     }

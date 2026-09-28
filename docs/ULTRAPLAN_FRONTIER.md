@@ -310,9 +310,17 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 - [ ] P5.3 Quarterly-futures cash-and-carry lane: collect Binance delivery
       futures (`collect_perp_universe.py` extension); settlement-anchored
       basis capture — the one structural edge with positive published OOS.
-- [ ] P5.4 Cost-side improvements: maker-fill assumption variant (limit-at-
-      touch model already in SimulatedBroker — measure fee drag delta),
-      hysteresis parameter robustness surface (not retuned on holdout).
+- [x] P5.4 Cost-side improvements (landed: `research/cost_surface.py` +
+      `dipcatcher cost-surface --dev`): maker-fill assumption variant —
+      `CostConfig.maker_commission_bps` + `total_cost(maker=...)` zeroes
+      spread/impact on touched-limit fills (`Fill.is_maker`), and the
+      bench drives one order stream through SimulatedBroker as taker vs
+      pegged-limit maker reporting fee-bps-per-filled-$ + fill rate +
+      unfilled residual; hysteresis robustness surface — `banded_targets`
+      swept over a band grid through `run_backtest` reporting sent-stream
+      (provably monotone) and realized turnover, decomposed cost and
+      banded-vs-raw tracking RMSE. Dev-only diagnostic; band is not
+      retuned on holdout.
 - [ ] P5.5 Cross-venue funding/basis: gated on second-venue data
       availability; otherwise documented out-of-scope.
 - [x] P5.6 Capacity analysis (`research/capacity_overlay.py::
