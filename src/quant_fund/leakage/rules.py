@@ -196,6 +196,10 @@ LH003_ALLOWLIST: frozenset[str] = frozenset(
     {
         "src/quant_fund/models/ranking.py",
         "src/quant_fund/models/asset_pricing.py",
+        # GaussianHMMRegime.fit self-fits its StandardScaler on the model's
+        # own training input — the caller slices folds, same model-self-fit
+        # idiom as ranking.py / asset_pricing.py above.
+        "src/quant_fund/models/regime.py",
     }
 )
 
@@ -208,6 +212,21 @@ LH004_ALLOWLIST: frozenset[str] = frozenset(
         "src/quant_fund/portfolio/pnl_attribution.py",
         "src/quant_fund/portfolio/factor_model.py",
         "src/quant_fund/microstructure/candle_book_features.py",
+        # data/universe.py _vectorized_membership_panel: backward asof-join on
+        # event_time over bars whose _membership_fast_supported check already
+        # proves available_time <= event_time (no late inserts) — same
+        # publish-time-clean class as the sites above.
+        "src/quant_fund/data/universe.py",
+    }
+)
+
+# LH005: intentional fixed research universes. lightspeed/specs.py pins the
+# momentum spec's reference universe by design (explicit SELECTION_END /
+# HOLDOUT_START split — holdout is not for retuning); LH005 gates every
+# other site.
+LH005_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "src/quant_fund/lightspeed/specs.py",
     }
 )
 
@@ -295,6 +314,7 @@ RULE_ALLOWLISTS: dict[str, frozenset[str]] = {
     "LH001": LH001_ALLOWLIST | CONTROL_FIXTURE_ALLOWLIST,
     "LH003": LH003_ALLOWLIST,
     "LH004": LH004_ALLOWLIST,
+    "LH005": LH005_ALLOWLIST,
     "LH006": LH006_ALLOWLIST,
     "LH007": LH007_ALLOWLIST,
 }

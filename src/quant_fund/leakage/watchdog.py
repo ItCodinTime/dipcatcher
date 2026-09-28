@@ -83,7 +83,7 @@ class LeakageWatchdog:
             return
         try:
             max_known_at = datetime.fromisoformat(raw)
-        except ValueError as exc:
+        except (ValueError, TypeError) as exc:
             raise LeakageError(
                 f"malformed {MAX_KNOWN_AT_PARAM} watermark {raw!r} on dataset "
                 f"{read.dataset!r}; fail-closed"

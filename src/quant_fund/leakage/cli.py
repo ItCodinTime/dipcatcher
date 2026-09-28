@@ -42,6 +42,21 @@ def scan_cmd(
     else:
         typer.echo(f"unknown --format {fmt!r} (text|json)", err=True)
         raise typer.Exit(2)
+    # Fail closed on scan defects, independent of --fail-on: a scan that
+    # covered no files, or skipped an unparseable file, checked nothing —
+    # a clean report would be a false pass.
+    if report.scanned_files == 0:
+        typer.echo(
+            "leakage scan: no .py files under scan targets; nothing was checked",
+            err=True,
+        )
+        raise typer.Exit(2)
+    if any(f.rule_id == "LH012" for f in report.findings):
+        typer.echo(
+            "leakage scan: unparseable file(s) (LH012) — contents were never scanned",
+            err=True,
+        )
+        raise typer.Exit(2)
     if fail_on == "error":
         violated = report.errors > 0
     elif fail_on == "warning":

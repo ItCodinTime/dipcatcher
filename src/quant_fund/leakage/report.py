@@ -24,6 +24,10 @@ def scan_paths(paths: list[Path], *, rules: set[str] | None = None) -> LeakageRe
         unknown = rules - set(RULE_REGISTRY)
         if unknown:
             raise ValueError(f"unknown leakage rule id(s): {sorted(unknown)}")
+        if not rules:
+            # An empty rule set scans nothing — refuse rather than emit a
+            # clean report for code that was never checked (fail-closed).
+            raise ValueError("empty leakage rule set")
     files = collect_py_files(paths)
     findings: list[LeakageFinding] = []
     for path in files:
@@ -31,7 +35,7 @@ def scan_paths(paths: list[Path], *, rules: set[str] | None = None) -> LeakageRe
         lines: list[str] = []
         if raw:
             try:
-                lines = path.read_text(encoding="utf-8").splitlines()
+                lines = path.read_text(encoding="utf-8-sig").splitlines()
             except (OSError, UnicodeDecodeError):
                 lines = []
         for f in raw:
