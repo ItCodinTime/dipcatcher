@@ -18,6 +18,7 @@ from quant_fund.data.lake import Lake
 from quant_fund.data.security_master import attach_master_attributes
 from quant_fund.data.sources import SourceAdapter, get_source
 from quant_fund.data.universe import build_membership_panel
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 
 class PublicMarketProvider:
@@ -182,6 +183,7 @@ def ingest(config: AppConfig) -> dict[str, Path]:
             for frame in [frames[name]]
         },
     }
+    manifest["receipt_sha256"] = hash_bytes(canonical_json_bytes(manifest))
     manifest_path = Path(config.data.root) / "metadata" / "data_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     paths["manifest"] = manifest_path

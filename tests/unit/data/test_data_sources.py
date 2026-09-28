@@ -209,6 +209,9 @@ def test_write_source_frame_receipt(tmp_path) -> None:
     assert receipt["pit_ranges"]["event_time"]["min"].startswith("2024-01-01")
     assert receipt["provenance"] == {"k": "v"}
     assert len(receipt["sha256"]) == 64
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    assert verify_receipt_file(paths["receipt"])["valid"] is True
     assert pl.read_parquet(paths["data"]).equals(frame)
 
 

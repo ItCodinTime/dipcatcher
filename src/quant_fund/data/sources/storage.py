@@ -11,6 +11,7 @@ from typing import Any
 import polars as pl
 
 from quant_fund.data.sources.base import SourceError
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 
 def _safe_destination(root: str | Path, source: str, filename: str | None) -> Path:
@@ -79,6 +80,7 @@ def write_source_frame(
         },
         "provenance": provenance or {},
     }
+    receipt["receipt_sha256"] = hash_bytes(canonical_json_bytes(receipt))
     receipt_path = destination.with_suffix(".json")
     # Receipts are immutable evidence: publish atomically so a torn JSON is
     # never visible under the .json name.

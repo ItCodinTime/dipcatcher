@@ -20,9 +20,13 @@ def test_ingest_train_optimize_backtest(tmp_path: Path) -> None:
     cfg.data.synthetic_n_assets = 8
     cfg.data.synthetic_n_days = 180
     feats, labs = build_gold(cfg)
-    manifest = json.loads((tmp_path / "metadata" / "data_manifest.json").read_text())
+    manifest_path = tmp_path / "metadata" / "data_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
     assert manifest["schema_version"] == 1
     assert manifest["source"] == "synthetic"
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    assert verify_receipt_file(manifest_path)["valid"] is True
     assert len(manifest["artifacts"]["silver"]["sha256"]) == 64
     assert feats.height > 100
     assert "future_excess_return_5" in labs.columns

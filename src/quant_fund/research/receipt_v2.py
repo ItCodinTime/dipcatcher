@@ -450,7 +450,10 @@ def verify_receipt_payload(
     path = Path(path)
     if not isinstance(payload, dict):
         return _result(path, payload, None, ["receipt_not_object"])
-    if payload.get("schema") == RECEIPT_V2_SCHEMA or payload.get("schema_version") == 2:
+    # The v2 marker is the `schema: "receipt.v2"` tag alone — `schema_version`
+    # is a per-format counter (e.g. data-source receipts use 2 without being
+    # receipt.v2 envelopes), so it cannot dispatch on its own.
+    if payload.get("schema") == RECEIPT_V2_SCHEMA:
         return _verify_v2(path, payload)
     return _verify_v1(path, payload)
 

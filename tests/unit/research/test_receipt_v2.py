@@ -389,3 +389,19 @@ def test_cli_verify_receipt_fails_closed(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["verify-receipt", str(bad)])
     assert result.exit_code == 1
     assert '"valid": false' in result.output
+
+
+def test_schema_version_2_non_envelope_dispatches_to_v1(tmp_path: Path) -> None:
+    """`schema_version` is a per-format counter, not a receipt.v2 marker."""
+    body = {
+        "schema_version": 2,
+        "kind": "source_storage_receipt",
+        "sha256": "a" * 64,
+        "live_pnl_claim": False,
+    }
+    sealed = {**body, "receipt_sha256": hash_bytes(canonical_json_bytes(body))}
+    path = tmp_path / "sidecar.json"
+    path.write_text(json.dumps(sealed))
+    result = verify_receipt_file(path)
+    assert result["valid"] is True, result["errors"]
+    assert result["digest_convention"] == "canonical_json"

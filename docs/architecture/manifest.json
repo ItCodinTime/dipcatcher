@@ -1731,6 +1731,10 @@
       "src": "quant_fund.data.ingest"
     },
     {
+      "dst": "quant_fund.utils.hashing",
+      "src": "quant_fund.data.ingest"
+    },
+    {
       "dst": "quant_fund.config.models",
       "src": "quant_fund.data.lake"
     },
@@ -1900,6 +1904,10 @@
     },
     {
       "dst": "quant_fund.data.sources.base",
+      "src": "quant_fund.data.sources.storage"
+    },
+    {
+      "dst": "quant_fund.utils.hashing",
       "src": "quant_fund.data.sources.storage"
     },
     {
@@ -8323,7 +8331,7 @@
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 8,
+      "imports": 10,
       "src": "quant_fund.data"
     },
     {
