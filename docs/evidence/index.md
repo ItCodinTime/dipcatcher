@@ -1117,6 +1117,38 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
 > All workloads are SYNTHETIC generated fixtures. This receipt attests engine conformance, not performance; NAV/fee/P&L numbers are not evidence of live-trading results.
 <!-- /verbatim-receipt-text -->
 
+### `receipts/fast_replay_p42_conformance_20260928.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/fast_replay_p42_conformance_20260928.json | 7151a551c4ff7d47e8b8d36b4b866f6e487a2ca7f0275ce429edeeaaf933f6ab | absent | no_embedded_seal | absent | absent | unspecified | absent | true | false |
+
+- `receipt`: fast_replay_p42_conformance
+- `generated`: 2026-09-28T00:00:00Z
+- `ultraplan_item`: P4.2
+- `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
+- `supersedes`: receipts/fast_replay_p42_conformance_20260927.json
+- `supersedes_reason`: code_sha256 pins were bound to 7d2e01e4; fast_replay.py changed under the mark-only-bar fill fix (#215). Re-verified byte-identical on current main under the same rerun suite.
+- `base_commit`: 92c154c8d563058c301dfb0de284dcb5ebe5f61e
+- `evidence`:
+  - tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type
+  - tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)
+  - tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload
+  - 2026-09-28 reseal: rerun suite green on main post-#215 (36 tests incl. hypothesis byte-identity + 30-workload fuzz + perf-equivalence lane)
+- `fixes`:
+  - engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)
+  - run_backtest_fast now carries the dispatcher's panel/completeness refusals itself — direct calls and fast=True share one fail-closed source of truth
+  - fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)
+  - post-receipt fix on this code state: mark-only bars now value non-executing names at the pre-update mark (#215)
+  - aggregate_shortfall top_cost_names resolves total_is ties by security_id — the receipt's former known_issue_out_of_lane (#347)
+- `gaps_refused`:
+  - allow_close_auction=True (close-auction order semantics not replicated)
+  - risk_overlay (mid-loop target scaling/flattening not replicated)
+  - GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 — refused rather than approximate)
+  - empty/duplicate-key/non-Datetime/mismatched-unit panels
+- `rerun`: uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q
+- `research_only`: true
+
 ### `receipts/fleet_eval_5ddf15b0dc7d3ca1.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
