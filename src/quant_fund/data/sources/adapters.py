@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import calendar
 import json
 import os
 import time
@@ -699,6 +700,26 @@ class WorldBankSource(SourceAdapter):
         )
 
 
+_BEA_QUARTER_END = {"Q1": "03-31", "Q2": "06-30", "Q3": "09-30", "Q4": "12-31"}
+
+
+def _bea_period_date(period: str) -> str:
+    """Map a BEA TimePeriod (annual/quarterly/monthly) to a period-end date."""
+    if "Q" in period:
+        year, _, quarter = period.partition("Q")
+        end = _BEA_QUARTER_END.get(f"Q{quarter}")
+        if end:
+            return f"{year}-{end}"
+    elif "M" in period:
+        year, _, month = period.partition("M")
+        if month.isdigit() and 1 <= int(month) <= 12:
+            _, last = calendar.monthrange(int(year), int(month))
+            return f"{year}-{month}-{last:02d}"
+    if period.isdigit() and len(period) == 4:
+        return f"{period}-12-31"
+    return period
+
+
 class BeaSource(SourceAdapter):
     name = "bea"
     endpoint = "https://apps.bea.gov/api/data/"
@@ -734,7 +755,8 @@ class BeaSource(SourceAdapter):
         rows = [
             {
                 "security_id": table_name,
-                "event_time": row.get("TimePeriod"),
+                "event_time": _bea_period_date(row.get("TimePeriod", "")),
+                "available_time": utc_now(),
                 "value": row.get("DataValue"),
             }
             for row in data
