@@ -383,8 +383,11 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       Partially landed: every `receipt.v2` envelope carries an `environment`
       block (python/numpy/polars/scipy versions, BLAS/LAPACK build from
       `np.__config__.CONFIG`, loaded BLAS threadpools via threadpoolctl) with
-      a `fingerprint_sha256` digest over the block. Still open: adopt v2 in
-      the remaining lanes and sweep fingerprints across machines.
+      a `fingerprint_sha256` digest over the block. Cross-process determinism
+      is proven for sealed receipts: `sim_live` produces byte-identical
+      content (modulo the absolute paths the seal covers) under different
+      PYTHONHASHSEED values — `tests/unit/determinism/`. Still open: adopt
+      v2 in the remaining lanes and sweep fingerprints across machines.
 - [ ] P7.5 Remote-fleet ops: consolidate `spawn_*.ps1` into one parametrized
       launcher + watchdog (auto-respawn dead shards, heartbeat file).
 - [ ] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI
