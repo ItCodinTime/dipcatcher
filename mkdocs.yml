@@ -167,6 +167,7 @@ nav:
       - Prospective journal: PROSPECTIVE_SOTA.md
       - SOTA canon roadmap: SOTA_CANON_ROADMAP_2026_09.md
       - Statistical-core audit: AUDIT_P62_STATS.md
+      - Validation-layer audit: AUDIT_P62B_VALIDATION.md
       - P6.1 money audit: AUDIT_P61_MONEY.md
       - P6.3 data audit: AUDIT_P63_DATA.md
       - P6.4 dist/vol audit: AUDIT_P64_DIST.md
