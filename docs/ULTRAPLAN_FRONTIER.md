@@ -447,3 +447,26 @@ Checkboxes synced to main. `[~]` = shipped code on an open PR:
 - P7.5: In flight: #224 (parametrized fleet launcher + watchdog).
 - P7.6: In flight: #224 (AGENTS.md remote conventions).
 - P7.7: In flight: #231 (verify-all custody audit + reverify dispatch fix).
+
+## Hardening wave (coverage + ratchets, 2026-09-28 later)
+
+Second audit pass over the full-suite coverage map (85.49% on main).
+Coverage-invisible lanes excluded (numba `@njit` bodies in
+`backtest/fast_replay.py` + `backtest/_kernels.py`, Rust dispatch in
+`native/__init__.py`, integration-gated orchestrators). Open PRs:
+
+- #263 — narrow 3 `except Exception` lazy-import guards to `ImportError`;
+  ratchet ceiling 75 → 72.
+- #264 — robustness closed-form KATs (Clopper–Pearson, Gelbrich tangent,
+  smoothing radius, distributional-bound status contract, threat operators)
+  + simtest swarm invariant/failure-path tests.
+- #265 — `# type: ignore` ratchet at 218.
+- #266 — covariance catalog KATs (DCC-family recovery, PSD repairs,
+  trailing-window fail-closed, spec-alias table).
+- #267 — `fetch_yahoo_panel` fail-closed contracts + `prepare_bars`
+  causality (adv/vol_20 strictly-past windows).
+- #268 — `mc_engine/tails.py` KATs (Wilson, spectral/weighted ES,
+  batch-means interval, POT/GPD exceedance fit).
+- #260 — cross-process determinism (PYTHONHASHSEED, pipeline bitwise).
+- #259 — TabPFN-TS zero-shot head shipped as fail-closed adapter (dep
+  conflict `toolz<1` vs `toolz>=1` documented; P2.5 `[~]`).
