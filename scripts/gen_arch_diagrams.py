@@ -610,6 +610,8 @@ def splice_blocks(text: str, blocks: dict[str, str]) -> str:
     for name, body in blocks.items():
         begin = f"<!-- BEGIN GENERATED: {name} -->"
         end = f"<!-- END GENERATED: {name} -->"
+        if out.count(begin) != 1 or out.count(end) != 1:
+            raise ValueError(f"atlas doc requires one marker pair for {name!r}")
         i = out.find(begin)
         j = out.find(end)
         if i < 0 or j < 0 or j < i:

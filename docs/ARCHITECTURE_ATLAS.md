@@ -61,8 +61,8 @@ markers. The freshness gate runs in `.github/workflows/atlas.yml` and in
 
 Package-level import edges (labels = distinct first-party modules imported
 per package pair), generated from `src/**` via `ast`. Dashed "ghost" nodes
-are packages referenced lazily but absent from this tree (e.g. the W1
-`quant_fund.pit` vault that `leakage.cli` imports inside a function).
+are packages referenced by imports but absent from the scanned source tree.
+Function-local imports are included in the graph.
 
 <!-- BEGIN GENERATED: module_deps -->
 ```mermaid
@@ -400,8 +400,8 @@ Reading the graph:
   point-in-time checks, hashing, schemas, walk-forward). Every other
   `fx1.* -> quant_fund.*` edge fails the same test.
 - `quant_fund.leakage -> quant_fund.pit` is a deliberate lazy edge:
-  `leakage watch` requires the optional W1 vault and degrades to a clear
-  error when it is absent.
+  `leakage watch` loads the PIT vault at function-call time. The vault is
+  present in this source tree.
 - Two structural cycles exist and are documented rather than "fixed" here:
   `lightspeed <-> hedge_lab` (the lab runner drives frozen lightspeed books;
   the `ls` CLI reaches back into `hedge_lab.runner`), and
