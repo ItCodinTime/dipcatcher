@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, cast
 
 import numpy as np
@@ -41,6 +43,7 @@ from quant_fund.models.robinhood_plus.engine import (
 )
 from quant_fund.research.benches import bench_conformal, bench_distribution, bench_jackknife_plus
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 KRONOS_PAPER_TSFM = (
     "PatchTST",
@@ -90,6 +93,29 @@ def load_sota_protocol(path: str | Path) -> SotaProtocol:
 def protocol_sha256(protocol: SotaProtocol) -> str:
     payload = json.dumps(protocol.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Publish a complete text artifact without exposing partial bytes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with NamedTemporaryFile(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(content)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def apply_protocol(config: AppConfig, protocol: SotaProtocol) -> AppConfig:
@@ -400,8 +426,10 @@ def run_sota_protocol(
     }
     if not family_blob_forbidden_metrics_absent(receipt):
         raise AssertionError("sota protocol receipt leaked forbidden research keys")
+    canonical = json.loads(canonical_json_bytes(receipt))
+    digest = hash_bytes(canonical_json_bytes(canonical))
+    payload = {**canonical, "receipt_sha256": digest}
     dest = Path(cfg.data.root) / "metadata" / "sota_receipt.json"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
-    receipt["receipt_path"] = str(dest)
-    return receipt
+    _atomic_write_text(dest, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    payload["receipt_path"] = str(dest)
+    return payload

@@ -24,7 +24,8 @@ from quant_fund.models.ranking import (
 )
 from quant_fund.pipeline.dataset import design_matrix
 from quant_fund.pipeline.train import _fit_ranker, _label_horizon, _make_ranker, _predict_ranker
-from quant_fund.validation.walk_forward import timestamp_ns, walk_forward
+from quant_fund.validation.purging import purge_mask
+from quant_fund.validation.walk_forward import session_index, timestamp_ns, walk_forward
 
 from .common import (
     _BANDIT_MAX_DATES,
@@ -263,22 +264,39 @@ def oos_rank_scores(
     pred = np.full(len(y), np.nan, dtype=float)
     date_ns = timestamp_ns(dates)
     if not folds:
+        # Chronological holdout for panels too small for the configured scheme.
+        # Purge/embargo still apply so a boundary train label cannot reach
+        # into the holdout, same as the fold path.
         cut = max(len(times) - 40, len(times) // 2)
-        tr = np.isin(date_ns, timestamp_ns(times[:cut]))
-        te = np.isin(date_ns, timestamp_ns(times[cut:]))
-        model = _make_ranker(model_name, config)
-        _fit_ranker(
-            model,
-            model_name,
-            x[tr],
-            y[tr],
-            dates[tr],
-            None if ids is None else ids[tr],
-            features=feature_names,
-        )
-        pred[te] = _predict_ranker(
-            model, model_name, x[te], dates[te], None if ids is None else ids[te]
-        )
+        if 0 < cut < len(times):
+            idx = session_index(times)
+            keep = purge_mask(
+                times[:cut],
+                times[cut],
+                times[-1],
+                int(horizon_bars),
+                session_index=idx,
+            )
+            embargo = config.embargo_bars()
+            train_times = [
+                t for t, k in zip(times[:cut], keep, strict=True) if k and idx[t] + embargo < cut
+            ]
+            tr = np.isin(date_ns, timestamp_ns(train_times))
+            te = np.isin(date_ns, timestamp_ns(times[cut:]))
+            if tr.any() and te.any():
+                model = _make_ranker(model_name, config)
+                _fit_ranker(
+                    model,
+                    model_name,
+                    x[tr],
+                    y[tr],
+                    dates[tr],
+                    None if ids is None else ids[tr],
+                    features=feature_names,
+                )
+                pred[te] = _predict_ranker(
+                    model, model_name, x[te], dates[te], None if ids is None else ids[te]
+                )
         return pred
     for fold in folds:
         tr = np.isin(date_ns, timestamp_ns(fold.train_times))
