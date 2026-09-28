@@ -3786,6 +3786,79 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.9
   - 0.95
 
+### `receipts/nautilus_conformance_7bf19a08c147547b.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/nautilus_conformance_7bf19a08c147547b.json | 3a10fca306535858496b88890cab846c2bcffa9e7408980315162a6a5451f960 | 7bf19a08c147547b97f79161507841130740a8b06d1af1e0fa27854e731da207 | not_checked | 3246b8d37c1ffda200754c943d9c97879cddd5a6 | absent | unspecified | absent | absent | false |
+
+- `code_files`:
+  - `nautilus_conformance.py`: 8113bd16655abaa382ae235a6100eb02e077458e2c3076f9d0a4293df3ecd0d9
+- `data_label`: META
+- `dataset_hash`: d17b2f4c64b94b62d74a55e0a45ca537a9db4707c932f26abeb8f2c691be4a54
+- `environment`:
+  - `blas`:
+    - `found`: true
+    - `name`: accelerate
+    - `version`: null
+  - `byteorder`: little
+  - `fingerprint_sha256`: 207a7ded44205cd3554555ff934f3b8bc709709ad1635770d1a75739a5be6aab
+  - `implementation`: CPython
+  - `lapack`:
+    - `found`: true
+    - `name`: accelerate
+    - `version`: null
+  - `machine`: arm64
+  - `packages`:
+    - `numpy`: 2.5.3
+    - `polars`: 1.44.2
+    - `scipy`: 1.18.1
+  - `platform`: macOS-26.5.2-arm64-arm-64bit
+  - `python`: 3.12.14
+  - `threadpools`:
+- `generated_at`: 2026-09-28T06:43:25.861579+00:00
+- `git_revision`: 3246b8d37c1ffda200754c943d9c97879cddd5a6
+- `kind`: nautilus_conformance
+- `params_hash`: 0b11574d69adce3cdd1d5fe30701f2ff5ad5e0bc42bbe308ba08b4d7da4b3d22
+- `payload`:
+  - `detail`: nautilus_trader is not installed in this environment (pinned target: 1.220.0); the conformance replay cannot run here — install it on the execution box and re-run to obtain a matched/not-fair verdict
+  - `engine_installed`: false
+  - `engine_version`: null
+  - `equivalence_spec`:
+    - `compare`: canonical row digest over the fill ledger, byte-identical
+    - `cost_model`: maker/taker fee_bps on traded notional
+    - `fill_key`:
+      - ts
+      - asset
+      - signed_qty
+      - exec_px
+      - fee
+    - `fill_rules`:
+      - one fill per asset per bar (dedup gate)
+      - exec price null => mark-only bar, no fill
+      - participation cap clips signed qty
+      - non-executing names valued at pre-update mark
+    - `reference_result_fills_columns`:
+      - fill_time
+      - signal_time
+      - security_id
+      - quantity
+      - price
+      - fee
+      - spread_cost
+      - impact_cost
+      - turnover_cost
+      - decision_price
+  - `mismatches`:
+  - `n_fills_compared`: 0
+  - `outcome`: engine_absent
+  - `schema`: nautilus_conformance.v1
+  - `seed`: 0
+- `receipt_sha256`: 7bf19a08c147547b97f79161507841130740a8b06d1af1e0fa27854e731da207
+- `schema`: receipt.v2
+- `schema_version`: 2
+- `verdict`: blocked
+
 ### `receipts/rankic_eval_9ebdad7da83e7348.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |

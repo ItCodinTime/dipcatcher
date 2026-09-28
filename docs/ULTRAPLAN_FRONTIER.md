@@ -288,8 +288,15 @@ Each: pinned artifact + sha256, zero-shot, native output honored
       per-order risk gates + fail-closed semantics are the product; vectorbt
       is a vectorized reducer without them; show latency decomposition
       table + the 3/3 fault-injection wins.
-- [ ] P4.4 NautilusTrader conformance replay attempt (third incumbent):
+- [~] P4.4 NautilusTrader conformance replay attempt (third incumbent):
       same bars/panel/costs; document matched or not-fair with receipts.
+      Attempt lane shipped: `quant nautilus-conformance` +
+      `backtest/nautilus_conformance.py` — equivalence spec, fill-ledger
+      diff, verdict⇔outcome consistency re-derivation wired into
+      `verify-receipt`, sealed `nautilus_conformance_<sha16>.json` receipts.
+      Current env lacks `nautilus_trader` (Rust ext; pinned 1.220.0), so the
+      committed receipt is `verdict: blocked` — honest evidence of the
+      attempt; re-run on a host with the engine for matched/not-fair.
 - [ ] P4.5 UX evidence: `dipcatcher doctor` self-check output, error-message
       quality suite, `--help` coverage vs incumbent CLIs/APIs.
 - [ ] P4.6 Security evidence: `uv audit`/`pip-audit` receipt, secrets scan

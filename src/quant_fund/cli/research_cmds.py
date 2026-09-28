@@ -340,6 +340,40 @@ def verify_receipt_cmd(
     raise typer.Exit(code=0 if result["valid"] else 1)
 
 
+@app.command("nautilus-conformance")
+def nautilus_conformance_cmd(
+    seed: int = typer.Option(0, "--seed", help="Synthetic workload seed."),
+    write: bool = typer.Option(False, "--write", help="Persist the sealed receipt."),
+    out_dir: Path = typer.Option(Path("receipts"), "--out-dir"),
+) -> None:
+    """P4.4 — attempt the NautilusTrader conformance replay (third incumbent).
+
+    Same synthetic bars/panel/costs through ``run_backtest_fast`` and the
+    Nautilus ``BacktestEngine``, compared at fill level. When the engine is
+    absent the run still emits a sealed ``verdict: blocked`` receipt — the
+    attempt is evidenced, never silently skipped. Exits non-zero unless the
+    replay actually matched.
+    """
+    from quant_fund.backtest.nautilus_conformance import (
+        run_nautilus_conformance_eval,
+        write_nautilus_conformance_receipt,
+    )
+    from quant_fund.research.receipt_v2 import seal_receipt
+
+    receipt = run_nautilus_conformance_eval(seed=seed)
+    sealed = seal_receipt(receipt)
+    typer.echo(
+        f"nautilus_conformance: outcome={sealed['payload']['outcome']} "
+        f"verdict={sealed['verdict']} engine_installed={sealed['payload']['engine_installed']}"
+    )
+    if sealed["payload"]["detail"]:
+        typer.echo(f"  detail: {sealed['payload']['detail']}")
+    if write:
+        path = write_nautilus_conformance_receipt(receipt, out_dir)
+        typer.echo(f"receipt written: {path}")
+    raise typer.Exit(code=0 if sealed["verdict"] == "pass" else 1)
+
+
 @app.command("vol-bench")
 def vol_bench(
     config: Path = typer.Option(Path("configs/research.yaml")),
@@ -517,6 +551,7 @@ __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
     "fleet",
+    "nautilus_conformance_cmd",
     "rankic",
     "research",
     "verify_identities",
