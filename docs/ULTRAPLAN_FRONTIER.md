@@ -376,8 +376,16 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       structure + seal/digest consistency, and `fleet_eval` writes v2 behind
       `--receipt-version 2` (default stays v1). Incumbent/carry/paper lanes
       still emit v1 — migrate them onto `build_receipt_v2` next.
-- [ ] P7.3 Experiment registry hardening: mlflow.db exists locally — wire
+- [x] P7.3 Experiment registry hardening: mlflow.db exists locally — wire
       fleet runs into it or document why not.
+      Decided + landed: wire as an *index*, never as evidence — see
+      `docs/EXPERIMENT_REGISTRY.md`. `dipcatcher fleet --mlflow` (opt-in)
+      logs a `fleet_tournament` run via `log_fleet_run` carrying the sealed
+      receipt's sha256 (`receipt_sha256` tag + `evidence=receipt`),
+      proper-score aggregates (mean/best/worst CRPS, mean PIT-KS), and the
+      run params. Receipts stay the canonical immutable store; mlflow rows
+      reference them rather than duplicating scores. Synthetic runs remain
+      non-promotable through `promotion_is_approved`.
 - [ ] P7.4 Determinism sweep: BLAS threading notes already documented; add
       per-receipt `numpy`/`scipy`/`blas` fingerprint block.
       Partially landed: every `receipt.v2` envelope carries an `environment`

@@ -244,6 +244,92 @@ def _positive_integral_count(value: object) -> int:
     return positive_integral_count(value)
 
 
+def log_fleet_run(receipt_path: Path, receipt: dict[str, Any], *, uri: str | None = None) -> str:
+    """Index a fleet tournament run in MLflow, keyed to its sealed receipt.
+
+    MLflow is the discoverability index, not the evidence: the sealed
+    ``receipts/*.json`` file is canonical and immutable, while run rows are
+    mutable local state. Every logged fleet run therefore carries the
+    receipt's sha256 so an index row can be traced to — and audited against —
+    the exact evidence bytes. Aggregate metrics are proper scores only
+    (CRPS / PIT-KS), aggregated over ``status == "ok"`` result rows. Fails
+    closed on a non-fleet receipt, a missing file, or a tournament with no
+    scored rows.
+    """
+    path = Path(receipt_path)
+    if not path.is_file() or path.is_symlink():
+        raise ValueError(f"receipt file missing or not a regular file: {path}")
+    import hashlib
+
+    receipt_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    data_label = receipt.get("data_label")
+    if not isinstance(data_label, str) or not data_label.strip():
+        raise ValueError("receipt is missing a data_label")
+    results = receipt.get("results")
+    if not isinstance(results, list):
+        raise ValueError("receipt is missing a results list")
+    ok_rows = [r for r in results if isinstance(r, dict) and r.get("status") == "ok"]
+    if not ok_rows:
+        raise ValueError("fleet receipt has no successfully scored rows")
+
+    def _col(key: str) -> list[float]:
+        return [
+            float(r[key])
+            for r in ok_rows
+            if isinstance(r.get(key), (int, float))
+            and not isinstance(r.get(key), bool)
+            and math.isfinite(float(r[key]))
+        ]
+
+    crps = _col("crps")
+    pit_ks = _col("pit_ks")
+    per_head: dict[str, list[float]] = {}
+    for r in ok_rows:
+        if isinstance(r.get("crps"), (int, float)) and math.isfinite(float(r["crps"])):
+            per_head.setdefault(str(r.get("model")), []).append(float(r["crps"]))
+    head_means = {m: math.fsum(v) / len(v) for m, v in per_head.items()}
+
+    models = receipt.get("models") or []
+    shards = receipt.get("shards") or {}
+    metrics: dict[str, float] = {
+        "n_rows": float(len(results)),
+        "n_ok_rows": float(len(ok_rows)),
+        "n_error_rows": float(len(results) - len(ok_rows)),
+        "n_heads": float(len(models)) if models else float(len(per_head)),
+        "n_shards": float(len(shards)),
+    }
+    if crps:
+        metrics["mean_crps"] = math.fsum(crps) / len(crps)
+    if pit_ks:
+        metrics["mean_pit_ks"] = math.fsum(pit_ks) / len(pit_ks)
+    if head_means:
+        metrics["best_head_crps"] = min(head_means.values())
+        metrics["worst_head_crps"] = max(head_means.values())
+
+    configure_tracking(uri)
+    return log_run(
+        family="fleet_tournament",
+        name=f"fleet-{receipt_sha256[:12]}",
+        params={
+            "seed": receipt.get("seed"),
+            "n_train": receipt.get("n_train"),
+            "n_eval": receipt.get("n_eval"),
+            "taus": receipt.get("taus"),
+            "models": ",".join(str(m) for m in models),
+            "shards": ",".join(str(s) for s in shards),
+            "receipt_schema": receipt.get("schema"),
+            "receipt_path": str(path),
+        },
+        metrics=metrics,
+        tags={
+            "data": data_label,
+            "kind": str(receipt.get("kind", "")),
+            "evidence": "receipt",
+            "receipt_sha256": receipt_sha256,
+        },
+    )
+
+
 def dataset_fingerprint_from_frame(
     n: int, cols: list[str], tmin: str, tmax: str, config: AppConfig
 ) -> str:

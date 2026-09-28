@@ -278,6 +278,11 @@ def fleet(
         "--receipt-version",
         help="Receipt schema version: 1 = fleet_eval.v1 (default), 2 = unified receipt.v2 envelope.",
     ),
+    mlflow_index: bool = typer.Option(
+        False,
+        "--mlflow/--no-mlflow",
+        help="Index this tournament in the local MLflow registry, keyed to the sealed receipt digest.",
+    ),
 ) -> None:
     """Run the SYNTHETIC distribution-challenger fleet and write a receipt.
 
@@ -316,6 +321,11 @@ def fleet(
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
+    if mlflow_index:
+        from quant_fund.registry.mlflow_store import log_fleet_run
+
+        run_id = log_fleet_run(path, receipt)
+        typer.echo(f"mlflow_run_id={run_id}")
 
 
 @app.command("verify-receipt")
