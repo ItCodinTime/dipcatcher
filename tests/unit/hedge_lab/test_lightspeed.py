@@ -280,3 +280,23 @@ def test_ls_cli_specs_and_demo() -> None:
 def test_doctor_echoes_ls_hunt_race() -> None:
     result = CliRunner().invoke(app, ["doctor", "--config", "configs/research.yaml"])
     assert "hunt|book|race|confirm" in result.output
+
+
+def test_ls_hunt_output_carries_honesty_markers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hunt output must keep the same research_only/live_pnl_claim markers the
+    other ls commands emit, since it surfaces Sharpe diagnostics."""
+    import quant_fund.hedge_lab.target_hunt as target_hunt
+
+    def _stub(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {
+            "hit_sharpe5": 0,
+            "best_abs_sharpe": 0.0,
+            "cards": [{"name": "stub", "sharpe": 1.0, "n_returns": 10}],
+        }
+
+    monkeypatch.setattr(target_hunt, "run_target_hunt", _stub)
+    result = CliRunner().invoke(app, ["ls", "hunt"])
+    assert result.exit_code == 0, result.output
+    card = json.loads(result.output)
+    assert card["research_only"] is True
+    assert card["live_pnl_claim"] is False

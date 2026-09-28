@@ -116,6 +116,8 @@ def hunt_cmd(
                 "hit_sharpe5": receipt["hit_sharpe5"],
                 "best": receipt["best_abs_sharpe"],
                 "top": slim,
+                "research_only": True,
+                "live_pnl_claim": False,
             },
             indent=2,
         )
