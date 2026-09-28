@@ -11,6 +11,7 @@ fail-closed; bundles may be logged as unverified evidence.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +88,64 @@ CREATE TABLE IF NOT EXISTS trial_ledger (
 );
 """
 
+# Bare names only. Quotes, comments, dots, and statement breaks never interpolate.
+_SQL_IDENTIFIER = re.compile(r"\A[A-Za-z_][A-Za-z0-9_]*\Z")
+
+
+def _sql_identifier(name: str) -> str:
+    """Return one bare SQL name, or refuse anything that can change the statement.
+
+    Values are never passed here. Callers bind those with ``?`` placeholders.
+    """
+    if _SQL_IDENTIFIER.fullmatch(name) is None:
+        raise ProvenanceError(
+            f"refusing SQL identifier {name!r}: only a single unquoted name may be interpolated"
+        )
+    return name
+
+
+def _sql_identifier_list(names: tuple[str, ...]) -> str:
+    if not names:
+        raise ProvenanceError("refusing an empty SQL identifier list")
+    return ", ".join(_sql_identifier(name) for name in names)
+
+
+def _bound_placeholders(count: int) -> str:
+    if count < 1:
+        raise ProvenanceError("refusing SQL with no bound parameters")
+    return ", ".join("?" for _ in range(count))
+
+
+def _insert_statement(table: str, columns: tuple[str, ...]) -> str:
+    return " ".join(
+        (
+            "INSERT INTO",
+            _sql_identifier(table),
+            "(" + _sql_identifier_list(columns) + ")",
+            "VALUES",
+            "(" + _bound_placeholders(len(columns)) + ")",
+        )
+    )
+
+
+def _select_statement(table: str, columns: tuple[str, ...]) -> str:
+    return " ".join(
+        (
+            "SELECT",
+            _sql_identifier_list(columns),
+            "FROM",
+            _sql_identifier(table),
+        )
+    )
+
+
+def _where_bound(column: str) -> str:
+    return " WHERE " + _sql_identifier(column) + " = ?"
+
+
+def _order_by(columns: tuple[str, ...]) -> str:
+    return " ORDER BY " + _sql_identifier_list(columns)
+
 
 class ProvenanceDB:
     """duckdb file at <root>/metadata/proofcore.duckdb. Two tables:
@@ -147,10 +206,8 @@ class ProvenanceDB:
                     f"bundle {bundle.bundle_id} predecessor {bundle.prev_bundle_hash} "
                     f"does not match chain head {expected_prev}"
                 )
-            # Column names come from fixed module tuples; values remain bound parameters.
             self._con.execute(
-                f"INSERT INTO proof_bundles ({', '.join(_BUNDLE_COLUMNS)}) "  # nosec B608
-                f"VALUES ({', '.join('?' for _ in _BUNDLE_COLUMNS)})",
+                _insert_statement("proof_bundles", _BUNDLE_COLUMNS),
                 [
                     bundle.bundle_id,
                     bundle.created_utc,
@@ -181,9 +238,8 @@ class ProvenanceDB:
         stored row differs (raise ``ProvenanceError``) — tamper-evidence at
         the DB layer (DESIGN.md §9.1).
         """
-        # Column names come from a fixed module tuple; trial_id remains bound.
         existing = self._con.execute(
-            f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger WHERE trial_id = ?",  # nosec B608
+            _select_statement("trial_ledger", _TRIAL_COLUMNS) + _where_bound("trial_id"),
             [row.trial_id],
         ).fetchone()
         values = self._trial_values(row)
@@ -197,10 +253,8 @@ class ProvenanceDB:
                 )
             return
         try:
-            # Column names come from fixed module tuples; values remain bound parameters.
             self._con.execute(
-                f"INSERT INTO trial_ledger ({', '.join(_TRIAL_COLUMNS)}) "  # nosec B608
-                f"VALUES ({', '.join('?' for _ in _TRIAL_COLUMNS)})",
+                _insert_statement("trial_ledger", _TRIAL_COLUMNS),
                 values,
             )
         except Exception as exc:
@@ -212,12 +266,12 @@ class ProvenanceDB:
 
     def trials(self, *, family: str | None = None) -> list[TrialLedgerRow]:
         """All trial rows (optionally one family), ordered by (created_utc, trial_id)."""
-        sql = f"SELECT {', '.join(_TRIAL_COLUMNS)} FROM trial_ledger"
+        sql = _select_statement("trial_ledger", _TRIAL_COLUMNS)
         params: list[Any] = []
         if family is not None:
-            sql += " WHERE family = ?"
+            sql += _where_bound("family")
             params.append(family)
-        sql += " ORDER BY created_utc, trial_id"
+        sql += _order_by(("created_utc", "trial_id"))
         rows = self._con.execute(sql, params).fetchall()
         return [
             TrialLedgerRow(
@@ -246,7 +300,7 @@ class ProvenanceDB:
         Any row the genesis walk cannot reach (dangling prev pointer, hand-edited
         table) raises ``ProvenanceError`` — a broken chain must be loud, not
         silently reordered."""
-        sql = f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles"  # nosec B608
+        sql = _select_statement("proof_bundles", _BUNDLE_COLUMNS)
         rows = [
             dict(zip(_BUNDLE_COLUMNS, r, strict=True)) for r in self._con.execute(sql).fetchall()
         ]
