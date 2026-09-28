@@ -264,6 +264,30 @@ def split_by_holdout(
     return {"is": r[is_mask], "holdout": r[oos_mask], "full": r}
 
 
+def _bench_window_returns(
+    book_dates: list[Any], bench_dates: list[Any], bench_closes: Array
+) -> tuple[list[Any], Array]:
+    """Benchmark returns over consecutive book dates that both have a bar.
+
+    A book date with no benchmark bar on either side is skipped — the
+    buy-hold card gets no fabricated flat return. The returned date list
+    satisfies ``len(dates) == len(returns) + 1`` for ``_window_cards``.
+    """
+    bmap = {_date_key(d): i for i, d in enumerate(bench_dates)}
+    px = np.asarray(bench_closes, dtype=float)
+    kept: list[Any] = []
+    rets: list[float] = []
+    for d0, d1 in zip(book_dates[:-1], book_dates[1:], strict=True):
+        i0 = bmap.get(_date_key(d0))
+        i1 = bmap.get(_date_key(d1))
+        if i0 is None or i1 is None or px[i0] <= _EPS:
+            continue
+        kept.append(d1)
+        rets.append(float(px[i1] / px[i0] - 1.0))
+    dates = [book_dates[0], *kept] if kept else []
+    return dates, np.asarray(rets, dtype=float)
+
+
 def _window_cards(dates: list[object], returns: Array) -> dict[str, Any]:
     parts = split_by_holdout(dates, returns)
     return {
@@ -352,17 +376,9 @@ def run_lightspeed_file_book(
         spy_windows = None
         if "SPY" in tape_ids:
             spy_dates, spy_closes = close_panel(raw_gold, ("SPY",))
-            spy_map = {_date_key(d): i for i, d in enumerate(spy_dates)}
-            spy_r = []
-            for d0, d1 in zip(dates_c[:-1], dates_c[1:], strict=True):
-                i0 = spy_map.get(_date_key(d0))
-                i1 = spy_map.get(_date_key(d1))
-                px = spy_closes["SPY"]
-                if i0 is None or i1 is None or px[i0] <= _EPS:
-                    spy_r.append(0.0)
-                else:
-                    spy_r.append(float(px[i1] / px[i0] - 1.0))
-            spy_windows = _window_cards(dates_c, np.asarray(spy_r, dtype=float))
+            sd, sr = _bench_window_returns(dates_c, spy_dates, spy_closes["SPY"])
+            if sr.size:
+                spy_windows = _window_cards(sd, sr)
         books[family] = {
             "n_risk_names": len(names),
             "risk_names": list(names),
@@ -392,10 +408,9 @@ def run_lightspeed_file_book(
         spy_bh = None
         if "SPY" in tape_ids:
             _s_dates, spy_closes = close_panel(raw_gold, ("SPY",))
-            if len(spy_closes["SPY"]) == len(qqq):
-                spy = spy_closes["SPY"]
-                spy_r_arr = np.asarray(spy[1:] / np.maximum(spy[:-1], _EPS) - 1.0, dtype=float)
-                spy_bh = _window_cards(q_dates, spy_r_arr)
+            sd, sr = _bench_window_returns(q_dates, _s_dates, spy_closes["SPY"])
+            if sr.size:
+                spy_bh = _window_cards(sd, sr)
         rotation = {
             "family": tqqq_long_full_v1().family,
             "tqqq": "reconstructed_3x_qqq_daily",

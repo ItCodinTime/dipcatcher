@@ -71,14 +71,39 @@ def assert_disk_budget(extra_bytes: int = 0, *, root: Path | None = None) -> dic
 
 
 def physical_memory() -> tuple[int, int]:
-    """Return ``(total_bytes, available_bytes)`` for physical RAM."""
+    """Return ``(total_bytes, available_bytes)`` for physical RAM.
+
+    POSIX ``available`` uses ``MemAvailable`` from /proc/meminfo when present,
+    else the conservative ``SC_AVPHYS_PAGES`` free-page count, else ``total``
+    as a last resort. Charging the RAM plan against total when other
+    processes already hold memory is a fail-open; measure first.
+    """
     windows = _windows_physical_memory()
     if windows is not None:
         return windows
     page = int(os.sysconf("SC_PAGE_SIZE")) if hasattr(os, "sysconf") else 4096
     phys = int(os.sysconf("SC_PHYS_PAGES")) if hasattr(os, "sysconf") else 0
     total = page * phys
-    return total, total
+    available = _proc_meminfo_available()
+    if available is None:
+        try:
+            available = int(os.sysconf("SC_AVPHYS_PAGES")) * page
+        except (AttributeError, ValueError, OSError):
+            available = None
+    if available is None or available <= 0:
+        available = total
+    return total, min(int(available), total)
+
+
+def _proc_meminfo_available() -> int | None:
+    """``MemAvailable`` from /proc/meminfo in bytes; ``None`` off Linux."""
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="ascii").splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
 
 
 def _windows_physical_memory() -> tuple[int, int] | None:
