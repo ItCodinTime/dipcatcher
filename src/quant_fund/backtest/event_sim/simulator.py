@@ -1169,7 +1169,10 @@ def _advance_resting(
     market_vol: float | None,
     kill: KillSwitch,
 ) -> None:
-    if resting.placed_bar == bar_index or resting.bars_left <= 0:
+    if resting.placed_bar == bar_index:
+        return
+    if resting.bars_left <= 0:
+        state.resting.pop(resting.sid, None)
         return
     row = _row_on(rows, exec_time, resting.sid)
     if row is None:
@@ -1183,8 +1186,10 @@ def _advance_resting(
         volume = 0.0
     if resting.kind == "vwap":
         px = bar_vwap_price(row)
-        if px is None or volume <= 0.0:
+        if px is None or not math.isfinite(volume) or volume <= 0.0:
             resting.bars_left -= 1
+            if resting.bars_left <= 0:
+                state.resting.pop(resting.sid, None)
             return
         sign = 1.0 if resting.remaining > 0 else -1.0
         take = sign * min(abs(resting.remaining), volume)
@@ -1215,8 +1220,10 @@ def _advance_resting(
             state.resting.pop(resting.sid, None)
         return
     book = books.get((resting.sid, exec_time))
-    if book is None or volume < 0.0:
+    if book is None or not math.isfinite(volume) or volume < 0.0:
         resting.bars_left -= 1
+        if resting.bars_left <= 0:
+            state.resting.pop(resting.sid, None)
         return
     touch_px, touch_sz = touch(book, resting.side)
     step = advance_queue(
