@@ -513,10 +513,66 @@ def capacity(
     typer.echo(f"receipt={path}")
 
 
+@app.command()
+def pairs(
+    n_assets: int = typer.Option(8, help="Assets in the synthetic panel."),
+    n_dates: int = typer.Option(600, help="Panel length in dates."),
+    seed: int = typer.Option(0, help="Seed for the synthetic panel."),
+    window: int = typer.Option(120, help="Trailing hedge-ratio window."),
+    z_window: int = typer.Option(60, help="Trailing z-score window."),
+    min_corr: float = typer.Option(0.5, help="Correlation pre-filter threshold."),
+    alpha: float = typer.Option(0.05, help="BH rejection level."),
+    entry: float = typer.Option(2.0, help="Z-score entry band."),
+    exit_band: float = typer.Option(0.5, help="Z-score exit band."),
+    hedge_method: str = typer.Option("ols", help="Hedge estimator: ols or kalman."),
+    eval_horizon: int = typer.Option(1, help="Forward spread-change horizon."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Stat-arb pairs screen + PIT signal eval on a SYNTHETIC planted panel.
+
+    Engle-Granger residual-ADF screen with a correlation pre-filter and
+    BH/Bonferroni multiple-testing control, then a point-in-time z-score
+    signal scored against forward spread changes. Proper-score framing
+    only — detection truth and IC alignment, never a P&L claim.
+    """
+    from quant_fund.research.pairs import (
+        format_pairs_table,
+        run_pairs_eval,
+        write_pairs_receipt,
+    )
+
+    try:
+        frame, receipt = run_pairs_eval(
+            seed=seed,
+            n_assets=n_assets,
+            n_dates=n_dates,
+            window=window,
+            z_window=z_window,
+            min_corr=min_corr,
+            alpha=alpha,
+            entry=entry,
+            exit=exit_band,
+            hedge_method=hedge_method,
+            eval_horizon=eval_horizon,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_pairs_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_pairs_table(frame))
+    typer.echo(
+        "planted_detected="
+        f"{receipt['planted']['detected']} rank={receipt['planted']['rank_by_p_bh']} "
+        f"spearman_ic={receipt['alignment']['spearman_ic']:+.4f}"
+    )
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
     "fleet",
+    "pairs",
     "rankic",
     "research",
     "verify_identities",
