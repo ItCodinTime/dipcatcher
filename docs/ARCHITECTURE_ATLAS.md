@@ -601,7 +601,7 @@ sequenceDiagram
 | `quant_fund.features` | 9 |
 | `quant_fund.formal` | 4 |
 | `quant_fund.fusion` | 2 |
-| `quant_fund.hedge_lab` | 15 |
+| `quant_fund.hedge_lab` | 16 |
 | `quant_fund.hmm` | 4 |
 | `quant_fund.labels` | 4 |
 | `quant_fund.leakage` | 7 |
@@ -637,7 +637,7 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **733**
+- Modules scanned: **734**
 - Packages: **65**
 - Cross-package import edges: **249**
 

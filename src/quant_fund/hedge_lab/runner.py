@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict
 from quant_fund.backtest.engine import run_backtest
 from quant_fund.config.models import AppConfig
 from quant_fund.data.lake import Lake
+from quant_fund.hedge_lab._receipt import seal_receipt
 from quant_fund.hedge_lab.mirror import negate_target_weights
 from quant_fund.hedge_lab.resources import (
     assert_disk_budget,
@@ -340,6 +341,7 @@ def run_hedge_lab(
         "product": "dipcatcher hedge lab",
         "catalog": "hedge_lab_analytics",
         "research_only": True,
+        "live_pnl_claim": False,
         "execution_claim": "paper_backtest",
         "data_source": source,
         "synthetic_not_promotable": source == "SYNTHETIC",
@@ -368,14 +370,15 @@ def run_hedge_lab(
             "Sign-flip mirror is an identity check: costs do not change sign."
         ),
     }
+    sealed = seal_receipt(receipt)
     dest = root / "metadata" / "hedge_lab_receipt.json"
-    payload = json.dumps(receipt, indent=2, default=str)
+    payload = json.dumps(sealed, indent=2, default=str)
     dest.write_text(payload, encoding="utf-8")
     published = dest
     for art in arts:
         published = art / "latest.json"
         published.write_text(payload, encoding="utf-8")
-    receipt["receipt_path"] = str(dest)
-    receipt["artifact_path"] = str(published)
+    sealed["receipt_path"] = str(dest)
+    sealed["artifact_path"] = str(published)
     del claimed
-    return receipt
+    return sealed

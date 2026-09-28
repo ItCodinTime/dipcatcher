@@ -18,6 +18,8 @@ import pytest
 import yaml
 
 import quant_fund.hedge_lab.v2_slate as v2
+from quant_fund.hedge_lab._receipt import PATH_KEYS
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 
 def _cfg(tmp_path, *, source: str = "file") -> Any:
@@ -231,10 +233,8 @@ def test_slate_receipt_fails_closed_on_claim_drift_and_garbage(tmp_path) -> None
     v2._write_receipt(_lane_receipt(), str(artifact), tmp_path)
     drifted = json.loads(artifact.read_text())
     drifted["live_pnl_claim"] = True
-    drifted["receipt_sha256"] = v2.hash_bytes(
-        v2.canonical_json_bytes(
-            {k: v for k, v in drifted.items() if k not in v2._RECEIPT_PATH_KEYS}
-        )
+    drifted["receipt_sha256"] = hash_bytes(
+        canonical_json_bytes({k: v for k, v in drifted.items() if k not in PATH_KEYS})
     )
     artifact.write_text(json.dumps(drifted, indent=2), encoding="utf-8")
     assert "live_pnl_claim" in v2.verify_slate_receipt(artifact)
