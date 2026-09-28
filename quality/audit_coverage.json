@@ -155,8 +155,8 @@
       "status": "audited"
     },
     "quant_models": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 17,
+      "status": "audited"
     },
     "reality": {
       "doc": "docs/AUDIT_FRONTIER.md",
