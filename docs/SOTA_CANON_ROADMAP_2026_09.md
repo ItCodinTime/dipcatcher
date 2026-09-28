@@ -25,7 +25,7 @@ generic. They are listed below with citations, ranked by leverage.
 | E-processes (single hypotheses, betting) | Shafer–Vovk; Ramdas et al. 2023 (arXiv:2210.01948) | EXISTS `metrics/evalues.py` |
 | **e-BH** (FDR on e-values) | Wang & Ramdas, JRSS-B 2022 | EXISTS `metrics/anytime_fdr.py` |
 | **Stopped e-BH** (anytime-valid FDR under optional stopping) | Wang & Ramdas 2025 (arXiv:2502.08539) | EXISTS `metrics/anytime_fdr.py` |
-| **Online FDR with e-values** (e-LOND / e-SAFFRON) | Xu & Ramdas 2024 | PARTIAL: `ELond` in `metrics/anytime_fdr.py`; e-SAFFRON absent |
+| **Online FDR with e-values** (e-LOND / e-LORD / e-SAFFRON) | Xu & Ramdas 2024; Zhang et al. 2025 (e-GAI) | EXISTS `ELond`, `ELord`, `ESaffron` in `metrics/anytime_fdr.py` |
 | **E-detectors** (anytime-valid changepoint alarms) | Shin, Ramdas, Rinaldo 2023 (arXiv:2203.03532) | EXISTS `metrics/e_detectors.py` |
 | Conformal test martingales (WATCH) | Prinster et al. 2025 (arXiv:2505.04608) | EXISTS `metrics/watch.py` (practical Gaussian plugin; post-adaptation alarms diagnostic) |
 
@@ -70,10 +70,14 @@ report for citations (Pandera/GE landscape, pybroker asv pattern, SLSA).
 
 fx-1 today is a rigorous integrity/compliance harness around a not-yet-trained
 K3 LoRA; eval proves the model refuses to lie, not that it can reason.
-Gaps vs 2024–2026 SOTA: no tool-use/agentic eval (FinTrace, FinToolBench),
-no retrieval eval (FinAgentBench, FinanceBench), no time-series reasoning
-eval (MTBench), no calibrated-uncertainty measurement, single-turn regex
-scoring only. Sequenced on the fx-1 lane, not this wave.
+The capability battery now exists and is wired
+(`fx1.eval.capability.run_capability_eval`, `fx1 capability-eval`):
+seeded SYNTHETIC banks for tool-use/agentic multi-step calls, retrieval with
+`[doc_id]` citations, time-series reasoning (process id, pinball, coverage),
+and calibrated uncertainty (ECE + Spiegelhalter Z, gate at 0.02). Remaining
+gap vs 2024–2026 SOTA: external benchmark integration (FinTrace,
+FinToolBench, FinAgentBench, FinanceBench, MTBench) and real-model scores —
+the sealed banks are correctness gates, not market evidence.
 
 ### 2.6 Standing data gaps (unchanged, disclosed)
 
@@ -112,10 +116,13 @@ data-procurement items, not code items.
   evaluation gate in `validation/gates.py`; QRF/NGBoost vs. existing quantile
   baselines on the research catalog (proper-score comparison only).
 - **Engineering waves:** hypothesis CI profile pinning; chaos/fault-injection
-  property tests; benchmark regression gate; artifact attestations;
-  mutation testing on the verify layer.
+  property tests; artifact attestations; mutation testing on the verify
+  layer. Done: benchmark regression gate (`.github/workflows/perf-baseline.yml`
+  — CI-runner baselines as artifacts, calibration-normalized compare on PRs).
 - **fx-1 waves:** capability-side eval (tool-use, retrieval, TS-reasoning,
-  calibration measurement).
+  calibration measurement) — done: `eval/capability.py` aggregate +
+  `fx1 capability-eval` CLI, honesty gates + calibration gate hard.
+  Next: external-benchmark ports (FinTrace/FinToolBench/MTBench).
 
 ## 4. Acceptance for this wave
 
