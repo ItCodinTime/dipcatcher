@@ -47,7 +47,7 @@ from quant_fund.research.fleet_eval import (
     resolve_shard_generators,
 )
 from quant_fund.research.receipt_v2 import build_receipt_v2, seal_receipt
-from quant_fund.utils.hashing import hash_bytes
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 FLEET_SIG_SCHEMA = "fleet_significance_eval.v1"
 LOSS_FAMILIES: tuple[str, ...] = ("pinball", "crps")
@@ -440,6 +440,63 @@ def run_fleet_significance_eval(
         block=block,
         prewhiten=prewhiten,
     )
+
+
+def fleet_significance_dataset_identity(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """The dataset identity bound by the envelope's ``dataset_hash``."""
+    shards = payload.get("shards")
+    if not isinstance(shards, Mapping):
+        raise ValueError("significance receipt has no shards block")
+    out: dict[str, Any] = {}
+    for name, meta in shards.items():
+        if not isinstance(meta, Mapping):
+            raise ValueError(f"significance shard {name!r} metadata is not an object")
+        out[str(name)] = {
+            "x_sha256": meta.get("x_sha256"),
+            "y_sha256": meta.get("y_sha256"),
+        }
+    return out
+
+
+def fleet_significance_params(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """The run parameters bound by the envelope's ``params_hash``."""
+    shards = payload.get("shards")
+    return {
+        "models": payload.get("models"),
+        "taus": payload.get("taus"),
+        "n_train": payload.get("n_train"),
+        "n_eval": payload.get("n_eval"),
+        "seed": payload.get("seed"),
+        "shards": sorted(str(name) for name in shards) if isinstance(shards, Mapping) else None,
+        "loss": payload.get("loss"),
+        "n_boot": payload.get("n_boot"),
+        "alpha": payload.get("alpha"),
+        "block": payload.get("block"),
+        "prewhiten": payload.get("prewhiten"),
+    }
+
+
+def fleet_significance_v2_consistency_errors(
+    envelope: Mapping[str, Any],
+) -> list[str]:
+    """Re-derive a significance receipt.v2 envelope's bound digests."""
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    errors = fleet_significance_contract_errors(envelope)
+    if errors:
+        return errors
+    try:
+        dataset = fleet_significance_dataset_identity(payload)
+    except ValueError as exc:
+        return [*errors, f"payload_{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(fleet_significance_params(payload))) != envelope.get(
+        "params_hash"
+    ):
+        errors.append("params_hash_mismatch")
+    return errors
 
 
 def fleet_significance_contract_errors(receipt: Mapping[str, Any]) -> list[str]:

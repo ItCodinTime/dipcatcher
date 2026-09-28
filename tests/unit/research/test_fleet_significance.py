@@ -215,6 +215,21 @@ def test_non_synthetic_shard_rejected() -> None:
         )
 
 
+def test_verify_receipt_deep_verifies(tmp_path: Path) -> None:
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    _, receipt = _run()
+    path = write_fleet_significance_receipt(receipt, tmp_path)
+    result = verify_receipt_file(path)
+    assert result["errors"] == [], result["errors"]
+    raw = json.loads(path.read_text())
+    raw["payload"]["shards"]["iid_gaussian"]["y_sha256"] = "0" * 64
+    bad = tmp_path / "tampered.json"
+    bad.write_text(json.dumps(raw))
+    tampered = verify_receipt_file(bad)
+    assert any("mismatch" in e or "seal" in e for e in tampered["errors"])
+
+
 def test_registry_heads_run() -> None:
     factories = fleet_head_factories(TAUS, 0, ["empirical", "gaussian"])
     frame, receipt = run_fleet_significance(
