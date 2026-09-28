@@ -134,6 +134,7 @@ nav:
   - Evidence: evidence/index.md
   - Concepts:
       - Architecture: ARCHITECTURE.md
+      - Architecture atlas: ARCHITECTURE_ATLAS.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Receipt v2: RECEIPT_V2.md
@@ -240,6 +241,16 @@ nav:
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
+  - Atlas decisions:
+      - Index: adr/README.md
+      - "0001: Immutable receipts": adr/0001-immutable-self-sealing-receipts.md
+      - "0002: Pinned cross-root imports": adr/0002-fx1-filesystem-boundary.md
+      - "0003: fx1 test lane": adr/0003-fx1-test-lane-separation.md
+      - "0004: Fail-closed defaults": adr/0004-fail-closed-defaults.md
+      - "0005: Paper ledger publish order": adr/0005-paper-ledger-publish-order.md
+      - "0006: Strict config": adr/0006-strict-config-forbid-extra.md
+      - "0007: Shadow holds no capital": adr/0007-shadow-holds-no-capital.md
+      - "0008: Forbidden metric keys": adr/0008-forbidden-metric-key-scan.md
   - Market replay viewer: REPLAY_VIZ.md
   - Research explorer: WEB_EXPLORER.md
   - API reference:
