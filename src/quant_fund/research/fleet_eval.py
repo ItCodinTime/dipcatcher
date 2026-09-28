@@ -697,7 +697,11 @@ def run_distribution_fleet(
                     blob["head"] = str(head)
                 if version:
                     blob["version"] = str(version)
-            except Exception:
+            except (KeyError, AttributeError, TypeError, ValueError):
+                # Best-effort provenance backfill only: unknown factory key,
+                # missing metadata()/attrs, or mis-shaped values leave the
+                # "unknown" placeholder in place. Anything else is a real bug
+                # in the factory and must surface, not be swallowed.
                 pass
 
     columns = [
