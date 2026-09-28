@@ -134,10 +134,8 @@ except_importers = [
     "quant_fund.pretrade.**",
     "quant_fund.formal.**",
     # parity drives the simulated broker to measure backtest/live divergence —
-    # same simulation-boundary role as simtest/pretrade/formal. NOTE:
-    # tests/unit/test_architecture.py's BROKER_ALLOWED_PREFIXES predates the
-    # parity package and fails on main for exactly this edge (pre-existing
-    # baseline failure — owner: parity track).
+    # same simulation-boundary role as simtest/pretrade/formal (kept in sync
+    # with BROKER_ALLOWED_PREFIXES in tests/unit/test_architecture.py).
     "quant_fund.parity.**",
 ]
 note = "order-path modules (paper loop, simulated broker) are reachable only from cli/paper/execution/simtest/pretrade/formal"

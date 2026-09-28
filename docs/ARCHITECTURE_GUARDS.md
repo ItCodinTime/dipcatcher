@@ -61,10 +61,9 @@ These encode the repo's hard rules mechanically, on **every** import site:
   `execution`, `simtest`, `pretrade`, `formal`, and `parity`. Research may
   still use `execution.*` cost/impact models (e.g. `almgren_chriss`). This is
   the mechanical version of the repo rule "research code must not import
-  live/broker modules". Note: `tests/unit/test_architecture.py`'s
-  `BROKER_ALLOWED_PREFIXES` predates `parity` and **fails on main** for
-  `parity/replay.py` — a pre-existing baseline failure owned by the parity
-  track, not this PR.
+  live/broker modules", and the importer whitelist mirrors
+  `BROKER_ALLOWED_PREFIXES` in `tests/unit/test_architecture.py` — keep the
+  two in sync.
 * `research-purity` — `quant_fund.research.*` may not import `api`,
   `monitoring`, `observe`, or `pretrade`, even lazily.
 * `harness-no-fx1-imports` — `quant_fund` must not import `fx1`; the single
@@ -124,6 +123,6 @@ How to update it:
   `[[deny]]`/`[[allow_only]]` rules.
 * `layer-order` deliberately ignores function-level imports; a lazy import
   can still violate `[[deny]]` rules.
-* `tests/unit/test_architecture.py` keeps its own hardcoded checks; this
-  config is a strict superset of them except that it whitelists `parity` for
-  the simulated broker (see above).
+* `tests/unit/test_architecture.py` keeps its own hardcoded checks (module
+  size, no-cli-imports, broker/paper boundary); this config is a superset —
+  same invariants, declared in one place, plus the full layer order.
