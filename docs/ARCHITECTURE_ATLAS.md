@@ -211,6 +211,7 @@ flowchart LR
   quant_fund_cli -->|1| quant_fund_proofcore
   quant_fund_cli -->|1| quant_fund_quant_models
   quant_fund_cli -->|1| quant_fund_reality
+  quant_fund_cli -->|1| quant_fund_registry
   quant_fund_cli -->|2| quant_fund_reporting
   quant_fund_cli -->|11| quant_fund_research
   quant_fund_cli -->|1| quant_fund_schemas
@@ -638,7 +639,7 @@ sequenceDiagram
 
 - Modules scanned: **733**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **249**
 
 <!-- END GENERATED: coverage -->
 

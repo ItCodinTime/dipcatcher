@@ -1511,6 +1511,10 @@
       "src": "quant_fund.cli.research_cmds"
     },
     {
+      "dst": "quant_fund.registry.mlflow_store",
+      "src": "quant_fund.cli.research_cmds"
+    },
+    {
       "dst": "quant_fund.research.agent",
       "src": "quant_fund.cli.research_cmds"
     },
@@ -8253,6 +8257,11 @@
     },
     {
       "dst": "quant_fund.reality",
+      "imports": 1,
+      "src": "quant_fund.cli"
+    },
+    {
+      "dst": "quant_fund.registry",
       "imports": 1,
       "src": "quant_fund.cli"
     },
