@@ -241,17 +241,27 @@ def test_lh001_detects_direct_subscript_shift(tmp_path: Path) -> None:
 
 
 def test_lh001_function_allowlist_still_flags_other_leaks_in_file(tmp_path: Path) -> None:
-    """forward_close_return_labels is exempt; a sibling leak in the same file is not."""
-    repo = Path(__file__).resolve().parents[2]
+    """forward_close_return_labels is exempt; a sibling leak in the same file is not.
+
+    The production builder lives in ``labels/forward.py`` (path-allowlisted).
+    This fixture keeps the function-scoped exemption on its inventoried path.
+    """
     rel = Path("src/quant_fund/microstructure/candle_book_features.py")
-    source = (repo / rel).read_text(encoding="utf-8")
-    label_line = next(
-        i for i, line in enumerate(source.splitlines(), start=1) if ".shift(-1)" in line
+    source = (
+        "def forward_close_return_labels(close):\n"
+        "    return close.shift(-1)\n"
+        "\n"
+        "def leaked_close_feature(close):\n"
+        "    return close.shift(-1)\n"
     )
-    leaked = source + ("\n\ndef leaked_close_feature(close):\n    return close.shift(-1)\n")
+    label_line = next(
+        i
+        for i, line in enumerate(source.splitlines(), start=1)
+        if line.startswith("    return close.shift")
+    )
     path = tmp_path / rel
     path.parent.mkdir(parents=True)
-    path.write_text(leaked, encoding="utf-8")
+    path.write_text(source, encoding="utf-8")
     report = scan_paths([path], rules={"LH001"})
     lh001 = [f for f in report.findings if f.rule_id == "LH001"]
     assert len(lh001) == 1
