@@ -185,6 +185,53 @@ def test_chain_head_follows_links(tmp_path) -> None:
         assert db.chain_head() == b3.bundle_id
 
 
+def test_bundles_returns_chain_order_not_timestamp_order(tmp_path) -> None:
+    """Audit/export order is the hash chain, not wall clock: a bundle minted on
+    a skewed clock must not reorder the ledger."""
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        b1 = _bundle(_id(1), created="2026-09-26T00:02:00+00:00")
+        b2 = _bundle(_id(2), prev=b1.bundle_id, created="2026-09-26T00:01:00+00:00")
+        b3 = _bundle(_id(3), prev=b2.bundle_id, created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(b1, None)
+        db.insert_bundle(b2, None)
+        db.insert_bundle(b3, None)
+        # created_utc order would be b3, b2, b1 — the chain is the opposite.
+        assert [r["bundle_id"] for r in db.bundles()] == [
+            b1.bundle_id,
+            b2.bundle_id,
+            b3.bundle_id,
+        ]
+
+
+def test_bundles_fail_closed_on_unreachable_row(tmp_path) -> None:
+    """A row no genesis walk reaches (dangling prev, e.g. hand-edited table)
+    breaks export loudly rather than silently dropping or reordering it."""
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        b1 = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(b1, None)
+        # Bypass insert_bundle's chain-head check: a row pointing at a hash
+        # no bundle has (as if the middle of the chain were deleted).
+        db._con.execute(
+            "INSERT INTO proof_bundles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                _id(2),
+                "2026-09-26T00:01:00+00:00",
+                "backtest",
+                "a26be34",
+                _HEX,
+                7,
+                _HEX,
+                _id(99),
+                "none",
+                "{}",
+                None,
+                None,
+            ],
+        )
+        with pytest.raises(ProvenanceError, match="unreachable"):
+            db.bundles()
+
+
 def test_trial_round_trip_and_family_filter(tmp_path) -> None:
     with ProvenanceDB(tmp_path / "prov.duckdb") as db:
         bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")

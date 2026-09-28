@@ -238,13 +238,32 @@ class ProvenanceDB:
         ]
 
     def bundles(self) -> list[dict[str, Any]]:
-        """All proof-bundle rows as plain dicts (audit/export path), chain order."""
-        sql = (
-            f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles "
-            "ORDER BY created_utc, bundle_id"
-        )
-        rows = self._con.execute(sql).fetchall()
-        return [dict(zip(_BUNDLE_COLUMNS, r, strict=True)) for r in rows]
+        """All proof-bundle rows as plain dicts (audit/export path), in hash-chain
+        order — the genesis-linked bundle first, each row followed by the bundle
+        that points to it. Wall-clock order is not chain order: skewed
+        ``created_utc`` values must not reorder an audit trail.
+
+        Any row the genesis walk cannot reach (dangling prev pointer, hand-edited
+        table) raises ``ProvenanceError`` — a broken chain must be loud, not
+        silently reordered."""
+        sql = f"SELECT {', '.join(_BUNDLE_COLUMNS)} FROM proof_bundles"  # nosec B608
+        rows = [
+            dict(zip(_BUNDLE_COLUMNS, r, strict=True)) for r in self._con.execute(sql).fetchall()
+        ]
+        # prev_bundle_hash is UNIQUE and bundle_id is the PK, so the table is a
+        # linked list: at most one row claims each predecessor.
+        by_prev = {row["prev_bundle_hash"]: row for row in rows}
+        ordered: list[dict[str, Any]] = []
+        cursor = by_prev.pop(GENESIS_HASH, None)
+        while cursor is not None:
+            ordered.append(cursor)
+            cursor = by_prev.pop(cursor["bundle_id"], None)
+        if by_prev:
+            raise ProvenanceError(
+                "proof_bundles does not form a single chain from genesis: "
+                f"{len(by_prev)} row(s) unreachable — possible tamper"
+            )
+        return ordered
 
     def chain_head(self) -> str:
         """Current head of the bundle chain: the stored bundle no other bundle
