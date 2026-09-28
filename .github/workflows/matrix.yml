@@ -131,7 +131,16 @@ jobs:
         run: |
           set -euo pipefail
           shard_file="$RUNNER_TEMP/matrix-shard.txt"
+          ordered="$RUNNER_TEMP/matrix-shard-ordered.txt"
+          # pytest 9.1 registers conftest fixtures against the Directory node
+          # created at collection. Interleaving file args from one package
+          # with other directories produces duplicate Directory nodes, and
+          # items under the later node can't see the fixtures bound to the
+          # first (pytest-dev/pytest#14635, unreleased fix). Keep files in a
+          # directory contiguous: sort by dirname, then path.
+          awk '{d=$0; sub("/[^/]*$", "", d); print d "\t" $0}' "$shard_file" \
+            | LC_ALL=C sort -k1,1 -k2,2 | cut -f2- > "$ordered"
           # Repo paths contain no spaces; word-splitting is intentional and
           # keeps argv well under the Windows 32k command-line limit
           # (~170 files * ~50 chars).
-          uv run pytest -q -m "not network" $(tr '\n' ' ' < "$shard_file")
+          uv run pytest -q -m "not network" $(tr '\n' ' ' < "$ordered")
