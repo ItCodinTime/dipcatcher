@@ -26,7 +26,7 @@ from quant_fund.metrics.inference import stationary_bootstrap_indices
 from quant_fund.metrics.probability import acerbi_szekely_z1, acerbi_szekely_z2
 from quant_fund.metrics.risk import gaussian_es, gaussian_var, historical_es, historical_var
 from quant_fund.metrics.risk_parametric import parametric_var_es
-from quant_fund.metrics.var_backtest import christoffersen_test, kupiec_test
+from quant_fund.metrics.var_backtest import christoffersen_test, dq_test, kupiec_test
 from quant_fund.stress.bootstrap import resolve_block_length
 from quant_fund.stress.garch_copula import fit_variance_targeted_garch11
 
@@ -194,7 +194,7 @@ def backtest_var_es(
     n_boot: int = 300,
     seed: int = 0,
 ) -> dict[str, object]:
-    """Kupiec, Christoffersen, and Acerbi–Székely tests on aligned loss forecasts.
+    """Kupiec, Christoffersen, DQ, and Acerbi–Székely tests on aligned loss forecasts.
 
     A test that the underlying implementation defines as unidentified is
     returned with ``status="undefined"`` and the reason. It is not replaced
@@ -228,6 +228,10 @@ def backtest_var_es(
         )
     except ValueError as exc:
         out["christoffersen"] = {"status": "undefined", "reason": str(exc)}
+    try:
+        out["dq"] = _finite_test("dq", {k: float(v) for k, v in dq_test(hits, alpha).items()})
+    except ValueError as exc:
+        out["dq"] = {"status": "undefined", "reason": str(exc)}
     z1, n_hits = acerbi_szekely_z1(realized, var_f, es_f, 1.0 - alpha)
     z2, _n2 = acerbi_szekely_z2(realized, var_f, es_f)
     out["acerbi_szekely_z1"] = {

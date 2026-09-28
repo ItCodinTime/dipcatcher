@@ -123,6 +123,8 @@ def test_backtests_reject_a_bad_var_and_keep_a_correct_one() -> None:
     assert correct["kupiec"]["pvalue"] > 0.05
     assert correct["christoffersen"]["status"] == "ok"
     assert np.isfinite(correct["christoffersen"]["lr_cc"])
+    assert correct["dq"]["status"] == "ok"
+    assert correct["dq"]["pvalue"] > 0.01
     assert correct["acerbi_szekely_z1"]["status"] == "ok"
     assert np.isfinite(correct["acerbi_szekely_z1"]["z1"])
     assert correct["acerbi_szekely_bootstrap"]["status"] == "ok"
@@ -136,6 +138,7 @@ def test_backtests_reject_a_bad_var_and_keep_a_correct_one() -> None:
     quiet = np.zeros(40)
     undefined = backtest_var_es(quiet, np.ones(40), np.full(40, 2.0), level, n_boot=50, seed=0)
     assert undefined["christoffersen"]["status"] == "undefined"
+    assert undefined["dq"]["status"] == "undefined"
     assert undefined["acerbi_szekely_z1"]["status"] == "undefined"
     assert undefined["acerbi_szekely_bootstrap"]["status"] == "undefined"
 
