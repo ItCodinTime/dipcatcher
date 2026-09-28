@@ -12,6 +12,7 @@ class SymbolSlot:
         "hi",
         "lo",
         "deadline",
+        "ref_ts",
         "ref_ok",
         "halted",
         "sho",
@@ -30,6 +31,7 @@ class SymbolSlot:
         self.hi = 0.0
         self.lo = 0.0
         self.deadline = 0
+        self.ref_ts = 0
         self.ref_ok = 0
         self.halted = 0
         self.sho = 0
@@ -57,6 +59,7 @@ class HotBook:
         "daily_floor",
         "dd_floor",
         "mark_deadline",
+        "mark_ts",
         "name_limit",
         "pdt_tight",
         "killed",
@@ -130,6 +133,7 @@ class HotBook:
         self.daily_floor = 0.0
         self.dd_floor = 0.0
         self.mark_deadline = 0
+        self.mark_ts = 0
         self.name_limit = 0.0
         self.pdt_tight = 1
         self.killed = 0

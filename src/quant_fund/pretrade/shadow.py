@@ -8,6 +8,7 @@ are logged as fail-closed denies. They are not raised into the broker.
 from __future__ import annotations
 
 import json
+import weakref
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
@@ -16,7 +17,14 @@ from typing import Any, TextIO
 from zoneinfo import ZoneInfo
 
 from quant_fund.execution.simulated_broker import SimulatedBroker
-from quant_fund.pretrade.codes import KIND_CANCEL, KIND_ORDER, KIND_REPLACE, reason_names
+from quant_fund.pretrade.codes import (
+    INTERNAL,
+    KIND_CANCEL,
+    KIND_ORDER,
+    KIND_REPLACE,
+    UNKNOWN_SYMBOL,
+    reason_names,
+)
 from quant_fund.pretrade.config import PretradeConfig, sign_config
 from quant_fund.pretrade.engine import OrderView, PretradeEngine
 from quant_fund.schemas.orders import Order, OrderSide
@@ -54,6 +62,7 @@ class ShadowRiskAdapter:
         self.events: list[dict[str, Any]] = []
         self.errors: list[str] = []
         self._engines: dict[int, PretradeEngine] = {}
+        self._engine_refs: dict[int, weakref.ReferenceType[SimulatedBroker]] = {}
         self._pending: dict[tuple[int, str], tuple[int, float, int, int]] = {}
         self._fh: TextIO | None = None
         if log_path is not None:
@@ -135,6 +144,8 @@ class ShadowRiskAdapter:
             SimulatedBroker._pretrade_shadow_patched = False  # type: ignore[attr-defined]
 
     def _engine_for(self, broker: SimulatedBroker, ts_ns: int) -> PretradeEngine:
+        # CPython ids are reused after garbage collection: a new broker must
+        # never bind to a dead broker's engine, so state is dropped on GC.
         key = id(broker)
         engine = self._engines.get(key)
         if engine is not None:
@@ -154,7 +165,18 @@ class ShadowRiskAdapter:
             ts_ns=ts_ns if ts_ns > 0 else 1,
         )
         self._engines[key] = engine
+
+        def release(_ref: weakref.ReferenceType[SimulatedBroker], k: int = key) -> None:
+            self._forget_broker(k)
+
+        self._engine_refs[key] = weakref.ref(broker, release)
         return engine
+
+    def _forget_broker(self, key: int) -> None:
+        self._engine_refs.pop(key, None)
+        self._engines.pop(key, None)
+        for pending_key in [k for k in self._pending if k[0] == key]:
+            self._pending.pop(pending_key, None)
 
     def _sync(self, engine: PretradeEngine, broker: SimulatedBroker, ts_ns: int) -> None:
         marks = broker.last_marks
@@ -265,10 +287,10 @@ class ShadowRiskAdapter:
                 event["broker_reject_reason"] = record.reject_reason
                 event["broker_status"] = record.order.status.value
                 self._rewrite_last(event)
+        pending = self._pending.pop((id(broker), order.order_id), None)
         fill = record.fill
         if fill is None:
             return
-        pending = self._pending.get((id(broker), order.order_id))
         if pending is None:
             return
         sid, pos_before, session_id, _ts = pending
@@ -290,7 +312,7 @@ class ShadowRiskAdapter:
         try:
             working = broker.open_orders.get(order_id)
             if working is None:
-                self._emit(self._bare("cancel", order_id, "", ("unknown_symbol",)))
+                self._emit(self._bare("cancel", order_id, "", ("unknown_symbol",), UNKNOWN_SYMBOL))
                 return
             self._before(
                 broker,
@@ -305,7 +327,7 @@ class ShadowRiskAdapter:
         try:
             working = broker.open_orders.get(order_id)
             if working is None:
-                self._emit(self._bare("replace", order_id, "", ("unknown_symbol",)))
+                self._emit(self._bare("replace", order_id, "", ("unknown_symbol",), UNKNOWN_SYMBOL))
                 return
             data = working.model_dump()
             if "quantity" in kwargs and kwargs["quantity"] is not None:
@@ -325,10 +347,23 @@ class ShadowRiskAdapter:
 
     def _fail(self, order_id: str, symbol: str, kind: int, exc: BaseException) -> None:
         self.errors.append(f"{type(exc).__name__}: {exc}")
-        self._emit(self._bare(_KIND_NAME.get(kind, "order"), order_id, symbol, ("internal_error",)))
+        self._emit(
+            self._bare(
+                _KIND_NAME.get(kind, "order"),
+                order_id,
+                symbol,
+                ("internal_error",),
+                INTERNAL,
+            )
+        )
 
     def _bare(
-        self, kind: str, order_id: str, symbol: str, reasons: tuple[str, ...]
+        self,
+        kind: str,
+        order_id: str,
+        symbol: str,
+        reasons: tuple[str, ...],
+        bits: int,
     ) -> dict[str, Any]:
         return {
             "mode": "shadow",
@@ -338,7 +373,7 @@ class ShadowRiskAdapter:
             "kind": kind,
             "allowed": False,
             "reasons": list(reasons),
-            "reason_bits": 0,
+            "reason_bits": bits,
             "config_sha256": self.config_sha256,
             "config_hmac_sha256": self.config_hmac_sha256,
             "schema_version": self.schema_version,

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -82,7 +83,7 @@ class PretradeEngine:
         initial_cash: float,
         ts_ns: int,
     ) -> None:
-        if initial_nav != initial_nav or initial_cash != initial_cash:
+        if not math.isfinite(initial_nav) or not math.isfinite(initial_cash):
             raise ValueError("initial nav and cash must be finite")
         if ts_ns < 0:
             raise ValueError("ts_ns must be non-negative")
@@ -143,6 +144,8 @@ class PretradeEngine:
         bid: float = 0.0,
     ) -> None:
         sym = self._symbol(symbol_id)
+        if not math.isfinite(pos):
+            raise ValueError("position must be finite")
         sym.pos = float(pos)
         self._set_ref(sym, float(ref_px), int(ref_ts_ns))
         sym.halted = 1 if halted else 0
@@ -170,6 +173,7 @@ class PretradeEngine:
         stamp = int(mark_ts_ns)
         if nav == nav and nav > 0.0 and stamp >= 0:
             self.book.mark_deadline = stamp + self._max_mark_age
+            self.book.mark_ts = stamp
             self.book.name_limit = self._concentration * float(nav)
             self.book.pdt_tight = 1 if float(nav) < self._pdt_equity else 0
         else:
@@ -202,7 +206,7 @@ class PretradeEngine:
         end = start + timedelta(days=1)
         self.book.day_lo = int(start.timestamp() * 1_000_000_000)
         self.book.day_hi = int(end.timestamp() * 1_000_000_000)
-        rolled = self._session_date is not None and local != self._session_date
+        rolled = self._session_date is not None and local > self._session_date
         self._session_date = local
         if rolled and self.book.nav == self.book.nav and self.book.nav > 0.0:
             self.book.session_start = self.book.nav
@@ -215,7 +219,9 @@ class PretradeEngine:
         open_h, open_m = divmod(self._open_minute, 60)
         close_h, close_m = divmod(self._close_minute, 60)
         open_dt = start.replace(hour=open_h, minute=open_m)
-        close_dt = start.replace(hour=close_h, minute=close_m)
+        close_dt = (start + timedelta(days=close_h // 24)).replace(
+            hour=close_h % 24, minute=close_m
+        )
         self.book.open_ns = int(open_dt.timestamp() * 1_000_000_000)
         self.book.close_ns = int(close_dt.timestamp() * 1_000_000_000)
         self.book.session_open = 1
@@ -251,7 +257,7 @@ class PretradeEngine:
         prev = int(self.book.kill_reason)
         self.book.killed = 0
         self.book.kill_reason = 0
-        self.book.pending_trip = 0
+        self._flush_pending_trip(ts_ns)
         self._audit("reset", actor_s, reason_s, prev, ts_ns)
 
     def check(self, order: OrderView, *, apply: bool = True) -> int:
@@ -316,12 +322,14 @@ class PretradeEngine:
         """
         try:
             if (
-                qty != qty
-                or px != px
-                or fee != fee
+                not math.isfinite(qty)
+                or not math.isfinite(px)
+                or not math.isfinite(fee)
+                or not math.isfinite(pos_before)
                 or qty <= 0.0
                 or px <= 0.0
                 or fee < 0.0
+                or ts_ns < 0
                 or (side != 1 and side != -1)
             ):
                 raise ValueError("fill fields must be finite")
@@ -376,9 +384,11 @@ class PretradeEngine:
             sym.hi = 0.0
             sym.lo = 0.0
             sym.deadline = 0
+            sym.ref_ts = 0
             return
         sym.ref = ref
         sym.ref_ok = 1
+        sym.ref_ts = int(ref_ts)
         frac = self.book.collar_frac
         sym.hi = ref * (1.0 + frac)
         sym.lo = ref * (1.0 - frac)
@@ -500,6 +510,8 @@ class PretradeEngine:
         self.book.settled = settled
 
     def _enqueue_unsettled(self, amount: float, available_ns: int) -> bool:
+        if not math.isfinite(amount):
+            return False
         if amount <= 0.0:
             self.book.settled += amount
             return self.book.settled == self.book.settled
@@ -525,7 +537,7 @@ class PretradeEngine:
     def _latch_internal(self, detail: str, ts_ns: int) -> None:
         self.book.killed = 1
         self.book.kill_reason |= INTERNAL
-        self.book.pending_trip = 0
+        self._flush_pending_trip(ts_ns)
         self._audit("trip", "engine", detail, INTERNAL, ts_ns)
 
     def _audit(self, action: str, actor: str, reason: str, bits: int, ts_ns: int) -> None:

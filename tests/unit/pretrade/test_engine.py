@@ -40,8 +40,10 @@ from quant_fund.pretrade.codes import (
     decision_allowed,
     reason_names,
 )
+from quant_fund.pretrade.config import PretradeConfig, SessionConfig
+from quant_fund.pretrade.engine import PretradeEngine
 from quant_fund.pretrade.kernel import hot_check
-from tests.unit.pretrade.support import TS_NS, arm, make_engine, order
+from tests.unit.pretrade.support import HMAC_KEY, TS_NS, arm, limit_config, make_engine, order
 
 
 def test_in_limit_order_is_allowed() -> None:
@@ -424,3 +426,144 @@ def test_hot_check_symbol_is_the_engine_symbol() -> None:
         symbol_id=sid,
     )
     assert bits == 0
+
+
+def test_initial_nav_and_cash_reject_infinity() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        make_engine(cash=float("inf"))
+    with pytest.raises(ValueError, match="finite"):
+        make_engine(nav=float("inf"))
+    with pytest.raises(ValueError, match="finite"):
+        make_engine(cash=float("nan"))
+
+
+def test_set_symbol_rejects_non_finite_position() -> None:
+    engine = make_engine()
+    sid = engine.ensure_symbol("A")
+    with pytest.raises(ValueError, match="finite"):
+        engine.set_symbol(sid, pos=float("nan"), ref_px=100.0, ref_ts_ns=TS_NS)
+    with pytest.raises(ValueError, match="finite"):
+        engine.set_symbol(sid, pos=float("inf"), ref_px=100.0, ref_ts_ns=TS_NS)
+
+
+def test_future_dated_reference_and_mark_are_stale() -> None:
+    engine = make_engine()
+    sid = arm(engine, ts_ns=TS_NS + 60_000_000_000)
+    assert engine.check(order(sid), apply=False) & STALE
+
+    marked = make_engine()
+    sid_m = arm(marked)
+    marked.update_account(nav=1_000_000.0, mark_ts_ns=TS_NS + 60_000_000_000)
+    assert marked.check(order(sid_m), apply=False) & STALE
+
+
+def test_backward_session_roll_does_not_rebase_loss_floors() -> None:
+    engine = make_engine(nav=1_000, cash=1_000, max_daily_loss_fraction=0.1)
+    sid = arm(engine)
+    jan4 = int(
+        datetime(2024, 1, 4, 15, 0, tzinfo=ZoneInfo("America/New_York")).timestamp() * 1_000_000_000
+    )
+    engine.update_account(nav=1_100, mark_ts_ns=jan4)
+    engine.set_symbol(sid, pos=0.0, ref_px=100.0, ref_ts_ns=jan4)
+    assert engine.check(order(sid, ts_ns=jan4), apply=False) == 0
+    assert engine.book.session_start == 1_100
+    engine.update_account(nav=1_000, mark_ts_ns=jan4 + 1)
+    engine.set_symbol(sid, pos=0.0, ref_px=100.0, ref_ts_ns=TS_NS)
+    back = engine.check(order(sid, ts_ns=TS_NS), apply=False)
+    assert back & NON_MONOTONIC
+    assert engine.book.session_start == 1_100
+    assert engine.book.daily_floor == pytest.approx(990.0)
+
+
+def test_midnight_close_wraps_to_the_next_day() -> None:
+    config = PretradeConfig(
+        schema_version=1,
+        limits=limit_config(),
+        session=SessionConfig(timezone="America/New_York", open_minute=570, close_minute=1440),
+    )
+    engine = PretradeEngine(
+        config, hmac_key=HMAC_KEY, initial_nav=1_000, initial_cash=1_000, ts_ns=TS_NS
+    )
+    sid = arm(engine)
+    span = engine.book.close_ns - engine.book.open_ns
+    assert span == (1440 - 570) * 60 * 1_000_000_000
+    assert engine.check(order(sid), apply=False) == 0
+
+
+def test_rule_201_denies_a_short_when_the_bid_is_missing() -> None:
+    margin = make_engine(cash_account=False, restrict_to_settled_cash=False)
+    sid = arm(margin, pos=0, sho_restricted=True, locate_ok=True, bid=0.0)
+    assert margin.check(order(sid, side=-1, qty=1, px=100), apply=False) & REG_SHO
+    negative = make_engine(cash_account=False, restrict_to_settled_cash=False)
+    sid_n = arm(negative, pos=0, sho_restricted=True, locate_ok=True, bid=-1.0)
+    assert negative.check(order(sid_n, side=-1, qty=1, px=100), apply=False) & REG_SHO
+
+
+def test_note_fill_rejects_degenerate_fields() -> None:
+    bad = (
+        {"qty": float("inf")},
+        {"px": float("inf")},
+        {"fee": float("nan")},
+        {"ts_ns": -1},
+        {"pos_before": float("nan")},
+        {"side": 0},
+    )
+    for override in bad:
+        engine = make_engine()
+        sid = arm(engine)
+        fields: dict[str, object] = {
+            "symbol_id": sid,
+            "side": 1,
+            "qty": 1.0,
+            "px": 10.0,
+            "fee": 0.0,
+            "ts_ns": TS_NS,
+            "session_id": 10,
+            "pos_before": 0.0,
+        }
+        fields.update(override)
+        engine.note_fill(**fields)  # type: ignore[arg-type]
+        assert engine.book.killed == 1, override
+        assert engine.book.kill_reason & INTERNAL
+
+
+def test_unbounded_sell_proceeds_fail_closed() -> None:
+    engine = make_engine()
+    sid = arm(engine)
+    engine.note_fill(
+        symbol_id=sid,
+        side=-1,
+        qty=1e308,
+        px=1e308,
+        fee=0.0,
+        ts_ns=TS_NS,
+        session_id=10,
+        pos_before=0.0,
+    )
+    assert engine.book.killed == 1
+    assert engine.book.settled < float("inf")
+
+
+def test_pending_trip_is_audited_when_the_kernel_is_driven_directly() -> None:
+    engine = make_engine(nav=1_000, cash=1_000, max_daily_loss_fraction=0.1)
+    sid = arm(engine)
+    engine.update_account(nav=500.0, mark_ts_ns=TS_NS)
+    sym = engine.book.syms[sid]
+    bits = hot_check(
+        engine.book,
+        sym,
+        side=1,
+        qty=1.0,
+        px=100.0,
+        ts=TS_NS,
+        session_id=10,
+        is_limit=1,
+        kind=1,
+        symbol_id=sid,
+    )
+    assert bits & DAILY_LOSS
+    assert engine.book.killed == 1
+    engine.reset("ops", "reviewed the breach", TS_NS + 1)
+    assert any(
+        event["action"] == "trip" and event["reason_bits"] & DAILY_LOSS for event in engine.audit
+    )

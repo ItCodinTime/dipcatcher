@@ -14,7 +14,7 @@ from quant_fund.pretrade.config import (
     load_pretrade_config,
     sign_config,
 )
-from tests.unit.pretrade.support import HMAC_KEY, make_engine
+from tests.unit.pretrade.support import HMAC_KEY, limit_config, make_engine
 
 ROOT = Path(__file__).resolve().parents[3]
 YAML_PATH = ROOT / "configs" / "pretrade_risk.yaml"
@@ -72,6 +72,26 @@ def test_session_and_ring_constraints() -> None:
         make_engine(ring_capacity=100)
     with pytest.raises(ValidationError):
         make_engine(max_orders_per_window=64, ring_capacity=64)
+
+
+def test_limit_fields_reject_non_finite_bounds() -> None:
+    fields = (
+        "max_order_notional",
+        "max_order_quantity",
+        "price_collar_bps",
+        "max_position_notional",
+        "max_position_quantity",
+        "max_gross_notional",
+        "max_net_notional",
+        "pdt_equity_threshold",
+        "qty_tick",
+        "price_tick",
+    )
+    for field in fields:
+        with pytest.raises(ValidationError):
+            limit_config(**{field: float("inf")})
+        with pytest.raises(ValidationError):
+            limit_config(**{field: float("nan")})
 
 
 def test_decision_records_the_signed_hash() -> None:

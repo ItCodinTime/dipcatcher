@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ import pytest
 from quant_fund.config.loader import load_config
 from quant_fund.execution.simulated_broker import SimulatedBroker
 from quant_fund.paper.loop import run_paper_loop
+from quant_fund.pretrade.codes import INTERNAL, UNKNOWN_SYMBOL
 from quant_fund.pretrade.config import load_pretrade_config
 from quant_fund.pretrade.engine import PretradeEngine
 from quant_fund.pretrade.shadow import ShadowRiskAdapter, business_session_id
@@ -113,6 +115,7 @@ def test_observer_exception_does_not_block_the_broker(
     assert broker.shares["A"] == pytest.approx(10.0)
     assert adapter.events[-1]["allowed"] is False
     assert adapter.events[-1]["reasons"] == ["internal_error"]
+    assert adapter.events[-1]["reason_bits"] & INTERNAL
     assert adapter.events[-1]["config_sha256"] == adapter.config_sha256
     assert adapter.errors
 
@@ -160,6 +163,7 @@ def test_cancel_and_amend_are_logged_without_changing_the_broker(tmp_path: Path)
     assert kinds == ["order", "replace", "cancel", "cancel"]
     assert all(event["behavior_changed"] is False for event in adapter.events)
     assert adapter.events[-1]["reasons"] == ["unknown_symbol"]
+    assert adapter.events[-1]["reason_bits"] & UNKNOWN_SYMBOL
     assert adapter.events[-1]["allowed"] is False
     lines = [
         json.loads(line)
@@ -251,3 +255,24 @@ def test_class_observer_is_restored_and_paper_loop_is_unchanged(tmp_path: Path) 
     for body in (source, loop_source):
         assert "quant_fund.pretrade" not in body
         assert "ShadowRiskAdapter" not in body
+
+
+def test_engine_state_is_dropped_when_the_broker_dies(tmp_path: Path) -> None:
+    config, _, _ = load_pretrade_config(ROOT / "configs" / "pretrade_risk.yaml", hmac_key=HMAC_KEY)
+    adapter = ShadowRiskAdapter(config, hmac_key=HMAC_KEY)
+    broker = SimulatedBroker(config=_broker_config(tmp_path), initial_cash=100_000)
+    broker.mark({"A": 100.0})
+    adapter.attach(broker)
+    record = broker.submit(
+        _order(10.0, "x"),
+        price=100.0,
+        nav=broker.nav(),
+        adv_dollars=1e12,
+        sigma=0.02,
+    )
+    assert record.fill is not None
+    assert adapter._engines
+    assert adapter._pending == {}
+    del broker
+    gc.collect()
+    assert adapter._engines == {}

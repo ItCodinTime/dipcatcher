@@ -254,7 +254,13 @@ def hot_check(
 
     _mature(book, eff)
 
-    if sym.ref_ok == 0 or eff > sym.deadline or eff > book.mark_deadline:
+    if (
+        sym.ref_ok == 0
+        or eff > sym.deadline
+        or eff < sym.ref_ts
+        or eff > book.mark_deadline
+        or eff < book.mark_ts
+    ):
         bits |= STALE
     nav = book.nav
     if nav != nav or not nav > 0.0:
@@ -306,7 +312,7 @@ def hot_check(
         if opening_short and (
             book.cash_account
             or not sym.locate
-            or (sym.sho and (not is_limit or px + _EPS < sym.bid))
+            or (sym.sho and (not is_limit or sym.bid <= 0.0 or px + _EPS < sym.bid))
         ):
             bits |= REG_SHO
         if book.restrict_settled and side > 0 and qty * px > book.settled + _CASH_EPS:
