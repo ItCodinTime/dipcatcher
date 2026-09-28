@@ -185,12 +185,12 @@
       "status": "audited"
     },
     "schemas": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 8,
+      "status": "audited"
     },
     "simtest": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 8,
+      "status": "audited"
     },
     "stress": {
       "doc": "docs/AUDIT_FRONTIER.md",
