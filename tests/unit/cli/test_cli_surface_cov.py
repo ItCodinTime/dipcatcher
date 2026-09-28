@@ -72,7 +72,6 @@ def test_subcommand_help(argv: tuple[str, str]) -> None:
         ("no-such-command",),
         ("train", "no-such-sub"),
         ("paper", "--config", "definitely/missing/paper.yaml"),
-        ("doctor", "--config", "definitely/missing/research.yaml"),
         ("verify-research", "--path", "definitely/missing/receipt.json"),
     ],
     ids=lambda a: "-".join(a),
@@ -83,3 +82,12 @@ def test_missing_inputs_fail_cleanly(argv: tuple[str, ...]) -> None:
     assert result.exit_code != 0, f"{' '.join(argv)} unexpectedly succeeded"
     combined = result.output + (str(result.exception) if result.exception else "")
     assert "Traceback" not in combined, f"{' '.join(argv)} raised a raw traceback"
+
+
+def test_doctor_missing_config_degrades_not_crashes() -> None:
+    """doctor reports problems rather than dying on them: an unreadable
+    config becomes a status line and the run continues on defaults."""
+    result = runner.invoke(app, ["doctor", "--config", "definitely/missing/research.yaml"])
+    assert result.exit_code == 0
+    assert "Traceback" not in result.output
+    assert "unreadable" in result.output
