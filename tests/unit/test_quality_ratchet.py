@@ -77,7 +77,7 @@ def test_allowlist_rejects_dropped_baseline_member(
     baseline = tmp_path / "baseline.txt"
     baseline.write_text("src/quant_fund/pinned.py\n")
     listing = tmp_path / "allowlist.txt"
-    listing.write_text(f"{src/quant_fund/replacement.py}\n".replace("{src", "src"))
+    listing.write_text("src/quant_fund/replacement.py\n")
     monkeypatch.setitem(strict_allowlisted.__globals__, "ROOT", tmp_path)
     monkeypatch.setitem(strict_allowlisted.__globals__, "ALLOWLIST", listing)
     monkeypatch.setitem(strict_allowlisted.__globals__, "BASELINE", baseline)
