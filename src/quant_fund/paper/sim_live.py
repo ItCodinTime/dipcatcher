@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,7 @@ from quant_fund.paper.quantile_signals import (
     load_deep_bars,
     quantile_panels_to_weights,
 )
+from quant_fund.utils.receipt import seal_receipt
 
 
 def _sha256(path: Path) -> str:
@@ -470,12 +472,31 @@ def run_sim_live(
         ],
         "paths": result.paths if result is not None else {},
     }
+    sealed = seal_receipt(receipt)
     out_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = out_dir / f"sim_live_{effective_run_id}.json"
-    receipt_path.write_text(json.dumps(receipt, indent=2, default=str))
+    receipt_path.write_text(json.dumps(sealed, indent=2, default=str))
     return SimLiveResult(
         run_id=effective_run_id,
         receipt_path=receipt_path,
-        receipt=receipt,
+        receipt=sealed,
         loop=result,
     )
+
+
+SIM_LIVE_KINDS = ("sim_live_receipt", "sim_live_bench_receipt")
+
+
+def sim_live_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Honesty-contract errors for sim_live receipts (seal check lives in
+    ``verify_receipt_file``; this is the claim-level contract)."""
+    errors: list[str] = []
+    if receipt.get("kind") not in SIM_LIVE_KINDS:
+        errors.append("kind")
+    if receipt.get("simulated_only") is not True:
+        errors.append("simulated_only")
+    if receipt.get("research_only") is not True:
+        errors.append("research_only")
+    if receipt.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim")
+    return errors

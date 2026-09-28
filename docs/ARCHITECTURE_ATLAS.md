@@ -300,7 +300,7 @@ flowchart LR
   quant_fund_paper -->|2| quant_fund_portfolio
   quant_fund_paper -->|3| quant_fund_research
   quant_fund_paper -->|1| quant_fund_schemas
-  quant_fund_paper -->|3| quant_fund_utils
+  quant_fund_paper -->|4| quant_fund_utils
   quant_fund_parity -->|4| quant_fund_config
   quant_fund_parity -->|2| quant_fund_execution
   quant_fund_parity -->|1| quant_fund_schemas
@@ -354,6 +354,7 @@ flowchart LR
   quant_fund_research -->|4| quant_fund_microstructure
   quant_fund_research -->|57| quant_fund_models
   quant_fund_research -->|6| quant_fund_northset
+  quant_fund_research -->|1| quant_fund_paper
   quant_fund_research -->|11| quant_fund_pipeline
   quant_fund_research -->|5| quant_fund_portfolio
   quant_fund_research -->|1| quant_fund_proof
@@ -633,12 +634,12 @@ sequenceDiagram
 | `quant_fund.schemas` | 8 |
 | `quant_fund.simtest` | 10 |
 | `quant_fund.stress` | 14 |
-| `quant_fund.utils` | 7 |
+| `quant_fund.utils` | 8 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **733**
+- Modules scanned: **734**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **249**
 
 <!-- END GENERATED: coverage -->
 

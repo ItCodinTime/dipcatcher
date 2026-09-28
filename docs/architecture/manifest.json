@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 734,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -3919,6 +3919,10 @@
       "src": "quant_fund.paper.sim_live"
     },
     {
+      "dst": "quant_fund.utils.receipt",
+      "src": "quant_fund.paper.sim_live"
+    },
+    {
       "dst": "quant_fund.parity.checker",
       "src": "quant_fund.parity"
     },
@@ -6443,6 +6447,10 @@
       "src": "quant_fund.research.receipt_schema"
     },
     {
+      "dst": "quant_fund.paper.sim_live",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
       "dst": "quant_fund.research.catalog",
       "src": "quant_fund.research.receipt_v2"
     },
@@ -7021,6 +7029,10 @@
     {
       "dst": "quant_fund.native",
       "src": "quant_fund.utils.hashing"
+    },
+    {
+      "dst": "quant_fund.utils.hashing",
+      "src": "quant_fund.utils.receipt"
     },
     {
       "dst": "quant_fund.utils.hashing",
@@ -7815,6 +7827,7 @@
     "quant_fund.utils.hashing",
     "quant_fund.utils.logging",
     "quant_fund.utils.numeric",
+    "quant_fund.utils.receipt",
     "quant_fund.utils.reproducibility",
     "quant_fund.utils.seeds",
     "quant_fund.utils.series",
@@ -8818,7 +8831,7 @@
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 3,
+      "imports": 4,
       "src": "quant_fund.paper"
     },
     {
@@ -9137,6 +9150,11 @@
       "src": "quant_fund.research"
     },
     {
+      "dst": "quant_fund.paper",
+      "imports": 1,
+      "src": "quant_fund.research"
+    },
+    {
       "dst": "quant_fund.pipeline",
       "imports": 11,
       "src": "quant_fund.research"
@@ -9298,7 +9316,7 @@
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 5,
+      "imports": 6,
       "src": "quant_fund.utils"
     },
     {

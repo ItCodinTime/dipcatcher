@@ -433,6 +433,10 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
+    if payload.get("kind") in ("sim_live_receipt", "sim_live_bench_receipt"):
+        from quant_fund.paper.sim_live import sim_live_contract_errors
+
+        errors.extend(sim_live_contract_errors(payload))
     return _result(path, payload, convention, errors)
 
 
