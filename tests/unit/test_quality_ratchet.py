@@ -94,3 +94,31 @@ def test_no_bare_except_and_exception_ceiling() -> None:
                 broad += 1
     assert bare == 0
     assert broad <= EXCEPT_EXCEPTION_CEILING
+
+
+def test_broad_exception_manifest_matches_tree() -> None:
+    """The global ceiling alone lets a new handler trade against an unrelated
+    narrowing. The manifest pins the count per file so every broad catch is
+    accounted to a place a reviewer can look at."""
+    checker = runpy.run_path(str(ROOT / "scripts" / "check_broad_exceptions.py"))
+    actual = checker["actual_counts"]()
+    manifest = checker["manifest_counts"]()
+    assert manifest == actual, (
+        "broad-exception manifest drifted — regenerate with "
+        "python scripts/update_broad_exceptions.py"
+    )
+
+
+def test_broad_exception_manifest_rejects_drift_and_dupes(tmp_path: Path) -> None:
+    checker = runpy.run_path(str(ROOT / "scripts" / "check_broad_exceptions.py"))
+    manifest_counts = checker["manifest_counts"]
+    bad = tmp_path / "broad_exceptions.txt"
+    bad.write_text("src/quant_fund/a.py 1\nsrc/quant_fund/a.py 2\n")
+    with pytest.raises(SystemExit):
+        manifest_counts(bad)
+    bad.write_text("src/quant_fund/a.py 0\n")
+    with pytest.raises(SystemExit):
+        manifest_counts(bad)
+    ok = tmp_path / "ok.txt"
+    ok.write_text("# comment\nsrc/quant_fund/a.py 1\n")
+    assert manifest_counts(ok) == {"src/quant_fund/a.py": 1}
