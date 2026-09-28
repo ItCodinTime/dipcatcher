@@ -1,5 +1,5 @@
 {
-  "manifest_sha256": "42ece6f46c6272af2293799c2968025a9a9e678c244e9d5abae516a0ef16a9a4",
+  "manifest_sha256": "7dab6ee1eb6b39c47e85f048c8f9584d5c6b08f214ef3c6a4cb908228be7ca90",
   "phase": "validation",
   "created_at": "2026-09-25T06:50:08.831330+00:00",
   "candidates": [
@@ -8,5 +8,5 @@
     "momentum_20_cost_aware",
     "reversal_1_cost_aware"
   ],
-  "receipt_sha256": "e84e6c750b0aba0744905556beba0cef914f596e2ef7a58326eab4215899dcfe"
+  "receipt_sha256": "b9a680e45d664b103cd5c37b191cb8bcdbf5ca0210277aad1de50d69b120c4a6"
 }

@@ -12,7 +12,7 @@ import pytest
 from quant_fund.config.models import AppConfig
 from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
 from quant_fund.northset.benches import bench_northset
-from quant_fund.pipeline.dataset import ensure_silver
+from quant_fund.pipeline.dataset import build_gold, ensure_silver
 from tests.support.session_cache import bench_stats, data_stats, reset_for_tests
 
 
@@ -79,6 +79,29 @@ def test_synthetic_silver_cache_is_root_independent(tmp_path: Path) -> None:
     right = ensure_silver(right_cfg)
     assert left.equals(right)
     assert (tmp_path / "b" / "silver" / "bars.parquet").is_file()
+    assert (tmp_path / "a" / "metadata" / "data_manifest.json").is_file()
+    assert (tmp_path / "b" / "metadata" / "data_manifest.json").is_file()
+    assert data_stats()["hit"] >= 1
+
+
+def test_gold_cache_hit_restores_data_manifest(tmp_path: Path) -> None:
+    """A gold cache hit must restore the ingest manifest, not only parquet."""
+    reset_for_tests()
+    left_cfg = _small_config()
+    left_cfg.data.synthetic_n_assets = 4
+    left_cfg.data.synthetic_n_days = 20
+    left_cfg.universe.min_history_bars = 5
+    left_cfg.universe.min_adv = 0.0
+    left_cfg.data.root = tmp_path / "a"
+    right_cfg = left_cfg.model_copy(deep=True)
+    right_cfg.data.root = tmp_path / "b"
+    build_gold(left_cfg)
+    build_gold(right_cfg)
+    manifest = tmp_path / "b" / "metadata" / "data_manifest.json"
+    assert manifest.is_file()
+    payload = manifest.read_text(encoding="utf-8")
+    assert '"schema_version": 1' in payload
+    assert '"source": "synthetic"' in payload
     assert data_stats()["hit"] >= 1
 
 

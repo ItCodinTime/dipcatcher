@@ -36,6 +36,17 @@ from quant_fund.research.reality_sweep import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# The 2026-09-27 study is decided (verdict: deflated — see
+# docs/REALITY_TRIAL_2026.md), so its frozen spec lives under the archive
+# path, not the pending default.
+_DECIDED_SPEC = (
+    REPO_ROOT
+    / "research"
+    / "reality"
+    / "studies"
+    / "reality-us-liquid-daily-2026-09-27"
+    / "preregistration.json"
+)
 _HEX = "ab" * 32
 
 
@@ -55,7 +66,7 @@ def _scored(trial_id: str, ratio: float, *, degenerate: bool) -> ScoredCell:
 
 
 def test_grid_matches_the_frozen_preregistration() -> None:
-    spec = load_spec()
+    spec = load_spec(_DECIDED_SPEC)
     cells = grid_cells(spec)
     assert len(cells) == 29
     assert sum(cell.strategy == "sweep_reclaim" for cell in cells) == 18
@@ -65,7 +76,7 @@ def test_grid_matches_the_frozen_preregistration() -> None:
 
 
 def test_cost_lock_accepts_backtest_yaml_and_rejects_a_change() -> None:
-    spec = load_spec()
+    spec = load_spec(_DECIDED_SPEC)
     config = load_config(REPO_ROOT / "configs" / "backtest.yaml")
     assert_cost_lock(config, spec)
     config.costs.frictionless = True

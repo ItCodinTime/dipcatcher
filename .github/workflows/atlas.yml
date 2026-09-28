@@ -1,0 +1,39 @@
+name: atlas
+
+# Freshness gate for the architecture atlas: the committed Mermaid
+# diagrams and manifest under docs/architecture/ (plus the embedded blocks
+# in docs/ARCHITECTURE_ATLAS.md) must match what
+# scripts/gen_arch_diagrams.py produces from the current source tree.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagrams:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Architecture diagrams fresh
+        run: uv run --frozen python scripts/gen_arch_diagrams.py --check
+      - name: Atlas unit tests
+        run: uv run --frozen pytest tests/unit/docs -q

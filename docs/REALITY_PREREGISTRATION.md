@@ -1,7 +1,8 @@
 # Reality-filter trial pre-registration
 
 Frozen before any strategy result was computed. The machine-readable copy is
-`research/reality/preregistration.json`. The runner must refuse a cost or
+`research/reality/studies/reality-us-liquid-daily-2026-09-27/preregistration.json`
+(archived after adjudication — see `research/reality/README.md`). The runner must refuse a cost or
 risk-gate config that differs from that file, and it must record every grid
 cell, including cells that lose.
 
