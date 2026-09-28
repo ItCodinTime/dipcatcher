@@ -1085,6 +1085,114 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
 - `schema`: capacity_overlay.v1
 - `seed`: 11
 
+### `receipts/deps_security_hygiene_f3b4e6fd22e439b7.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/deps_security_hygiene_f3b4e6fd22e439b7.json | 66176b021f554077ceca2ed34a87b1de89e50fb905aee26f14a232c52d4a59e7 | f3b4e6fd22e439b7932ef3b9084387ee9c91274a24d17af248bebbc10b68a167 | not_checked | absent | absent | unspecified | absent | true | false |
+
+- `artifact_sha256`:
+  - `bandit_report.json`: 809cd6121547aa0fe7ba43a02bee5b7d032cf7677b4e186f697e3afad325118c
+  - `bandit_strict.txt`: 87a0d55d41533af09c000df7e63d6fa0aa38f2a585fda3748f2d824c1713a822
+  - `deptry_src.txt`: ff6a683d5c49cc51f281f71b0d33bdd6b3b3f6a98cc32e827d42489cdb26b6a9
+  - `environment.txt`: 51db324590116cdb29cde79a5e84e163b558ad5205ca99de5982ca5bd9413649
+  - `export_all.txt`: 9fbf64df6666d2cfa7f4c6e7ffb8da02d4f0a55c16c8fc6519c46d851518730b
+  - `gitleaks_report.json`: 37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570
+  - `licenses_all.json`: a6fd604a5b417cae275fab6b11a080394bc8d3081e7c647ea1022caa4efd5121
+  - `pip_audit.json`: 049e4778f823e4f6e95ea20dc9426dde053a1920d865b5912e5509c74ec29ba6
+  - `uv_audit.json`: 737891e2dfea09ce5a31b82b8a023663d03d6f2de336f16f2d8e492275e04e21
+- `base_commit`: 2ed19c2a39b9c5521250e5e0cf53db188bc76b54
+- `ci_gates`:
+  - `dependency_review`: .github/workflows/dependency-review.yml (fail-on-severity moderate)
+  - `secret_scan`: .github/workflows/secret-scan.yml (gitleaks 8.30.1, sha256-pinned, --full-history)
+- `commands`:
+  - `bandit`: uvx --from bandit==1.9.4 bandit -q -r src --severity-level medium --confidence-level medium
+  - `deptry`: uv run --with deptry==0.25.1 deptry src
+  - `gitleaks`: gitleaks detect --source . --redact --no-banner --config .gitleaks.toml --log-opts=--full-history
+  - `licenses`: importlib.metadata scan of installed env + PyPI metadata for 22 platform-only pins
+  - `lock_check`: uv lock --check
+  - `pip_audit`: uv export --format requirements.txt --no-hashes --no-emit-project --all-extras --all-groups | uvx --from pip-audit==2.10.1 pip-audit --strict -r /dev/stdin
+  - `uv_audit`: uv audit --output-format json
+- `data_label`: SYNTHETIC
+- `dependency_changes`:
+  - `declared_direct`:
+    - cryptography>=44
+    - threadpoolctl>=3.5
+  - `note`: no advisory-driven bump needed — both auditors report zero findings
+  - `removed_direct`:
+    - pydantic-settings
+    - python-dotenv
+  - `vulnerability_bumps`:
+- `docs`:
+  - docs/AUDIT_P610_DEPS.md
+  - docs/SECURITY_EVIDENCE.md
+- `environment`:
+  - `bandit`: 1.9.4
+  - `deptry`: 0.25.1
+  - `gitleaks`: 8.30.1
+  - `pip_audit`: 2.10.1
+  - `platform`: macOS arm64
+  - `python`: 3.12.14
+  - `uv`: 0.12.19
+- `evidence_dir`: data/metadata/reports/deps_hygiene_20260928/
+- `generated`: 2026-09-28T00:00:00Z
+- `receipt`: deps_security_hygiene
+- `receipt_sha256`: f3b4e6fd22e439b7932ef3b9084387ee9c91274a24d17af248bebbc10b68a167
+- `research_only`: true
+- `results`:
+  - `bandit`:
+    - `loc`: 158122
+    - `severity_medium_or_high_findings`: 0
+  - `deptry`:
+    - `accepted`:
+      - statsmodels (tests/scripts only)
+      - clarabel (cvxpy solver)
+      - optional imports sigstore/huggingface_hub/ray/quant_core/kronos-model
+    - `dep002_fixed`:
+      - pydantic-settings
+      - python-dotenv
+    - `dep003_fixed`:
+      - cryptography
+      - threadpoolctl
+    - `findings_total`: 14
+  - `eval_exec_pickle`:
+    - `eval_exec_hits`: 0
+    - `pickle_path`: fx1.forecast.artifacts behind allow_unsafe_deserialization + trusted_checkpoint_sha256
+  - `gitleaks`:
+    - `bytes_scanned`: 49307356
+    - `commits_scanned`: 408
+    - `leaks`: 0
+  - `licenses`:
+    - `blank_metadata`:
+      - huey (bundled MIT)
+      - cuda-toolkit
+      - nvidia-cuda-runtime
+      - nvidia-cudnn-cu13
+      - nvidia-nccl-cu13
+      - nvidia-nvshmem-cu13
+    - `gpl_family_runtime`: 0
+    - `installed_scanned`: 184
+    - `mpl_2_0`:
+      - certifi
+      - hypothesis
+      - pathspec
+      - tqdm
+    - `pins_covered`: 206
+    - `platform_only_via_pypi`: 22
+  - `pin_audit`:
+    - `duplicate_names_in_export`: 0
+    - `uv_lock_check`: pass
+  - `pip_audit`:
+    - `audited_dependencies`: 182
+    - `vulnerabilities`: 0
+  - `uv_audit`:
+    - `adverse_statuses`: 0
+    - `audited_packages`: 206
+    - `vulnerabilities`: 0
+- `schema`: deps_hygiene.v1
+- `ultraplan_item`: P6.10+P4.6
+- `verdict`: locked env clean: uv audit + pip-audit report 0 known vulnerabilities across 206 pins; license scan finds no GPL-family runtime dep; gitleaks 8.30.1 over full history (408 commits) finds no leaks; bandit medium+ reports 0 findings; no eval/exec; pickle/torch loads behind fail-closed sha256 trust gate
+
 ### `receipts/fast_replay_p42_conformance_20260927.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
