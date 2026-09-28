@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 import typer
@@ -10,6 +11,13 @@ import typer
 ls_app = typer.Typer(
     help="Lightspeed engines (TQQQ rotation, nautica momentum). Research only; no live broker."
 )
+
+
+def _as_map(value: object) -> Mapping[str, object]:
+    """Keep string-keyed receipt mappings; reject malformed nested values."""
+    if not isinstance(value, Mapping):
+        return {}
+    return {key: item for key, item in value.items() if isinstance(key, str)}
 
 
 @ls_app.command("specs")
@@ -179,26 +187,32 @@ def confirm_cmd(
         cpu_fraction=float(cpu_fraction),
     )
 
-    def _slim(window: dict) -> dict:
+    def _slim(window: Mapping[str, object]) -> dict[str, object]:
+        gates = _as_map(window.get("gates"))
+        dm = _as_map(gates.get("dm"))
+        cards = _as_map(window.get("cs_ls"))
         return {
             "cs_ic": window.get("cs_ic"),
             "gates": {
-                "reality_check_p": (window.get("gates") or {}).get("reality_check_p"),
-                "spa_p_consistent": (window.get("gates") or {}).get("spa_p_consistent"),
-                "stepm_rejected": (window.get("gates") or {}).get("stepm_rejected"),
+                "reality_check_p": gates.get("reality_check_p"),
+                "spa_p_consistent": gates.get("spa_p_consistent"),
+                "stepm_rejected": gates.get("stepm_rejected"),
                 "dm": {
-                    k: {"p_value": v.get("p_value"), "preferred": v.get("preferred")}
-                    for k, v in ((window.get("gates") or {}).get("dm") or {}).items()
+                    k: {
+                        "p_value": _as_map(v).get("p_value"),
+                        "preferred": _as_map(v).get("preferred"),
+                    }
+                    for k, v in dm.items()
                 },
             },
             "cs_ls": {
                 name: {
-                    "sharpe": card.get("sharpe"),
-                    "max_drawdown": card.get("max_drawdown"),
-                    "cagr": card.get("cagr"),
-                    "n_returns": card.get("n_returns"),
+                    "sharpe": _as_map(card).get("sharpe"),
+                    "max_drawdown": _as_map(card).get("max_drawdown"),
+                    "cagr": _as_map(card).get("cagr"),
+                    "n_returns": _as_map(card).get("n_returns"),
                 }
-                for name, card in (window.get("cs_ls") or {}).items()
+                for name, card in cards.items()
             },
         }
 

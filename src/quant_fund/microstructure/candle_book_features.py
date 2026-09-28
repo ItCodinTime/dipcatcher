@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import polars as pl
 
+from quant_fund.labels.forward import (
+    forward_close_return_labels as forward_close_return_labels,
+)
 from quant_fund.microstructure.book_panel import (
     validate_book_panel,
     validate_book_panel_depth_honesty,
 )
 from quant_fund.microstructure.synthetic_lob import synthesize_l2_from_bars
 from quant_fund.northset.candles import candle_geometry
+from quant_fund.northset.estimators import order_flow_imbalance
 
 
 def candle_features_from_bars(bars: pl.DataFrame) -> pl.DataFrame:
@@ -75,6 +79,11 @@ def attach_candle_book_features(
     synthesized = book is None
     book_df = book if book is not None else synthesize_l2_from_bars(bars, depth=depth, seed=seed)
     book_df = validate_book_panel(book_df)
+    if "ofi" not in book_df.columns:
+        # Top-of-book panels omit OFI; compute the real CKS estimator on the
+        # book's own event-time chronology before the as-of join so the fused
+        # ``ofi`` column matches order_flow_imbalance() semantics everywhere.
+        book_df = order_flow_imbalance(book_df)
     join_keys = ["security_id", "event_time"]
     for key in join_keys:
         if key not in book_df.columns:
@@ -158,21 +167,9 @@ def attach_candle_book_features(
         raise ValueError(
             f"book age exceeds max_book_age_seconds={max_book_age_seconds} on {n_stale} fused rows"
         )
-    # Top-of-book vendor panels often lack OFI/queue columns — derive research proxies.
-    extras: list[pl.Expr] = []
-    if "ofi" not in fused.columns and {"top_bid_size", "top_ask_size"} <= set(fused.columns):
-        bid = pl.col("top_bid_size")
-        ask = pl.col("top_ask_size")
-        extras.append(
-            (
-                bid.cast(pl.Float64).diff().over("security_id").fill_null(0.0)
-                - ask.cast(pl.Float64).diff().over("security_id").fill_null(0.0)
-            ).alias("ofi")
-        )
+    # Vendor panels without queue_imbalance alias imbalance_top (same formula).
     if "queue_imbalance" not in fused.columns and "imbalance_top" in fused.columns:
-        extras.append(pl.col("imbalance_top").alias("queue_imbalance"))
-    if extras:
-        fused = fused.with_columns(extras)
+        fused = fused.with_columns(pl.col("imbalance_top").alias("queue_imbalance"))
     # Normalize honesty columns (overwrite any joined source with canonical stamps).
     # Preserve book microprice_weight_balance (top-bid share) — never invent/overwrite.
     if "source" in fused.columns:

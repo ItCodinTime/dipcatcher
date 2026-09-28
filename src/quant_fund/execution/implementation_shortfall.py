@@ -77,11 +77,52 @@ def shortfall_frame(fills: pl.DataFrame) -> pl.DataFrame:
     missing = required - set(fills.columns)
     if missing:
         raise ValueError(f"fills frame missing columns: {sorted(missing)}")
+    qty_f = pl.col("quantity").cast(pl.Float64, strict=False)
     if "side_sign" not in fills.columns:
         fills = fills.with_columns(
-            pl.when(pl.col("quantity") >= 0).then(1.0).otherwise(-1.0).alias("side_sign"),
-            pl.col("quantity").abs(),
+            pl.when(qty_f >= 0).then(1.0).otherwise(-1.0).alias("side_sign"),
+            qty_f.abs(),
         )
+    else:
+        # Contract is unsigned quantity + side sign. A signed quantity here is
+        # ambiguous (double-signing flips the drift and makes notional
+        # negative), so fail closed rather than guess which field is right.
+        sign_f = pl.col("side_sign").cast(pl.Float64, strict=False)
+        bad_sign = fills.filter(sign_f.is_null() | ((sign_f != 1.0) & (sign_f != -1.0)))
+        if bad_sign.height:
+            raise ValueError("side_sign must be +1 (buy) or -1 (sell) for every fill")
+        if fills.filter(qty_f < 0).height:
+            raise ValueError(
+                "quantity must be unsigned when side_sign is supplied; "
+                "signed quantity alongside side_sign is ambiguous"
+            )
+    # Fail closed on non-scorable values: NaN/null prices or degenerate
+    # quantities would otherwise surface as NaN IS rows. Casts are
+    # non-strict so a junk dtype lands null and is rejected below.
+    q = pl.col("quantity").cast(pl.Float64, strict=False)
+    p = pl.col("price").cast(pl.Float64, strict=False)
+    d = pl.col("decision_price").cast(pl.Float64, strict=False)
+    bad_rows = fills.filter(
+        q.is_null()
+        | ~q.is_finite()
+        | (q <= 0)
+        | p.is_null()
+        | ~p.is_finite()
+        | (p <= 0)
+        | d.is_null()
+        | ~d.is_finite()
+        | (d <= 0)
+    )
+    if bad_rows.height:
+        raise ValueError(
+            "fills rows must have finite quantity > 0 and finite price/decision_price > 0"
+        )
+    for c in ("fee", "spread_cost", "impact_cost"):
+        if c not in fills.columns:
+            continue
+        cf = pl.col(c).cast(pl.Float64, strict=False)
+        if fills.filter(cf.is_null() | ~cf.is_finite() | (cf < 0)).height:
+            raise ValueError(f"{c} must be present as finite non-negative values")
     if fills.height == 0:
         return fills.with_columns(
             [
@@ -89,9 +130,9 @@ def shortfall_frame(fills: pl.DataFrame) -> pl.DataFrame:
                 for c in ("drift", "explicit", "total_is", "notional", "is_bps", "drift_bps")
             ]
         )
-    fee = pl.col("fee").fill_null(0.0) if "fee" in fills.columns else pl.lit(0.0)
-    spread = pl.col("spread_cost").fill_null(0.0) if "spread_cost" in fills.columns else pl.lit(0.0)
-    impact = pl.col("impact_cost").fill_null(0.0) if "impact_cost" in fills.columns else pl.lit(0.0)
+    fee = pl.col("fee") if "fee" in fills.columns else pl.lit(0.0)
+    spread = pl.col("spread_cost") if "spread_cost" in fills.columns else pl.lit(0.0)
+    impact = pl.col("impact_cost") if "impact_cost" in fills.columns else pl.lit(0.0)
     return fills.with_columns(
         (
             pl.col("side_sign") * (pl.col("price") - pl.col("decision_price")) * pl.col("quantity")

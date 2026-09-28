@@ -60,6 +60,17 @@ def train(features, folds):
         scaler.fit([features[i] for i in train_idx])
 """
 
+LH003_DISTRIBUTION_NEGATIVE = """
+from scipy import stats
+
+
+def shape(sample):
+    # Distribution MLE, not a train/test scaler.
+    norm_params = stats.norm.fit(sample)
+    log_params = stats.lognorm.fit(sample, floc=0)
+    return norm_params, log_params
+"""
+
 LH004_POSITIVE = """
 def fuse(grid, feats):
     return grid.join_asof(feats, on="event_time", by="security_id")
@@ -182,6 +193,7 @@ def test_rule_positive_catch(tmp_path: Path, source: str, rule_id: str) -> None:
         (LH001_NEGATIVE, "LH001"),
         (LH002_NEGATIVE, "LH002"),
         (LH003_NEGATIVE, "LH003"),
+        (LH003_DISTRIBUTION_NEGATIVE, "LH003"),
         (LH004_NEGATIVE, "LH004"),
         (LH005_NEGATIVE, "LH005"),
         (LH006_NEGATIVE, "LH006"),
@@ -226,6 +238,59 @@ def test_lh012_respects_rule_filter(tmp_path: Path) -> None:
 def test_lh001_detects_direct_subscript_shift(tmp_path: Path) -> None:
     report = _scan(tmp_path, 'def f(frame):\n    return frame["close"].shift(-1)\n')
     assert "LH001" in _rule_ids(report, "error")
+
+
+def test_lh001_function_allowlist_still_flags_other_leaks_in_file(tmp_path: Path) -> None:
+    """forward_close_return_labels is exempt; a sibling leak in the same file is not.
+
+    The production builder lives in ``labels/forward.py`` (path-allowlisted).
+    This fixture keeps the function-scoped exemption on its inventoried path.
+    """
+    rel = Path("src/quant_fund/microstructure/candle_book_features.py")
+    source = (
+        "def forward_close_return_labels(close):\n"
+        "    return close.shift(-1)\n"
+        "\n"
+        "def leaked_close_feature(close):\n"
+        "    return close.shift(-1)\n"
+    )
+    label_line = next(
+        i
+        for i, line in enumerate(source.splitlines(), start=1)
+        if line.startswith("    return close.shift")
+    )
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_text(source, encoding="utf-8")
+    report = scan_paths([path], rules={"LH001"})
+    lh001 = [f for f in report.findings if f.rule_id == "LH001"]
+    assert len(lh001) == 1
+    assert lh001[0].line != label_line
+    assert lh001[0].snippet == "return close.shift(-1)"
+
+
+def test_lh001_function_allowlist_does_not_exempt_same_name_elsewhere(tmp_path: Path) -> None:
+    source = "def forward_close_return_labels(close):\n    return close.shift(-1)\n"
+    report = _scan(tmp_path, source, name="other_labels.py")
+    assert "LH001" in _rule_ids(report, "error")
+
+
+def test_lh001_function_allowlist_still_flags_nested_helper(tmp_path: Path) -> None:
+    """A helper nested inside the label function is a different function and stays scanned."""
+    rel = Path("src/quant_fund/microstructure/candle_book_features.py")
+    source = (
+        "def forward_close_return_labels(frame):\n"
+        "    def leaked_close_feature(close):\n"
+        "        return close.shift(-1)\n"
+        "    return leaked_close_feature(frame)\n"
+    )
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_text(source, encoding="utf-8")
+    report = scan_paths([path], rules={"LH001"})
+    lh001 = [f for f in report.findings if f.rule_id == "LH001"]
+    assert len(lh001) == 1
+    assert lh001[0].snippet == "return close.shift(-1)"
 
 
 @pytest.mark.parametrize("headline", ["Sharpe:2.1", "P&L=$4,200"])

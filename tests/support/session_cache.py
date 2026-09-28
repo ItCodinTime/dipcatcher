@@ -76,7 +76,7 @@ def _source_stamp() -> str:
     """Separate test runs with different code or locked dependencies."""
     root = _repo_root() / "src" / "quant_fund"
     digest = hashlib.sha256()
-    digest.update(b"session-cache-v2\0")
+    digest.update(b"session-cache-v3\0")
     digest.update(sys.version.encode())
     for path in sorted(root.rglob("*.py")):
         digest.update(path.relative_to(root).as_posix().encode())
@@ -196,13 +196,16 @@ def _config_key(config: Any) -> str:
 
 
 # Files a synthetic ingest / gold build actually writes. Restores copy these
-# and leave every other path in the data root alone.
+# and leave every other path in the data root alone. The manifest is part of
+# ingest, not an optional sidecar: a cache hit has to leave the same files a
+# cold ingest would.
 _SILVER_ARTIFACTS = (
     "bronze/bars.parquet",
     "bronze/corporate_actions.parquet",
     "bronze/security_master.parquet",
     "silver/bars.parquet",
     "silver/universe.parquet",
+    "metadata/data_manifest.json",
 )
 _GOLD_ARTIFACTS = (
     "gold/features.parquet",

@@ -18,16 +18,13 @@ from numpy.typing import NDArray
 from scipy import optimize as opt
 from scipy import stats
 
+from quant_fund.utils.series import require_panel
+
 Array = NDArray[np.float64]
 
 
 def _panel(x: Array, min_n: int = 5, min_t: int = 8) -> Array:
-    p = np.asarray(x, dtype=float)
-    if p.ndim != 2 or p.shape[0] < min_t or p.shape[1] < min_n:
-        raise ValueError(f"panel must be (T >= {min_t}, N >= {min_n})")
-    if not np.all(np.isfinite(p)):
-        raise ValueError("panel must be finite")
-    return p
+    return require_panel(x, min_n=min_n, min_t=min_t)
 
 
 def anderson_hsiao(y: Array, X: Array | None = None) -> dict[str, Array | float]:

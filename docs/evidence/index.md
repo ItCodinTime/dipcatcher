@@ -28,9 +28,9 @@ Those checks are not functions of receipt bytes, so their pass or fail text
 is not copied into this page.
 
 Index source: `data/metadata/research/phase1_evidence_index.json`
-Index file sha256: `70ac1092b9470113a4bae41945ffbf08d078a529ce053d741624ac340deb35a9`
-Index embedded seal: `bfce88b1efdccc1b15a4e925de79ad0ef10c0fd33102744c08f72374b08fb8dd`
-Index git revision: `5c4e0c876f6d5f74e42d1205468a8768752e14e2`
+Index file sha256: `3e8d28e2ad08137d5e0ea7b8703600d710cdda37ebe83e384afc50fbc94d1f7a`
+Index embedded seal: `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`
+Index git revision: `c564646b14849d72c5891a90034d8e26361fe0f5`
 Index git worktree sha256: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
 Benchmark catalog version: `2`
 
@@ -46,9 +46,9 @@ index `git_revision` that binds the run.
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/real_benchmark/us_wide_20260925/manifest.json | b4b4ec2f1f41eec36862747f64697a175f30858d05f7753fcc6f766e98b979f8 | a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/real_benchmark/us_wide_20260925/test.json | 2a9a4d5bf16a78ae396eaaa5f8cf89b03db45c8286795f4a1adc902b5d0e75f5 | d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
-| data/metadata/real_benchmark/us_wide_20260925/validation.json | 73f2c74d1f7f62caa76f0ca2760badfa80bb5844d4d0069afb71ddbd8185f86e | 84af6ddc95a59a11452ea5eddad00d5ab4224dc67eb3de3e75b10707d021f93b | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/manifest.json | b4b4ec2f1f41eec36862747f64697a175f30858d05f7753fcc6f766e98b979f8 | a6789ac23923e4e7f2fd1afe9a20f7c5dbaeb3666851c5e3708cf2c5dfa7d384 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/test.json | 2a9a4d5bf16a78ae396eaaa5f8cf89b03db45c8286795f4a1adc902b5d0e75f5 | d8449f6cc5f117589104e5e2c456797c547ed76daee9cf6ad1946fb594859b01 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/real_benchmark/us_wide_20260925/validation.json | 73f2c74d1f7f62caa76f0ca2760badfa80bb5844d4d0069afb71ddbd8185f86e | 84af6ddc95a59a11452ea5eddad00d5ab4224dc67eb3de3e75b10707d021f93b | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 Holdout status: `previously_inspected`
 Names: `424`
@@ -112,11 +112,11 @@ from the comparison object. The receipt claim is
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/net_tournament/us_wide_20260925/manifest.json | f77cb76264d8619b0e1de311a663cee6de1d68a90cd655d2723e10e541fba87a | c6b14d526fb53e0a04f74c3f55475bcc8ae6d5382e0b70d8b429eff53e7f0786 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/net_tournament/us_wide_20260925/test.attempt.json | 9925b88456afd3226b5bbaf098c48cefd1746f871316e3695ff01775d60fffa7 | 074fc87b607cd7392902ed7441183f53ce6b7fe5cb6fcd07e353291b4f48a2d7 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/net_tournament/us_wide_20260925/test.json.gz | dbf479bdb1aacfcc44956dad0add0eb71ae50c32753d6a0fd857585496c5e9d5 | 3eb22e2da8ef0ca4518c603e1dc6513829a80f493bd7ff0a9daa6a70bc1cc96b | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
-| data/metadata/net_tournament/us_wide_20260925/validation.attempt.json | 6bf1f9192c51d9e4a3e6fe8349a975c5015533eca78b98e56e53edda4dad87bc | 3fa148c22a09b2df20e19d18961fe3032bd89849a67b300a03ab0d19b98242fc | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/net_tournament/us_wide_20260925/validation.json.gz | 6ac2fc159ddb39ec22b0e457cc7c52b288eec181a04cad291c91fff9df0c1a11 | 0aa00b72696ce0ac07c0964a10261609393a3e92d5f7adb1441da31398cce962 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/net_tournament/us_wide_20260925/manifest.json | a4a8f384c14b4a7805fbab5f52158a11a38aa78d87368a65c933acd061054eaf | 4650484a42ea0bbb926e46f24f1d85dc46016ad87585523dd5e26380e8d3bf13 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/net_tournament/us_wide_20260925/test.attempt.json | 1f87f6ca24f8787a812ab6f757ec1d6f5e2f96c805433b9c9def538bdbda9c9c | 8ce81e7db9ca714d4aa2808eee6ab7dcf39fe63e045dab4b3fc7ad7276abe603 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/net_tournament/us_wide_20260925/test.json.gz | 61f2a1cd147f5d418e190c685e2b7845e09e8a44746e64a3726797bea48b3efe | a7ea519e504eee2b2239fec69d163e7d8bbcd9b57bcbb2ddc49b74ea2211dbbc | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/net_tournament/us_wide_20260925/validation.attempt.json | d4ffa0198f2bab8da516a96bb4829726d1e3ef900b015cd5a010117b28f98ff2 | 0ee332877df548868fe45f71f2cb20a9ef01600d7e65476acb79a49b43a7495b | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/net_tournament/us_wide_20260925/validation.json.gz | abf8037e85987750fcc6cff42b53137464612e0409e97642e64a43ec961ece36 | c2be98ce3e855af08819d7273b7df6b5c087a7b5107b57535ad8437a07d692c7 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 | phase | selected | complete | economic_evidence_gate | selected_holdout_adjusted_rejection | selected_survives_double_impact | all_terminal_liquidations_complete | promote | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -217,9 +217,9 @@ No test receipt is rendered because that seal is null.
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data/metadata/cost_aware_tournament/us_wide_20260925/manifest.json | b9ab870606f56c185c0deeeca4e5a0ff09dfec5a21aa05249d4ffb0d78db92fd | 42ece6f46c6272af2293799c2968025a9a9e678c244e9d5abae516a0ef16a9a4 | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
-| data/metadata/cost_aware_tournament/us_wide_20260925/validation.attempt.json | bf7d470fbc16697b0360235d2480a5066ec452938fd98c0e323bd8f07bf2857d | e84e6c750b0aba0744905556beba0cef914f596e2ef7a58326eab4215899dcfe | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
-| data/metadata/cost_aware_tournament/us_wide_20260925/validation.json.gz | cd6da69e1c3bc5dd3b67afe88c89347c3c73e573703fffbeaba7ebc3b62e891f | b5dcea77594ef6513e54334a62e4ffb1d1ff76c96094c1fb92aa0ed5c3a546cc | pass | 5c4e0c876f6d5f74e42d1205468a8768752e14e2 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
+| data/metadata/cost_aware_tournament/us_wide_20260925/manifest.json | ea26eaf805da7963eea40d81ffb69078199d3695bed6669b281a38947160a763 | 7dab6ee1eb6b39c47e85f048c8f9584d5c6b08f214ef3c6a4cb908228be7ca90 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | true | false |
+| data/metadata/cost_aware_tournament/us_wide_20260925/validation.attempt.json | 1fe173b736824f8372d5e94c7c09cb7f8d30c71b4020796db3802babfca3efa5 | b9a680e45d664b103cd5c37b191cb8bcdbf5ca0210277aad1de50d69b120c4a6 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | absent | absent | absent |
+| data/metadata/cost_aware_tournament/us_wide_20260925/validation.json.gz | 67c1a4738e479fb3c54a95d422e1e32e9a276c7dc63d1c876f554e0fc50f4273 | 972af75021460e68c463f6d02fbdd879a0f053a4beb15ff800569e1fda35cc71 | pass | c564646b14849d72c5891a90034d8e26361fe0f5 | e22bf3eff634c742299b6495f8daf8f02adcc6cda47d9641e3094c0c191ae117 | real | false | true | false |
 
 | phase | selected | complete | economic_evidence_gate | selected_holdout_adjusted_rejection | selected_survives_double_impact | all_terminal_liquidations_complete | promote | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -802,3 +802,4116 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.00015650157077502314
   - 0.00012397308872545248
   - 0.00011681797278370385
+
+### `receipts/capacity_eval_cd0854242ed8a9ec.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/capacity_eval_cd0854242ed8a9ec.json | e0a6c8250891cd5065edfc3bb385e6fdd640e5ca376cac496420815ab16881ed | cd0854242ed8a9ece6aecdec90a25bef0f2331d283c3b6fc470e13be1a8f8480 | not_checked | fde9836ee258c7fd18902effa36ca3989a0c8783 | inputs_sha256=b454d4edbced6bf853aba0e3e90106fd84519b827ddc8ad650b886f0b6871523 | unspecified | absent | absent | false |
+
+- `books`:
+  - [0]
+    - `adv_sha256`: d3ba5c3524df6cf082f621b18051821600242b00c3c32ec7102d261b14e7085c
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: uniform
+    - `weights_sha256`: 15ca7ae9fa7ba7052e4e43ee70bd77f7c6cfce78797a73140ad59c30fadb0c59
+  - [1]
+    - `adv_sha256`: aaa2bdc80b92557c6b121b0ffe56a84312bc53ad66c3c54d6f3a66fef8b49e45
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: concentrated
+    - `weights_sha256`: 764f4c4c1dac6fe9bb51ab5b25ab4e4da7287a53e3a38d31cdde17b667e10910
+  - [2]
+    - `adv_sha256`: 595fc068925e51ea9a64f91036d53cdde4463f2dd04ba66e2db995944ba221dd
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: thin_adv
+    - `weights_sha256`: 15ca7ae9fa7ba7052e4e43ee70bd77f7c6cfce78797a73140ad59c30fadb0c59
+  - [3]
+    - `adv_sha256`: f5abc6f022532fad8047de3d304e2cad74d53b047d9985c35ba25a09b179de9a
+    - `n_dates`: 126
+    - `n_names`: 32
+    - `name`: rotating
+    - `weights_sha256`: d35e8fa9b36610b22ce3701ea3022fe3b15e623115c72a5bc9eb7d3f943c4d38
+- `data_label`: SYNTHETIC
+- `dev_only`: true
+- `generated_at`: 2026-09-27T21:25:11.550539+00:00
+- `git_revision`: fde9836ee258c7fd18902effa36ca3989a0c8783
+- `kind`: capacity_overlay_eval
+- `n_rows`: 24
+- `receipt_sha256`: cd0854242ed8a9ece6aecdec90a25bef0f2331d283c3b6fc470e13be1a8f8480
+- `results`:
+  - [0]
+    - `aum`: 1000000.0
+    - `book`: uniform
+    - `days_to_trade`: 0.08484897373472415
+    - `feasible`: 1
+    - `impact_bps`: 29.68063276259238
+    - `max_participation`: 0.008484897373472414
+    - `mean_participation`: 0.0010973422150479632
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [1]
+    - `aum`: 10000000.0
+    - `book`: uniform
+    - `days_to_trade`: 0.8484897373472415
+    - `feasible`: 1
+    - `impact_bps`: 93.85840192480758
+    - `max_participation`: 0.08484897373472415
+    - `mean_participation`: 0.010973422150479636
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [2]
+    - `aum`: 50000000.0
+    - `book`: uniform
+    - `days_to_trade`: 4.242448686736207
+    - `feasible`: 0
+    - `impact_bps`: 209.87376696336685
+    - `max_participation`: 0.42424486867362077
+    - `mean_participation`: 0.05486711075239817
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [3]
+    - `aum`: 100000000.0
+    - `book`: uniform
+    - `days_to_trade`: 8.484897373472414
+    - `feasible`: 0
+    - `impact_bps`: 296.8063276259238
+    - `max_participation`: 0.8484897373472415
+    - `mean_participation`: 0.10973422150479634
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [4]
+    - `aum`: 500000000.0
+    - `book`: uniform
+    - `days_to_trade`: 42.42448686736208
+    - `feasible`: 0
+    - `impact_bps`: 663.6791247236393
+    - `max_participation`: 4.242448686736207
+    - `mean_participation`: 0.5486711075239817
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [5]
+    - `aum`: 1000000000.0
+    - `book`: uniform
+    - `days_to_trade`: 84.84897373472415
+    - `feasible`: 0
+    - `impact_bps`: 938.5840192480757
+    - `max_participation`: 8.484897373472414
+    - `mean_participation`: 1.0973422150479635
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [6]
+    - `aum`: 1000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 0.26838779989462447
+    - `feasible`: 1
+    - `impact_bps`: 13.233841690342366
+    - `max_participation`: 0.02683877998946245
+    - `mean_participation`: 0.0009220370056364176
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [7]
+    - `aum`: 10000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 2.6838779989462447
+    - `feasible`: 0
+    - `impact_bps`: 41.8490819355746
+    - `max_participation`: 0.26838779989462447
+    - `mean_participation`: 0.009220370056364174
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [8]
+    - `aum`: 50000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 13.419389994731224
+    - `feasible`: 0
+    - `impact_bps`: 93.57739200390328
+    - `max_participation`: 1.3419389994731223
+    - `mean_participation`: 0.04610185028182088
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [9]
+    - `aum`: 100000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 26.83877998946245
+    - `feasible`: 0
+    - `impact_bps`: 132.33841690342368
+    - `max_participation`: 2.6838779989462447
+    - `mean_participation`: 0.09220370056364176
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [10]
+    - `aum`: 500000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 134.19389994731225
+    - `feasible`: 0
+    - `impact_bps`: 295.91769623076254
+    - `max_participation`: 13.419389994731224
+    - `mean_participation`: 0.4610185028182087
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [11]
+    - `aum`: 1000000000.0
+    - `book`: concentrated
+    - `days_to_trade`: 268.3877998946245
+    - `feasible`: 0
+    - `impact_bps`: 418.49081935574605
+    - `max_participation`: 26.83877998946245
+    - `mean_participation`: 0.9220370056364174
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [12]
+    - `aum`: 1000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 0.30684803840414193
+    - `feasible`: 1
+    - `impact_bps`: 27.78548698526049
+    - `max_participation`: 0.03068480384041419
+    - `mean_participation`: 0.0016413597917615478
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [13]
+    - `aum`: 10000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 3.068480384041419
+    - `feasible`: 0
+    - `impact_bps`: 87.8654247703885
+    - `max_participation`: 0.30684803840414193
+    - `mean_participation`: 0.016413597917615482
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [14]
+    - `aum`: 50000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 15.342401920207095
+    - `feasible`: 0
+    - `impact_bps`: 196.47306265848255
+    - `max_participation`: 1.5342401920207096
+    - `mean_participation`: 0.0820679895880774
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [15]
+    - `aum`: 100000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 30.68480384041419
+    - `feasible`: 0
+    - `impact_bps`: 277.8548698526049
+    - `max_participation`: 3.068480384041419
+    - `mean_participation`: 0.1641359791761548
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [16]
+    - `aum`: 500000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 153.42401920207095
+    - `feasible`: 0
+    - `impact_bps`: 621.3023768697815
+    - `max_participation`: 15.342401920207095
+    - `mean_participation`: 0.820679895880774
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [17]
+    - `aum`: 1000000000.0
+    - `book`: thin_adv
+    - `days_to_trade`: 306.8480384041419
+    - `feasible`: 0
+    - `impact_bps`: 878.654247703885
+    - `max_participation`: 30.68480384041419
+    - `mean_participation`: 1.641359791761548
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [18]
+    - `aum`: 1000000.0
+    - `book`: rotating
+    - `days_to_trade`: 0.25861813041419357
+    - `feasible`: 1
+    - `impact_bps`: 37.23666990267047
+    - `max_participation`: 0.02586181304141936
+    - `mean_participation`: 0.0017168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [19]
+    - `aum`: 10000000.0
+    - `book`: rotating
+    - `days_to_trade`: 2.5861813041419355
+    - `feasible`: 0
+    - `impact_bps`: 117.75268937227911
+    - `max_participation`: 0.25861813041419357
+    - `mean_participation`: 0.017168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [20]
+    - `aum`: 50000000.0
+    - `book`: rotating
+    - `days_to_trade`: 12.930906520709678
+    - `feasible`: 0
+    - `impact_bps`: 263.30301796983315
+    - `max_participation`: 1.293090652070968
+    - `mean_participation`: 0.08584392159484353
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [21]
+    - `aum`: 100000000.0
+    - `book`: rotating
+    - `days_to_trade`: 25.861813041419357
+    - `feasible`: 0
+    - `impact_bps`: 372.36669902670474
+    - `max_participation`: 2.586181304141936
+    - `mean_participation`: 0.17168784318968705
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [22]
+    - `aum`: 500000000.0
+    - `book`: rotating
+    - `days_to_trade`: 129.30906520709678
+    - `feasible`: 0
+    - `impact_bps`: 832.6372515809167
+    - `max_participation`: 12.930906520709678
+    - `mean_participation`: 0.8584392159484352
+    - `participation_cap`: 0.1
+    - `status`: ok
+  - [23]
+    - `aum`: 1000000000.0
+    - `book`: rotating
+    - `days_to_trade`: 258.61813041419356
+    - `feasible`: 0
+    - `impact_bps`: 1177.526893722791
+    - `max_participation`: 25.861813041419357
+    - `mean_participation`: 1.7168784318968704
+    - `participation_cap`: 0.1
+    - `status`: ok
+- `schema`: capacity_overlay.v1
+- `seed`: 11
+
+### `receipts/fast_replay_p42_conformance_20260927.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/fast_replay_p42_conformance_20260927.json | 8236a26489e9253dfcc1f3d879a2fd276c0023fb4d167c764c5330406ce950d8 | absent | no_embedded_seal | absent | absent | unspecified | absent | true | false |
+
+- `receipt`: fast_replay_p42_conformance
+- `generated`: 2026-09-27T00:00:00Z
+- `ultraplan_item`: P4.2
+- `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
+- `base_commit`: 7d2e01e4dba09d178ed46ad802950d2296d3eae6
+- `evidence`:
+  - tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type
+  - tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)
+  - tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload
+- `fixes`:
+  - engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)
+  - run_backtest_fast now carries the dispatcher's panel/completeness refusals itself — direct calls and fast=True share one fail-closed source of truth
+  - fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)
+- `gaps_refused`:
+  - allow_close_auction=True (close-auction order semantics not replicated)
+  - risk_overlay (mid-loop target scaling/flattening not replicated)
+  - GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 — refused rather than approximate)
+  - empty/duplicate-key/non-Datetime/mismatched-unit panels
+- `known_issue_out_of_lane`: aggregate_shortfall orders top_cost_names/by_side by group_by+sort on the aggregated value alone; exact ties keep polars hash-partition order — nondeterministic across executions even in the reference engine (observed on a generated workload with total_is ties of 0.0). Conformance suite canonicalizes element order in those two lists; fix belongs to execution/implementation_shortfall.py.
+- `rerun`: uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q
+- `research_only`: true
+- `disclaimer`:
+<!-- verbatim-receipt-text -->
+> All workloads are SYNTHETIC generated fixtures. This receipt attests engine conformance, not performance; NAV/fee/P&L numbers are not evidence of live-trading results.
+<!-- /verbatim-receipt-text -->
+
+### `receipts/fleet_eval_5ddf15b0dc7d3ca1.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/fleet_eval_5ddf15b0dc7d3ca1.json | 67713fe534eb3c4a508e4c0211836026af4f9efe8c27cd2cc7d69118a9cd1b98 | 5ddf15b0dc7d3ca1c64a19d4fc37edc150fdc5cec88f847274696c571dd0e247 | not_checked | fde9836ee258c7fd18902effa36ca3989a0c8783 | inputs_sha256=f8149c6267fd7b2a75ed7c87e82ff320cbf10512897c38b37ac3e0b284c14d57 | unspecified | absent | absent | false |
+
+- `data_label`: SYNTHETIC
+- `generated_at`: 2026-09-27T20:34:00.299434+00:00
+- `git_revision`: fde9836ee258c7fd18902effa36ca3989a0c8783
+- `kind`: distribution_fleet_eval
+- `model_versions`:
+  - `conf_t`:
+    - `head`: conf_t
+    - `version`: v1
+  - `empirical`:
+    - `head`: empirical
+    - `version`: v1
+  - `fhs_skew`:
+    - `head`: fhs_skew
+    - `version`: v1
+  - `gaussian`:
+    - `head`: gaussian
+    - `version`: v1
+  - `gmm`:
+    - `head`: gmm
+    - `version`: v1
+  - `hstep_emp`:
+    - `head`: hstep
+    - `version`: v1
+  - `hstep_t`:
+    - `head`: hstep
+    - `version`: v1
+  - `isotonic`:
+    - `head`: isotonic
+    - `version`: v1
+  - `lgbm_q2`:
+    - `head`: lgbm_q2
+    - `version`: v1
+  - `qar`:
+    - `head`: qar
+    - `version`: v1
+  - `regime`:
+    - `head`: regime
+    - `version`: v1
+  - `skew_t`:
+    - `head`: skew_t
+    - `version`: v1
+  - `stack`:
+    - `head`: stack
+    - `version`: v1
+- `models`:
+  - conf_t
+  - empirical
+  - fhs_skew
+  - gaussian
+  - gmm
+  - hstep_emp
+  - hstep_t
+  - isotonic
+  - lgbm_q2
+  - qar
+  - regime
+  - skew_t
+  - stack
+- `n_error_rows`: 0
+- `n_eval`: 256
+- `n_rows`: 117
+- `n_train`: 512
+- `receipt_sha256`: 5ddf15b0dc7d3ca1c64a19d4fc37edc150fdc5cec88f847274696c571dd0e247
+- `results`:
+  - [0]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.01106465332198971
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021304551914004496
+    - `pinball_0.1`: 0.0036286803122429047
+    - `pinball_0.25`: 0.00661254623386381
+    - `pinball_0.5`: 0.008204161346384567
+    - `pinball_0.75`: 0.006297101108675673
+    - `pinball_0.9`: 0.003508061938114483
+    - `pinball_0.95`: 0.0020192609250176716
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [1]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.87109375
+    - `crps`: 0.01105617229811354
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021123783369146236
+    - `pinball_0.1`: 0.0036333092560020984
+    - `pinball_0.25`: 0.006611907149927836
+    - `pinball_0.5`: 0.00819897614731151
+    - `pinball_0.75`: 0.006288383158611942
+    - `pinball_0.9`: 0.003507219323945705
+    - `pinball_0.95`: 0.0020218594369807875
+    - `pit_ks`: 0.074218749
+    - `pit_ks_p`: 0.11328038070279567
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [2]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.011056836420935533
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021212930855577634
+    - `pinball_0.1`: 0.003637154244712674
+    - `pinball_0.25`: 0.006612299864407049
+    - `pinball_0.5`: 0.008197598631831577
+    - `pinball_0.75`: 0.006288611867711401
+    - `pinball_0.9`: 0.0035070442709597043
+    - `pinball_0.95`: 0.002020831975269772
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [3]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.011055760540284187
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021242478405261696
+    - `pinball_0.1`: 0.0036368310867693435
+    - `pinball_0.25`: 0.006609126321312673
+    - `pinball_0.5`: 0.008197181104979676
+    - `pinball_0.75`: 0.006288646699718371
+    - `pinball_0.9`: 0.00350662016480259
+    - `pinball_0.95`: 0.0020201479937103275
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [4]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.01106465572967857
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00213046252156081
+    - `pinball_0.1`: 0.00362868041669585
+    - `pinball_0.25`: 0.0066125485531081905
+    - `pinball_0.5`: 0.008204161324954547
+    - `pinball_0.75`: 0.006297101417367597
+    - `pinball_0.9`: 0.003508063736971708
+    - `pinball_0.95`: 0.0020192637766786167
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [5]
+    - `coverage_80`: 0.76171875
+    - `coverage_90`: 0.859375
+    - `crps`: 0.011073135243976713
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002188701048253636
+    - `pinball_0.1`: 0.0036641407624730055
+    - `pinball_0.25`: 0.006620828952053121
+    - `pinball_0.5`: 0.008195061409927294
+    - `pinball_0.75`: 0.0062977250639926355
+    - `pinball_0.9`: 0.0035104718885427084
+    - `pinball_0.95`: 0.0020206757376533494
+    - `pit_ks`: 0.085937499
+    - `pit_ks_p`: 0.042918965924980235
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [6]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.875
+    - `crps`: 0.01113358759543209
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021308335591158235
+    - `pinball_0.1`: 0.003631945983824056
+    - `pinball_0.25`: 0.006569846095881841
+    - `pinball_0.5`: 0.008276629537080759
+    - `pinball_0.75`: 0.006401047820547276
+    - `pinball_0.9`: 0.003498219213494261
+    - `pinball_0.95`: 0.0019805136951125245
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [7]
+    - `coverage_80`: 0.8046875
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.011052713958698262
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020907953984714385
+    - `pinball_0.1`: 0.003614348013546952
+    - `pinball_0.25`: 0.006543532759402871
+    - `pinball_0.5`: 0.008197721793189483
+    - `pinball_0.75`: 0.006321538088661735
+    - `pinball_0.9`: 0.0035190565983629326
+    - `pinball_0.95`: 0.0020379286924107317
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [8]
+    - `coverage_80`: 0.88671875
+    - `coverage_90`: 0.9609375
+    - `crps`: 0.011237111454880138
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021924646307253134
+    - `pinball_0.1`: 0.0036702226524365743
+    - `pinball_0.25`: 0.006545609925045441
+    - `pinball_0.5`: 0.00819838332109072
+    - `pinball_0.75`: 0.006492389230676654
+    - `pinball_0.9`: 0.003724944364132307
+    - `pinball_0.95`: 0.0022429016392693834
+    - `pit_ks`: 0.09650523157584556
+    - `pit_ks_p`: 0.015835583103395463
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [9]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.011064653323948709
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021304552570152076
+    - `pinball_0.1`: 0.0036286803108901595
+    - `pinball_0.25`: 0.006612546209955997
+    - `pinball_0.5`: 0.008204161346389776
+    - `pinball_0.75`: 0.006297101105340319
+    - `pinball_0.9`: 0.0035080619520544785
+    - `pinball_0.95`: 0.0020192609268998136
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [10]
+    - `coverage_80`: 0.81640625
+    - `coverage_90`: 0.9140625
+    - `crps`: 0.011077773869938062
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020988172949474486
+    - `pinball_0.1`: 0.0036119782156996552
+    - `pinball_0.25`: 0.006608789351159081
+    - `pinball_0.5`: 0.008243842634512352
+    - `pinball_0.75`: 0.00628995899826427
+    - `pinball_0.9`: 0.003517370877209579
+    - `pinball_0.95`: 0.0020194543397444227
+    - `pit_ks`: 0.05360470206069795
+    - `pit_ks_p`: 0.4385346185802028
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [11]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.011060992121271089
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002115041746879265
+    - `pinball_0.1`: 0.003638514812707535
+    - `pinball_0.25`: 0.006622086245777464
+    - `pinball_0.5`: 0.00819897614731151
+    - `pinball_0.75`: 0.0062892539637297035
+    - `pinball_0.9`: 0.0035088756374428895
+    - `pinball_0.95`: 0.0020223284482569596
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [12]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.01106465332198971
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0021304551914004496
+    - `pinball_0.1`: 0.0036286803122429047
+    - `pinball_0.25`: 0.006612546233863809
+    - `pinball_0.5`: 0.008204161346384567
+    - `pinball_0.75`: 0.006297101108675673
+    - `pinball_0.9`: 0.003508061938114483
+    - `pinball_0.95`: 0.0020192609250176716
+    - `pit_ks`: 0.078124999
+    - `pit_ks_p`: 0.08327467437997982
+    - `seed`: 42
+    - `shard`: iid_gaussian
+    - `status`: ok
+  - [13]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.01686405340542362
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020679351676625613
+    - `pinball_0.1`: 0.0038406531419977047
+    - `pinball_0.25`: 0.008102721664298498
+    - `pinball_0.5`: 0.012646119506209072
+    - `pinball_0.75`: 0.01120891076888966
+    - `pinball_0.9`: 0.005390465075696403
+    - `pinball_0.95`: 0.002977234149097576
+    - `pit_ks`: 0.054687499
+    - `pit_ks_p`: 0.41342399328908064
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [14]
+    - `coverage_80`: 0.7734375
+    - `coverage_90`: 0.90625
+    - `crps`: 0.01751395359615006
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002526919618955694
+    - `pinball_0.1`: 0.00407368668061141
+    - `pinball_0.25`: 0.008143994010927016
+    - `pinball_0.5`: 0.01309879176846583
+    - `pinball_0.75`: 0.01158090580357621
+    - `pinball_0.9`: 0.005882212254308929
+    - `pinball_0.95`: 0.003061823006015445
+    - `pit_ks`: 0.12910283874007594
+    - `pit_ks_p`: 0.0003521222142801333
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [15]
+    - `coverage_80`: 0.7265625
+    - `coverage_90`: 0.91015625
+    - `crps`: 0.01727204018239434
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020673343736394914
+    - `pinball_0.1`: 0.003835677700782819
+    - `pinball_0.25`: 0.008111253230921895
+    - `pinball_0.5`: 0.012799786203445015
+    - `pinball_0.75`: 0.011709563986865778
+    - `pinball_0.9`: 0.005648590641633314
+    - `pinball_0.95`: 0.0029911071803015374
+    - `pit_ks`: 0.10223970102138447
+    - `pit_ks_p`: 0.008782896397864857
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [16]
+    - `coverage_80`: 0.765625
+    - `coverage_90`: 0.90234375
+    - `crps`: 0.016867443638874356
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020675211402845636
+    - `pinball_0.1`: 0.0038391549321041885
+    - `pinball_0.25`: 0.0081027216642985
+    - `pinball_0.5`: 0.012632927113092883
+    - `pinball_0.75`: 0.011214038141325763
+    - `pinball_0.9`: 0.005415814532323215
+    - `pinball_0.95`: 0.0029773254543964556
+    - `pit_ks`: 0.051797522847543354
+    - `pit_ks_p`: 0.4822338896530034
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [17]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.016864060772625384
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020679353079543607
+    - `pinball_0.1`: 0.003840653157384441
+    - `pinball_0.25`: 0.008102721664298498
+    - `pinball_0.5`: 0.012646117826982946
+    - `pinball_0.75`: 0.011208926772649884
+    - `pinball_0.9`: 0.005390465681602493
+    - `pinball_0.95`: 0.0029772342250479226
+    - `pit_ks`: 0.054687499
+    - `pit_ks_p`: 0.41342399328908064
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [18]
+    - `coverage_80`: 0.75390625
+    - `coverage_90`: 0.9296875
+    - `crps`: 0.017124568742954156
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002153385588290614
+    - `pinball_0.1`: 0.0038642492349639105
+    - `pinball_0.25`: 0.008110798088352925
+    - `pinball_0.5`: 0.012710307952566073
+    - `pinball_0.75`: 0.011469732759791539
+    - `pinball_0.9`: 0.005669841357534186
+    - `pinball_0.95`: 0.0029859307068376647
+    - `pit_ks`: 0.09251637449059935
+    - `pit_ks_p`: 0.023387214390646394
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [19]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.90625
+    - `crps`: 0.01684231713589725
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002088861267348694
+    - `pinball_0.1`: 0.0038579954419626075
+    - `pinball_0.25`: 0.008121831691201396
+    - `pinball_0.5`: 0.012638799259194363
+    - `pinball_0.75`: 0.011177196510488291
+    - `pinball_0.9`: 0.0053543687233043764
+    - `pinball_0.95`: 0.0029677345577306244
+    - `pit_ks`: 0.050781249
+    - `pit_ks_p`: 0.5077027517835921
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [20]
+    - `coverage_80`: 0.76171875
+    - `coverage_90`: 0.890625
+    - `crps`: 0.01695795424455074
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020699000283181807
+    - `pinball_0.1`: 0.0038467401370591322
+    - `pinball_0.25`: 0.008109339581173741
+    - `pinball_0.5`: 0.012630101837186767
+    - `pinball_0.75`: 0.011388326560173054
+    - `pinball_0.9`: 0.0054211787076070255
+    - `pinball_0.95`: 0.0029792054269886827
+    - `pit_ks`: 0.072306152429781
+    - `pit_ks_p`: 0.1309418307391299
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [21]
+    - `coverage_80`: 0.7109375
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.01732981791994239
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002070123360586996
+    - `pinball_0.1`: 0.003843331599136013
+    - `pinball_0.25`: 0.008121890186605746
+    - `pinball_0.5`: 0.01280629911883573
+    - `pinball_0.75`: 0.011755387057637751
+    - `pinball_0.9`: 0.005744497103447909
+    - `pinball_0.95`: 0.0029771314871725445
+    - `pit_ks`: 0.10897862156969407
+    - `pit_ks_p`: 0.004205896471930621
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [22]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.016864053436376737
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002067935170474327
+    - `pinball_0.1`: 0.003840653162555664
+    - `pinball_0.25`: 0.008102721664298498
+    - `pinball_0.5`: 0.012646119567770654
+    - `pinball_0.75`: 0.011208910743583995
+    - `pinball_0.9`: 0.00539046511096063
+    - `pinball_0.95`: 0.0029772341481867346
+    - `pit_ks`: 0.054687499
+    - `pit_ks_p`: 0.41342399328908064
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [23]
+    - `coverage_80`: 0.79296875
+    - `coverage_90`: 0.8984375
+    - `crps`: 0.0168603113173392
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020735827435796874
+    - `pinball_0.1`: 0.0038566944174789255
+    - `pinball_0.25`: 0.008103054068262007
+    - `pinball_0.5`: 0.012621470366920864
+    - `pinball_0.75`: 0.011218731061937536
+    - `pinball_0.9`: 0.005393717372395865
+    - `pinball_0.95`: 0.0029815145460677693
+    - `pit_ks`: 0.058593749
+    - `pit_ks_p`: 0.33019454535170434
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [24]
+    - `coverage_80`: 0.76953125
+    - `coverage_90`: 0.90625
+    - `crps`: 0.01754721054187465
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002519335149004746
+    - `pinball_0.1`: 0.00404391277410022
+    - `pinball_0.25`: 0.00816522862425734
+    - `pinball_0.5`: 0.01309879176846583
+    - `pinball_0.75`: 0.011615199153989404
+    - `pinball_0.9`: 0.005924919197790281
+    - `pinball_0.95`: 0.0030684594172225234
+    - `pit_ks`: 0.13157550532530699
+    - `pit_ks_p`: 0.00025215641774270535
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [25]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.01686405340542362
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002067935167662561
+    - `pinball_0.1`: 0.0038406531419977043
+    - `pinball_0.25`: 0.008102721664298498
+    - `pinball_0.5`: 0.012646119506209067
+    - `pinball_0.75`: 0.011208910768889661
+    - `pinball_0.9`: 0.005390465075696403
+    - `pinball_0.95`: 0.0029772341490975755
+    - `pit_ks`: 0.054687499
+    - `pit_ks_p`: 0.41342399328908064
+    - `seed`: 43
+    - `shard`: bimodal_mixture
+    - `status`: ok
+  - [26]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006771687526062558
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016126542331891223
+    - `pinball_0.1`: 0.002458945260668024
+    - `pinball_0.25`: 0.003991204575931476
+    - `pinball_0.5`: 0.004697256238470603
+    - `pinball_0.75`: 0.003932804423734214
+    - `pinball_0.9`: 0.002327750171935754
+    - `pinball_0.95`: 0.0015381082121426592
+    - `pit_ks`: 0.0798078979427631
+    - `pit_ks_p`: 0.07258064357610028
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [27]
+    - `coverage_80`: 0.9375
+    - `coverage_90`: 0.9609375
+    - `crps`: 0.007333463100954197
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001745212880981749
+    - `pinball_0.1`: 0.002722052384603568
+    - `pinball_0.25`: 0.0042235049614461765
+    - `pinball_0.5`: 0.0047657500310351285
+    - `pinball_0.75`: 0.004432799716100057
+    - `pinball_0.9`: 0.0028185276568174966
+    - `pinball_0.95`: 0.0017485191534897127
+    - `pit_ks`: 0.16622457213608022
+    - `pit_ks_p`: 1.1904848878731533e-06
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [28]
+    - `coverage_80`: 0.83984375
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006779407314233094
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016104892922720183
+    - `pinball_0.1`: 0.0024585188749861324
+    - `pinball_0.25`: 0.003991755476283075
+    - `pinball_0.5`: 0.004711239769077822
+    - `pinball_0.75`: 0.00391680709508118
+    - `pinball_0.9`: 0.002353428784193653
+    - `pinball_0.95`: 0.001549277872847591
+    - `pit_ks`: 0.08030169991714353
+    - `pit_ks_p`: 0.06967295284401642
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [29]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.92578125
+    - `crps`: 0.006807866039752178
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016035931971281302
+    - `pinball_0.1`: 0.0024581118087476615
+    - `pinball_0.25`: 0.004005474877730716
+    - `pinball_0.5`: 0.004728590303391187
+    - `pinball_0.75`: 0.003956263899777768
+    - `pinball_0.9`: 0.0023577548991277637
+    - `pinball_0.95`: 0.001502995045225765
+    - `pit_ks`: 0.09441317015475714
+    - `pit_ks_p`: 0.019468936476075824
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [30]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006771685363227279
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016126532609218435
+    - `pinball_0.1`: 0.002458951964718809
+    - `pinball_0.25`: 0.003991204575931476
+    - `pinball_0.5`: 0.004697256244586802
+    - `pinball_0.75`: 0.0039328037170217175
+    - `pinball_0.9`: 0.0023277452275892235
+    - `pinball_0.95`: 0.0015380991880274415
+    - `pit_ks`: 0.07980770974275242
+    - `pit_ks_p`: 0.07258177109556252
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [31]
+    - `coverage_80`: 0.87890625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.007071163491082327
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016396025935793445
+    - `pinball_0.1`: 0.002461889714590287
+    - `pinball_0.25`: 0.004004415057449409
+    - `pinball_0.5`: 0.00483821668600005
+    - `pinball_0.75`: 0.004164105010543965
+    - `pinball_0.9`: 0.0026173515076895765
+    - `pinball_0.95`: 0.0017332344245165987
+    - `pit_ks`: 0.13407023490984105
+    - `pit_ks_p`: 0.00017886857828392145
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [32]
+    - `coverage_80`: 0.82421875
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006815842704087135
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001605198793930201
+    - `pinball_0.1`: 0.0024500996335125947
+    - `pinball_0.25`: 0.0040080403103157514
+    - `pinball_0.5`: 0.00474628730090184
+    - `pinball_0.75`: 0.003960734912317376
+    - `pinball_0.9`: 0.002330509869836431
+    - `pinball_0.95`: 0.0015523670068759272
+    - `pit_ks`: 0.06708291859857662
+    - `pit_ks_p`: 0.19074235948843066
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [33]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006788451674871327
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016143016484279303
+    - `pinball_0.1`: 0.0024588668288630126
+    - `pinball_0.25`: 0.003993074239120597
+    - `pinball_0.5`: 0.004696766060688581
+    - `pinball_0.75`: 0.00393771186989699
+    - `pinball_0.9`: 0.002360052136148777
+    - `pinball_0.95`: 0.0015795794926863492
+    - `pit_ks`: 0.08093814832750468
+    - `pit_ks_p`: 0.06607187292715977
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [34]
+    - `coverage_80`: 0.8984375
+    - `coverage_90`: 0.95703125
+    - `crps`: 0.00687013474995804
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016729066157165615
+    - `pinball_0.1`: 0.002495070260787686
+    - `pinball_0.25`: 0.004017814800368018
+    - `pinball_0.5`: 0.004708169828672882
+    - `pinball_0.75`: 0.003960156545254572
+    - `pinball_0.9`: 0.0024890147762013926
+    - `pinball_0.95`: 0.001671250023730662
+    - `pit_ks`: 0.09502980865140409
+    - `pit_ks_p`: 0.01832758430457036
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [35]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006771687489399248
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001612654234127408
+    - `pinball_0.1`: 0.0024589452646345995
+    - `pinball_0.25`: 0.003991204575931476
+    - `pinball_0.5`: 0.004697256238958819
+    - `pinball_0.75`: 0.003932804424461403
+    - `pinball_0.9`: 0.0023277500556685487
+    - `pinball_0.95`: 0.0015381081833292808
+    - `pit_ks`: 0.07980789831219348
+    - `pit_ks_p`: 0.0725806413628316
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [36]
+    - `coverage_80`: 0.85546875
+    - `coverage_90`: 0.92578125
+    - `crps`: 0.00673859842919833
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016132646270485165
+    - `pinball_0.1`: 0.0025622149954803277
+    - `pinball_0.25`: 0.004043152798947296
+    - `pinball_0.5`: 0.004673574164533491
+    - `pinball_0.75`: 0.003892237985509485
+    - `pinball_0.9`: 0.002270358125227822
+    - `pinball_0.95`: 0.0014409111467142246
+    - `pit_ks`: 0.08119391631231598
+    - `pit_ks_p`: 0.06467006256580521
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [37]
+    - `coverage_80`: 0.85546875
+    - `coverage_90`: 0.9453125
+    - `crps`: 0.006841817804968097
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0016240197233307776
+    - `pinball_0.1`: 0.0024590532530401692
+    - `pinball_0.25`: 0.003991534579893203
+    - `pinball_0.5`: 0.0047657500310351285
+    - `pinball_0.75`: 0.003951923746713867
+    - `pinball_0.9`: 0.002400090950923449
+    - `pinball_0.95`: 0.0015718595921151014
+    - `pit_ks`: 0.10216929913797124
+    - `pit_ks_p`: 0.0088485156384654
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [38]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.94140625
+    - `crps`: 0.006771687526062558
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001612654233189122
+    - `pinball_0.1`: 0.002458945260668024
+    - `pinball_0.25`: 0.003991204575931476
+    - `pinball_0.5`: 0.004697256238470604
+    - `pinball_0.75`: 0.003932804423734214
+    - `pinball_0.9`: 0.0023277501719357542
+    - `pinball_0.95`: 0.0015381082121426583
+    - `pit_ks`: 0.07980789794276344
+    - `pit_ks_p`: 0.0725806435760985
+    - `seed`: 44
+    - `shard`: heavy_tail
+    - `status`: ok
+  - [39]
+    - `coverage_80`: 0.75
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.010345160570529706
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030285051929562525
+    - `pinball_0.1`: 0.004678398852063864
+    - `pinball_0.25`: 0.007328972457863528
+    - `pinball_0.5`: 0.00784261036144173
+    - `pinball_0.75`: 0.005188894700980283
+    - `pinball_0.9`: 0.00242813596751935
+    - `pinball_0.95`: 0.0013158510720182445
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [40]
+    - `coverage_80`: 0.890625
+    - `coverage_90`: 0.92578125
+    - `crps`: 0.010596606748799703
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030434073231379467
+    - `pinball_0.1`: 0.004608657386366175
+    - `pinball_0.25`: 0.007302060248196655
+    - `pinball_0.5`: 0.007998966413235858
+    - `pinball_0.75`: 0.005176247988347066
+    - `pinball_0.9`: 0.0029023644589009487
+    - `pinball_0.95`: 0.0018246566492854776
+    - `pit_ks`: 0.11958311243448927
+    - `pit_ks_p`: 0.0011998006712072259
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [41]
+    - `coverage_80`: 0.76171875
+    - `coverage_90`: 0.88671875
+    - `crps`: 0.010359036852298612
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.003012347539789473
+    - `pinball_0.1`: 0.0046515541625438755
+    - `pinball_0.25`: 0.007380530746613325
+    - `pinball_0.5`: 0.007841465644842671
+    - `pinball_0.75`: 0.005195966236101574
+    - `pinball_0.9`: 0.0024268803118473155
+    - `pinball_0.95`: 0.0013170742405496443
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [42]
+    - `coverage_80`: 0.78125
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.010354198319099206
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030487514097717818
+    - `pinball_0.1`: 0.00462094355370422
+    - `pinball_0.25`: 0.007330385337669775
+    - `pinball_0.5`: 0.00785595549552128
+    - `pinball_0.75`: 0.005200569795988907
+    - `pinball_0.9`: 0.002425816943197513
+    - `pinball_0.95`: 0.0013210549273632616
+    - `pit_ks`: 0.074218749
+    - `pit_ks_p`: 0.11328038070279567
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [43]
+    - `coverage_80`: 0.75
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.010345165124439948
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030285059581443728
+    - `pinball_0.1`: 0.004678403845950492
+    - `pinball_0.25`: 0.0073289851337674655
+    - `pinball_0.5`: 0.00784261010837034
+    - `pinball_0.75`: 0.005188895255596583
+    - `pinball_0.9`: 0.0024281359724733697
+    - `pinball_0.95`: 0.0013158513017475098
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [44]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.92578125
+    - `crps`: 0.010376803548704683
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.003017983535141187
+    - `pinball_0.1`: 0.004614669647847896
+    - `pinball_0.25`: 0.007264069647654008
+    - `pinball_0.5`: 0.007883306135605929
+    - `pinball_0.75`: 0.005184943797137506
+    - `pinball_0.9`: 0.0025035588065507146
+    - `pinball_0.95`: 0.0014912472777264076
+    - `pit_ks`: 0.06783525250796285
+    - `pit_ks_p`: 0.18100321944070774
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [45]
+    - `coverage_80`: 0.76171875
+    - `coverage_90`: 0.8671875
+    - `crps`: 0.010310693794018468
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002951884150534086
+    - `pinball_0.1`: 0.004594455035963847
+    - `pinball_0.25`: 0.007284381061956391
+    - `pinball_0.5`: 0.00781427803348916
+    - `pinball_0.75`: 0.005206959946721614
+    - `pinball_0.9`: 0.002426362537415376
+    - `pinball_0.95`: 0.0013221780545175812
+    - `pit_ks`: 0.070312499
+    - `pit_ks_p`: 0.15167150747316238
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [46]
+    - `coverage_80`: 0.79296875
+    - `coverage_90`: 0.89453125
+    - `crps`: 0.010315532698083569
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0029656254920692564
+    - `pinball_0.1`: 0.004609501223596844
+    - `pinball_0.25`: 0.007274979234044335
+    - `pinball_0.5`: 0.007840059002668483
+    - `pinball_0.75`: 0.005190970431804896
+    - `pinball_0.9`: 0.0024281201737611407
+    - `pinball_0.95`: 0.0013157548693862597
+    - `pit_ks`: 0.054687499
+    - `pit_ks_p`: 0.41342399328908064
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [47]
+    - `coverage_80`: 0.5703125
+    - `coverage_90`: 0.77734375
+    - `crps`: 0.010725333567195901
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.003322255192027295
+    - `pinball_0.1`: 0.0050455430337012505
+    - `pinball_0.25`: 0.007537910917896174
+    - `pinball_0.5`: 0.007844428548999435
+    - `pinball_0.75`: 0.0054588966417090535
+    - `pinball_0.9`: 0.0027623729936500268
+    - `pinball_0.95`: 0.0014680597580494325
+    - `pit_ks`: 0.15324833717487252
+    - `pit_ks_p`: 1.0262118132145719e-05
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [48]
+    - `coverage_80`: 0.75
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.01034516057212881
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030285051686713745
+    - `pinball_0.1`: 0.0046783988620296224
+    - `pinball_0.25`: 0.0073289724376123955
+    - `pinball_0.5`: 0.00784261036343838
+    - `pinball_0.75`: 0.005188894715273822
+    - `pinball_0.9`: 0.002428135970462311
+    - `pinball_0.95`: 0.0013158510728019763
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [49]
+    - `coverage_80`: 0.75390625
+    - `coverage_90`: 0.84765625
+    - `crps`: 0.010452687288350353
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030177488003414877
+    - `pinball_0.1`: 0.0046673933008034695
+    - `pinball_0.25`: 0.007471434623082972
+    - `pinball_0.5`: 0.007967210072951102
+    - `pinball_0.75`: 0.005193049758981364
+    - `pinball_0.9`: 0.0024293002484517094
+    - `pinball_0.95`: 0.0013382270080921983
+    - `pit_ks`: 0.08671037976599688
+    - `pit_ks_p`: 0.04005726580753044
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [50]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.91796875
+    - `crps`: 0.010552952198725974
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030932832851149855
+    - `pinball_0.1`: 0.004646202865311014
+    - `pinball_0.25`: 0.0072658682321518515
+    - `pinball_0.5`: 0.007998966413235858
+    - `pinball_0.75`: 0.00527309352587487
+    - `pinball_0.9`: 0.0026305975528071973
+    - `pinball_0.95`: 0.001740338786402955
+    - `pit_ks`: 0.09144598742561882
+    - `pit_ks_p`: 0.02589420316429314
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [51]
+    - `coverage_80`: 0.75
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.010345160570529706
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0030285051929562525
+    - `pinball_0.1`: 0.004678398852063864
+    - `pinball_0.25`: 0.007328972457863528
+    - `pinball_0.5`: 0.00784261036144173
+    - `pinball_0.75`: 0.005188894700980282
+    - `pinball_0.9`: 0.00242813596751935
+    - `pinball_0.95`: 0.0013158510720182445
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: 0.19984600610711145
+    - `seed`: 45
+    - `shard`: left_skew
+    - `status`: ok
+  - [52]
+    - `coverage_80`: 0.62890625
+    - `coverage_90`: 0.73828125
+    - `crps`: 0.014803395598833672
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0052896286193926615
+    - `pinball_0.1`: 0.006774339752587748
+    - `pinball_0.25`: 0.008588671963134571
+    - `pinball_0.5`: 0.009469633785926135
+    - `pinball_0.75`: 0.00827024230847126
+    - `pinball_0.9`: 0.0058962432239504994
+    - `pinball_0.95`: 0.0038158615831141193
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [53]
+    - `coverage_80`: 0.7109375
+    - `coverage_90`: 0.7578125
+    - `crps`: 0.014558889030249829
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.004552244962354245
+    - `pinball_0.1`: 0.006166359559236611
+    - `pinball_0.25`: 0.008457891681354381
+    - `pinball_0.5`: 0.009532658186061638
+    - `pinball_0.75`: 0.008274803287054606
+    - `pinball_0.9`: 0.00554107944137372
+    - `pinball_0.95`: 0.0038360650471418968
+    - `pit_ks`: 0.132812499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [54]
+    - `coverage_80`: 0.65625
+    - `coverage_90`: 0.7265625
+    - `crps`: 0.014807331734990657
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005264825646003146
+    - `pinball_0.1`: 0.006688731152081816
+    - `pinball_0.25`: 0.008605912076665868
+    - `pinball_0.5`: 0.009478584188935766
+    - `pinball_0.75`: 0.008280669653153569
+    - `pinball_0.9`: 0.005830734847470367
+    - `pinball_0.95`: 0.004013550568966224
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [55]
+    - `coverage_80`: 0.6328125
+    - `coverage_90`: 0.734375
+    - `crps`: 0.014832191960259916
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005225770475641871
+    - `pinball_0.1`: 0.006703862049867548
+    - `pinball_0.25`: 0.008603899111743429
+    - `pinball_0.5`: 0.009493867695755425
+    - `pinball_0.75`: 0.008286106559136822
+    - `pinball_0.9`: 0.005939880556993689
+    - `pinball_0.95`: 0.003861076796417174
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [56]
+    - `coverage_80`: 0.62890625
+    - `coverage_90`: 0.73828125
+    - `crps`: 0.014803750557546316
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005289645983156854
+    - `pinball_0.1`: 0.006774340050199964
+    - `pinball_0.25`: 0.008588672083208751
+    - `pinball_0.5`: 0.009469633994383199
+    - `pinball_0.75`: 0.008270242308497775
+    - `pinball_0.9`: 0.005896243865285466
+    - `pinball_0.95`: 0.003819390182218829
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [57]
+    - `coverage_80`: 0.66796875
+    - `coverage_90`: 0.73828125
+    - `crps`: 0.01468193942000668
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0050904446768459954
+    - `pinball_0.1`: 0.006520618675754628
+    - `pinball_0.25`: 0.008511301027948864
+    - `pinball_0.5`: 0.00950092037172555
+    - `pinball_0.75`: 0.008212840522367966
+    - `pinball_0.9`: 0.005726611256088532
+    - `pinball_0.95`: 0.003925789524886402
+    - `pit_ks`: 0.148437499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [58]
+    - `coverage_80`: 0.6015625
+    - `coverage_90`: 0.734375
+    - `crps`: 0.015301156767665402
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005162470513563441
+    - `pinball_0.1`: 0.006850046629773185
+    - `pinball_0.25`: 0.008649360998211161
+    - `pinball_0.5`: 0.009604863417448236
+    - `pinball_0.75`: 0.00874069733340287
+    - `pinball_0.9`: 0.0064462749084216
+    - `pinball_0.95`: 0.003984339059163579
+    - `pit_ks`: 0.148437499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [59]
+    - `coverage_80`: 0.5234375
+    - `coverage_90`: 0.62890625
+    - `crps`: 0.015243847707829127
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.006084955339798761
+    - `pinball_0.1`: 0.007101039682899501
+    - `pinball_0.25`: 0.008638473743000712
+    - `pinball_0.5`: 0.009467451458963994
+    - `pinball_0.75`: 0.008347944057826543
+    - `pinball_0.9`: 0.006381523041473904
+    - `pinball_0.95`: 0.00511551411821649
+    - `pit_ks`: 0.195312499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [60]
+    - `coverage_80`: 0.61328125
+    - `coverage_90`: 0.6953125
+    - `crps`: 0.014951994089058923
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005559494136568609
+    - `pinball_0.1`: 0.006833240380985963
+    - `pinball_0.25`: 0.008653808643300629
+    - `pinball_0.5`: 0.009482107359025818
+    - `pinball_0.75`: 0.008310846965752813
+    - `pinball_0.9`: 0.0059551259205762345
+    - `pinball_0.95`: 0.004335631057510921
+    - `pit_ks`: 0.164062499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [61]
+    - `coverage_80`: 0.62890625
+    - `coverage_90`: 0.73828125
+    - `crps`: 0.014803395705987191
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005289628633588667
+    - `pinball_0.1`: 0.006774339743098814
+    - `pinball_0.25`: 0.008588671963357424
+    - `pinball_0.5`: 0.009469633786267447
+    - `pinball_0.75`: 0.008270242309089137
+    - `pinball_0.9`: 0.005896243302435874
+    - `pinball_0.95`: 0.003815862409021629
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [62]
+    - `coverage_80`: 0.62890625
+    - `coverage_90`: 0.765625
+    - `crps`: 0.01468709236947937
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.004197106720756675
+    - `pinball_0.1`: 0.00676154827355069
+    - `pinball_0.25`: 0.008563584485155672
+    - `pinball_0.5`: 0.009465544230383423
+    - `pinball_0.75`: 0.00828545882283057
+    - `pinball_0.9`: 0.005930884931815955
+    - `pinball_0.95`: 0.0036738451835014677
+    - `pit_ks`: 0.124999999
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [63]
+    - `coverage_80`: 0.66796875
+    - `coverage_90`: 0.71875
+    - `crps`: 0.014766495988969704
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005016601445572914
+    - `pinball_0.1`: 0.006527283839992564
+    - `pinball_0.25`: 0.008580083890584617
+    - `pinball_0.5`: 0.009532658186061638
+    - `pinball_0.75`: 0.008219738361973816
+    - `pinball_0.9`: 0.005809708144910314
+    - `pinball_0.95`: 0.004189715757469514
+    - `pit_ks`: 0.148437499
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [64]
+    - `coverage_80`: 0.62890625
+    - `coverage_90`: 0.73828125
+    - `crps`: 0.014803395598833672
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.005289628619392661
+    - `pinball_0.1`: 0.006774339752587748
+    - `pinball_0.25`: 0.008588671963134573
+    - `pinball_0.5`: 0.009469633785926135
+    - `pinball_0.75`: 0.00827024230847126
+    - `pinball_0.9`: 0.0058962432239505
+    - `pinball_0.95`: 0.003815861583114119
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 46
+    - `shard`: regime_switch
+    - `status`: ok
+  - [65]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009671832765801842
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00260771630205184
+    - `pinball_0.1`: 0.0037458043396317326
+    - `pinball_0.25`: 0.005828695588438026
+    - `pinball_0.5`: 0.006852545459804517
+    - `pinball_0.75`: 0.005385514025262619
+    - `pinball_0.9`: 0.0032063083275469272
+    - `pinball_0.95`: 0.0020694978430443123
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [66]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.80859375
+    - `crps`: 0.009671968631242606
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002546573307149781
+    - `pinball_0.1`: 0.003759948830449441
+    - `pinball_0.25`: 0.005874387179113722
+    - `pinball_0.5`: 0.0068418090304963545
+    - `pinball_0.75`: 0.005379616184531999
+    - `pinball_0.9`: 0.0032146138106873595
+    - `pinball_0.95`: 0.002039035130281828
+    - `pit_ks`: 0.109374999
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [67]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.8125
+    - `crps`: 0.009672868086638184
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0024994302956594374
+    - `pinball_0.1`: 0.0037632870348600607
+    - `pinball_0.25`: 0.005896186339954334
+    - `pinball_0.5`: 0.006841968523618783
+    - `pinball_0.75`: 0.00537672160168102
+    - `pinball_0.9`: 0.0032192213650401548
+    - `pinball_0.95`: 0.0020262897943798667
+    - `pit_ks`: 0.109374999
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [68]
+    - `coverage_80`: 0.7265625
+    - `coverage_90`: 0.8046875
+    - `crps`: 0.009660663299996018
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002559028671551728
+    - `pinball_0.1`: 0.003719345256987473
+    - `pinball_0.25`: 0.0058383132736973525
+    - `pinball_0.5`: 0.006852457417186541
+    - `pinball_0.75`: 0.005380237312498471
+    - `pinball_0.9`: 0.0032052577829665804
+    - `pinball_0.95`: 0.002034072253004139
+    - `pit_ks`: 0.113281249
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [69]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009671836697181458
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002607722045789055
+    - `pinball_0.1`: 0.003745817361126468
+    - `pinball_0.25`: 0.005828695936741381
+    - `pinball_0.5`: 0.00685254545766069
+    - `pinball_0.75`: 0.005385513972068099
+    - `pinball_0.9`: 0.0032063085089250763
+    - `pinball_0.95`: 0.002069517079255725
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [70]
+    - `coverage_80`: 0.7109375
+    - `coverage_90`: 0.80078125
+    - `crps`: 0.009675847871245018
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0025755759673526655
+    - `pinball_0.1`: 0.0037660976372512747
+    - `pinball_0.25`: 0.005866489097028793
+    - `pinball_0.5`: 0.006848940157981294
+    - `pinball_0.75`: 0.005389782097832811
+    - `pinball_0.9`: 0.0032007485048780563
+    - `pinball_0.95`: 0.002021481023055165
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [71]
+    - `coverage_80`: 0.7265625
+    - `coverage_90`: 0.7734375
+    - `crps`: 0.009757258526800535
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0026959326925172257
+    - `pinball_0.1`: 0.003788424073621212
+    - `pinball_0.25`: 0.005877849042311931
+    - `pinball_0.5`: 0.006954155407044048
+    - `pinball_0.75`: 0.005384762962883473
+    - `pinball_0.9`: 0.0032202399591329273
+    - `pinball_0.95`: 0.0020993696478947355
+    - `pit_ks`: 0.136718749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [72]
+    - `coverage_80`: 0.72265625
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009666038415153694
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0025978602457915508
+    - `pinball_0.1`: 0.0037247866149743266
+    - `pinball_0.25`: 0.005823553747885404
+    - `pinball_0.5`: 0.006852392180675746
+    - `pinball_0.75`: 0.005387744088126508
+    - `pinball_0.9`: 0.003201382239716291
+    - `pinball_0.95`: 0.0020622479839547013
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [73]
+    - `coverage_80`: 0.70703125
+    - `coverage_90`: 0.80078125
+    - `crps`: 0.00968106860518734
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0025468496015958915
+    - `pinball_0.1`: 0.003767123377555706
+    - `pinball_0.25`: 0.005883615039982104
+    - `pinball_0.5`: 0.006842216726784053
+    - `pinball_0.75`: 0.005377856552605558
+    - `pinball_0.9`: 0.0032261147605896273
+    - `pinball_0.95`: 0.002067157274058548
+    - `pit_ks`: 0.109374999
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [74]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009671832773644288
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0026077162480528243
+    - `pinball_0.1`: 0.00374580439503253
+    - `pinball_0.25`: 0.005828695595111864
+    - `pinball_0.5`: 0.006852545459292859
+    - `pinball_0.75`: 0.00538551402650931
+    - `pinball_0.9`: 0.0032063083352272966
+    - `pinball_0.95`: 0.0020694978733292032
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [75]
+    - `coverage_80`: 0.73828125
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009656065713318097
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002583067015477325
+    - `pinball_0.1`: 0.003651749357943575
+    - `pinball_0.25`: 0.005818985245053672
+    - `pinball_0.5`: 0.0068452436863947145
+    - `pinball_0.75`: 0.005376152860803111
+    - `pinball_0.9`: 0.003209971487351302
+    - `pinball_0.95`: 0.0021319878265560113
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [76]
+    - `coverage_80`: 0.7109375
+    - `coverage_90`: 0.80859375
+    - `crps`: 0.009677351849786948
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0025506553947996576
+    - `pinball_0.1`: 0.0037745832313485616
+    - `pinball_0.25`: 0.0058844900952057634
+    - `pinball_0.5`: 0.0068418090304963545
+    - `pinball_0.75`: 0.005377991012900748
+    - `pinball_0.9`: 0.003218190686657628
+    - `pinball_0.95`: 0.002041237309145577
+    - `pit_ks`: 0.109374999
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [77]
+    - `coverage_80`: 0.71484375
+    - `coverage_90`: 0.7890625
+    - `crps`: 0.009671832765801842
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00260771630205184
+    - `pinball_0.1`: 0.0037458043396317317
+    - `pinball_0.25`: 0.005828695588438026
+    - `pinball_0.5`: 0.006852545459804517
+    - `pinball_0.75`: 0.005385514025262619
+    - `pinball_0.9`: 0.003206308327546927
+    - `pinball_0.95`: 0.0020694978430443127
+    - `pit_ks`: 0.121093749
+    - `pit_ks_p`: null
+    - `seed`: 47
+    - `shard`: garch_cluster
+    - `status`: ok
+  - [78]
+    - `coverage_80`: 0.3125
+    - `coverage_90`: 0.5
+    - `crps`: 0.024049904214401945
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.009243429547885235
+    - `pinball_0.1`: 0.01141218880476113
+    - `pinball_0.25`: 0.014004649089911395
+    - `pinball_0.5`: 0.014987313457339248
+    - `pinball_0.75`: 0.01346324874913668
+    - `pinball_0.9`: 0.009979496159955057
+    - `pinball_0.95`: 0.0056381770093940735
+    - `pit_ks`: 0.320312499
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [79]
+    - `coverage_80`: 0.5234375
+    - `coverage_90`: 0.62890625
+    - `crps`: 0.022053996756342516
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.006342676856685728
+    - `pinball_0.1`: 0.008883667183497146
+    - `pinball_0.25`: 0.013177879158225587
+    - `pinball_0.5`: 0.014989946646391366
+    - `pinball_0.75`: 0.012418530441937282
+    - `pinball_0.9`: 0.007789959574811826
+    - `pinball_0.95`: 0.005367721882486774
+    - `pit_ks`: 0.203124999
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [80]
+    - `coverage_80`: 0.31640625
+    - `coverage_90`: 0.45703125
+    - `crps`: 0.024060139401318983
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.008691082576850232
+    - `pinball_0.1`: 0.01121796578475592
+    - `pinball_0.25`: 0.01402432725353215
+    - `pinball_0.5`: 0.014989368208088931
+    - `pinball_0.75`: 0.013424807934032782
+    - `pinball_0.9`: 0.009879027850778627
+    - `pinball_0.95`: 0.006911399628042788
+    - `pit_ks`: 0.281249999
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [81]
+    - `coverage_80`: 0.3125
+    - `coverage_90`: 0.51953125
+    - `crps`: 0.024026654120602106
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00884370933581795
+    - `pinball_0.1`: 0.011354491256580595
+    - `pinball_0.25`: 0.013989948254415931
+    - `pinball_0.5`: 0.01498891696702648
+    - `pinball_0.75`: 0.013437760797971213
+    - `pinball_0.9`: 0.010115402410678756
+    - `pinball_0.95`: 0.005618899793350017
+    - `pit_ks`: 0.300781249
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [82]
+    - `coverage_80`: 0.3125
+    - `coverage_90`: 0.5
+    - `crps`: 0.02404993307241039
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.009243499454215338
+    - `pinball_0.1`: 0.01141219475618724
+    - `pinball_0.25`: 0.014004649099850344
+    - `pinball_0.5`: 0.014987313457339252
+    - `pinball_0.75`: 0.013463249654956976
+    - `pinball_0.9`: 0.009979498940529519
+    - `pinball_0.95`: 0.005638376831080601
+    - `pit_ks`: 0.320312499
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [83]
+    - `coverage_80`: 0.2578125
+    - `coverage_90`: 0.29296875
+    - `crps`: 0.025208116685997324
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.010385390895072056
+    - `pinball_0.1`: 0.011822379045993514
+    - `pinball_0.25`: 0.014023376319665753
+    - `pinball_0.5`: 0.014998640767347101
+    - `pinball_0.75`: 0.01374692415623719
+    - `pinball_0.9`: 0.011391089990240893
+    - `pinball_0.95`: 0.009902173371266273
+    - `pit_ks`: 0.36328124900000003
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [84]
+    - `coverage_80`: 0.30859375
+    - `coverage_90`: 0.5078125
+    - `crps`: 0.02418189791390222
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.009199437063604323
+    - `pinball_0.1`: 0.011379438337122544
+    - `pinball_0.25`: 0.013989804518106549
+    - `pinball_0.5`: 0.015058427681142237
+    - `pinball_0.75`: 0.01361572065479477
+    - `pinball_0.9`: 0.010093114970455468
+    - `pinball_0.95`: 0.005620603592924231
+    - `pit_ks`: 0.312499999
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [85]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.91796875
+    - `crps`: 0.02163738328746493
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00409834846379512
+    - `pinball_0.1`: 0.007065325386771543
+    - `pinball_0.25`: 0.012762806219857138
+    - `pinball_0.5`: 0.015907142851974934
+    - `pinball_0.75`: 0.012455746007118011
+    - `pinball_0.9`: 0.007009313975152481
+    - `pinball_0.95`: 0.0040793541435890455
+    - `pit_ks`: 0.14960041344670966
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [86]
+    - `coverage_80`: 0.4296875
+    - `coverage_90`: 0.578125
+    - `crps`: 0.022933080917518625
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.006823311715559308
+    - `pinball_0.1`: 0.00957931114783545
+    - `pinball_0.25`: 0.013418893623816472
+    - `pinball_0.5`: 0.015001868635057624
+    - `pinball_0.75`: 0.013064352757029983
+    - `pinball_0.9`: 0.008799581940339413
+    - `pinball_0.95`: 0.005941652658885788
+    - `pit_ks`: 0.230468749
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [87]
+    - `coverage_80`: 0.3125
+    - `coverage_90`: 0.5
+    - `crps`: 0.024049904299711877
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.009243429423113188
+    - `pinball_0.1`: 0.011412188800163377
+    - `pinball_0.25`: 0.014004649069085828
+    - `pinball_0.5`: 0.014987313457339248
+    - `pinball_0.75`: 0.013463248746431802
+    - `pinball_0.9`: 0.009979496403941523
+    - `pinball_0.95`: 0.005638177335904888
+    - `pit_ks`: 0.320312499
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [88]
+    - `coverage_80`: 0.6640625
+    - `coverage_90`: 0.86328125
+    - `crps`: 0.021622935374750695
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.004641692613883046
+    - `pinball_0.1`: 0.008329255471902771
+    - `pinball_0.25`: 0.013998144021536083
+    - `pinball_0.5`: 0.015017904144384465
+    - `pinball_0.75`: 0.012387966246658104
+    - `pinball_0.9`: 0.0067544029899664956
+    - `pinball_0.95`: 0.003971412672000578
+    - `pit_ks`: 0.1674137591648515
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [89]
+    - `coverage_80`: 0.5
+    - `coverage_90`: 0.62109375
+    - `crps`: 0.022247179858323904
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0064539114078927175
+    - `pinball_0.1`: 0.009127927333073372
+    - `pinball_0.25`: 0.013313376983591405
+    - `pinball_0.5`: 0.014989946646391366
+    - `pinball_0.75`: 0.01253113082999982
+    - `pinball_0.9`: 0.00796481282936945
+    - `pinball_0.95`: 0.005450003021434457
+    - `pit_ks`: 0.210937499
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [90]
+    - `coverage_80`: 0.3125
+    - `coverage_90`: 0.5
+    - `crps`: 0.024049904214401945
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.009243429547885236
+    - `pinball_0.1`: 0.01141218880476113
+    - `pinball_0.25`: 0.014004649089911395
+    - `pinball_0.5`: 0.014987313457339248
+    - `pinball_0.75`: 0.013463248749136682
+    - `pinball_0.9`: 0.009979496159955054
+    - `pinball_0.95`: 0.0056381770093940735
+    - `pit_ks`: 0.320312499
+    - `pit_ks_p`: null
+    - `seed`: 48
+    - `shard`: vol_break
+    - `status`: ok
+  - [91]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.00596003508558041
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0015631810956565997
+    - `pinball_0.1`: 0.0022081643111834977
+    - `pinball_0.25`: 0.003790928512607138
+    - `pinball_0.5`: 0.004312796859793226
+    - `pinball_0.75`: 0.003256939590446136
+    - `pinball_0.9`: 0.0018255879302174509
+    - `pinball_0.95`: 0.0011307738692934307
+    - `pit_ks`: 0.0551285391180798
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [92]
+    - `coverage_80`: 0.9296875
+    - `coverage_90`: 0.98046875
+    - `crps`: 0.006268396947070752
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0015359708702704252
+    - `pinball_0.1`: 0.002417515788994324
+    - `pinball_0.25`: 0.004009158447332804
+    - `pinball_0.5`: 0.004401721454787756
+    - `pinball_0.75`: 0.0033677849934982793
+    - `pinball_0.9`: 0.0021677309318979283
+    - `pinball_0.95`: 0.0013522824323203976
+    - `pit_ks`: 0.13834942191950228
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [93]
+    - `coverage_80`: 0.8671875
+    - `coverage_90`: 0.95703125
+    - `crps`: 0.005956919950726495
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0015401393761733566
+    - `pinball_0.1`: 0.0022290293091345344
+    - `pinball_0.25`: 0.0037826374190473864
+    - `pinball_0.5`: 0.004310881496211262
+    - `pinball_0.75`: 0.0032526459286503205
+    - `pinball_0.9`: 0.0018324631121193033
+    - `pinball_0.95`: 0.001137092104149075
+    - `pit_ks`: 0.05751662400251811
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [94]
+    - `coverage_80`: 0.87109375
+    - `coverage_90`: 0.9609375
+    - `crps`: 0.005986825676718084
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0017522317502064431
+    - `pinball_0.1`: 0.0022286060640019554
+    - `pinball_0.25`: 0.0037872018367979647
+    - `pinball_0.5`: 0.0043076699290941975
+    - `pinball_0.75`: 0.0032532268771804664
+    - `pinball_0.9`: 0.0018566447855014247
+    - `pinball_0.95`: 0.0011513950547009457
+    - `pit_ks`: 0.06986754979892584
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [95]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.0059600209309411045
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001563061582798169
+    - `pinball_0.1`: 0.0022081514859869054
+    - `pinball_0.25`: 0.0037909289113917883
+    - `pinball_0.5`: 0.004312796501294093
+    - `pinball_0.75`: 0.003256939268338204
+    - `pinball_0.9`: 0.0018255877896504171
+    - `pinball_0.95`: 0.001130767289337866
+    - `pit_ks`: 0.0551283022732354
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [96]
+    - `coverage_80`: 0.79296875
+    - `coverage_90`: 0.890625
+    - `crps`: 0.005927650766967491
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0013374917362485193
+    - `pinball_0.1`: 0.002223217114602669
+    - `pinball_0.25`: 0.003807861877929551
+    - `pinball_0.5`: 0.00430920355020383
+    - `pinball_0.75`: 0.0032428741912115845
+    - `pinball_0.9`: 0.0018012039964931939
+    - `pinball_0.95`: 0.0011282124884784172
+    - `pit_ks`: 0.05468749900000003
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [97]
+    - `coverage_80`: 0.86328125
+    - `coverage_90`: 0.95703125
+    - `crps`: 0.00596083201564043
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.001534150748266652
+    - `pinball_0.1`: 0.0022086344029208756
+    - `pinball_0.25`: 0.003786230448961641
+    - `pinball_0.5`: 0.004320035287287767
+    - `pinball_0.75`: 0.003264529570365653
+    - `pinball_0.9`: 0.0018163288671487793
+    - `pinball_0.95`: 0.0011350327686184102
+    - `pit_ks`: 0.05682825926329625
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [98]
+    - `coverage_80`: 0.9375
+    - `coverage_90`: 0.98046875
+    - `crps`: 0.006162830270027287
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020377153663355815
+    - `pinball_0.1`: 0.0028194312630731386
+    - `pinball_0.25`: 0.0038664160611800464
+    - `pinball_0.5`: 0.0043096434154648615
+    - `pinball_0.75`: 0.0032799927811709333
+    - `pinball_0.9`: 0.0019726348887437227
+    - `pinball_0.95`: 0.0013058222379138784
+    - `pit_ks`: 0.11664494097410383
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [99]
+    - `coverage_80`: 0.83203125
+    - `coverage_90`: 0.92578125
+    - `crps`: 0.0059405918216837526
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0014049167435547093
+    - `pinball_0.1`: 0.0022011163756321247
+    - `pinball_0.25`: 0.003782326967109706
+    - `pinball_0.5`: 0.0043162594431137465
+    - `pinball_0.75`: 0.003264398006311301
+    - `pinball_0.9`: 0.0018071645450508935
+    - `pinball_0.95`: 0.0011281233140436632
+    - `pit_ks`: 0.05468749900000003
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [100]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.005960035078626684
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0015631811529840272
+    - `pinball_0.1`: 0.00220816430286409
+    - `pinball_0.25`: 0.003790928516662219
+    - `pinball_0.5`: 0.004312796862711474
+    - `pinball_0.75`: 0.0032569395762120654
+    - `pinball_0.9`: 0.001825587909609884
+    - `pinball_0.95`: 0.0011307738569847144
+    - `pit_ks`: 0.05512852059670326
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [101]
+    - `coverage_80`: 0.953125
+    - `coverage_90`: 0.9921875
+    - `crps`: 0.006366971781622537
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020938635497673294
+    - `pinball_0.1`: 0.0027182757810425336
+    - `pinball_0.25`: 0.00404984757751678
+    - `pinball_0.5`: 0.004316866596652986
+    - `pinball_0.75`: 0.0034222953090629828
+    - `pinball_0.9`: 0.0021455256536031097
+    - `pinball_0.95`: 0.0015756492634759962
+    - `pit_ks`: 0.14355616578540686
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [102]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.0060022154624833745
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0013751778468510307
+    - `pinball_0.1`: 0.002195941305785599
+    - `pinball_0.25`: 0.003791858743634911
+    - `pinball_0.5`: 0.004401721454787756
+    - `pinball_0.75`: 0.003255975174712252
+    - `pinball_0.9`: 0.001864396792488218
+    - `pinball_0.95`: 0.00119378571632769
+    - `pit_ks`: 0.10578824289554545
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [103]
+    - `coverage_80`: 0.84765625
+    - `coverage_90`: 0.953125
+    - `crps`: 0.0059600350855804115
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0015631810956566001
+    - `pinball_0.1`: 0.0022081643111834972
+    - `pinball_0.25`: 0.003790928512607138
+    - `pinball_0.5`: 0.004312796859793227
+    - `pinball_0.75`: 0.003256939590446136
+    - `pinball_0.9`: 0.0018255879302174509
+    - `pinball_0.95`: 0.0011307738692934307
+    - `pit_ks`: 0.0551285391180798
+    - `pit_ks_p`: null
+    - `seed`: 49
+    - `shard`: gjr_leverage
+    - `status`: ok
+  - [104]
+    - `coverage_80`: 0.796875
+    - `coverage_90`: 0.90234375
+    - `crps`: 0.011125153367582345
+    - `error`: null
+    - `family`: distribution
+    - `model`: empirical
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020243331897154123
+    - `pinball_0.1`: 0.003527435437117782
+    - `pinball_0.25`: 0.006432280613948702
+    - `pinball_0.5`: 0.008074918114385142
+    - `pinball_0.75`: 0.00666885073550858
+    - `pinball_0.9`: 0.003544503540730465
+    - `pinball_0.95`: 0.002050568335484146
+    - `pit_ks`: 0.07359650899748671
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [105]
+    - `coverage_80`: 0.8046875
+    - `coverage_90`: 0.91796875
+    - `crps`: 0.011114553173753702
+    - `error`: null
+    - `family`: distribution
+    - `model`: gaussian
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020139555726607517
+    - `pinball_0.1`: 0.003525914354093239
+    - `pinball_0.25`: 0.006426730726046291
+    - `pinball_0.5`: 0.008092722869423013
+    - `pinball_0.75`: 0.006631383850958202
+    - `pinball_0.9`: 0.0035503888566370176
+    - `pinball_0.95`: 0.002053769460827044
+    - `pit_ks`: 0.06646813568575016
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [106]
+    - `coverage_80`: 0.80859375
+    - `coverage_90`: 0.9140625
+    - `crps`: 0.011104638869359109
+    - `error`: null
+    - `family`: distribution
+    - `model`: skew_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002017374199445707
+    - `pinball_0.1`: 0.003530987631883962
+    - `pinball_0.25`: 0.0064263642887108455
+    - `pinball_0.5`: 0.008073005725945553
+    - `pinball_0.75`: 0.0066206067791797114
+    - `pinball_0.9`: 0.0035580751234548184
+    - `pinball_0.95`: 0.002076646100138097
+    - `pit_ks`: 0.058593749
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [107]
+    - `coverage_80`: 0.80859375
+    - `coverage_90`: 0.91015625
+    - `crps`: 0.011125015165866926
+    - `error`: null
+    - `family`: distribution
+    - `model`: gmm
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.00201930823327434
+    - `pinball_0.1`: 0.0035261694594538005
+    - `pinball_0.25`: 0.006432745312851631
+    - `pinball_0.5`: 0.00807674712104149
+    - `pinball_0.75`: 0.0066537792284639494
+    - `pinball_0.9`: 0.0035629371719655073
+    - `pinball_0.95`: 0.002064994763962518
+    - `pit_ks`: 0.0700678463483444
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [108]
+    - `coverage_80`: 0.796875
+    - `coverage_90`: 0.90234375
+    - `crps`: 0.011125151057992222
+    - `error`: null
+    - `family`: distribution
+    - `model`: isotonic
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020243425314839495
+    - `pinball_0.1`: 0.0035274422311869476
+    - `pinball_0.25`: 0.006432277084612848
+    - `pinball_0.5`: 0.008074918152631304
+    - `pinball_0.75`: 0.006668849127699859
+    - `pinball_0.9`: 0.0035444967169667605
+    - `pinball_0.95`: 0.0020505680108566723
+    - `pit_ks`: 0.07359610936567362
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [109]
+    - `coverage_80`: 0.77734375
+    - `coverage_90`: 0.875
+    - `crps`: 0.01111313286957022
+    - `error`: null
+    - `family`: distribution
+    - `model`: stack
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020658073476828957
+    - `pinball_0.1`: 0.00355468781008165
+    - `pinball_0.25`: 0.006427176444414495
+    - `pinball_0.5`: 0.008086231705691596
+    - `pinball_0.75`: 0.006625633045119664
+    - `pinball_0.9`: 0.0035435244739105793
+    - `pinball_0.95`: 0.0020394070289061275
+    - `pit_ks`: 0.082031249
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [110]
+    - `coverage_80`: 0.828125
+    - `coverage_90`: 0.90234375
+    - `crps`: 0.010409802567373398
+    - `error`: null
+    - `family`: distribution
+    - `model`: qar
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020919989946219827
+    - `pinball_0.1`: 0.0034528818678072667
+    - `pinball_0.25`: 0.006224621611365264
+    - `pinball_0.5`: 0.007643862638052499
+    - `pinball_0.75`: 0.005963302569871887
+    - `pinball_0.9`: 0.003287224368051213
+    - `pinball_0.95`: 0.0019817808334333547
+    - `pit_ks`: 0.066406249
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [111]
+    - `coverage_80`: 0.81640625
+    - `coverage_90`: 0.91015625
+    - `crps`: 0.011193982879376053
+    - `error`: null
+    - `family`: distribution
+    - `model`: regime
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002018360374930964
+    - `pinball_0.1`: 0.003517520199193962
+    - `pinball_0.25`: 0.006469022144915785
+    - `pinball_0.5`: 0.00810515086997649
+    - `pinball_0.75`: 0.006732737543920795
+    - `pinball_0.9`: 0.003578112496616299
+    - `pinball_0.95`: 0.0020731022255529308
+    - `pit_ks`: 0.09406768788569331
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [112]
+    - `coverage_80`: 0.7734375
+    - `coverage_90`: 0.8828125
+    - `crps`: 0.011108309418740572
+    - `error`: null
+    - `family`: distribution
+    - `model`: fhs_skew
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020877760856251376
+    - `pinball_0.1`: 0.003585957336812634
+    - `pinball_0.25`: 0.006438130073562227
+    - `pinball_0.5`: 0.008074363423845998
+    - `pinball_0.75`: 0.006606684112230285
+    - `pinball_0.9`: 0.003545103196851661
+    - `pinball_0.95`: 0.0020544232733448655
+    - `pit_ks`: 0.085937499
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [113]
+    - `coverage_80`: 0.6015625
+    - `coverage_90`: 0.734375
+    - `crps`: 0.011539291936609658
+    - `error`: null
+    - `family`: distribution
+    - `model`: lgbm_q2
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0028170161074495253
+    - `pinball_0.1`: 0.00428051001445649
+    - `pinball_0.25`: 0.006967419112354429
+    - `pinball_0.5`: 0.008481619491020685
+    - `pinball_0.75`: 0.006323221631537359
+    - `pinball_0.9`: 0.0037120607275110415
+    - `pinball_0.95`: 0.0022327481118039386
+    - `pit_ks`: 0.152343749
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [114]
+    - `coverage_80`: 0.82421875
+    - `coverage_90`: 0.95703125
+    - `crps`: 0.011162666565925673
+    - `error`: null
+    - `family`: distribution
+    - `model`: conf_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.002063792849066908
+    - `pinball_0.1`: 0.003521520842291283
+    - `pinball_0.25`: 0.006453219854090221
+    - `pinball_0.5`: 0.008076590497941204
+    - `pinball_0.75`: 0.0066910307499638
+    - `pinball_0.9`: 0.0035691058396729322
+    - `pinball_0.95`: 0.00213626864708406
+    - `pit_ks`: 0.07328322200863346
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [115]
+    - `coverage_80`: 0.80078125
+    - `coverage_90`: 0.91796875
+    - `crps`: 0.011109308385343299
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_t
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020140400381936157
+    - `pinball_0.1`: 0.003528982480433856
+    - `pinball_0.25`: 0.0064283943302035065
+    - `pinball_0.5`: 0.008092722869423013
+    - `pinball_0.75`: 0.006622148808909338
+    - `pinball_0.9`: 0.003546259221498309
+    - `pinball_0.95`: 0.0020517422880383133
+    - `pit_ks`: 0.06267903581419809
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+  - [116]
+    - `coverage_80`: 0.796875
+    - `coverage_90`: 0.90234375
+    - `crps`: 0.011125153367582345
+    - `error`: null
+    - `family`: distribution
+    - `model`: hstep_emp
+    - `n_eval`: 256
+    - `n_train`: 512
+    - `pinball_0.05`: 0.0020243331897154123
+    - `pinball_0.1`: 0.003527435437117782
+    - `pinball_0.25`: 0.006432280613948702
+    - `pinball_0.5`: 0.00807491811438514
+    - `pinball_0.75`: 0.006668850735508578
+    - `pinball_0.9`: 0.0035445035407304652
+    - `pinball_0.95`: 0.002050568335484146
+    - `pit_ks`: 0.07359650899748638
+    - `pit_ks_p`: null
+    - `seed`: 50
+    - `shard`: ar1_lagged_x
+    - `status`: ok
+- `schema`: fleet_eval.v1
+- `seed`: 42
+- `shards`:
+  - `ar1_lagged_x`:
+    - `config`:
+      - `burn`: 64
+      - `data_label`: SYNTHETIC
+      - `rho`: 0.35
+      - `seed`: 50
+      - `serial_dependence`: true
+      - `sigma`: 0.02
+      - `x_features`:
+        - y_lag1
+        - abs_y_lag1
+    - `n`: 768
+    - `seed`: 50
+    - `x_sha256`: a40a5cc18bf1486b94a1a6eed72aaa1b21e71562bf0706e0efb52e0ff464f175
+    - `y_sha256`: 29c708c1368fcc2a841f1909b4b8fbdba8cc4e52167a261ddcce8384ca7c74cf
+  - `bimodal_mixture`:
+    - `config`:
+      - `data_label`: SYNTHETIC
+      - `mu`:
+        - -0.025
+        - 0.03
+      - `seed`: 43
+      - `serial_dependence`: false
+      - `sigma`:
+        - 0.012
+        - 0.016
+      - `weight_lo`: 0.65
+    - `n`: 768
+    - `seed`: 43
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: 3a54686886499ac8de2381c0fb8788e064d2f350f193ce491bbf51024c91ec93
+  - `garch_cluster`:
+    - `config`:
+      - `alpha`: 0.05
+      - `beta`: 0.9
+      - `burn`: 128
+      - `data_label`: SYNTHETIC
+      - `gamma`: 0.08
+      - `omega`: 4e-06
+      - `persistence`: 0.99
+      - `seed`: 47
+      - `serial_dependence`: true
+    - `n`: 768
+    - `seed`: 47
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: b59a055899088256bf653ec682c4dc5958a4c872878f93a22fa9b7c3d0287a2d
+  - `gjr_leverage`:
+    - `config`:
+      - `alpha`: 0.03
+      - `beta`: 0.86
+      - `burn`: 128
+      - `data_label`: SYNTHETIC
+      - `gamma`: 0.18
+      - `lam`: -0.5
+      - `nu`: 8.0
+      - `omega`: 4e-06
+      - `persistence`: 0.98
+      - `seed`: 49
+      - `serial_dependence`: true
+    - `n`: 768
+    - `seed`: 49
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: 158f0e0572760f333d92f1e0d820037413487ef5361b70be2debb0d19cab1d8c
+  - `heavy_tail`:
+    - `config`:
+      - `data_label`: SYNTHETIC
+      - `df`: 3.0
+      - `scale`: 0.01
+      - `seed`: 44
+      - `serial_dependence`: false
+    - `n`: 768
+    - `seed`: 44
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: eb88b82b23e3b984899d52696de23f3773218697b72a2e8f1ffbbc1507c0424e
+  - `iid_gaussian`:
+    - `config`:
+      - `data_label`: SYNTHETIC
+      - `mu`: 0.0
+      - `seed`: 42
+      - `serial_dependence`: false
+      - `sigma`: 0.02
+    - `n`: 768
+    - `seed`: 42
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: a575d230672e20b11b0246221c74e1a52469ee1e4329ee433a30c06ded0664f2
+  - `left_skew`:
+    - `config`:
+      - `data_label`: SYNTHETIC
+      - `lam`: -0.6
+      - `mu`: 0.0
+      - `nu`: 6.0
+      - `seed`: 45
+      - `serial_dependence`: false
+      - `sigma`: 0.02
+    - `n`: 768
+    - `seed`: 45
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: 3a869251e1dbb1e9cc2eeebaf4219a485cc0252c0cdd59bbac59a2541c8ea469
+  - `regime_switch`:
+    - `config`:
+      - `data_label`: SYNTHETIC
+      - `n_state1`: 245
+      - `p_leave`:
+        - 0.04
+        - 0.08
+      - `rho`: 0.1
+      - `seed`: 46
+      - `serial_dependence`: true
+      - `sigma`:
+        - 0.008
+        - 0.035
+    - `n`: 768
+    - `seed`: 46
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: ded13af77e1b7e20defecb6dfb1f663e22464170a30a38a59be65120df70d42d
+  - `vol_break`:
+    - `config`:
+      - `break_frac`: 0.55
+      - `data_label`: SYNTHETIC
+      - `mu`: 0.0
+      - `n_post_break`: 346
+      - `seed`: 48
+      - `serial_dependence`: true
+      - `sigma`:
+        - 0.008
+        - 0.04
+    - `n`: 768
+    - `seed`: 48
+    - `x_sha256`: 5b88fb7d1bc62e33aa54d9da9251503a936b8e1cf1551f73a85461c7adee5411
+    - `y_sha256`: fa18ff906576d6f966b0d0278e6169808ef4419e1fc5c916b3f6e0fe9e31f07a
+- `taus`:
+  - 0.05
+  - 0.1
+  - 0.25
+  - 0.5
+  - 0.75
+  - 0.9
+  - 0.95
+
+### `receipts/rankic_eval_9ebdad7da83e7348.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/rankic_eval_9ebdad7da83e7348.json | ff139132f80998e336918077dffacfe6d7a660305d025ca635cdcbe7837251d4 | 9ebdad7da83e73488c515d0894f67ab01a7acd2bd79882e6d96ac08024146a4d | not_checked | fde9836ee258c7fd18902effa36ca3989a0c8783 | inputs_sha256=6b81be46ec0adf9760af44e2fd02ad13f9f84486cf57480e3e39379a294b50dc | unspecified | absent | absent | false |
+
+- `challengers`:
+  - identity
+  - noisy
+  - lagged
+  - shuffled
+  - inverted
+- `data_label`: SYNTHETIC
+- `generated_at`: 2026-09-27T21:18:24.498923+00:00
+- `git_revision`: fde9836ee258c7fd18902effa36ca3989a0c8783
+- `horizons`:
+  - 1
+  - 5
+  - 20
+- `kind`: cross_sectional_rankic_eval
+- `n_assets`: 32
+- `n_dates`: 96
+- `n_error_rows`: 0
+- `n_rows`: 75
+- `panels`:
+  - `linear_signal`:
+    - `description`: linear_signal: fwd = beta*signal + eps
+    - `forward_sha256`:
+      - `1`: 6a51079bbc10a5b8270c1ed84534a9782a8cf3ad4f1b1d6e97dc94881c716c84
+      - `20`: 17e99225e459cea486d0b04dce182d4e611544e5d6104da4e604525505dd92ca
+      - `5`: 04295afc0dfc0af3d15335e70f07ee87ab51127f435bee9f53cfdef28a5d1fee
+    - `n_assets`: 32
+    - `n_dates`: 96
+    - `seed`: 11
+    - `signal_sha256`: 122c2c0b613e32b2c852d402a0ab7bd9341eb09a59a9a323b9c2f23eb4b9dae6
+  - `monotone_cubic`:
+    - `description`: monotone_cubic: fwd = beta*signal^3 + eps
+    - `forward_sha256`:
+      - `1`: 38826561c8d29cbb89655d3626d2e7b8e4de4b91dc5e40fa098b37ea950a8728
+      - `20`: bc125ca018e2560f450ba463910cea51e0a1008c7f1acac62b33f0ad9fd77461
+      - `5`: 91d9a06f6022ed8ab2a44935a3b132bfca3adf514fb85e46f122e2b955411e7f
+    - `n_assets`: 32
+    - `n_dates`: 96
+    - `seed`: 104740
+    - `signal_sha256`: 872610a24d670e8e93ffe59e377047effb22409c7722c180b8788ebb39299db9
+  - `pure_noise`:
+    - `description`: pure_noise: fwd independent of signal
+    - `forward_sha256`:
+      - `1`: 896f345f9f95aef3a2aa346d73889737644ce41494e17e9e07ceea43aad29880
+      - `20`: 6c18a818bd467e15e6c8e64f1b81b7c6a82ebade6f6cf85a37fac36ae7d3ee40
+      - `5`: 28e9adc510c98bdf8ac14bb451505e5cef316592dda5e384f4a549edb22bb07d
+    - `n_assets`: 32
+    - `n_dates`: 96
+    - `seed`: 209469
+    - `signal_sha256`: 7f65e435a7489743bce8fe4008540af846003863c65e1ec3c4237b7b66178286
+  - `regime_flip`:
+    - `description`: regime_flip: sign(beta) flips at mid-sample
+    - `forward_sha256`:
+      - `1`: ed8e434034f70ff95b4f522132c00bdcd32e22d9b08444bc63d2d2b572bfa28d
+      - `20`: b1dd0be162ae4bb8aeb3a0b7d03f0b31c2f8e91b54042b5953ee93a7965e812a
+      - `5`: da5d85938ae9cbe07e4aa1de7ecd07e705256630016eb9419c877e9c85086ec1
+    - `n_assets`: 32
+    - `n_dates`: 96
+    - `seed`: 314198
+    - `signal_sha256`: 1dc72285009b9ca9a9091f64e0029a48ba0ee1defca02082098a7fb6842106a6
+  - `weak_signal`:
+    - `description`: weak_signal: fwd = tiny*signal + eps
+    - `forward_sha256`:
+      - `1`: 2069c78a58f1a96d8d6d1c28d613378d0c218a71326dc1b9372757d3a55c5224
+      - `20`: d1c685d6c528774ffcbe4306e6be9a3a648a782cc85ee488e6c4f3c686d6fd0f
+      - `5`: cccec81abea7a6f352f00cdec32459763d753590a65d7693274f4386a66fbe3e
+    - `n_assets`: 32
+    - `n_dates`: 96
+    - `seed`: 418927
+    - `signal_sha256`: 3a6bd555f6ba92b45bf04aa744d32436130e345625726da6f9fb6ddae11d960b
+- `receipt_sha256`: 9ebdad7da83e73488c515d0894f67ab01a7acd2bd79882e6d96ac08024146a4d
+- `results`:
+  - [0]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 41.25642913257369
+    - `icir_pearson`: 2.598910749222624
+    - `mean_pearson`: 0.3616979282565411
+    - `mean_spearman`: 0.3408010495446829
+    - `n_dates`: 95
+    - `p_spearman`: 3.971407313635589e-52
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 33.45632409203196
+    - `t_spearman`: 31.82442486857797
+  - [1]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 35.52980915598881
+    - `icir_pearson`: 2.2381675989602874
+    - `mean_pearson`: 0.36262339761154544
+    - `mean_spearman`: 0.33842367310109245
+    - `n_dates`: 91
+    - `p_spearman`: 1.2155302175601214e-32
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 20.02358581240227
+    - `t_spearman`: 18.632098873945136
+  - [2]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 38.07641217579487
+    - `icir_pearson`: 2.398588510351072
+    - `mean_pearson`: 0.3652759600829112
+    - `mean_spearman`: 0.34933052940268555
+    - `n_dates`: 76
+    - `p_spearman`: 1.1399567897314626e-25
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 16.574827957596018
+    - `t_spearman`: 15.862062122186773
+  - [3]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 11.76860267580332
+    - `icir_pearson`: 0.7413522847358306
+    - `mean_pearson`: 0.12194075812292053
+    - `mean_spearman`: 0.11864871122086741
+    - `n_dates`: 95
+    - `p_spearman`: 1.8473738143623925e-07
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 7.230960368385445
+    - `t_spearman`: 5.6316186466119476
+  - [4]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 10.382551670975532
+    - `icir_pearson`: 0.6540392784685564
+    - `mean_pearson`: 0.12084339275547248
+    - `mean_spearman`: 0.11762833940253292
+    - `n_dates`: 91
+    - `p_spearman`: 2.8483864624770137e-08
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 6.586703887831676
+    - `t_spearman`: 6.080542030037704
+  - [5]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 8.066588231910009
+    - `icir_pearson`: 0.5081472950093834
+    - `mean_pearson`: 0.09622684902476376
+    - `mean_spearman`: 0.08183168698873285
+    - `n_dates`: 76
+    - `p_spearman`: 0.001638771609646971
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 4.254383165890477
+    - `t_spearman`: 3.2673986574295553
+  - [6]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -1.048710991671073
+    - `icir_pearson`: -0.06606258288432354
+    - `mean_pearson`: -0.011848653371046083
+    - `mean_spearman`: -0.015083346195400525
+    - `n_dates`: 95
+    - `p_spearman`: 0.3268743763977715
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -0.8044145031970241
+    - `t_spearman`: -0.9855696822693982
+  - [7]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -1.309555229398853
+    - `icir_pearson`: -0.08249422535936919
+    - `mean_pearson`: -0.012950820865875588
+    - `mean_spearman`: -0.007919499854983724
+    - `n_dates`: 91
+    - `p_spearman`: 0.5741951167307245
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -0.8878213761577343
+    - `t_spearman`: -0.5639436234894919
+  - [8]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -0.5534226813706818
+    - `icir_pearson`: -0.034862352019270536
+    - `mean_pearson`: -0.006317986258798008
+    - `mean_spearman`: -0.0012347584503781413
+    - `n_dates`: 76
+    - `p_spearman`: 0.949695109793414
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -0.292660661790657
+    - `t_spearman`: -0.06330114580126463
+  - [9]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 0.7057965867512068
+    - `icir_pearson`: 0.04446100582718853
+    - `mean_pearson`: 0.007221982480332885
+    - `mean_spearman`: 0.007941040283994444
+    - `n_dates`: 95
+    - `p_spearman`: 0.5079183907878446
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 0.5662604349068847
+    - `t_spearman`: 0.6646237302970636
+  - [10]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -0.062167608293561175
+    - `icir_pearson`: -0.003916191217819985
+    - `mean_pearson`: -0.000703793599924925
+    - `mean_spearman`: 0.004572040862363444
+    - `n_dates`: 91
+    - `p_spearman`: 0.8038748290079487
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -0.03714456287122745
+    - `t_spearman`: 0.24906913592133048
+  - [11]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 0.665592790721003
+    - `icir_pearson`: 0.04192840473060079
+    - `mean_pearson`: 0.008128708958651424
+    - `mean_spearman`: 0.006149675875906776
+    - `n_dates`: 76
+    - `p_spearman`: 0.8077789749229386
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: 0.2929349485749424
+    - `t_spearman`: 0.2441530342789354
+  - [12]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -41.25642913257369
+    - `icir_pearson`: -2.598910749222624
+    - `mean_pearson`: -0.3616979282565411
+    - `mean_spearman`: -0.3408010495446829
+    - `n_dates`: 95
+    - `p_spearman`: 3.971407313635589e-52
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -33.45632409203196
+    - `t_spearman`: -31.82442486857797
+  - [13]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -35.52980915598881
+    - `icir_pearson`: -2.2381675989602874
+    - `mean_pearson`: -0.36262339761154544
+    - `mean_spearman`: -0.33842367310109245
+    - `n_dates`: 91
+    - `p_spearman`: 1.2155302175601214e-32
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -20.02358581240227
+    - `t_spearman`: -18.632098873945136
+  - [14]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -38.07641217579487
+    - `icir_pearson`: -2.398588510351072
+    - `mean_pearson`: -0.3652759600829112
+    - `mean_spearman`: -0.34933052940268555
+    - `n_dates`: 76
+    - `p_spearman`: 1.1399567897314626e-25
+    - `shard`: linear_signal
+    - `status`: ok
+    - `t_pearson`: -16.574827957596018
+    - `t_spearman`: -15.862062122186773
+  - [15]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 15.317239485437165
+    - `icir_pearson`: 0.9648953916782308
+    - `mean_pearson`: 0.17413871078570112
+    - `mean_spearman`: 0.12995832690229975
+    - `n_dates`: 95
+    - `p_spearman`: 1.0754678540661326e-12
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 9.989146770506887
+    - `t_spearman`: 8.224796090751239
+  - [16]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 13.632483381065692
+    - `icir_pearson`: 0.8587657328219237
+    - `mean_pearson`: 0.18047560313320005
+    - `mean_spearman`: 0.13734652444329865
+    - `n_dates`: 91
+    - `p_spearman`: 2.4245528230976868e-09
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 8.1170759404299
+    - `t_spearman`: 6.629617677095594
+  - [17]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 11.157349649672172
+    - `icir_pearson`: 0.7028469634196713
+    - `mean_pearson`: 0.15474056032070446
+    - `mean_spearman`: 0.11288393270566442
+    - `n_dates`: 76
+    - `p_spearman`: 9.050962286154829e-05
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 4.845307894082579
+    - `t_spearman`: 4.138442240532104
+  - [18]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 6.718177923313607
+    - `icir_pearson`: 0.42320542972790864
+    - `mean_pearson`: 0.07599493420626059
+    - `mean_spearman`: 0.05894042290476926
+    - `n_dates`: 95
+    - `p_spearman`: 0.0006155875563648926
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 4.313000100620637
+    - `t_spearman`: 3.5442120384531317
+  - [19]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 4.790871044200261
+    - `icir_pearson`: 0.301796508246053
+    - `mean_pearson`: 0.0633295628142846
+    - `mean_spearman`: 0.05009909445393315
+    - `n_dates`: 91
+    - `p_spearman`: 0.02221655670129144
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 2.7854628846185547
+    - `t_spearman`: 2.3268738600890857
+  - [20]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 4.949453876611103
+    - `icir_pearson`: 0.3117862876927987
+    - `mean_pearson`: 0.05734643684351623
+    - `mean_spearman`: 0.04436930853526779
+    - `n_dates`: 76
+    - `p_spearman`: 0.027708320238379498
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 2.710569943600012
+    - `t_spearman`: 2.2451089583204507
+  - [21]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 1.1734485709146003
+    - `icir_pearson`: 0.07392031178486128
+    - `mean_pearson`: 0.013608297768591479
+    - `mean_spearman`: 0.017603025158203424
+    - `n_dates`: 95
+    - `p_spearman`: 0.2209993588552682
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 0.9331846899320534
+    - `t_spearman`: 1.2320609415702004
+  - [22]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 0.8890610530058928
+    - `icir_pearson`: 0.056005582062066815
+    - `mean_pearson`: 0.009811458984933238
+    - `mean_spearman`: 0.015875253778479582
+    - `n_dates`: 91
+    - `p_spearman`: 0.37130057899718505
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 0.6114948408161914
+    - `t_spearman`: 0.8985301770565177
+  - [23]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -1.1683487732947129
+    - `icir_pearson`: -0.0735990547315522
+    - `mean_pearson`: -0.01366802296017875
+    - `mean_spearman`: -0.006318490507794411
+    - `n_dates`: 76
+    - `p_spearman`: 0.74819943219911
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -0.6962180631230737
+    - `t_spearman`: -0.3221975470538907
+  - [24]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 2.207389041971795
+    - `icir_pearson`: 0.13905243932920205
+    - `mean_pearson`: 0.02805302261116409
+    - `mean_spearman`: 0.018891804290785616
+    - `n_dates`: 95
+    - `p_spearman`: 0.2635484265702608
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: 1.468692014877911
+    - `t_spearman`: 1.124774716161877
+  - [25]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -0.6709611231920738
+    - `icir_pearson`: -0.04226657788949523
+    - `mean_pearson`: -0.007163899880403251
+    - `mean_spearman`: -0.015742322193935107
+    - `n_dates`: 91
+    - `p_spearman`: 0.40408267726349534
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -0.3994403443817805
+    - `t_spearman`: -0.8383008121476183
+  - [26]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -1.9537105572259226
+    - `icir_pearson`: -0.12307219686240992
+    - `mean_pearson`: -0.019828754325811035
+    - `mean_spearman`: -0.03578387868498226
+    - `n_dates`: 76
+    - `p_spearman`: 0.044789238515865096
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -1.1400341507997054
+    - `t_spearman`: -2.0408086595291874
+  - [27]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -15.317239485437165
+    - `icir_pearson`: -0.9648953916782308
+    - `mean_pearson`: -0.17413871078570112
+    - `mean_spearman`: -0.12995832690229975
+    - `n_dates`: 95
+    - `p_spearman`: 1.0754678540661326e-12
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -9.989146770506887
+    - `t_spearman`: -8.224796090751239
+  - [28]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -13.632483381065692
+    - `icir_pearson`: -0.8587657328219237
+    - `mean_pearson`: -0.18047560313320005
+    - `mean_spearman`: -0.13734652444329865
+    - `n_dates`: 91
+    - `p_spearman`: 2.4245528230976868e-09
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -8.1170759404299
+    - `t_spearman`: -6.629617677095594
+  - [29]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -11.157349649672172
+    - `icir_pearson`: -0.7028469634196713
+    - `mean_pearson`: -0.15474056032070446
+    - `mean_spearman`: -0.11288393270566442
+    - `n_dates`: 76
+    - `p_spearman`: 9.050962286154829e-05
+    - `shard`: monotone_cubic
+    - `status`: ok
+    - `t_pearson`: -4.845307894082579
+    - `t_spearman`: -4.138442240532104
+  - [30]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 1.7157082834933273
+    - `icir_pearson`: 0.10807946286802021
+    - `mean_pearson`: 0.01984936293464631
+    - `mean_spearman`: 0.010788701960179038
+    - `n_dates`: 95
+    - `p_spearman`: 0.5466993701421551
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 1.108800477313573
+    - `t_spearman`: 0.6049053700000151
+  - [31]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -0.06028189584454426
+    - `icir_pearson`: -0.0037974024991467158
+    - `mean_pearson`: -0.0007360854951400269
+    - `mean_spearman`: -0.0020946795140343523
+    - `n_dates`: 91
+    - `p_spearman`: 0.9081866286559807
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -0.044974204516145415
+    - `t_spearman`: -0.11565121048759748
+  - [32]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -1.4831218451185724
+    - `icir_pearson`: -0.09342789443311898
+    - `mean_pearson`: -0.015412861485122246
+    - `mean_spearman`: -0.008088632505016208
+    - `n_dates`: 76
+    - `p_spearman`: 0.6554938798978059
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -0.8456428159780399
+    - `t_spearman`: -0.44793149556652423
+  - [33]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -0.45913899648427614
+    - `icir_pearson`: -0.028923038140694142
+    - `mean_pearson`: -0.005257062314573673
+    - `mean_spearman`: -0.003735144312393885
+    - `n_dates`: 95
+    - `p_spearman`: 0.8165600184557573
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -0.34748068626127826
+    - `t_spearman`: -0.2326228629690261
+  - [34]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -2.2952288680967934
+    - `icir_pearson`: -0.14458582826096159
+    - `mean_pearson`: -0.024565420545073175
+    - `mean_spearman`: -0.021333505204472948
+    - `n_dates`: 91
+    - `p_spearman`: 0.1468013180041662
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -1.6126617466336137
+    - `t_spearman`: -1.4635483544084686
+  - [35]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 0.13754932977483325
+    - `icir_pearson`: 0.008664793323519543
+    - `mean_pearson`: 0.0015629354081029402
+    - `mean_spearman`: 0.004557995060966199
+    - `n_dates`: 76
+    - `p_spearman`: 0.8190715446183461
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.07804023043398978
+    - `t_spearman`: 0.2295432726791123
+  - [36]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 0.6961866931818197
+    - `icir_pearson`: 0.04385563943408384
+    - `mean_pearson`: 0.007543243468397144
+    - `mean_spearman`: -0.003766013273653343
+    - `n_dates`: 95
+    - `p_spearman`: 0.8401811994486647
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.44274720732573697
+    - `t_spearman`: -0.20222071533105418
+  - [37]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 0.3736861763296017
+    - `icir_pearson`: 0.023540016451208512
+    - `mean_pearson`: 0.004481519409239721
+    - `mean_spearman`: -0.0013414005349489209
+    - `n_dates`: 91
+    - `p_spearman`: 0.9354329543419259
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.27074819927700344
+    - `t_spearman`: -0.08123814204652648
+  - [38]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -2.519534184509668
+    - `icir_pearson`: -0.15871573504615497
+    - `mean_pearson`: -0.02555828184086421
+    - `mean_spearman`: -0.02058573853989813
+    - `n_dates`: 76
+    - `p_spearman`: 0.19572353167227316
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -1.7842605437281447
+    - `t_spearman`: -1.305469720334884
+  - [39]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -2.096564125601199
+    - `icir_pearson`: -0.13207112581048475
+    - `mean_pearson`: -0.021895447806944954
+    - `mean_spearman`: -0.027774347893193392
+    - `n_dates`: 95
+    - `p_spearman`: 0.16594897153868257
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -1.0605985483113238
+    - `t_spearman`: -1.3961795437955
+  - [40]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 1.6163796639946277
+    - `icir_pearson`: 0.1018223479807602
+    - `mean_pearson`: 0.016906730997923156
+    - `mean_spearman`: 0.01970207212142696
+    - `n_dates`: 91
+    - `p_spearman`: 0.3067558736883516
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.871609202682943
+    - `t_spearman`: 1.027890728962294
+  - [41]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 0.30182055118093215
+    - `icir_pearson`: 0.019012907595075918
+    - `mean_pearson`: 0.0035122347572515466
+    - `mean_spearman`: -0.004104607192467981
+    - `n_dates`: 76
+    - `p_spearman`: 0.8007729892076478
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.19077655538550975
+    - `t_spearman`: -0.2532434220247246
+  - [42]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -1.7157082834933273
+    - `icir_pearson`: -0.10807946286802021
+    - `mean_pearson`: -0.01984936293464631
+    - `mean_spearman`: -0.010788701960179038
+    - `n_dates`: 95
+    - `p_spearman`: 0.5466993701421551
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: -1.108800477313573
+    - `t_spearman`: -0.6049053700000151
+  - [43]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 0.06028189584454426
+    - `icir_pearson`: 0.0037974024991467158
+    - `mean_pearson`: 0.0007360854951400269
+    - `mean_spearman`: 0.0020946795140343523
+    - `n_dates`: 91
+    - `p_spearman`: 0.9081866286559807
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.044974204516145415
+    - `t_spearman`: 0.11565121048759748
+  - [44]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 1.4831218451185724
+    - `icir_pearson`: 0.09342789443311898
+    - `mean_pearson`: 0.015412861485122246
+    - `mean_spearman`: 0.008088632505016208
+    - `n_dates`: 76
+    - `p_spearman`: 0.6554938798978059
+    - `shard`: pure_noise
+    - `status`: ok
+    - `t_pearson`: 0.8456428159780399
+    - `t_spearman`: 0.44793149556652423
+  - [45]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -1.2680437625214278
+    - `icir_pearson`: -0.07987924874234152
+    - `mean_pearson`: -0.03965169983166007
+    - `mean_spearman`: -0.03509029171168391
+    - `n_dates`: 95
+    - `p_spearman`: 0.7684151458507436
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -0.3159501641946871
+    - `t_spearman`: -0.2953011120995947
+  - [46]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -2.208054432110451
+    - `icir_pearson`: -0.13909435496805253
+    - `mean_pearson`: -0.07221603558123799
+    - `mean_spearman`: -0.06846782250008056
+    - `n_dates`: 91
+    - `p_spearman`: 0.5898215559849248
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -0.5341740980527263
+    - `t_spearman`: -0.5410329057519722
+  - [47]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -5.898201074543467
+    - `icir_pearson`: -0.37155174347371317
+    - `mean_pearson`: -0.18267787370458596
+    - `mean_spearman`: -0.17501736379070842
+    - `n_dates`: 76
+    - `p_spearman`: 0.1875448956199562
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.3172633523444335
+    - `t_spearman`: -1.330012003781242
+  - [48]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -3.786679016924841
+    - `icir_pearson`: -0.23853835651451602
+    - `mean_pearson`: -0.05357011008662824
+    - `mean_spearman`: -0.04290013891032567
+    - `n_dates`: 95
+    - `p_spearman`: 0.32851623636787386
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.1779695231427647
+    - `t_spearman`: -0.9822130129563434
+  - [49]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -4.067071595849931
+    - `icir_pearson`: -0.25620142873603596
+    - `mean_pearson`: -0.056515520784172976
+    - `mean_spearman`: -0.04936192839418646
+    - `n_dates`: 91
+    - `p_spearman`: 0.24007352063258355
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.2850378369315036
+    - `t_spearman`: -1.1826228353523693
+  - [50]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -4.760744110554601
+    - `icir_pearson`: -0.29989868981292533
+    - `mean_pearson`: -0.07121433175936512
+    - `mean_spearman`: -0.06404827133816948
+    - `n_dates`: 76
+    - `p_spearman`: 0.18386663576582754
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.499295201293481
+    - `t_spearman`: -1.3413127370957503
+  - [51]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 0.07361636930536757
+    - `icir_pearson`: 0.004637395371559317
+    - `mean_pearson`: 0.000769976780675114
+    - `mean_spearman`: -0.008006636826670783
+    - `n_dates`: 95
+    - `p_spearman`: 0.6589160654121171
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: 0.04530713706092511
+    - `t_spearman`: -0.44281616016605896
+  - [52]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -2.4114873364592273
+    - `icir_pearson`: -0.15190942338220614
+    - `mean_pearson`: -0.027684168719340336
+    - `mean_spearman`: -0.03186329799233025
+    - `n_dates`: 91
+    - `p_spearman`: 0.036901138529857706
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.8696703741296747
+    - `t_spearman`: -2.1183525230623177
+  - [53]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -2.836199044354417
+    - `icir_pearson`: -0.1786637461914485
+    - `mean_pearson`: -0.03178897640950077
+    - `mean_spearman`: -0.031703387868498224
+    - `n_dates`: 76
+    - `p_spearman`: 0.12700579970630252
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.472731435894075
+    - `t_spearman`: -1.5431405856228726
+  - [54]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -0.16470411345201633
+    - `icir_pearson`: -0.010375383907223886
+    - `mean_pearson`: -0.00180629239217092
+    - `mean_spearman`: -0.007018830066368268
+    - `n_dates`: 95
+    - `p_spearman`: 0.6773856919767571
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -0.09867113967578049
+    - `t_spearman`: -0.41733409522665926
+  - [55]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -2.103999380693851
+    - `icir_pearson`: -0.13253950285594865
+    - `mean_pearson`: -0.023332127903419906
+    - `mean_spearman`: -0.014928619767329449
+    - `n_dates`: 91
+    - `p_spearman`: 0.5142259043981311
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: -1.0032688761797277
+    - `t_spearman`: -0.6548634290555353
+  - [56]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 0.6061370394056398
+    - `icir_pearson`: 0.038183044445054305
+    - `mean_pearson`: 0.006644244203023485
+    - `mean_spearman`: 0.008527550547924062
+    - `n_dates`: 76
+    - `p_spearman`: 0.7077675491262173
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: 0.2894856901058023
+    - `t_spearman`: 0.376284801996692
+  - [57]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 1.2680437625214278
+    - `icir_pearson`: 0.07987924874234152
+    - `mean_pearson`: 0.03965169983166007
+    - `mean_spearman`: 0.03509029171168391
+    - `n_dates`: 95
+    - `p_spearman`: 0.7684151458507436
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: 0.3159501641946871
+    - `t_spearman`: 0.2953011120995947
+  - [58]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 2.208054432110451
+    - `icir_pearson`: 0.13909435496805253
+    - `mean_pearson`: 0.07221603558123799
+    - `mean_spearman`: 0.06846782250008056
+    - `n_dates`: 91
+    - `p_spearman`: 0.5898215559849248
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: 0.5341740980527263
+    - `t_spearman`: 0.5410329057519722
+  - [59]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 5.898201074543467
+    - `icir_pearson`: 0.37155174347371317
+    - `mean_pearson`: 0.18267787370458596
+    - `mean_spearman`: 0.17501736379070842
+    - `n_dates`: 76
+    - `p_spearman`: 0.1875448956199562
+    - `shard`: regime_flip
+    - `status`: ok
+    - `t_pearson`: 1.3172633523444335
+    - `t_spearman`: 1.330012003781242
+  - [60]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 9.482562519436499
+    - `icir_pearson`: 0.5973452909059777
+    - `mean_pearson`: 0.10302081141794399
+    - `mean_spearman`: 0.08996372897052014
+    - `n_dates`: 95
+    - `p_spearman`: 4.4845315800854875e-08
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 7.935110661908334
+    - `t_spearman`: 5.954344426218678
+  - [61]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 8.471847217171657
+    - `icir_pearson`: 0.5336762114754956
+    - `mean_pearson`: 0.10199152843177718
+    - `mean_spearman`: 0.09724146820921015
+    - `n_dates`: 91
+    - `p_spearman`: 0.0002567742896328794
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 4.147327749344199
+    - `t_spearman`: 3.806596442188741
+  - [62]
+    - `challenger`: identity
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 8.80006622163737
+    - `icir_pearson`: 0.5543520653179117
+    - `mean_pearson`: 0.11041470990084386
+    - `mean_spearman`: 0.09487382312085196
+    - `n_dates`: 76
+    - `p_spearman`: 9.359528903516722e-06
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 5.193883163387239
+    - `t_spearman`: 4.75560366545392
+  - [63]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: 1.979981907642662
+    - `icir_pearson`: 0.12472713638166051
+    - `mean_pearson`: 0.022376385578488155
+    - `mean_spearman`: 0.014840253125482324
+    - `n_dates`: 95
+    - `p_spearman`: 0.4924516400106524
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 1.2580313044358626
+    - `t_spearman`: 0.6891098328430674
+  - [64]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 1.8340143593732412
+    - `icir_pearson`: 0.11553204513864376
+    - `mean_pearson`: 0.020646966760911382
+    - `mean_spearman`: 0.02764574135541878
+    - `n_dates`: 91
+    - `p_spearman`: 0.2891392822205432
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 0.901521825947171
+    - `t_spearman`: 1.0663019763780528
+  - [65]
+    - `challenger`: noisy
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 1.67291821356197
+    - `icir_pearson`: 0.10538394182941463
+    - `mean_pearson`: 0.017443118110859145
+    - `mean_spearman`: 0.030516862170087984
+    - `n_dates`: 76
+    - `p_spearman`: 0.1600376913585564
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 0.7641197337660448
+    - `t_spearman`: 1.4190135482059536
+  - [66]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -1.1255505978687346
+    - `icir_pearson`: -0.07090302309477949
+    - `mean_pearson`: -0.01388796355792099
+    - `mean_spearman`: -0.014570149714462107
+    - `n_dates`: 95
+    - `p_spearman`: 0.4153485501107371
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -0.7717130144610186
+    - `t_spearman`: -0.8181361597559155
+  - [67]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: 0.9546573357629541
+    - `icir_pearson`: 0.060137759469339636
+    - `mean_pearson`: 0.011850198319293079
+    - `mean_spearman`: 0.011121942573555478
+    - `n_dates`: 91
+    - `p_spearman`: 0.6482068132917133
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 0.4732789338939294
+    - `t_spearman`: 0.45778975581916487
+  - [68]
+    - `challenger`: lagged
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: 1.8569638966829605
+    - `icir_pearson`: 0.11697773010115603
+    - `mean_pearson`: 0.02375453505268705
+    - `mean_spearman`: 0.013109661984874208
+    - `n_dates`: 76
+    - `p_spearman`: 0.4924435048476603
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: 1.1115971233281257
+    - `t_spearman`: 0.6898085989189323
+  - [69]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -2.590447346022781
+    - `icir_pearson`: -0.16318284433294195
+    - `mean_pearson`: -0.029308749589839592
+    - `mean_spearman`: -0.030216854452847667
+    - `n_dates`: 95
+    - `p_spearman`: 0.05311425087437502
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -1.7754249217659637
+    - `t_spearman`: -1.958678789678208
+  - [70]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -2.9291981430530867
+    - `icir_pearson`: -0.18452213874644446
+    - `mean_pearson`: -0.034224826456482026
+    - `mean_spearman`: -0.037245013051464666
+    - `n_dates`: 91
+    - `p_spearman`: 0.06117007432185598
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -1.6420916671534418
+    - `t_spearman`: -1.8959882810015019
+  - [71]
+    - `challenger`: shuffled
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -6.206027366466125
+    - `icir_pearson`: -0.3909429771745352
+    - `mean_pearson`: -0.06379087835016796
+    - `mean_spearman`: -0.05858832381540362
+    - `n_dates`: 76
+    - `p_spearman`: 0.004262982610994275
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -3.1574993069536745
+    - `t_spearman`: -2.947887371285856
+  - [72]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 1
+    - `icir_ann_pearson`: -9.482562519436499
+    - `icir_pearson`: -0.5973452909059777
+    - `mean_pearson`: -0.10302081141794399
+    - `mean_spearman`: -0.08996372897052014
+    - `n_dates`: 95
+    - `p_spearman`: 4.4845315800854875e-08
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -7.935110661908334
+    - `t_spearman`: -5.954344426218678
+  - [73]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 5
+    - `icir_ann_pearson`: -8.471847217171657
+    - `icir_pearson`: -0.5336762114754956
+    - `mean_pearson`: -0.10199152843177718
+    - `mean_spearman`: -0.09724146820921015
+    - `n_dates`: 91
+    - `p_spearman`: 0.0002567742896328794
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -4.147327749344199
+    - `t_spearman`: -3.806596442188741
+  - [74]
+    - `challenger`: inverted
+    - `error`: 
+    - `horizon`: 20
+    - `icir_ann_pearson`: -8.80006622163737
+    - `icir_pearson`: -0.5543520653179117
+    - `mean_pearson`: -0.11041470990084386
+    - `mean_spearman`: -0.09487382312085196
+    - `n_dates`: 76
+    - `p_spearman`: 9.359528903516722e-06
+    - `shard`: weak_signal
+    - `status`: ok
+    - `t_pearson`: -5.193883163387239
+    - `t_spearman`: -4.75560366545392
+- `schema`: cross_sectional_rankic.v1
+- `seed`: 11

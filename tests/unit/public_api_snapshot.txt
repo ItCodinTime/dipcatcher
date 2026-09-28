@@ -186,7 +186,7 @@ load_config(path: str | Path) -> AppConfig
 read_research_receipt(path: str | Path) -> ResearchReceipt
 
 [run_backtest]
-run_backtest(bars: pl.DataFrame, weights: pl.DataFrame, config: AppConfig, *, initial_nav: float = 1000000.0, risk_overlay: BookRiskOverlay | None = None) -> BacktestRun
+run_backtest(bars: pl.DataFrame, weights: pl.DataFrame, config: AppConfig, *, initial_nav: float = 1000000.0, risk_overlay: BookRiskOverlay | None = None, fast: bool | None = None) -> BacktestRun
 
 [run_research]
 run_research(config: AppConfig) -> ResearchRun

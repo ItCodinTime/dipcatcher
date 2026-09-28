@@ -72,6 +72,7 @@ packages = [
 name = "orchestration"
 packages = [
     "pipeline",  # dataset/train/forecast orchestration consumed by research
+    "backtest",  # replay engine — research sweeps drive it; it never imports research
 ]
 
 [[layers]]
@@ -89,7 +90,6 @@ packages = [
 [[layers]]
 name = "simulation"
 packages = [
-    "backtest",    # event engine driving pipeline forecasts + execution
     "hedge_lab",   # hedge-lab books racing lightspeed/pipeline/research
     "market_sim",  # market simulator over backtest
     "paper",       # paper-trading loop (order-path; deny rule below)

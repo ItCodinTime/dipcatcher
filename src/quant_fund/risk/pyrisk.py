@@ -21,13 +21,13 @@ from scipy import stats
 
 from quant_fund.metrics.probability import christoffersen_cc, kupiec_pof
 from quant_fund.metrics.risk import gaussian_es, gaussian_var, historical_es, historical_var
+from quant_fund.utils.series import finite_1d
 
 Array = NDArray[np.float64]
 
 
 def _finite_1d(array: Array) -> Array:
-    x = np.asarray(array, dtype=float).reshape(-1)
-    return x[np.isfinite(x)]
+    return finite_1d(array)
 
 
 def _loss_alpha(tail_p: float) -> float:

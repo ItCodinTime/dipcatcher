@@ -190,7 +190,7 @@ def bench_weighted_cqr(
     n_test: int = 400,
     alpha: float = 0.10,
     seed: int = 7,
-) -> dict[str, float]:
+) -> dict[str, float | str]:
     """Coverage and width on a planted two-component vol shift. No Sharpe."""
     y_cal, lo_c, hi_c, x_cal, y_te, lo_t, hi_t, x_te = _synthetic_vol_shift(n_cal, n_test, seed)
     model = WeightedSplitCQR(alpha).calibrate(y_cal, lo_c, hi_c, x_cal)
@@ -208,4 +208,7 @@ def bench_weighted_cqr(
         "unweighted_median_width": plain.median_width,
         "n": float(weighted.n),
         "alpha": float(alpha),
+        "dgp": "fixture",
+        "claim": "research_metric_only",
+        "seed": float(seed),
     }

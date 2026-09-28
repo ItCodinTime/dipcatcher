@@ -23,6 +23,8 @@ from numpy.typing import NDArray
 from scipy import optimize as opt
 from scipy import stats as sstats
 
+from quant_fund.utils.numeric import require_upper_tail_alpha
+
 Array = NDArray[np.float64]
 
 
@@ -35,10 +37,7 @@ def _as_losses(losses: Array, name: str = "losses") -> Array:
 
 
 def _require_alpha(alpha: float) -> float:
-    a = float(alpha)
-    if not np.isfinite(a) or not (0.5 < a < 1.0):
-        raise ValueError("alpha must be in (0.5, 1)")
-    return a
+    return require_upper_tail_alpha(alpha)
 
 
 def cornish_fisher_var(losses: Array, alpha: float = 0.95) -> dict[str, float]:

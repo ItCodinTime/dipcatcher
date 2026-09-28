@@ -63,12 +63,14 @@ def figarch_variance(
     e2 = v * v
     s0 = float(np.mean(e2[: max(10, n // 10)])) if sigma2_0 is None else float(sigma2_0)
     pi = _fracdiff_weights(d, n)
-    # lam[k-1] is the lag-k FIGARCH weight: lambda_1 = d + phi - beta;
-    # lambda_k = beta*lambda_{k-1} + pi_k - phi*pi_{k-1} (BBM 1996).
+    # lam[k-1] is the lag-k FIGARCH weight. Expanding
+    # [1 - (1 - phi L)(1 - L)^d / (1 - beta L)] with pi_k the signed binomial
+    # coefficients of (1 - L)^d (pi_1 = -d) gives the BBM (1996) recursion
+    # lam_k - beta*lam_{k-1} = -(pi_k - phi*pi_{k-1}).
     lam = np.zeros(n)
     lam[0] = d + phi - beta
     for k in range(2, n):
-        lam[k - 1] = beta * lam[k - 2] + pi[k] - phi * pi[k - 1]
+        lam[k - 1] = beta * lam[k - 2] - pi[k] + phi * pi[k - 1]
     omega_bar = s0 * max(1.0 - beta, 1e-6)  # unconditional anchor
     sigma2 = np.empty(n)
     sigma2[0] = s0
@@ -149,7 +151,7 @@ def aparch_variance(
         news = (abs(e) - gamma * e) ** delta
         sdelta[t] = omega + alpha * news + beta * sdelta[t - 1]
         if not np.isfinite(sdelta[t]) or sdelta[t] <= 0:
-            sdelta[t] = sdelta[t - 1]
+            raise FloatingPointError("APARCH variance path diverged")
     return sdelta ** (2.0 / delta)
 
 

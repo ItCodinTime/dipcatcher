@@ -29,9 +29,9 @@ layer at module scope is a `layer-order` violation.
 | `market_data` | data, pit, labels, features, fusion, microstructure, northset, metrics | ingest, PIT vault, features, LOB estimators, shared scoring vocabulary |
 | `analytics` | models, portfolio, quant_models, risk, monitoring, diffbacktest, mc_engine, lightspeed, native, reporting, validation | models + allocation + the tools that score them |
 | `execution` | execution, pretrade, parity, formal | simulated broker, cost models, pre-trade and parity checks |
-| `orchestration` | pipeline | dataset/train/forecast orchestration consumed by research |
+| `orchestration` | pipeline, backtest | the train/forecast and replay engines that research drives |
 | `research` | research, robustness, leakage, audit, stress, proof, reality | research catalog/benches and its verification tooling |
-| `simulation` | backtest, hedge_lab, market_sim, paper | engines that drive the layers below them |
+| `simulation` | hedge_lab, market_sim, paper | books/sessions that consume research outputs and the engines |
 | `interface` | api, cli, simtest | entry points |
 
 Two deliberate exemptions:

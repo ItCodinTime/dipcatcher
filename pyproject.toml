@@ -40,7 +40,13 @@ dependencies = [
 
 [project.optional-dependencies]
 nn = ["torch>=2.4"]
-explainability = ["shap>=0.52.0"]
+# shap 0.52 pins numba<0.63 on darwin x86_64, and that numba pins numpy<2.4.
+# Keeping shap there forks uv.lock into numpy 2.3.5 and 2.5.3. Phase-1
+# rejects a duplicated locked runtime package, so the extra is omitted on
+# that one platform. Everywhere else shap still resolves with numpy 2.5.3.
+explainability = [
+    "shap>=0.52.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
 # CPU JAX is enough for the differentiable backtest. Not a core dependency:
 # `uv sync --frozen --all-groups` (no extras) does not install it. The
 # `diffbacktest` CI job installs this extra explicitly and pins JAX to CPU.
@@ -120,8 +126,14 @@ line-length = 100
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "C901"]
 ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
+
+[tool.ruff.lint.mccabe]
+# Ceiling is validate_ledger_schema (paper ledger, left intact).
+# verify_research_artifact was 196 before it was split. Raising this
+# fails tests/unit/test_quality_ratchet.py. Lowering it is allowed.
+max-complexity = 74
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B018"]

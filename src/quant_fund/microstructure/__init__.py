@@ -35,6 +35,7 @@ from quant_fund.microstructure.book_metrics import (
 from quant_fund.microstructure.candle_book_features import (
     attach_candle_book_features,
     candle_features_from_bars,
+    forward_close_return_labels,
 )
 from quant_fund.microstructure.synthetic_lob import (
     ensure_book_panel_shape_columns,
@@ -63,6 +64,7 @@ __all__ = [
     "tob_size_share_finite_rate",
     "depth_shape_finite_rate",
     "candle_features_from_bars",
+    "forward_close_return_labels",
     "microprice",
     "ensure_book_panel_shape_columns",
     "synthesize_l2_from_bars",

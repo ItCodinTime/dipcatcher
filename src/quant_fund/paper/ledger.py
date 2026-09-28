@@ -420,7 +420,7 @@ def promotion_dry_run(
     if n_steps < int(min_steps):
         ok = False
         reasons.append(f"insufficient_steps:{n_steps}<{min_steps}")
-    if mean_l1 != mean_l1:  # NaN
+    if mean_l1 != mean_l1 or max_l1 != max_l1:  # NaN in either divergence stat
         ok = False
         reasons.append("missing_divergence")
     elif mean_l1 > float(max_mean_l1):

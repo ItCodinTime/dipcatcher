@@ -31,7 +31,7 @@ def _load_forbidden_tokens() -> frozenset[str]:
     """Import the catalog constant lazily; fall back to the pinned set."""
     try:
         from quant_fund.research.catalog import FORBIDDEN_RESEARCH_METRIC_KEYS
-    except Exception:
+    except (ImportError, AttributeError):
         return _TOKEN_FALLBACK
     return frozenset(str(tok) for tok in FORBIDDEN_RESEARCH_METRIC_KEYS)
 

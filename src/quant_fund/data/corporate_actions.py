@@ -276,6 +276,15 @@ def adjust_prices(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
 
     Total return close reinvests cash dividends at the ex-date close.
     """
+    if "close" not in bars.columns:
+        raise PointInTimeError("bars frame is missing close")
+    close = pl.col("close").cast(pl.Float64, strict=False)
+    bad_close = bars.filter(close.is_null() | close.is_nan() | close.is_infinite() | (close <= 0.0))
+    if bad_close.height:
+        raise PointInTimeError(
+            "bars contain null, non-finite, or non-positive close; "
+            "total-return math would silently produce NaN/inf"
+        )
     out = cumulative_split_factors(bars, actions)
     out = attach_dividends(out, actions)
     sf = pl.col("split_factor")
@@ -285,17 +294,6 @@ def adjust_prices(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
         (pl.col("low") / sf).alias("low_split_adjusted"),
         (pl.col("close") / sf).alias("close_split_adjusted"),
         (pl.col("volume") * sf).alias("volume_split_adjusted"),
-    )
-    # TR index: start at first split-adjusted close; multiply by (1 + div/close)
-    out = out.sort(["security_id", "event_time"]).with_columns(
-        (pl.col("dividend") / pl.col("close")).fill_nan(0.0).alias("_div_ret")
-    )
-    out = out.with_columns(
-        (
-            pl.col("close_split_adjusted")
-            * (1.0 + pl.col("_div_ret")).cum_prod().over("security_id")
-            / (1.0 + pl.col("_div_ret"))
-        ).alias("close_total_return")
     )
     # Total return = split-adjusted price return plus the cash dividend, both
     # per unit of prior wealth. `dividend` is cash per share on the ex-date's
@@ -317,4 +315,4 @@ def adjust_prices(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
             * (1.0 + pl.col("_tr_ret")).cum_prod().over("security_id")
         ).alias("close_total_return")
     )
-    return out.drop(["_div_ret", "_tr_ret"])
+    return out.drop("_tr_ret")

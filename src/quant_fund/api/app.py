@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from quant_fund import __firm__, __version__
 from quant_fund.config import load_config
+from quant_fund.config.models import AppConfig
 from quant_fund.metrics.analytics import validate_analytics_export
 from quant_fund.pipeline.doctor import doctor
 from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
@@ -91,7 +92,7 @@ def _weights_honesty_envelope(rows: list[dict[str, Any]]) -> dict[str, Any]:
     )
 
 
-def _load_cfg(config_path: str):
+def _load_cfg(config_path: str) -> AppConfig:
     return load_config(resolve_allowed_config_path(config_path))
 
 
@@ -135,7 +136,7 @@ async def api_auth_middleware(request: Request, call_next):  # type: ignore[no-u
     response: JSONResponse | Any
     expected = os.environ.get("QUANT_API_KEY")
     received_bytes = 0
-    original_receive = request._receive  # type: ignore[attr-defined]
+    original_receive = request._receive
 
     async def limited_receive() -> Any:
         nonlocal received_bytes
@@ -146,7 +147,7 @@ async def api_auth_middleware(request: Request, call_next):  # type: ignore[no-u
                 raise _RequestBodyTooLarge
         return message
 
-    request._receive = limited_receive  # type: ignore[attr-defined]
+    request._receive = limited_receive
     try:
         declared_length = request.headers.get("content-length")
         if declared_length is not None:

@@ -17,19 +17,10 @@ import polars as pl
 from quant_fund.config.models import AppConfig
 from quant_fund.registry.mlflow_store import promotion_decision
 from quant_fund.research.verify import verify_research_artifact
+from quant_fund.utils.numeric import positive_integral_count as _positive_integral_count
 from quant_fund.utils.reproducibility import git_worktree_sha256
 
 REQUIRED_EVIDENCE = ("mean_ic", "net_spread", "turnover")
-
-
-def _positive_integral_count(value: Any) -> int:
-    """Return a valid positive count, rejecting coercion-shaped evidence."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return 0
-    numeric = float(value)
-    if not math.isfinite(numeric) or numeric <= 0 or not numeric.is_integer():
-        return 0
-    return int(numeric)
 
 
 def _required_metrics_present(metrics: dict[str, Any]) -> bool:
