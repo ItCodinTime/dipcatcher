@@ -20,8 +20,8 @@
       "status": "audited"
     },
     "cli": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 15,
+      "status": "audited"
     },
     "compute": {
       "n_modules": 3,
