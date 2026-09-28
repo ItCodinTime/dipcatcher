@@ -318,6 +318,72 @@ def fleet(
     typer.echo(f"receipt={path}")
 
 
+@app.command("calibration-eval")
+def calibration_eval_cmd(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None, help="Comma-separated head names (default: full fleet registry)."
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all synthetic shards)."
+    ),
+    n_train: int = typer.Option(512, help="Leading fit rows per shard."),
+    n_eval: int = typer.Option(256, help="Trailing scored rows per shard."),
+    pit_bins: int = typer.Option(10, help="PIT histogram bins (5-50)."),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = calibration_eval.v1 (default), "
+        "2 = unified receipt.v2 envelope.",
+    ),
+) -> None:
+    """Run the SYNTHETIC distribution-fleet calibration lane and write a receipt.
+
+    PIT histograms, central-interval coverage, and reliability/calibration
+    slopes on the same origins as ``fleet`` — calibration diagnostics only,
+    never market or live-P&L claims.
+    """
+    from quant_fund.research.calibration_eval import (
+        run_calibration_eval,
+        write_calibration_receipt,
+    )
+    from quant_fund.research.fleet_eval import (
+        fleet_head_factories,
+        resolve_shard_generators,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        factories = fleet_head_factories(
+            cfg.quantiles.levels,
+            base_seed,
+            None if models is None else models.split(","),
+        )
+        resolved_shards = resolve_shard_generators(None if shards is None else shards.split(","))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    frame, receipt = run_calibration_eval(
+        factories,
+        resolved_shards,
+        n_train=n_train,
+        n_eval=n_eval,
+        seed=base_seed,
+        taus=cfg.quantiles.levels,
+        pit_bins=pit_bins,
+    )
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_calibration_receipt(receipt, out_dir, receipt_version=receipt_version)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(frame)
+    typer.echo(f"receipt={path}")
+
+
 @app.command("verify-receipt")
 def verify_receipt_cmd(
     path: Path = typer.Argument(..., help="Receipt JSON file to verify."),

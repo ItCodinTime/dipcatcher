@@ -235,6 +235,7 @@ module = [
     "quant_fund.research.benches.intervals",
     "quant_fund.research.benches.ranking",
     "quant_fund.research.benches_extra",
+    "quant_fund.research.calibration_eval",
     "quant_fund.research.catalog",
     "quant_fund.research.catalog.batteries",
     "quant_fund.research.catalog._helpers",

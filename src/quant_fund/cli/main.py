@@ -51,6 +51,7 @@ from quant_fund.cli.research_cmds import (
     verify_identities,
     verify_receipt_cmd,
     fleet,
+    calibration_eval_cmd,
     vol_bench,
     capacity,
 )
@@ -167,6 +168,7 @@ __all__ = [
     "verify_identities",
     "verify_receipt_cmd",
     "fleet",
+    "calibration_eval_cmd",
     "vol_bench",
     "capacity",
     "session_book_cmd",
