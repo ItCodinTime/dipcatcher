@@ -189,7 +189,7 @@
       "status": "audited"
     },
     "simtest": {
-      "n_modules": 8,
+      "n_modules": 10,
       "status": "audited"
     },
     "stress": {
