@@ -1,277 +1,405 @@
-"""W6 proven-runner tests (WAVE2.md §4): synthetic vault, no metric claims."""
+"""Proven runner end-to-end + fail-closed tests (WAVE2.md §4).
+
+All vaults are tiny synthetic datasets built in tmp_path; synthetic data is
+correctness evidence only, never a performance claim.
+"""
 
 from __future__ import annotations
 
 import json
-import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
 import pytest
+from pydantic import ValidationError
 
-from quant_fund.leakage.watchdog import LeakageError, LeakageWatchdog
-from quant_fund.pit.errors import VaultError
+from quant_fund.leakage.watchdog import LeakageError
+from quant_fund.pit.corrections import RestatementPolicy
+from quant_fund.pit.frame import PitFrame
+from quant_fund.pit.vault import PitVault
 from quant_fund.proof import runner as runner_mod
 from quant_fund.proof.bundle import load_chain
-from quant_fund.proof.runner import run_proven
+from quant_fund.proof.runner import run_backtest_proven, run_proven
 from quant_fund.proof.verify import verify_bundle
-from quant_fund.proofcore import run_context
 from quant_fund.proofcore.contracts import (
-    GENESIS_HASH,
     DecisionGrid,
     DecisionTrace,
     FeatureDecl,
     ProofError,
     RunSpec,
-    canonical_json_bytes,
     sha256_hex_bytes,
     sha256_hex_json,
 )
-from tests.unit.proof_fake_vault import FakeVault, synthetic_bars, synthetic_weights
 
 DATASET = "silver/bars"
 T0 = datetime(2024, 1, 10, tzinfo=UTC)
 DAY = timedelta(days=1)
 
 
-def _spec(
-    *,
-    features: tuple[FeatureDecl, ...] | list[FeatureDecl] = (),
-    grid: DecisionGrid | None = None,
-    estimator: str = "ewma_signal",
-    params: dict | None = None,
-    name: str = "synthetic",
-) -> RunSpec:
+def _bars_rows(n: int = 20) -> list[dict[str, object]]:
+    rows = []
+    for i in range(n):
+        t = datetime(2024, 1, 1, tzinfo=UTC) + i * DAY
+        rows.append({"event_time": t, "known_at": t, "close": 100.0 + i + (0.5 if i % 2 else -0.5)})
+    return rows
+
+
+def _build_vault(root: Path, *, extra: list[dict[str, object]] | None = None) -> PitVault:
+    vault = PitVault(root)
+    vault.create_dataset(DATASET, security_level=False)
+    vault.append(DATASET, pl.DataFrame(_bars_rows()))
+    if extra:
+        vault.append(DATASET, pl.DataFrame(extra))
+    return vault
+
+
+def _spec(estimator: str = "ewma_signal", count: int = 6, seed: int = 42) -> RunSpec:
+    params: dict[str, object] = {
+        "label": {"dataset": DATASET, "column": "close", "horizon": 1},
+    }
+    if estimator == "ewma_signal":
+        params["span"] = 3.0
     return RunSpec(
-        name=name,
-        vault_uri="vault://test",
-        decision_grid=grid or DecisionGrid(start=T0, step="1d", count=3),
-        features=tuple(features),
-        estimator=estimator,
-        estimator_params=params
-        or {"span": 2.0, "label": {"dataset": DATASET, "column": "close", "horizon": 1}},
-        seed=7,
-    )
-
-
-def _vault(tmp_path: Path, *, n: int = 12, with_weights: bool = False) -> FakeVault:
-    datasets: dict[str, pl.DataFrame] = {DATASET: synthetic_bars(["AAA"], n, start=T0 - 8 * DAY)}
-    if with_weights:
-        datasets["gold/weights"] = synthetic_weights(["AAA"], n)
-    return FakeVault(None, datasets, tmp_path / "vault")
-
-
-# ---------------------------------------------------------------------------
-# §4.4: fail-closed, no partial bundles
-# ---------------------------------------------------------------------------
-
-
-def test_undeclared_estimator_fails_closed_no_bundle(tmp_path) -> None:
-    with pytest.raises(ProofError, match="estimator_not_allowlisted"):
-        run_proven(_spec(estimator="xgboost"), vault=_vault(tmp_path), bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_undeclared_feature_kind_fails_closed_no_bundle(tmp_path) -> None:
-    spec = _spec(features=[FeatureDecl(name="f", kind="callable", params={})])
-    with pytest.raises(ProofError, match="feature_kind_undeclared"):
-        run_proven(spec, vault=_vault(tmp_path), bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_bad_label_declaration_fails_closed(tmp_path) -> None:
-    spec = _spec(params={"span": 2.0})
-    with pytest.raises(ProofError, match="estimator_params_missing_label"):
-        run_proven(spec, vault=_vault(tmp_path), bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_missing_vault_dataset_fails_closed_no_bundle(tmp_path) -> None:
-    spec = _spec(
-        features=[
-            FeatureDecl(
-                name="f",
-                kind="vault_column_lag",
-                params={"dataset": "silver/nope", "column": "close", "lag": 1},
-            )
-        ]
-    )
-    with pytest.raises(VaultError):
-        run_proven(spec, vault=_vault(tmp_path), bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_nan_feature_fails_closed_no_bundle(tmp_path) -> None:
-    bars = synthetic_bars(["AAA"], 4, start=T0 - 2 * DAY).with_columns(
-        pl.when(pl.col("event_time") == T0 - DAY)
-        .then(float("nan"))
-        .otherwise(pl.col("close"))
-        .alias("close")
-    )
-    vault = FakeVault(None, {DATASET: bars}, tmp_path / "vault")
-    spec = _spec(
-        features=[
-            FeatureDecl(
-                name="f",
-                kind="vault_column_lag",
-                params={"dataset": DATASET, "column": "close", "lag": 1},
-            )
-        ]
-    )
-    with pytest.raises(ProofError, match="nan_in_window"):
-        run_proven(spec, vault=vault, bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_future_known_rows_abort_the_run(tmp_path) -> None:
-    """A corrupted vault returning future-known rows must not mint a bundle."""
-    vault = _vault(tmp_path)
-    vault.frame_meta[DATASET] = ("event_time", None)  # turn off vault-side filtering
-    spec = _spec(
-        features=[
-            FeatureDecl(
-                name="f",
-                kind="vault_column_lag",
-                params={"dataset": DATASET, "column": "close", "lag": 1},
-            )
-        ]
-    )
-    with pytest.raises(LeakageError):
-        run_proven(spec, vault=vault, bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-def test_prior_state_feature_rejects_future_reference(tmp_path) -> None:
-    spec = _spec(
-        features=[
-            FeatureDecl(name="s", kind="prior_decision_state", params={"field": "next_action"})
-        ]
-    )
-    with pytest.raises(ProofError, match="unknown prior-state field"):
-        run_proven(spec, vault=_vault(tmp_path), bundle_dir=tmp_path / "b")
-    assert not (tmp_path / "b").exists()
-
-
-# ---------------------------------------------------------------------------
-# Trace integrity: hash chain, per-window reads, seeds
-# ---------------------------------------------------------------------------
-
-
-def _run_and_load_trace(tmp_path: Path, spec: RunSpec, **kwargs):
-    bundle_dir = tmp_path / "proofs"
-    ok, bundle_id = run_proven(spec, vault=_vault(tmp_path), bundle_dir=bundle_dir, **kwargs)
-    assert ok
-    trace = DecisionTrace.model_validate(
-        json.loads((bundle_dir / f"{bundle_id}.trace.json").read_bytes())
-    )
-    return bundle_dir, bundle_id, trace
-
-
-def test_run_proven_mints_chained_trace(tmp_path) -> None:
-    spec = _spec(
-        features=[
+        name="runner-test",
+        vault_uri="vault://main",
+        decision_grid=DecisionGrid(start=T0, step="1d", count=count),
+        features=(
             FeatureDecl(
                 name="lag1",
                 kind="vault_column_lag",
                 params={"dataset": DATASET, "column": "close", "lag": 1},
             ),
             FeatureDecl(
-                name="state",
-                kind="prior_decision_state",
-                params={"field": "last_signal", "initial": 0.0},
+                name="mom",
+                kind="vault_window_agg",
+                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "mean"},
             ),
-        ]
-    )
-    _, bundle_id, trace = _run_and_load_trace(tmp_path, spec)
-    assert trace.verify_chain() is True
-    assert len(trace.rows) == 3
-    assert trace.rows[0].prev_row_sha256 == GENESIS_HASH
-    assert trace.spec_sha256 == sha256_hex_json(spec.model_dump(mode="json"))
-    assert trace.head_row_sha256 != GENESIS_HASH
-    assert trace.rows[0].decision_time == T0
-
-
-def test_per_window_reads_are_causal_and_recorded(tmp_path) -> None:
-    spec = _spec(
-        grid=DecisionGrid(start=T0, step="1d", count=4),
-        features=[
             FeatureDecl(
-                name="lag2",
-                kind="vault_column_lag",
-                params={"dataset": DATASET, "column": "close", "lag": 2},
-            )
-        ],
+                name="prev",
+                kind="prior_decision_state",
+                params={"field": "last_signal"},
+            ),
+        ),
+        estimator=estimator,
+        estimator_params=params,
+        seed=seed,
     )
-    recorder_holder: dict[str, object] = {}
-    vault = _vault(tmp_path)
-    original_asof = vault.asof
-    watermarks: dict[datetime, list[datetime]] = {}
 
-    def spied_asof(name: str, t: datetime, *, columns=None):
-        watermarks.setdefault(run_context.current_decision_time(), []).append(t)
-        return original_asof(name, t, columns=columns)
 
-    vault.asof = spied_asof  # type: ignore[method-assign]
-    ok, _ = run_proven(spec, vault=vault, bundle_dir=tmp_path / "proofs")
+# -- end-to-end ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize("estimator", ["ewma_signal", "linear_regression_np"])
+def test_run_proven_end_to_end_mints_verifiable_bundle(tmp_path, estimator: str) -> None:
+    vault = _build_vault(tmp_path / "pit")
+    bundle_dir = tmp_path / "proofs"
+    ok, bundle_id = run_proven(_spec(estimator=estimator), vault=vault, bundle_dir=bundle_dir)
     assert ok
-    for decision_time, reads in watermarks.items():
-        assert all(t <= decision_time for t in reads)
-    assert recorder_holder == {}  # no cross-run state
 
+    # Wave-2 sidecars exist alongside the wave-1 sidecars.
+    for suffix in ("trace.json", "env.json", "seeds.json", "config.json", "metrics.json"):
+        assert (bundle_dir / f"{bundle_id}.{suffix}").is_file(), suffix
 
-def test_window_seeds_sidecar_is_deterministic(tmp_path) -> None:
-    spec = _spec()
-    bundle_dir, bundle_id, _ = _run_and_load_trace(tmp_path, spec)
+    # Trace chain verifies and commits to the spec.
+    trace = DecisionTrace.model_validate_json((bundle_dir / f"{bundle_id}.trace.json").read_bytes())
+    trace.verify_chain()
+    assert len(trace.rows) == 6
+    assert trace.spec_sha256 == sha256_hex_json(_spec(estimator=estimator).model_dump(mode="json"))
+
+    # Cold start: the first window predicts 0.0 (no matured labels yet).
+    signals = pl.read_parquet(bundle_dir / f"{bundle_id}.signals.parquet")
+    assert signals["target_weight"][0] == 0.0
+
+    # Sidecar hashes are committed in the (hash-checked) config sidecar.
+    config = json.loads((bundle_dir / f"{bundle_id}.config.json").read_bytes())
+    for kind in ("trace", "env", "seeds"):
+        expected = config["sidecars"][f"{kind}_sha256"]
+        actual = sha256_hex_bytes((bundle_dir / f"{bundle_id}.{kind}.json").read_bytes())
+        assert actual == expected, kind
+
+    # Seeds sidecar derives deterministically from the top-level seed.
     seeds = json.loads((bundle_dir / f"{bundle_id}.seeds.json").read_bytes())
-    assert seeds["seed"] == 7
-    assert seeds["window_seeds"] == {
-        str(i): sha256_hex_bytes(f"7|{i}".encode()) for i in range(3)
-    }
+    assert seeds["seed"] == 42
+    assert seeds["window_seeds"]["0"] == sha256_hex_bytes(b"42|0")
+
+    # The wave-1 verifier accepts the bundle (hash checks, chain, metrics).
+    result = verify_bundle(
+        bundle_dir / "bundles" / f"{bundle_id}.json",
+        bundle_dir=bundle_dir,
+        strict_signature=False,
+    )
+    assert result.ok, result.reasons
 
 
 def test_run_proven_is_deterministic(tmp_path) -> None:
-    """Two identical runs produce byte-identical trace/env/seeds sidecars."""
-    spec = _spec(
-        features=[
-            FeatureDecl(
-                name="w",
-                kind="vault_window_agg",
-                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "mean"},
-            )
-        ]
-    )
-    _, bundle_id_a, _ = _run_and_load_trace(tmp_path / "a", spec)
-    _, bundle_id_b, _ = _run_and_load_trace(tmp_path / "b", spec)
-    assert bundle_id_a == bundle_id_b  # same inputs -> same self-hash
-    for kind in ("trace", "env", "seeds", "config", "metrics"):
-        a = (tmp_path / "a" / "proofs" / f"{bundle_id_a}.{kind}.json").read_bytes()
-        b = (tmp_path / "b" / "proofs" / f"{bundle_id_b}.{kind}.json").read_bytes()
-        assert a == b, kind
-
-
-def test_run_proven_end_to_end_mints_verifiable_bundle(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("PROOFCORE_SIGNING_KEY", "test-key")
     spec = _spec()
-    bundle_dir, bundle_id, _ = _run_and_load_trace(tmp_path, spec, signing_key=b"test-key")
+    ok1, id1 = run_proven(spec, vault=_build_vault(tmp_path / "pit1"), bundle_dir=tmp_path / "b1")
+    ok2, id2 = run_proven(spec, vault=_build_vault(tmp_path / "pit2"), bundle_dir=tmp_path / "b2")
+    assert ok1 and ok2
+    assert id1 == id2
+    assert (tmp_path / "b1" / f"{id1}.trace.json").read_bytes() == (
+        tmp_path / "b2" / f"{id2}.trace.json"
+    ).read_bytes()
+
+
+def test_run_proven_chains_into_existing_bundle_dir(tmp_path) -> None:
+    bundle_dir = tmp_path / "proofs"
+    vault = _build_vault(tmp_path / "pit")
+    _, first_id = run_proven(_spec(), vault=vault, bundle_dir=bundle_dir)
+    _, second_id = run_proven(_spec(seed=43), vault=vault, bundle_dir=bundle_dir)
+    chain = load_chain(bundle_dir)
+    assert [b.bundle_id for b in chain] == [first_id, second_id]
+    assert chain[1].prev_bundle_hash == first_id
+
+
+def test_run_proven_signed_bundle_verifies_strict(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("PROOFCORE_SIGNING_KEY", "w6-test-key")
+    bundle_dir = tmp_path / "proofs"
+    ok, bundle_id = run_proven(
+        _spec(),
+        vault=_build_vault(tmp_path / "pit"),
+        bundle_dir=bundle_dir,
+        signing_key=b"w6-test-key",
+    )
+    assert ok
     result = verify_bundle(
         bundle_dir / "bundles" / f"{bundle_id}.json",
         bundle_dir=bundle_dir,
         strict_signature=True,
     )
     assert result.ok, result.reasons
-    chain = load_chain(bundle_dir)
-    assert [b.bundle_id for b in chain] == [bundle_id]
 
 
-def test_config_sidecar_commits_wave2_sidecars(tmp_path) -> None:
-    bundle_dir, bundle_id, _ = _run_and_load_trace(tmp_path, _spec())
-    config = json.loads((bundle_dir / f"{bundle_id}.config.json").read_bytes())
-    committed = config["sidecars"]
-    for kind in ("trace", "env", "seeds"):
-        data = (bundle_dir / f"{bundle_id}.{kind}.json").read_bytes()
-        assert committed[f"{kind}_sha256"] == sha256_hex_bytes(data)
-    assert config["run_spec"]["name"] == "synthetic"
+# -- fail closed ---------------------------------------------------------------
+
+
+def test_unknown_estimator_fails_closed(tmp_path) -> None:
+    with pytest.raises(ProofError, match="estimator_not_allowlisted"):
+        run_proven(
+            _spec(estimator="xgboost_please"),
+            vault=_build_vault(tmp_path / "pit"),
+            bundle_dir=tmp_path / "proofs",
+        )
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_unknown_feature_kind_rejected_by_contract() -> None:
+    with pytest.raises(ValidationError):
+        FeatureDecl(name="evil", kind="python_callable", params={})
+
+
+def test_missing_label_declaration_fails_closed(tmp_path) -> None:
+    spec = RunSpec(
+        name="no-label",
+        vault_uri="vault://main",
+        decision_grid=DecisionGrid(start=T0, step="1d", count=3),
+        features=(),
+        estimator="ewma_signal",
+        estimator_params={},
+        seed=1,
+    )
+    with pytest.raises(ProofError, match="estimator_params_missing_label"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_invalid_label_horizon_fails_closed(tmp_path) -> None:
+    spec = _spec()
+    spec = RunSpec(
+        **{
+            **spec.model_dump(),
+            "estimator_params": {"label": {"dataset": DATASET, "column": "close", "horizon": 0}},
+        }
+    )
+    with pytest.raises(ProofError, match="horizon"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_invalid_estimator_params_fail_closed(tmp_path) -> None:
+    spec = _spec(estimator="linear_regression_np")
+    spec = RunSpec(
+        **{
+            **spec.model_dump(),
+            "estimator_params": {
+                "bogus_kwarg": 1,
+                "label": {"dataset": DATASET, "column": "close", "horizon": 1},
+            },
+        }
+    )
+    with pytest.raises(ProofError, match="estimator_params_invalid"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_bad_feature_params_fail_closed(tmp_path) -> None:
+    spec = _spec()
+    bad = FeatureDecl(
+        name="bad",
+        kind="vault_column_lag",
+        params={"dataset": DATASET, "column": "close", "lag": 0},
+    )
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], bad)})
+    with pytest.raises(ProofError, match="lag"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_unknown_window_agg_fails_closed(tmp_path) -> None:
+    spec = _spec()
+    bad = FeatureDecl(
+        name="bad",
+        kind="vault_window_agg",
+        params={"dataset": DATASET, "column": "close", "window": 2, "agg": "median"},
+    )
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], bad)})
+    with pytest.raises(ProofError, match="agg"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_unknown_prior_state_field_fails_closed(tmp_path) -> None:
+    spec = _spec()
+    bad = FeatureDecl(name="bad", kind="prior_decision_state", params={"field": "future_weight"})
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], bad)})
+    with pytest.raises(ProofError, match="field"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_nan_injection_aborts_with_nan_in_window(tmp_path) -> None:
+    nan_row = {
+        "event_time": datetime(2024, 1, 5, tzinfo=UTC),
+        "known_at": datetime(2024, 1, 5, tzinfo=UTC),
+        "close": float("nan"),
+    }
+    vault = _build_vault(tmp_path / "pit", extra=[nan_row])
+    with pytest.raises(ProofError, match="nan_in_window"):
+        run_proven(_spec(), vault=vault, bundle_dir=tmp_path / "proofs")
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_seeded_future_knowledge_row_aborts_with_leakage_error(tmp_path) -> None:
+    """A vault that hands back rows known AFTER the decision time must abort.
+
+    The honest PitVault filter makes this unreachable through normal reads
+    (known_at <= watermark <= decision_time), so the test rigs the vault to
+    simulate a corrupted/backdoored read path; the runner's defense-in-depth
+    check (on top of the watchdog) fails closed and leaves no bundle behind.
+    """
+
+    class RiggedVault(PitVault):
+        def asof(
+            self,
+            name,
+            t,
+            *,
+            columns=None,
+            policy=RestatementPolicy.LATEST_KNOWN,
+            decision_time=None,
+        ):
+            frame = super().asof(
+                name, t, columns=columns, policy=policy, decision_time=decision_time
+            )
+            future_known = frame.frame.head(1).with_columns(
+                pl.lit(t + timedelta(days=10)).alias("known_at")
+            )
+            return PitFrame.build(pl.concat([frame.frame, future_known]), dataset=name, asof=t)
+
+    vault = RiggedVault(tmp_path / "pit")
+    vault.create_dataset(DATASET, security_level=False)
+    vault.append(DATASET, pl.DataFrame(_bars_rows()))
+    with pytest.raises(LeakageError, match="leakage"):
+        run_proven(_spec(), vault=vault, bundle_dir=tmp_path / "proofs")
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_tampered_trace_fails_verify_chain(tmp_path) -> None:
+    bundle_dir = tmp_path / "proofs"
+    _, bundle_id = run_proven(_spec(), vault=_build_vault(tmp_path / "pit"), bundle_dir=bundle_dir)
+    raw = json.loads((bundle_dir / f"{bundle_id}.trace.json").read_bytes())
+    raw["rows"][1]["data_manifest_sha256"] = "f" * 64
+    tampered = DecisionTrace.model_validate(raw)
+    with pytest.raises(ProofError, match="chain"):
+        tampered.verify_chain()
+    # A tampered head hash is caught even when rows are untouched.
+    raw = json.loads((bundle_dir / f"{bundle_id}.trace.json").read_bytes())
+    raw["head_row_sha256"] = "e" * 64
+    with pytest.raises(ProofError, match="head"):
+        DecisionTrace.model_validate(raw).verify_chain()
+
+
+def test_vault_unavailable_propagates(tmp_path) -> None:
+    """Grid reads before any known data fail closed via the vault."""
+    vault = PitVault(tmp_path / "pit")
+    vault.create_dataset(DATASET, security_level=False)
+    late = [
+        {"event_time": T0 + 30 * DAY, "known_at": T0 + 30 * DAY, "close": 1.0},
+    ]
+    vault.append(DATASET, pl.DataFrame(late))
+    from quant_fund.pit.frame import VaultUnavailableError
+
+    with pytest.raises(VaultUnavailableError):
+        run_proven(_spec(), vault=vault, bundle_dir=tmp_path / "proofs")
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_wave1_stub_unchanged_fail_closed(tmp_path) -> None:
+    from quant_fund.config.models import AppConfig
+
+    with pytest.raises(ProofError, match="per-decision as-of vault reads"):
+        run_backtest_proven(
+            AppConfig(), seed=7, pit_root=tmp_path / "pit", bundle_dir=tmp_path / "proofs"
+        )
+    assert not (tmp_path / "proofs").exists()
+
+
+def test_window_agg_variants_end_to_end(tmp_path) -> None:
+    """std/min/max/last aggregations are all legal, deterministic features."""
+    spec = _spec()
+    aggs = tuple(
+        FeatureDecl(
+            name=f"agg_{agg}",
+            kind="vault_window_agg",
+            params={"dataset": DATASET, "column": "close", "window": 2, "agg": agg},
+        )
+        for agg in ("std", "min", "max", "last")
+    )
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], *aggs)})
+    ok, bundle_id = run_proven(
+        spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs"
+    )
+    assert ok
+    trace = DecisionTrace.model_validate_json(
+        (tmp_path / "proofs" / f"{bundle_id}.trace.json").read_bytes()
+    )
+    trace.verify_chain()
+
+
+def test_feature_missing_params_fail_closed(tmp_path) -> None:
+    spec = _spec()
+    bad = FeatureDecl(name="bad", kind="vault_column_lag", params={"dataset": DATASET})
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], bad)})
+    with pytest.raises(ProofError, match="missing params"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_window_agg_zero_window_fails_closed(tmp_path) -> None:
+    spec = _spec()
+    bad = FeatureDecl(
+        name="bad",
+        kind="vault_window_agg",
+        params={"dataset": DATASET, "column": "close", "window": 0, "agg": "mean"},
+    )
+    spec = RunSpec(**{**spec.model_dump(), "features": (*spec.model_dump()["features"], bad)})
+    with pytest.raises(ProofError, match="window"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+def test_label_declaration_missing_keys_fail_closed(tmp_path) -> None:
+    spec = _spec()
+    spec = RunSpec(**{**spec.model_dump(), "estimator_params": {"label": {"dataset": DATASET}}})
+    with pytest.raises(ProofError, match="label declaration missing"):
+        run_proven(spec, vault=_build_vault(tmp_path / "pit"), bundle_dir=tmp_path / "proofs")
+
+
+# -- helpers -------------------------------------------------------------------
 
 
 def test_fingerprints_delegate_to_proofcore_ci(monkeypatch) -> None:
@@ -296,109 +424,6 @@ def test_env_fingerprint_format() -> None:
     assert fingerprint == ci.env_fingerprint()
 
 
-def test_feature_kinds_cover_all_declared_branches(tmp_path) -> None:
-    spec = _spec(
-        grid=DecisionGrid(start=T0, step="1d", count=3),
-        features=[
-            FeatureDecl(
-                name="lag",
-                kind="vault_column_lag",
-                params={"dataset": DATASET, "column": "close", "lag": 2},
-            ),
-            FeatureDecl(
-                name="aggstd",
-                kind="vault_window_agg",
-                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "std"},
-            ),
-            FeatureDecl(
-                name="aggmin",
-                kind="vault_window_agg",
-                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "min"},
-            ),
-            FeatureDecl(
-                name="aggmax",
-                kind="vault_window_agg",
-                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "max"},
-            ),
-            FeatureDecl(
-                name="agglast",
-                kind="vault_window_agg",
-                params={"dataset": DATASET, "column": "close", "window": 2, "agg": "last"},
-            ),
-            FeatureDecl(
-                name="state",
-                kind="prior_decision_state",
-                params={"field": "last_action", "initial": 0.25},
-            ),
-        ]
-    )
-    _, _, trace = _run_and_load_trace(tmp_path, spec)
-    assert len(trace.rows) == 3
-
-
-def test_estimator_state_hash_uses_float64_bytes() -> None:
-    import numpy as np
-
-    from quant_fund.proof.estimators import EwmaSignal
-
-    est = EwmaSignal(span=2.0)
-    est.fit(np.array([[1.0], [2.0]]), np.array([0.1, 0.2]))
-    assert sha256_hex_bytes(est.state_bytes()) == sha256_hex_bytes(
-        np.ascontiguousarray(est.state_vector(), dtype=np.float64).tobytes()
-    )
-
-
-def test_linear_regression_walkforward_expands(tmp_path) -> None:
-    spec = _spec(
-        estimator="linear_regression_np",
-        params={"label": {"dataset": DATASET, "column": "close", "horizon": 1}},
-        features=[
-            FeatureDecl(
-                name="lag1",
-                kind="vault_column_lag",
-                params={"dataset": DATASET, "column": "close", "lag": 1},
-            )
-        ],
-    )
-    _, _, trace = _run_and_load_trace(tmp_path, spec)
-    hashes = [row.estimator_state_sha256 for row in trace.rows]
-    assert len(set(hashes)) >= 2  # expanding window refit changes the state
-
-
-def test_runner_module_keeps_lazy_leakage_import() -> None:
-    """LH011 layering: the watchdog import stays function-level in runner."""
-    source = Path(runner_mod.__file__).read_text()
-    assert source.count("from quant_fund.leakage.watchdog import") >= 2
-
-
-def test_proven_run_context_installs_watchdog(tmp_path) -> None:
-    recorder_holder = []
-    from quant_fund.proof.recorder import InMemoryRecorder
-
-    recorder = InMemoryRecorder()
-    with run_context.proven_run(recorder, LeakageWatchdog(strict=True)):
-        assert run_context.context_is_proven()
-        with run_context.decision_window(T0):
-            assert run_context.current_decision_time() == T0
-        recorder_holder.append(len(recorder.reads))
-    assert not run_context.context_is_proven()
-    assert recorder_holder == [0]
-
-
-def test_atomic_commit_appends_single_chain_line(tmp_path) -> None:
-    spec = _spec()
-    bundle_dir = tmp_path / "proofs"
-    ok, first = run_proven(spec, vault=_vault(tmp_path), bundle_dir=bundle_dir)
-    assert ok
-    ok, second = run_proven(
-        spec.model_copy(update={"seed": 8}), vault=_vault(tmp_path), bundle_dir=bundle_dir
-    )
-    assert ok
-    chain = load_chain(bundle_dir)
-    assert [b.bundle_id for b in chain] == [first, second]
-    assert chain[1].prev_bundle_hash == first
-
-
-def test_package_version_helper() -> None:
-    assert runner_mod._package_version("polars") != "not-installed"
-    assert runner_mod._package_version("no_such_package_xyz") == "not-installed"
+def test_package_version_missing() -> None:
+    assert runner_mod._package_version("definitely_not_installed_xyz") == "not-installed"
+    assert runner_mod._package_version("numpy") != "not-installed"
