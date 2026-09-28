@@ -12,16 +12,16 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `api/` | `app.py` line-by-line: loopback-only auth default + constant-time compare, TOCTOU-safe receipt verification (hash before+after), path-containment on configs/artifacts, request size limits, security headers, `_stamp_research_honesty` force-overwrite on every response | — |
 | `audit/` | Merkle-chained ledger, flock'd cross-process appends, checkpoint integrity; Windows O_BINARY/LF-only fix | #286 stress tests, #293 Windows corrupt-ledger |
 | `backtest/` | loop.py divergence bookkeeping, fast_replay byte-identity vs reference (P4.2), sleeves incl. residual_mr | #215 mark-price leak on non-executing names, #338 divergence-resume weighting |
-| `calendars/` | Session/window arithmetic | — |
+| `calendars/` | Session/window arithmetic; trading-day math verified against exchange-calendar semantics | — |
 | `cli/` | All 15 modules: argv-list subprocess only, no shell, config-error UX | #205 doctor UX |
-| `compute/` | — | — |
+| `compute/` | Per-task seed derivation (murmur-finalize mix) so process_map result order = item order; serial fallback on pool failure; task exceptions propagate | — |
 | `config/` | safe_load, inherit path-containment, cycle detection | — |
 | `data/` | PIT sources, atomic writes, universe tie parity, manifest seals | #176 P6.3 fixes, #261 manifest seal, #275 pooled_stream atomic |
 | `diffbacktest/` | `delay>=1` structural gate; `end = t - delay` verified causal in every builder; adversarial radius documented as upper bound | — |
 | `execution/` | Money-path fills, costs | #173 P6.6, #174 P6.1 (exec-NAV leak, leverage-cap trap) |
 | `features/` | lot_spread eps dead-zone parity with zero_share | #337 |
-| `formal/` | Proof obligations, receipt contracts | — |
-| `fusion/` | Signal combination paths | — |
+| `formal/` | Z3-checked closed forms (NAV/cost/split/dividend); sim-only lifecycle spec — nothing submits orders; real-vs-IEEE gap documented | — |
+| `fusion/` | Cross-fitted ridge stacking is OOF-only (leakage-safe); finite guards on stacker inputs/params | — |
 | `hedge_lab/` | Every module line-by-line: slate lanes, book, race, hunt, tape, zoo | #320 same-bar look-ahead (delay>=1), #323 benchmark date-alignment + POSIX RAM |
 | `hmm/` | Stochasticity contract, log-space variants | #307 EM underflow + contract enforcement |
 | `labels/` | Triple-barrier observability, full-path gating | #212 (pipeline join), #325 last-bar events |
@@ -31,8 +31,8 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `mc_engine/` | Philox counter streams, chunk-pure engine, checkpoint fingerprinting, TDigest/Welford/P² merges, POT/GPD | #268 KATs, #295/#319 coverage |
 | `metrics/` | Proper-score suite, VaR backtests, inference (HAC/DM/MCS) | #206 clustered-variance, #304 propriety, #312 DQ, #315 KLM |
 | `microstructure/` | Quote/impact estimators | #175 P6.5 |
-| `monitoring/` | — | — |
-| `native/` | Rust bridge dispatch | — |
+| `monitoring/` | PSI drift emits `insufficient_data` not false all-clear; kill_switch: unknown state blocks, invalid transitions raise, auto-flatten never on exception | — |
+| `native/` | env-gated dispatch; docs honestly separate bit-exact kernels (cumsum, wealth, SHA-256) from tolerance kernels (EMA/RSI/book-OLS) | — |
 | `northset/` | All 9 modules: estimators (Kyle/Roll/Parkinson/GK/RS/YZ/CS/AR/CKS/BNS formula-verified), CKS OFI, sweep battery (executable next-open timing, cross-sectional demeaning, PIT vol regimes, matched eligible controls, predeclared primary test) | #317 flat-bar junk + VPIN remainder |
 | `observe/` | OTLP export error swallowing, log redaction | #336 |
 | `paper/` | loop, ledger, sim_live resume cursors, divergence merge, atomic receipts | #258 seals, #303 fail-closed cursors, #338 |
@@ -45,7 +45,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `proofcore/` | Hash-chain export ordering | #279 wall-clock → genesis walk |
 | `quant_models/` | BS/Greeks/GEX/HRP/TSMOM/risk-parity/MC; causal TSMOM, honest receipts | — |
 | `reality/` | Bailey–LdP PSR/DSR/MinTRL, CSCV/PBO ω-logit, SPA, BH-FDR — all verified against papers | — |
-| `registry/` | — | — |
+| `registry/` | MLflow store: artifact identity binding, research_only claim tags on every run | — |
 | `reporting/` | Tearsheet return-chain integrity | #326 interior NaN breaks chain |
 | `risk/` | Overlay causality, gate stack, ruin latching | #308 ruin latch, #310 fail-closed tail gates |
 | `robustness/` | Closed forms, swarm invariants | #264 KATs |
