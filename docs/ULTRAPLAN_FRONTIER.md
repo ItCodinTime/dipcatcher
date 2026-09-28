@@ -470,3 +470,16 @@ Coverage-invisible lanes excluded (numba `@njit` bodies in
 - #260 — cross-process determinism (PYTHONHASHSEED, pipeline bitwise).
 - #259 — TabPFN-TS zero-shot head shipped as fail-closed adapter (dep
   conflict `toolz<1` vs `toolz>=1` documented; P2.5 `[~]`).
+
+## Type-discipline completion (2026-09-28 latest)
+
+- #270 — promoted 248 strict-clean modules (allowlist 397 → 645).
+- #271 — fixed the 23-file strict tail: `mypy --strict` clean on **all
+  668** `src/quant_fund` modules; `STRICT_MODULE_FLOOR = 668` makes strict
+  coverage total — any new non-strict module fails CI at birth.
+- #274 — `src/fx1` strict-clean (65/65) + `mypy --strict` added to the
+  fx1 Types step; both packages now strict-locked.
+- #273 — coverage ratchets: global floor 80→81, per-package floors +1
+  (pit/proof/reality/proofcore 91, leakage 86), fx1 lane 60→80.
+- #272 — macOS shard fix (`mapfile` → while-read; runners ship bash 3.2).
+- #269 — union-merge drivers for append-only ledgers (`.gitattributes`).
