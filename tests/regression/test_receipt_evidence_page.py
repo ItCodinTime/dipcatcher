@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from scripts.build_evidence_report import (
     build_report,
     load_receipt,
@@ -180,3 +181,19 @@ def test_evidence_page_has_no_forbidden_headline_metrics() -> None:
     assert "spa_consistent_p" in text
     assert "stepm_adjusted_p" in text
     assert "economic_evidence_gate" in text
+
+
+def test_evidence_check_flag_detects_stale_and_fresh(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from scripts.build_evidence_report import main
+
+    assert main(["--root", str(_ROOT), "--check"]) == 0
+
+    stale_page = tmp_path / "index.md"
+    stale_page.write_text("stale\n")
+    # --out relocates the comparison target; --root still supplies receipts.
+    assert main(["--root", str(_ROOT), "--out", str(stale_page), "--check"]) == 1
+    assert "stale" in capsys.readouterr().err
+    # --check must not write.
+    assert stale_page.read_text() == "stale\n"

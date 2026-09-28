@@ -168,17 +168,35 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=None)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate in memory and fail if the committed page is stale",
+    )
     args = parser.parse_args(argv)
     root = (args.root or repo_root()).resolve()
     out = args.out or (root / "docs" / "evidence" / "index.md")
     text, seal_errors = build_report(root)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8", newline="\n")
     if seal_errors:
         print("content seal failed:", file=sys.stderr)
         for error in seal_errors:
             print(error, file=sys.stderr)
         return 1
+    if args.check:
+        try:
+            committed = out.read_bytes()
+        except FileNotFoundError:
+            committed = b""
+        if committed != text.encode("utf-8"):
+            shown = out.relative_to(root) if out.is_relative_to(root) else out
+            print(
+                f"evidence page stale: {shown} — regenerate with `make evidence`",
+                file=sys.stderr,
+            )
+            return 1
+        return 0
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8", newline="\n")
     return 0
 
 
