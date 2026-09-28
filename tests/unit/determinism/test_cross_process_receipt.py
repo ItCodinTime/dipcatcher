@@ -155,3 +155,54 @@ def test_gold_pipeline_frames_identical_across_hash_seeds(tmp_path: Path) -> Non
         fa = fa.drop("ingested_time") if "ingested_time" in fa.columns else fa
         fb = fb.drop("ingested_time") if "ingested_time" in fb.columns else fb
         assert fa.equals(fb), f"{rel} content differs across PYTHONHASHSEED"
+
+
+_FLEET_SCRIPT = """
+import json
+import sys
+from pathlib import Path
+
+from quant_fund.research.fleet_eval import (
+    fleet_head_factories,
+    resolve_shard_generators,
+    run_distribution_fleet,
+    write_fleet_receipt,
+)
+from quant_fund.utils.hashing import canonical_frame_fingerprint
+
+out_dir = Path(sys.argv[1])
+factories = fleet_head_factories(
+    [0.1, 0.5, 0.9], 0, ["empirical", "gaussian", "conf_t", "qar"]
+)
+shards = resolve_shard_generators(["iid_gaussian", "regime_switch"])
+frame, receipt = run_distribution_fleet(
+    factories, shards, n_train=96, n_eval=48, seed=0, taus=[0.1, 0.5, 0.9]
+)
+path = write_fleet_receipt(receipt, out_dir)
+print(json.dumps({"receipt": str(path), "frame": canonical_frame_fingerprint(frame)}))
+"""
+
+
+def test_fleet_eval_deterministic_across_hash_seeds(tmp_path: Path) -> None:
+    """The tournament's results frame and receipt are hash-order stable."""
+
+    def _run(out_dir: Path, hashseed: str) -> tuple[Path, str]:
+        out = subprocess.run(
+            [sys.executable, "-c", _FLEET_SCRIPT, str(out_dir)],
+            env={**os.environ, "PYTHONHASHSEED": hashseed},
+            check=True,
+            capture_output=True,
+        )
+        blob = json.loads(out.stdout.decode().strip())
+        return Path(blob["receipt"]), str(blob["frame"])
+
+    a_receipt, a_frame = _run(tmp_path / "a", "1")
+    b_receipt, b_frame = _run(tmp_path / "b", "2")
+    assert a_frame == b_frame
+    ra = json.loads(a_receipt.read_text())
+    rb = json.loads(b_receipt.read_text())
+    for obj in (ra, rb):
+        obj.pop("receipt_sha256", None)
+        # wall-clock audit stamp — same class as ingested_time, not content
+        obj.pop("generated_at", None)
+    assert ra == rb
