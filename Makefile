@@ -29,6 +29,7 @@ lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
 	uv run ruff format --check src tests
 	uv run python scripts/check_mypy_strict_allowlist.py
+	uv run python scripts/check_mccabe_ratchet.py
 
 fmt: ## Auto-fix lint + format
 	uv run ruff check --fix src tests

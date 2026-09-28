@@ -130,9 +130,11 @@ select = ["E", "F", "I", "UP", "B", "SIM", "C901"]
 ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 
 [tool.ruff.lint.mccabe]
-# Ceiling is validate_ledger_schema (paper ledger, left intact).
+# Hard ceiling is validate_ledger_schema (paper ledger, left intact).
 # verify_research_artifact was 196 before it was split. Raising this
 # fails tests/unit/test_quality_ratchet.py. Lowering it is allowed.
+# Per-function ceilings (may only decrease) live in
+# quality/mccabe_baseline.txt — see scripts/check_mccabe_ratchet.py.
 max-complexity = 74
 
 [tool.ruff.lint.per-file-ignores]
