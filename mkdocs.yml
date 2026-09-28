@@ -175,6 +175,7 @@ nav:
       - Forward shadow record: FORWARD_SHADOW_RECORD.md
       - Ranker probability experiment: RANKER_PROBABILITY_EXPERIMENT.md
       - Performance: PERF.md
+      - Perf sweep: PERF_SWEEP.md
       - Causal capacity: CAUSAL_CAPACITY.md
       - Forward shadow power: FORWARD_SHADOW_POWER.md
       - Model cards: MODEL_CARDS.md
