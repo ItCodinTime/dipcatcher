@@ -30,6 +30,7 @@ from quant_fund.backtest.engine import (
     _make_order,
     _projected_exposures,
     _valid_price,
+    _validate_bar_panel,
     _validate_target_weight_panel,
 )
 from quant_fund.backtest.event_sim.clock import EventClock, EventKind
@@ -1355,6 +1356,7 @@ def run_event_backtest(
             "event simulator requires execution.fill=next_open without a close auction"
         )
     _validate_target_weight_panel(weights)
+    _validate_bar_panel(bars)
     day_rows, dates, synthetic = _index_rows(bars)
     weights_by_date: dict[datetime, dict[str, float]] = {}
     for wrow in weights.iter_rows(named=True):
