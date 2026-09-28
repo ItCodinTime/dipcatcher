@@ -814,6 +814,18 @@ def fleet_v1_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
         errors.append("live_pnl_claim_not_false")
     if not isinstance(receipt.get("results"), list) or not receipt["results"]:
         errors.append("results_missing_or_empty")
+    else:
+        rows = receipt["results"]
+        n_rows = receipt.get("n_rows")
+        if isinstance(n_rows, int) and not isinstance(n_rows, bool) and n_rows != len(rows):
+            errors.append("n_rows_mismatch")
+        declared_errors = receipt.get("n_error_rows")
+        if isinstance(declared_errors, int) and not isinstance(declared_errors, bool):
+            actual_errors = sum(
+                1 for row in rows if isinstance(row, Mapping) and row.get("status") != "ok"
+            )
+            if declared_errors != actual_errors:
+                errors.append("n_error_rows_mismatch")
     if not family_blob_forbidden_metrics_absent(research_blob):
         errors.append("forbidden_metric_keys")
     return errors
