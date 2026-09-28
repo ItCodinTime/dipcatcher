@@ -23,6 +23,7 @@ from quant_fund.research.real_benchmark import (
     _runtime,
     _seal,
 )
+from quant_fund.utils.atomicio import publish_text_once
 
 
 def _code_hashes() -> dict[str, str]:
@@ -96,8 +97,9 @@ def allocation_ablations(outcomes: dict[str, Any], trials: list[Strategy]) -> li
 
 
 def _write(path: Path, value: dict[str, Any]) -> None:
-    with path.open("x") as handle:
-        json.dump(value, handle, indent=2, allow_nan=False)
+    # publish-once via tmp+link: a mid-write crash must not leave a torn
+    # manifest that permanently blocks retry (open("x") poisons the path).
+    publish_text_once(path, json.dumps(value, indent=2, allow_nan=False))
 
 
 def _spec(raw: dict[str, Any]) -> tuple[ReplayConfig, list[Strategy], Strategy]:

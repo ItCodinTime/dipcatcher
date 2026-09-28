@@ -20,6 +20,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from quant_fund.utils.atomicio import publish_text_once
+
 FEATURES = ("return_1", "return_5", "return_20", "volatility_20")
 MODELS = ("zero", "historical_mean", "rolling_mean_20", "ridge")
 
@@ -318,8 +320,7 @@ def prepare_benchmark(protocol_path: Path, output_dir: Path) -> dict[str, Any]:
         }
     )
     output_dir.mkdir(parents=True, exist_ok=False)
-    with (output_dir / "manifest.json").open("x") as handle:
-        json.dump(manifest, handle, indent=2, allow_nan=False)
+    publish_text_once(output_dir / "manifest.json", json.dumps(manifest, indent=2, allow_nan=False))
     return manifest
 
 
@@ -406,8 +407,7 @@ def score_benchmark(run_dir: Path, phase: str) -> dict[str, Any]:
             "limitations": manifest["limitations"],
         }
     )
-    with destination.open("x") as handle:
-        json.dump(report, handle, indent=2, allow_nan=False)
+    publish_text_once(destination, json.dumps(report, indent=2, allow_nan=False))
     return report
 
 

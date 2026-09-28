@@ -25,6 +25,7 @@ from quant_fund.models import calibration, ranking
 from quant_fund.models.calibration import ProbabilityCalibrator
 from quant_fund.models.ranking import PUBLIC_FEATURES, RidgeRanker
 from quant_fund.pipeline.dataset import build_gold, design_frame
+from quant_fund.utils.atomicio import publish_text_once
 from quant_fund.utils.hashing import hash_file
 
 
@@ -417,9 +418,10 @@ def main(argv: list[str] | None = None) -> int:
     result["holdout_previously_inspected_or_unverified"] = True
     result["receipt_sha256"] = _digest(result)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("x", encoding="utf-8") as stream:
-        json.dump(result, stream, indent=2, sort_keys=True, allow_nan=False)
-        stream.write("\n")
+    publish_text_once(
+        args.output,
+        json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n",
+    )
     print(
         json.dumps(
             {

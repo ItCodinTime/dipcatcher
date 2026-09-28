@@ -161,5 +161,11 @@ def test_standalone_command_seals_a_complete_nonpromoting_receipt(tmp_path: Path
     assert receipt["n_scored_dates"] == 125
     assert receipt["holdout_previously_inspected_or_unverified"] is True
     assert receipt["production_promotion"] is False
+    original_bytes = output.read_bytes()
+    # Publish-once semantics: an identical re-run is a byte-identical no-op,
+    # while a destination holding different content still refuses the write.
+    assert main(args) == 0
+    assert output.read_bytes() == original_bytes
+    output.write_bytes(b'{"tampered": true}')
     with pytest.raises(FileExistsError):
         main(args)
