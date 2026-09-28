@@ -62,6 +62,15 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `research/` (29 modules) | Child session `3dca4dedd8634a5182f3e7a94e0cd15d` — lane/receipt audit |
 | `pipeline/` (21 modules) | Queued — top-level verified; train/+forecast/ residual line-pass pending |
 
+## fx1 (the gated product — out of manifest scope)
+
+| Area | Verified | Findings → fix |
+|---|---|---|
+| `honesty.py` + `data/` | Child audit — regex evasions, corpus screening, contamination floor, vacuous honesty gate | #321 |
+| `eval/` | Deterministic seeded banks, contract-validated prompts, unparseable answers counted (never propagated), degenerate forecasts fail closed NaN, `passed` requires finite ECE AND finite \|Z\| | — |
+| `serve/` | HMAC-env signing (never hardcoded), fail-closed compare_digest verify, structural TEE + zkML manifests with honest crypto delegation | #321 (TEE existence-only status) |
+| `train/` / `bench/` / `forecast/` | Spot-checked: provenance timestamps only; forward labels explicitly marked "do not pass to predict" | — |
+
 ## Rules
 
 - A directory may only move `partial → audited` when every module has a row of
