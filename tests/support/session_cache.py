@@ -199,13 +199,15 @@ def _config_key(config: Any) -> str:
 # and leave every other path in the data root alone. The manifest is part of
 # ingest, not an optional sidecar: a cache hit has to leave the same files a
 # cold ingest would.
+_MANIFEST_REL = "metadata/data_manifest.json"
+_LAKE_ROOTS = {"raw", "bronze", "silver", "gold", "metadata"}
 _SILVER_ARTIFACTS = (
     "bronze/bars.parquet",
     "bronze/corporate_actions.parquet",
     "bronze/security_master.parquet",
     "silver/bars.parquet",
     "silver/universe.parquet",
-    "metadata/data_manifest.json",
+    _MANIFEST_REL,
 )
 _GOLD_ARTIFACTS = (
     "gold/features.parquet",
@@ -261,6 +263,36 @@ def _restore_artifacts(src: Path, root: Path, rels: tuple[str, ...]) -> None:
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+
+
+def _retarget_manifest(root: Path) -> None:
+    """Point a restored manifest at ``root``.
+
+    Ingest writes absolute paths. A cache hit copies those bytes into a
+    different directory, so each artifact path is rewritten onto ``root``
+    while the content hashes stay the hashes of the restored files.
+    """
+    path = root / _MANIFEST_REL
+    if not path.is_file():
+        return
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    artifacts = doc.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return
+    root_resolved = root.resolve()
+    for item in artifacts.values():
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+            continue
+        parts = Path(item["path"]).parts
+        relative: Path | None = None
+        for index, part in enumerate(parts):
+            if part in _LAKE_ROOTS:
+                relative = Path(*parts[index:])
+                break
+        if relative is None:
+            continue
+        item["path"] = str((root_resolved / relative).resolve())
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _silver_ready(root: Path) -> bool:
@@ -329,15 +361,25 @@ def _install_dataset_cache() -> None:
                             cached = pickle.loads(blob_path.read_bytes())
                         except Exception:
                             cached = None
+                    # A lake snapshotted before the manifest was part of the
+                    # artifact list cannot satisfy readers of that file.
+                    # Treat it as a miss so the rebuild writes and stores one.
+                    if cached is not None and not (lake / _MANIFEST_REL).is_file():
+                        cached = None
                     if cached is not None:
                         _DATA_STATS["hit"] += 1
+                        restored_lake = False
                         if kind == "silver":
                             if not _silver_ready(root):
                                 _restore_artifacts(lake, root, _SILVER_ARTIFACTS)
+                                restored_lake = True
                         else:
                             _restore_artifacts(lake, root, _GOLD_ARTIFACTS)
                             if not _silver_ready(root):
                                 _restore_artifacts(lake, root, _SILVER_ARTIFACTS)
+                                restored_lake = True
+                        if restored_lake:
+                            _retarget_manifest(root)
                         return cached
                     _DATA_STATS["miss"] += 1
                     result = orig(*args, **kwargs)
