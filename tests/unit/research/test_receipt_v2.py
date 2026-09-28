@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from typer.testing import CliRunner
 
+import quant_fund.research.receipt_v2 as receipt_v2_mod
 from quant_fund.cli.main import app
 from quant_fund.research.fleet_eval import (
     fleet_head_factories,
@@ -425,3 +426,119 @@ def test_verify_v1_sealed_receipt_rejects_live_pnl_claim(tmp_path: Path) -> None
     result = verify_receipt_file(path)
     assert result["valid"] is False
     assert "live_pnl_claim_not_false" in result["errors"]
+
+
+# ---- hostile-input robustness: verify must return a verdict, never crash ----
+
+_ADVERSARIAL_TEXTS = {
+    "truncated": '{"schema": "receipt.v2", "receipt_sha256": "abc',
+    "nan_top_level": "NaN",
+    "nan_inside": '{"schema_version": 1, "x": NaN, "receipt_sha256": "' + "a" * 64 + '"}',
+    "inf_inside": '{"schema_version": 1, "x": Infinity, "receipt_sha256": "' + "a" * 64 + '"}',
+    "deep_nesting": "[" * 5000 + "]" * 5000,
+    "huge_int": '{"schema_version": 1, "x": ' + "9" * 5000 + "}",
+    "bom_prefix": '﻿{"schema_version": 1}',
+    "list": "[1, 2, 3]",
+    "string": '"just a string"',
+    "number": "42",
+    "null": "null",
+    "empty": "",
+}
+
+
+@pytest.mark.parametrize("case", sorted(_ADVERSARIAL_TEXTS))
+def test_verify_receipt_never_crashes_on_hostile_input(tmp_path: Path, case: str) -> None:
+    path = tmp_path / f"{case}.json"
+    path.write_text(_ADVERSARIAL_TEXTS[case])
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert result["errors"], "a hostile input must produce at least one error"
+    assert result["path"] == str(path)
+
+
+def test_verify_receipt_binary_garbage(tmp_path: Path) -> None:
+    path = tmp_path / "garbage.json"
+    path.write_bytes(bytes(range(256)) * 4)
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert any(e.startswith("receipt_unreadable") for e in result["errors"])
+
+
+def test_verify_v1_nan_body_reports_mismatch(tmp_path: Path) -> None:
+    """A NaN field parses via json.loads; the canonical convention normalizes
+    non-finite floats to null, so a forged seal degrades to a mismatch verdict,
+    never a crash."""
+    path = tmp_path / "nan_sealed.json"
+    path.write_text('{"schema_version": 1, "x": NaN, "receipt_sha256": "' + "b" * 64 + '"}')
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert "receipt_sha256_mismatch" in result["errors"]
+
+
+def test_verify_payload_deep_nesting_never_crashes() -> None:
+    """A 5000-deep nested body must produce a verdict — RecursionError in
+    digest or scans degrades to errors, never escapes the verifier."""
+    deep = cur = {}
+    for _ in range(5000):
+        cur["k"] = {}
+        cur = cur["k"]
+    result = verify_receipt_payload({"schema_version": 1, "x": deep, "receipt_sha256": "b" * 64})
+    assert result["valid"] is False
+    assert result["errors"]
+
+
+def test_guarded_kind_audit_crash_fails_closed() -> None:
+    """A kind auditor raising on a hostile payload yields an audit-crash error."""
+
+    def _boom(_payload):
+        raise AttributeError("hostile body")
+
+    guarded = receipt_v2_mod._guarded(_boom, "probe")
+    assert guarded({}) == ["probe_audit_crash"]
+
+
+def test_verify_v1_defensive_audit_degrades_not_crashes(tmp_path: Path) -> None:
+    """fleet_eval.v1 with results of the wrong type emits contract errors."""
+    body = {
+        "schema": "fleet_eval.v1",
+        "schema_version": 1,
+        "results": 42,
+    }
+    sealed = {**body, "receipt_sha256": hash_bytes(canonical_json_bytes(body))}
+    path = tmp_path / "crashy.json"
+    path.write_text(json.dumps(sealed))
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert result["errors"]
+
+
+def test_verify_receipt_survives_seeded_mutations(tmp_path: Path) -> None:
+    """Byte-level mutations of a real sealed receipt never crash the verifier."""
+    import random
+
+    source = Path(__file__).resolve().parents[3] / "receipts" / "fleet_eval_5ddf15b0dc7d3ca1.json"
+    if not source.exists():
+        pytest.skip("committed fleet receipt absent")
+    raw = source.read_bytes()
+    rng = random.Random(7)
+    for i in range(64):
+        mutated = bytearray(raw)
+        op = i % 4
+        if op == 0:
+            mutated = mutated[: rng.randrange(1, len(mutated))]  # truncate
+        elif op == 1:
+            pos = rng.randrange(len(mutated))
+            mutated[pos] = rng.randrange(256)  # byte flip
+        elif op == 2:
+            pos = rng.randrange(len(mutated))
+            mutated[pos:pos] = b"NaN,"  # inject literal
+        else:
+            line_start = mutated.find(b"\n", rng.randrange(len(mutated) - 1))
+            line_end = mutated.find(b"\n", line_start + 1)
+            if line_start > 0 and line_end > line_start:
+                mutated[line_end:line_end] = mutated[line_start:line_end]  # dup line
+        path = tmp_path / f"mut{i}.json"
+        path.write_bytes(bytes(mutated))
+        result = verify_receipt_file(path)
+        assert isinstance(result["valid"], bool), f"mutation {i} crashed or malformed"
+        assert isinstance(result["errors"], list)

@@ -20,7 +20,7 @@ import hashlib
 import json
 import platform
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -346,15 +346,35 @@ def _result(
     }
 
 
+def _digest_or_none(
+    body: Mapping[str, Any], digest: Callable[[Mapping[str, Any]], str]
+) -> str | None:
+    """Hash a body that may be unhashable (NaN, unserializable, deep nest).
+
+    ``json.loads`` accepts literals canonical digests reject — NaN floats,
+    >4300-digit ints already fail at load, but a NaN *inside* a parsed body
+    reaches the digester, where ``allow_nan=False`` raises. The verifier must
+    degrade to a verdict, never crash on hostile input.
+    """
+    try:
+        return digest(body)
+    except (ValueError, RecursionError, TypeError):
+        return None
+
+
 def _seal_errors(payload: Mapping[str, Any]) -> tuple[str | None, list[str]]:
     """Check ``receipt_sha256``; report which digest convention matched."""
     seal = payload.get("receipt_sha256")
     if not _is_sha256(seal):
         return None, ["receipt_sha256_missing_or_invalid"]
     body = {key: value for key, value in payload.items() if key != "receipt_sha256"}
-    if _canonical_digest(body) == seal:
+    canonical = _digest_or_none(body, _canonical_digest)
+    strict = _digest_or_none(body, _strict_digest)
+    if canonical is None and strict is None:
+        return None, ["receipt_body_unhashable"]
+    if canonical == seal:
         return "canonical_json", []
-    if _strict_digest(body) == seal:
+    if strict == seal:
         return "strict_json", []
     return None, ["receipt_sha256_mismatch"]
 
@@ -366,7 +386,8 @@ def _env_fingerprint_errors(environment: object) -> list[str]:
     if not _is_sha256(stamp):
         return ["environment_fingerprint_missing"]
     body = {key: value for key, value in environment.items() if key != "fingerprint_sha256"}
-    if _canonical_digest(body) != stamp:
+    body_digest = _digest_or_none(body, _canonical_digest)
+    if body_digest is None or body_digest != stamp:
         return ["environment_fingerprint_mismatch"]
     return []
 
@@ -375,9 +396,35 @@ def _code_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     files = payload.get("code_files")
     if not isinstance(files, dict) or not files:
         return ["code_files_invalid"]
-    if _canonical_digest(files) != payload.get("code_sha256"):
+    files_digest = _digest_or_none(files, _canonical_digest)
+    if files_digest is None or files_digest != payload.get("code_sha256"):
         return ["code_sha256_mismatch"]
     return []
+
+
+_AUDITOR_ERRORS = (ValueError, TypeError, KeyError, RecursionError, AttributeError)
+
+
+def _guarded(
+    audit: Callable[[Mapping[str, Any]], list[str]], label: str
+) -> Callable[[Mapping[str, Any]], list[str]]:
+    """A payload that crashes a kind auditor fails that audit — never the gate."""
+
+    def _run(payload: Mapping[str, Any]) -> list[str]:
+        try:
+            return audit(payload)
+        except _AUDITOR_ERRORS:
+            return [f"{label}_audit_crash"]
+
+    return _run
+
+
+def _forbidden_scan_clean(blob: Mapping[str, Any]) -> bool:
+    """Key scan must fail closed, not crash, on pathological nesting."""
+    try:
+        return family_blob_forbidden_metrics_absent(blob)
+    except _AUDITOR_ERRORS:
+        return False
 
 
 def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
@@ -385,7 +432,7 @@ def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     if payload.get("kind") == "distribution_fleet_eval":
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
-        return fleet_v2_consistency_errors(payload)
+        return _guarded(fleet_v2_consistency_errors, "fleet_v2_consistency")(payload)
     return []
 
 
@@ -394,6 +441,8 @@ def _verify_v2(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     body = {key: value for key, value in payload.items() if key != "receipt_sha256"}
     try:
         ReceiptV2.model_validate(payload)
+    except RecursionError:
+        return _result(path, payload, None, ["receipt_v2_schema:nesting_depth"])
     except ValidationError as exc:
         for issue in exc.errors():
             location = ".".join(str(part) for part in issue["loc"]) or "envelope"
@@ -408,7 +457,7 @@ def _verify_v2(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         # Same exemption as the writers: the envelope honesty flag carries a
         # forbidden token but is required, so it is excluded from the scan.
         scanned = {key: value for key, value in payload_body.items() if key != "live_pnl_claim"}
-        if not family_blob_forbidden_metrics_absent(scanned):
+        if not _forbidden_scan_clean(scanned):
             errors.append("payload_forbidden_metrics")
         # Envelope/payload agreement: a payload that echoes either honesty
         # field must not contradict the sealed envelope under a fresh seal.
@@ -431,7 +480,7 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     # The honesty scan applies to every sealed receipt, not just receipt.v2 —
     # a v1 payload naming a forbidden headline metric must not verify clean.
     scanned = {key: value for key, value in payload.items() if key != "live_pnl_claim"}
-    if not family_blob_forbidden_metrics_absent(scanned):
+    if not _forbidden_scan_clean(scanned):
         errors.append("forbidden_metric_keys")
     if payload.get("schema") == "fleet_eval.v1":
         from quant_fund.research.fleet_eval import (
@@ -439,16 +488,16 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
             fleet_v1_contract_errors,
         )
 
-        errors.extend(fleet_v1_contract_errors(payload))
-        errors.extend(fleet_v1_audit_errors(payload))
+        errors.extend(_guarded(fleet_v1_contract_errors, "fleet_v1_contract")(payload))
+        errors.extend(_guarded(fleet_v1_audit_errors, "fleet_v1")(payload))
     elif payload.get("schema") == "capacity_overlay.v1":
         from quant_fund.research.capacity_overlay import capacity_v1_audit_errors
 
-        errors.extend(capacity_v1_audit_errors(payload))
+        errors.extend(_guarded(capacity_v1_audit_errors, "capacity_v1")(payload))
     elif payload.get("schema") == "cross_sectional_rankic.v1":
         from quant_fund.research.cross_sectional import rankic_v1_audit_errors
 
-        errors.extend(rankic_v1_audit_errors(payload))
+        errors.extend(_guarded(rankic_v1_audit_errors, "rankic_v1")(payload))
     return _result(path, payload, convention, errors)
 
 
@@ -476,7 +525,11 @@ def verify_receipt_file(path: Path | str) -> ReceiptVerification:
     file_path = Path(path)
     try:
         payload: object = json.loads(file_path.read_text())
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
+        # ValueError covers JSONDecodeError plus load-time failures it does not
+        # subclass (e.g. ints exceeding the 4300-digit limit); RecursionError
+        # covers pathological nesting depth. Corrupt input must degrade to a
+        # verdict, never crash the gate.
         return _result(file_path, {}, None, [f"receipt_unreadable:{exc.__class__.__name__}"])
     return verify_receipt_payload(payload, file_path)
 
