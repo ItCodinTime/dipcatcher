@@ -182,7 +182,7 @@ flowchart LR
   quant_fund_api -->|2| quant_fund_schemas
   quant_fund_audit -->|2| quant_fund_research
   quant_fund_audit -->|1| quant_fund_utils
-  quant_fund_backtest -->|7| quant_fund_config
+  quant_fund_backtest -->|8| quant_fund_config
   quant_fund_backtest -->|6| quant_fund_execution
   quant_fund_backtest -->|6| quant_fund_metrics
   quant_fund_backtest -->|1| quant_fund_microstructure
@@ -190,10 +190,11 @@ flowchart LR
   quant_fund_backtest -->|1| quant_fund_northset
   quant_fund_backtest -->|3| quant_fund_pipeline
   quant_fund_backtest -->|5| quant_fund_portfolio
+  quant_fund_backtest -->|1| quant_fund_research
   quant_fund_backtest -->|2| quant_fund_risk
   quant_fund_backtest -->|8| quant_fund_schemas
   quant_fund_cli -->|2| quant_fund_audit
-  quant_fund_cli -->|3| quant_fund_backtest
+  quant_fund_cli -->|4| quant_fund_backtest
   quant_fund_cli -->|3| quant_fund_config
   quant_fund_cli -->|8| quant_fund_data
   quant_fund_cli -->|3| quant_fund_features
@@ -346,7 +347,7 @@ flowchart LR
   quant_fund_reporting -->|1| quant_fund_portfolio
   quant_fund_research -->|1| quant_fund
   quant_fund_research -->|3| quant_fund_audit
-  quant_fund_research -->|2| quant_fund_backtest
+  quant_fund_research -->|3| quant_fund_backtest
   quant_fund_research -->|10| quant_fund_config
   quant_fund_research -->|1| quant_fund_data
   quant_fund_research -->|2| quant_fund_execution
@@ -589,7 +590,7 @@ sequenceDiagram
 | `quant_fund` | 1 |
 | `quant_fund.api` | 3 |
 | `quant_fund.audit` | 11 |
-| `quant_fund.backtest` | 15 |
+| `quant_fund.backtest` | 16 |
 | `quant_fund.calendars` | 8 |
 | `quant_fund.cli` | 15 |
 | `quant_fund.compute` | 3 |
@@ -636,9 +637,9 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **733**
+- Modules scanned: **734**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **249**
 
 <!-- END GENERATED: coverage -->
 
