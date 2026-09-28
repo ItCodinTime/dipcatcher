@@ -112,8 +112,8 @@
       "status": "audited"
     },
     "northset": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 10,
+      "status": "audited"
     },
     "observe": {
       "n_modules": 9,
