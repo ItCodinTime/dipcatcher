@@ -180,6 +180,7 @@ nav:
       - Model cards: MODEL_CARDS.md
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
+      - Audit ledger: AUDIT_LEDGER.md
       - Scenario Monte Carlo: MC_ENGINE.md
       - Fast replay conformance: FAST_REPLAY_P42.md
       - Explainability: EXPLAINABILITY.md
