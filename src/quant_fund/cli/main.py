@@ -48,6 +48,7 @@ from quant_fund.cli.micro_cmds import (
 from quant_fund.cli.research_cmds import (
     research,
     execution_sensitivity_cmd,
+    verify_all_cmd,
     verify_identities,
     verify_receipt_cmd,
     fleet,
@@ -163,6 +164,7 @@ __all__ = [
     "kyle_ofi",
     "research",
     "execution_sensitivity_cmd",
+    "verify_all_cmd",
     "verify_identities",
     "verify_receipt_cmd",
     "fleet",

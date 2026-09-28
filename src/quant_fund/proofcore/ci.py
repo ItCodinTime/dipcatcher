@@ -13,6 +13,7 @@ in ``pyproject.toml`` (additive to the global 80% floor in
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import tomllib
@@ -95,14 +96,37 @@ def receipt_paths(receipts_dir: Path) -> list[Path]:
     return sorted(Path(receipts_dir).glob("*.json"))
 
 
+def _receipt_verifier_command(path: Path) -> str:
+    """Pick the schema-appropriate verifier CLI without importing research.
+
+    ``verify-receipt`` handles ``receipt.v2`` envelopes and any receipt
+    carrying a top-level ``receipt_sha256`` seal (canonical or strict JSON
+    convention, plus the ``fleet_eval.v1`` writer contract). Everything else
+    goes to ``verify-research``, the schema-specific honesty-error verifier
+    for the older research-catalog receipts.
+    """
+    try:
+        body = json.loads(path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return "verify-research"
+    if not isinstance(body, dict):
+        return "verify-research"
+    if body.get("schema") == "receipt.v2" or body.get("schema_version") == 2:
+        return "verify-receipt"
+    if isinstance(body.get("receipt_sha256"), str):
+        return "verify-receipt"
+    return "verify-research"
+
+
 def _cli_verifier(path: Path) -> bool:
-    """Default verifier: the existing fail-closed receipt verifier CLI.
+    """Default verifier: dispatch to the schema-appropriate receipt CLI.
 
     Uses ``python -m quant_fund.cli.main`` so no SCC import enters this
-    module's import graph (layering contract, DESIGN.md §1.3).
+    module's import graph (layering contract, §1.3).
     """
+    command = _receipt_verifier_command(path)
     proc = subprocess.run(
-        [sys.executable, "-m", "quant_fund.cli.main", "verify-research", str(path)],
+        [sys.executable, "-m", "quant_fund.cli.main", command, str(path)],
         capture_output=True,
         text=True,
     )

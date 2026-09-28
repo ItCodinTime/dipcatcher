@@ -340,6 +340,49 @@ def verify_receipt_cmd(
     raise typer.Exit(code=0 if result["valid"] else 1)
 
 
+@app.command("verify-all")
+def verify_all_cmd(
+    receipts_dir: Path = typer.Option(Path("receipts"), help="Receipt directory to audit."),
+    check_index: bool = typer.Option(
+        True, help="Byte-compare docs/evidence/index.md against a fresh regen."
+    ),
+    write: bool = typer.Option(True, help="Write the sealed evidence_audit receipt."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Audit receipt output dir."),
+) -> None:
+    """Chain-of-custody audit over the whole receipts directory.
+
+    Per-file verification via ``verify_receipt_file`` (v2 deep verification,
+    v1 seal check); set-level checks a single-file verifier cannot express:
+    filename↔digest binding, duplicate seals across files, unsealed-legacy
+    accounting, and evidence-index staleness. Writes a sealed
+    ``evidence_audit_<digest16>.json`` receipt. Exits non-zero on any hard
+    finding — sealed-invalid, unparseable, filename mismatch, duplicate seal,
+    or stale index.
+    """
+    from quant_fund.research.evidence_audit import (
+        format_evidence_audit_table,
+        run_evidence_audit,
+        write_evidence_audit_receipt,
+    )
+
+    try:
+        rows, receipt = run_evidence_audit(receipts_dir, check_index=check_index, root=Path.cwd())
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(format_evidence_audit_table(rows))
+    payload = receipt["payload"]
+    typer.echo(
+        f"files={payload['n_files']} sealed={payload['n_sealed']} "
+        f"unsealed={payload['n_unsealed']} index_fresh={payload['index_fresh']}"
+    )
+    if payload["findings"]:
+        typer.echo("findings: " + "; ".join(payload["findings"]))
+    if write:
+        path = write_evidence_audit_receipt(receipt, out_dir)
+        typer.echo(f"receipt={path}")
+    raise typer.Exit(code=0 if receipt["verdict"] == "pass" else 1)
+
+
 @app.command("vol-bench")
 def vol_bench(
     config: Path = typer.Option(Path("configs/research.yaml")),
@@ -520,6 +563,7 @@ __all__ = [
     "rankic",
     "research",
     "verify_identities",
+    "verify_all_cmd",
     "verify_receipt_cmd",
     "vol_bench",
 ]

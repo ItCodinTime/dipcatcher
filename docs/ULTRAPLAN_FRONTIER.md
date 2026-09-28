@@ -389,6 +389,16 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       launcher + watchdog (auto-respawn dead shards, heartbeat file).
 - [ ] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI
       spawn, Defender exclusions, durable paths), durable staging dirs.
+- [x] P7.7 Evidence chain-of-custody: `research/evidence_audit.py` +
+      `dipcatcher verify-all` — set-level receipt audit (filename↔digest
+      binding, duplicate-seal detection, unsealed-legacy accounting,
+      evidence-index freshness via byte-compared regen) emitting a sealed
+      `evidence_audit` receipt. Also fixed `receipts-reverify` dispatch:
+      v2 envelopes and sealed v1 receipts now route to `verify-receipt`
+      instead of the notebook-schema `verify-research`, which had never
+      verified a sealed receipt correctly. Honest finding: 7 of 10
+      committed receipts are unsealed legacy artifacts — reported as
+      `n_unsealed`, not retroactively failed.
 
 ## Execution rules
 
