@@ -35,12 +35,17 @@ def _raw_sleeves(
     if p.flatten_when_fast_below_slow and downtrend:
         inverse = 0.0
         if p.sqqq_target > 0 and p.inverse_confirm > 0 and i >= p.inverse_confirm:
-            mom = qqq_close[i] / qqq_close[i - p.inverse_confirm] - 1.0
-            if mom < 0:
-                inverse = p.sqqq_target
+            base = qqq_close[i - p.inverse_confirm]
+            if base > 0.0 and math.isfinite(base) and math.isfinite(qqq_close[i]):
+                mom = qqq_close[i] / base - 1.0
+                if mom < 0:
+                    inverse = p.sqqq_target
         return 0.0, inverse
 
-    if tqqq_vol <= _EPS and qqq_vol <= _EPS:
+    if not (math.isfinite(qqq_vol) and math.isfinite(tqqq_vol)):
+        # Volatility unmeasurable: de-risk rather than size on the cap.
+        raw = 0.0
+    elif tqqq_vol <= _EPS and qqq_vol <= _EPS:
         raw = p.max_tqqq_weight
     else:
         ref = qqq_vol if p.vol_ref == "signal" else tqqq_vol
@@ -53,9 +58,13 @@ def _raw_sleeves(
         risk *= p.weak_trend_multiplier
 
     if p.crash_lookback > 0 and i >= p.crash_lookback:
-        trail = qqq_close[i] / qqq_close[i - p.crash_lookback] - 1.0
-        if trail <= p.crash_return:
+        base = qqq_close[i - p.crash_lookback]
+        if base <= 0.0 or not math.isfinite(base) or not math.isfinite(qqq_close[i]):
             risk = 0.0
+        else:
+            trail = qqq_close[i] / base - 1.0
+            if trail <= p.crash_return:
+                risk = 0.0
 
     inverse = 0.0
     risk_gross = risk + inverse
@@ -111,8 +120,11 @@ def tqqq_target_weights(
 
     qqq_ret = np.zeros(n)
     tqqq_ret = np.zeros(n)
-    qqq_ret[1:] = qqq[1:] / np.maximum(qqq[:-1], _EPS) - 1.0
-    tqqq_ret[1:] = tqqq[1:] / np.maximum(tqqq[:-1], _EPS) - 1.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio_q = qqq[1:] / qqq[:-1]
+        ratio_t = tqqq[1:] / tqqq[:-1]
+    qqq_ret[1:] = np.where(qqq[:-1] > 0.0, ratio_q - 1.0, np.nan)
+    tqqq_ret[1:] = np.where(tqqq[:-1] > 0.0, ratio_t - 1.0, np.nan)
 
     fast = sma_seeded_ema(qqq, p.fast_ema)
     slow = sma_seeded_ema(qqq, p.slow_ema)
@@ -135,8 +147,8 @@ def tqqq_target_weights(
             continue
 
         gap = float((fast[i] - slow[i]) / max(qqq[i], _EPS))
-        qv = float(qqq_vol[i]) if np.isfinite(qqq_vol[i]) else 0.0
-        tv = float(tqqq_vol[i]) if np.isfinite(tqqq_vol[i]) else 0.0
+        qv = float(qqq_vol[i])
+        tv = float(tqqq_vol[i])
         risk, inverse = _raw_sleeves(p, gap, qv, tv, qqq, i)
         if multiplier is not None:
             m = clip(float(multiplier[i]), 0.0, 1.0)

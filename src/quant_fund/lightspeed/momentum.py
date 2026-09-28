@@ -34,10 +34,13 @@ def momentum_scores(
         score = np.full(n, np.nan, dtype=float)
         fast = np.full(n, np.nan, dtype=float)
         slow = np.full(n, np.nan, dtype=float)
-        if n > mom_fast:
-            fast[mom_fast:] = prices[mom_fast:] / np.maximum(prices[:-mom_fast], _EPS) - 1.0
-        if n > mom_slow:
-            slow[mom_slow:] = prices[mom_slow:] / np.maximum(prices[:-mom_slow], _EPS) - 1.0
+        with np.errstate(divide="ignore", invalid="ignore"):
+            if n > mom_fast:
+                ratio = prices[mom_fast:] / prices[:-mom_fast]
+                fast[mom_fast:] = np.where(prices[:-mom_fast] > 0.0, ratio - 1.0, np.nan)
+            if n > mom_slow:
+                ratio = prices[mom_slow:] / prices[:-mom_slow]
+                slow[mom_slow:] = np.where(prices[:-mom_slow] > 0.0, ratio - 1.0, np.nan)
         both = np.isfinite(fast) & np.isfinite(slow)
         score[both] = mom_blend * fast[both] + (1.0 - mom_blend) * slow[both]
         only_fast = ~both & np.isfinite(fast) & (mom_blend >= 1.0 - 1e-12)
@@ -92,7 +95,13 @@ def momentum_target_weights(
         if p.crash_lookback > 0 and i >= p.crash_lookback:
             for s in symbols:
                 if prev.get(s, 0.0) > _EPS:
-                    trail = closes[s][i] / max(closes[s][i - p.crash_lookback], _EPS) - 1.0
+                    base = closes[s][i - p.crash_lookback]
+                    if base <= 0.0 or not np.isfinite(base) or not np.isfinite(closes[s][i]):
+                        # Unmeasurable trail on a held name: de-risk it rather
+                        # than letting a broken print evade the crash gate.
+                        crashed.add(s)
+                        continue
+                    trail = closes[s][i] / base - 1.0
                     if trail <= p.crash_return:
                         crashed.add(s)
         if crashed:
@@ -119,7 +128,10 @@ def momentum_target_weights(
             if closes[s][i] <= sma:
                 continue
             if p.crash_lookback > 0 and i >= p.crash_lookback:
-                trail = closes[s][i] / max(closes[s][i - p.crash_lookback], _EPS) - 1.0
+                base = closes[s][i - p.crash_lookback]
+                if base <= 0.0 or not np.isfinite(base) or not np.isfinite(closes[s][i]):
+                    continue
+                trail = closes[s][i] / base - 1.0
                 if trail <= p.crash_return:
                     continue
             eligible.append((float(sc), s))
@@ -129,7 +141,13 @@ def momentum_target_weights(
         raw = {s: 0.0 for s in symbols}
         for s in picked:
             v = vols[s][i]
-            if not np.isfinite(v) or v <= _EPS:
+            if not np.isfinite(v):
+                # Volatility is unmeasurable: do not size the name at all.
+                # Treating it as the cap would max-size unmeasurable risk.
+                raw[s] = 0.0
+            elif v <= _EPS:
+                # Finite but ~zero measured vol: inverse-vol target is
+                # unbounded, so it lands on the cap by construction.
                 raw[s] = position_cap
             else:
                 raw[s] = clip(p.vol_budget / v, 0.0, position_cap)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -19,6 +20,7 @@ from quant_fund.lightspeed.specs import (
     MomentumParams,
     MomentumSpec,
     MomentumUniverse,
+    TqqqSpec,
     frozen_families,
     nautica_momentum_v1,
     stock_momentum_v1,
@@ -280,3 +282,55 @@ def test_ls_cli_specs_and_demo() -> None:
 def test_doctor_echoes_ls_hunt_race() -> None:
     result = CliRunner().invoke(app, ["doctor", "--config", "configs/research.yaml"])
     assert "hunt|book|race|confirm" in result.output
+
+
+def test_nan_vol_never_max_sizes_picked_name() -> None:
+    # A picked name with unmeasurable vol must be sized 0, not position_cap.
+    # rolling_std's cumsum propagates a NaN permanently, so one bad print in
+    # the close path leaves the name's vol NaN at every later bar.
+    spec = _short_momentum_spec()
+    n = 40
+    t = np.arange(n, dtype=float)
+    aaa = 50.0 * np.exp(0.01 * t)
+    aaa[30] = np.nan  # poisons AAA's vol window from bar 30 onward
+    closes = {"AAA": aaa, "BBB": np.full(n, 40.0), "SGOV": 100.0 + 0.01 * t}
+    weights = momentum_target_weights(closes, spec)
+    assert np.all(np.isfinite(weights["AAA"]))
+    assert float(np.nanmax(weights["AAA"])) <= spec.params.max_position_weight
+    # After the corrupt print, AAA can still carry a finite momentum score on
+    # the pointwise ratio while vol stays NaN -> never sized, never the cap.
+    tail = weights["AAA"][spec.params.warmup :]
+    assert np.all(tail <= spec.params.max_position_weight + 1e-12)
+
+
+def test_nonpositive_close_yields_nan_not_astronomic_score() -> None:
+    spec = _short_momentum_spec()
+    n = 30
+    aaa = 50.0 * np.exp(0.01 * np.arange(n))
+    aaa[15] = 0.0  # broken print: zero close
+    closes = {"AAA": aaa, "BBB": np.full(n, 40.0), "SGOV": np.full(n, 100.0)}
+    scores = momentum_scores(closes, spec.universe.risk, 5, 10, 1.0)
+    # The pair spanning the broken print is unobservable -> NaN, never a
+    # 1e12-scale ratio that would rank the broken name first.
+    assert np.all(np.isnan(scores["AAA"]) | (np.abs(scores["AAA"]) < 1e3))
+
+
+def test_tqqq_nan_vol_derisks_instead_of_max_weight() -> None:
+    # vol_window=1 makes the vol series entirely NaN while EMAs stay finite:
+    # the exact case that used to fall through to max_tqqq_weight.
+    n = 240
+    t = np.arange(n, dtype=float)
+    qqq = 100.0 * np.exp(0.0015 * t)
+    tqqq = 30.0 * np.exp(0.004 * t)
+    base = tqqq_long_full_v1()
+    spec = TqqqSpec(
+        family="unit-tqqq",
+        name="unit",
+        status="test",
+        instruments=base.instruments,
+        params=replace(base.params, vol_window=1),
+        live_disabled=True,
+    )
+    weights = tqqq_target_weights(qqq, tqqq, spec)
+    assert np.all(weights["TQQQ"] == pytest.approx(0.0, abs=1e-12))
+    assert np.all(weights["SGOV"][spec.warmup :] == pytest.approx(1.0, abs=1e-12))

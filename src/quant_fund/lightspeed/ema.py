@@ -72,7 +72,11 @@ def realized_ann_vol_from_closes(
     prices = np.asarray(closes, dtype=float)
     n = len(prices)
     rets = np.zeros(n, dtype=float)
-    rets[1:] = prices[1:] / np.maximum(prices[:-1], _EPS) - 1.0
+    # A non-positive prior close cannot produce a return: propagate NaN so the
+    # vol it feeds stays unmeasurable instead of minting a 1/eps-scale print.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = prices[1:] / prices[:-1]
+    rets[1:] = np.where(prices[:-1] > 0.0, ratio - 1.0, np.nan)
     out = np.full(n, np.nan, dtype=float)
     width = int(window)
     if n < width + 1 or width <= 1:
