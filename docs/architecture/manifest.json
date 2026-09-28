@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 735,
+  "module_count": 736,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -6499,6 +6499,10 @@
       "src": "quant_fund.research.receipt_v2"
     },
     {
+      "dst": "quant_fund.research.script_receipts",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
       "dst": "quant_fund.utils.hashing",
       "src": "quant_fund.research.receipt_v2"
     },
@@ -7806,6 +7810,7 @@
     "quant_fund.research.research100",
     "quant_fund.research.research100_benchmark",
     "quant_fund.research.research100_cli",
+    "quant_fund.research.script_receipts",
     "quant_fund.research.shadow_journal",
     "quant_fund.research.sota_evidence",
     "quant_fund.research.sota_protocol",
@@ -9228,7 +9233,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 101,
       "src": "quant_fund.research"
     },
     {
