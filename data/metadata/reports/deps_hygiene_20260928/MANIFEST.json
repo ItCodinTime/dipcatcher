@@ -1,0 +1,12 @@
+{
+ "_note": "sha256 of each raw tool artifact; receipt receipts/deps_security_hygiene_*.json binds these digests",
+ "bandit_report.json": "809cd6121547aa0fe7ba43a02bee5b7d032cf7677b4e186f697e3afad325118c",
+ "bandit_strict.txt": "87a0d55d41533af09c000df7e63d6fa0aa38f2a585fda3748f2d824c1713a822",
+ "deptry_src.txt": "ff6a683d5c49cc51f281f71b0d33bdd6b3b3f6a98cc32e827d42489cdb26b6a9",
+ "environment.txt": "51db324590116cdb29cde79a5e84e163b558ad5205ca99de5982ca5bd9413649",
+ "export_all.txt": "9fbf64df6666d2cfa7f4c6e7ffb8da02d4f0a55c16c8fc6519c46d851518730b",
+ "gitleaks_report.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+ "licenses_all.json": "a6fd604a5b417cae275fab6b11a080394bc8d3081e7c647ea1022caa4efd5121",
+ "pip_audit.json": "049e4778f823e4f6e95ea20dc9426dde053a1920d865b5912e5509c74ec29ba6",
+ "uv_audit.json": "737891e2dfea09ce5a31b82b8a023663d03d6f2de336f16f2d8e492275e04e21"
+}

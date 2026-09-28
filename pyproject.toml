@@ -15,7 +15,6 @@ dependencies = [
     "scipy>=1.14",
     "pandas>=2.2",
     "pydantic>=2.9",
-    "pydantic-settings>=2.6",
     "pyyaml>=6.0",
     "typer>=0.12",
     "structlog>=24.4",
@@ -32,9 +31,13 @@ dependencies = [
     "matplotlib>=3.9",
     "fastapi>=0.115",
     "uvicorn>=0.32",
-    "python-dotenv>=1.0",
     "joblib>=1.4",
     "numba>=0.60",
+    # Imported by quant_fund.audit.signing (Ed25519) and
+    # quant_fund.research.receipt_v2 (BLAS threadpool fingerprint) — both
+    # previously relied on transitive pulls; declared per P6.10 hygiene.
+    "cryptography>=44",
+    "threadpoolctl>=3.5",
     "exchange-calendars==4.13.2",
 ]
 

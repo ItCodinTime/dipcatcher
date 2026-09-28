@@ -172,6 +172,8 @@ nav:
       - P6.4 dist/vol audit: AUDIT_P64_DIST.md
       - P6.5 micro audit: AUDIT_P65_MICRO.md
       - P6.6 infra audit: AUDIT_P66_INFRA.md
+      - P6.10 deps audit: AUDIT_P610_DEPS.md
+      - Security evidence: SECURITY_EVIDENCE.md
       - Forward shadow record: FORWARD_SHADOW_RECORD.md
       - Ranker probability experiment: RANKER_PROBABILITY_EXPERIMENT.md
       - Performance: PERF.md

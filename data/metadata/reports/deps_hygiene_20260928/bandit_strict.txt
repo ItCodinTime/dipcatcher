@@ -1,0 +1,16 @@
+INFO add_decision: Id::<PubGrubPackage>(0) @ 0a0.dev0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(1) @ 1.9.4 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(2) @ 6.0.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(3) @ 5.9.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(4) @ 15.0.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(5) @ 4.2.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(6) @ 2.21.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(7) @ 0.1.2 without checking dependencies    
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:152
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:152
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:153
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:186
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:186
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:202
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:202
+[tester]	WARNING	nosec encountered (B608), but no failed test on file src/quant_fund/proofcore/provenance.py:203

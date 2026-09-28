@@ -1,0 +1,9 @@
+# tool versions
+uv 0.12.19 (Homebrew 2026-09-24 aarch64-apple-darwin)
+python: 3.12.14
+pip-audit: 2.10.1 (uvx --from pip-audit==2.10.1)
+bandit: 1.9.4 (uvx --from bandit==1.9.4)
+deptry: 0.25.1 (uv run --with deptry==0.25.1)
+gitleaks: 8.30.1 darwin-arm64 (sha256-verified against release checksums.txt; same version CI installs for linux-x64)
+platform: macOS arm64
+commit: 2ed19c2a39b9c5521250e5e0cf53db188bc76b54

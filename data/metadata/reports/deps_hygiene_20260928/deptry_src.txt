@@ -1,0 +1,29 @@
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+INFO add_decision: Id::<PubGrubPackage>(0) @ 0a0.dev0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(1) @ 0.25.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(4) @ 8.5.0 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(5) @ 26.3 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(6) @ 0.13.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(2) @ 2.4.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(3) @ 2.4.1 without checking dependencies    
+INFO add_decision: Id::<PubGrubPackage>(7) @ 2.4.1 without checking dependencies    
+Scanning 733 files...
+
+[1mpyproject.toml[m[36m:[m [1m[31mDEP002[m 'statsmodels' defined as a dependency but not used in the codebase
+[1mpyproject.toml[m[36m:[m [1m[31mDEP002[m 'clarabel' defined as a dependency but not used in the codebase
+[1msrc/quant_fund/audit/signing.py[m[36m:[m168[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/audit/signing.py[m[36m:[m169[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/audit/signing.py[m[36m:[m170[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/audit/signing.py[m[36m:[m210[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/audit/signing.py[m[36m:[m211[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/audit/signing.py[m[36m:[m212[36m:[m9[36m:[m [1m[31mDEP001[m 'sigstore' imported but missing from the dependency definitions
+[1msrc/quant_fund/hedge_lab/zoo.py[m[36m:[m24[36m:[m9[36m:[m [1m[31mDEP001[m 'huggingface_hub' imported but missing from the dependency definitions
+[1msrc/quant_fund/mc_engine/engine.py[m[36m:[m331[36m:[m16[36m:[m [1m[31mDEP001[m 'ray' imported but missing from the dependency definitions
+[1msrc/quant_fund/models/kronos.py[m[36m:[m228[36m:[m9[36m:[m [1m[31mDEP001[m 'model' imported but missing from the dependency definitions
+[1msrc/quant_fund/models/kronos.py[m[36m:[m229[36m:[m9[36m:[m [1m[31mDEP001[m 'model' imported but missing from the dependency definitions
+[1msrc/quant_fund/models/robinhood_plus/torch_backend.py[m[36m:[m134[36m:[m9[36m:[m [1m[31mDEP001[m 'model' imported but missing from the dependency definitions
+[1msrc/quant_fund/native/__init__.py[m[36m:[m100[36m:[m16[36m:[m [1m[31mDEP001[m 'quant_core' imported but missing from the dependency definitions
+[1m[31mFound 14 dependency issues.[m
+
+For more information, see the documentation: https://deptry.com/
