@@ -11,26 +11,29 @@ field; anything else is ``diverged`` with a first-divergence record.
 Executor injection (W7/W6 decoupling): callers pass
 ``executor: Callable[[RunSpec, Any, Path], DecisionTrace]`` — signature
 ``(spec, vault, tmp_bundle_dir)``. The default executor lazily imports the
-proven runner (``quant_fund.proof.runner.run_proven``, falling back to the
-wave-2 ``run_backtest_proven``), re-runs into a fresh temp bundle dir, and
-loads the fresh ``<id>.trace.json``. Unit tests pass a fake executor so this
-module never depends on the runner at import time.
+proven runner (``quant_fund.proof.runner.run_proven``, W6), re-runs into a
+fresh temp bundle dir, and loads the fresh ``<id>.trace.json``. Unit tests
+pass a fake executor so this module never depends on the runner at import
+time.
 
-Sidecar hash anchoring: wave-2 sidecars (``<id>.trace.json``,
-``<id>.env.json``, ``<id>.seeds.json``) are hash-checked against the mint's
-sidecar manifest ``<id>.sidecars.json`` (canonical JSON ``{kind: sha256}``,
-the §2.5 mechanism), and the config sidecar against ``bundle.config_sha256``
-(wave-1 idiom). Because the frozen ``ProofBundleV1`` schema has no wave-2
-sidecar slots, the trace is additionally anchored by
-``trace.spec_sha256 == sha256(canonical RunSpec dump)`` where the RunSpec
-comes from the bundle-anchored config sidecar, and the seeds sidecar by
-deterministic re-derivation from the spec seed (§2.5).
+Sidecar hash anchoring (W6 integration contract): the wave-2 sidecars
+(``<id>.trace.json``, ``<id>.env.json``, ``<id>.seeds.json``) are committed
+by the runner inside the config sidecar as
+``config["sidecars"]["<kind>_sha256"]``. The config sidecar itself is
+anchored by ``bundle.config_sha256`` (frozen wave-1 schema field), so the
+commitment chain is bundle -> config -> wave-2 sidecars (§2.5's "existing
+sidecar manifest mechanism" — the bundle schema has no wave-2 slots and is
+read-only). The trace is additionally pinned by
+``trace.spec_sha256 == sha256(canonical RunSpec dump)`` and the seeds
+sidecar by deterministic re-derivation from the spec seed (§2.5).
 """
 
 from __future__ import annotations
 
 import json
 import platform
+import shutil
+import subprocess
 import tempfile
 from importlib import metadata as importlib_metadata
 from pathlib import Path
@@ -54,7 +57,9 @@ __all__ = [
     "ReplayUnavailable",
     "ROW_HASH_FIELDS",
     "WAVE2_SIDECAR_KINDS",
+    "current_env_sidecar",
     "derive_window_seeds",
+    "expected_seeds_sidecar",
     "replay_bundle",
     "window_seed_sha256",
 ]
@@ -62,8 +67,10 @@ __all__ = [
 #: Executor contract: (spec, vault, tmp_bundle_dir) -> re-executed trace.
 ReplayExecutor = Any  # Callable[[RunSpec, Any, Path], DecisionTrace]
 
-#: Wave-2 sidecar kinds, in deterministic check order (§5 step 1).
-WAVE2_SIDECAR_KINDS = ("trace", "env", "seeds", "config")
+#: Wave-2 sidecar kinds hash-checked via the config commitment map,
+#: in deterministic check order (§5 step 1). ``config`` is anchored by the
+#: bundle itself and checked first.
+WAVE2_SIDECAR_KINDS = ("trace", "env", "seeds")
 
 #: Per-row fields compared bit-exactly (§5 step 5), in deterministic order.
 ROW_HASH_FIELDS = (
@@ -87,27 +94,37 @@ class ReplayUnavailable(ProofError):
 
 def window_seed_sha256(seed: int, seq: int) -> str:
     """Window-seed commitment (§2.5): sha256(f"{seed}|{seq}") as hex."""
-    return sha256_hex_bytes(f"{seed}|{seq}".encode("utf-8"))
+    return sha256_hex_bytes(f"{seed}|{seq}".encode())
 
 
 def derive_window_seeds(spec: RunSpec) -> dict[str, str]:
-    """Re-derive the seeds sidecar content from the spec's top-level seed."""
-    return {
-        str(i): window_seed_sha256(spec.seed, i) for i in range(spec.decision_grid.count)
-    }
+    """Re-derive the per-window seed commitments from the spec's seed."""
+    return {str(i): window_seed_sha256(spec.seed, i) for i in range(spec.decision_grid.count)}
+
+
+def expected_seeds_sidecar(spec: RunSpec) -> dict[str, Any]:
+    """The seeds sidecar content the runner must have written for ``spec``."""
+    return {"seed": spec.seed, "window_seeds": derive_window_seeds(spec)}
 
 
 # ---------------------------------------------------------------------------
 # Current-environment probes (private; tests monkeypatch these, not the gate).
+# The formulas mirror proof.runner (W6), which wrote the stored fingerprints.
 # ---------------------------------------------------------------------------
 
 
 def _current_python_tag() -> str:
-    return platform.python_version()
+    """``implementation + version``, mirroring the runner's env sidecar."""
+    return platform.python_implementation() + platform.python_version()
 
 
 def _current_env_fingerprint() -> str:
-    """``f"{platform}|{python tag}|{quant_fund.__version__ or 'dev'}"`` (§2.2)."""
+    """``platform|python tag|quant_fund-dev`` — mirrors proof.runner (W6)."""
+    return f"{platform.platform()}|{platform.python_version()}|quant_fund-dev"
+
+
+def _current_env_fingerprint_contracts() -> str:
+    """Contracts-style variant (§2.2): real ``quant_fund.__version__`` or dev."""
     version = "dev"
     try:
         import quant_fund
@@ -119,13 +136,26 @@ def _current_env_fingerprint() -> str:
 
 
 def _current_code_fingerprint() -> str:
-    """Git revision of quant_fund in a worktree; all-zero fallback (§7.2 is W8)."""
+    """Git revision of the working tree, else ``"nogit"`` (mirrors W6; the
+    src-tree hash fallback is W8 §7.2, integration wave)."""
+    git = shutil.which("git")
+    if git is None:
+        return "nogit"
     try:
-        from quant_fund.proof.bundle import code_fingerprint
-
-        return code_fingerprint().git_revision
-    except Exception:  # fail closed to a deterministic non-match sentinel
-        return "0" * 40
+        proc = subprocess.run(
+            [git, "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=Path(__file__).resolve().parent,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "nogit"
+    revision = proc.stdout.strip()
+    if proc.returncode != 0 or not revision:
+        return "nogit"
+    return revision
 
 
 def _current_package_pins() -> dict[str, str]:
@@ -149,75 +179,73 @@ def current_env_sidecar() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Sidecar IO helpers
+# Step 1: sidecar hash-checks, anchored bundle -> config -> wave-2 sidecars
 # ---------------------------------------------------------------------------
 
 
 def _sidecar_path(bundle_dir: Path, bundle_id: str, kind: str) -> Path:
-    if kind == "config":
-        return bundle_dir / f"{bundle_id}.config.json"
     return bundle_dir / f"{bundle_id}.{kind}.json"
 
 
-def _load_sidecar_manifest(bundle_dir: Path, bundle_id: str) -> dict[str, str] | None:
-    """Read ``<id>.sidecars.json`` (kind -> sha256), or None when absent."""
-    path = bundle_dir / f"{bundle_id}.sidecars.json"
+def _valid_sha256_hex(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == _SHA256_HEX_LEN
+        and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def _read_sidecar(path: Path) -> bytes | None:
     if path.is_symlink() or not path.exists():
         return None
     try:
-        doc = json.loads(path.read_bytes())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return path.read_bytes()
+    except OSError:
         return None
-    if not isinstance(doc, dict):
-        return None
-    manifest: dict[str, str] = {}
-    for kind in ("trace", "env", "seeds"):
-        value = doc.get(kind, doc.get(f"{bundle_id}.{kind}.json"))
-        if (
-            not isinstance(value, str)
-            or len(value) != _SHA256_HEX_LEN
-            or value.lower() != value
-            or any(c not in "0123456789abcdef" for c in value)
-        ):
-            return None
-        manifest[kind] = value
-    return manifest
 
 
 def _hash_check_sidecars(
     bundle: ProofBundleV1, bundle_dir: Path
-) -> tuple[dict[str, bytes] | None, str | None]:
-    """Step 1: re-hash trace/env/seeds/config sidecars against recorded hashes.
+) -> tuple[dict[str, bytes] | None, dict[str, Any] | None, str | None]:
+    """Re-hash config + trace/env/seeds sidecars against their commitments.
 
-    Returns ``(contents, None)`` on success, ``(None, error)`` with
-    ``sidecar_tampered:<which>`` wording on any failure (fail closed).
+    Returns ``(contents, config_doc, None)`` on success, else
+    ``(None, None, error)`` with ``sidecar_tampered:<which>`` wording (fail
+    closed, mirroring the wave-1 verify idiom). The config sidecar is checked
+    against ``bundle.config_sha256`` FIRST; its ``sidecars`` map then anchors
+    the wave-2 sidecars.
     """
-    manifest = _load_sidecar_manifest(bundle_dir, bundle.bundle_id)
-    if manifest is None:
-        return None, "sidecar_tampered:manifest"
-    expected: dict[str, str] = {
-        "trace": manifest["trace"],
-        "env": manifest["env"],
-        "seeds": manifest["seeds"],
-        "config": bundle.config_sha256,
-    }
     contents: dict[str, bytes] = {}
+    config_bytes = _read_sidecar(_sidecar_path(bundle_dir, bundle.bundle_id, "config"))
+    if config_bytes is None or sha256_hex_bytes(config_bytes) != bundle.config_sha256:
+        return None, None, "sidecar_tampered:config"
+    try:
+        config_doc = json.loads(config_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return None, None, f"config_invalid:{exc.__class__.__name__}"
+    if not isinstance(config_doc, dict):
+        return None, None, "config_invalid:not_a_mapping"
+    if "run_spec" not in config_doc and "sidecars" not in config_doc:
+        # Wave-1 bundle: minted before causal runs existed, carries no
+        # decision trace. Preserve the stub's fail-closed wording (zero
+        # public-API/regression breakage).
+        return None, None, "runner_unavailable:per_decision_asof_not_implemented"
+    commitments = config_doc.get("sidecars")
+    commitments = commitments if isinstance(commitments, dict) else {}
     for kind in WAVE2_SIDECAR_KINDS:
-        path = _sidecar_path(bundle_dir, bundle.bundle_id, kind)
-        if path.is_symlink() or not path.exists():
-            return None, f"sidecar_tampered:{kind}"
-        try:
-            data = path.read_bytes()
-        except OSError:
-            return None, f"sidecar_tampered:{kind}"
-        if sha256_hex_bytes(data) != expected[kind]:
-            return None, f"sidecar_tampered:{kind}"
+        expected = commitments.get(f"{kind}_sha256", commitments.get(kind))
+        if not _valid_sha256_hex(expected):
+            return None, None, f"sidecar_tampered:{kind}"
+        data = _read_sidecar(_sidecar_path(bundle_dir, bundle.bundle_id, kind))
+        if data is None or sha256_hex_bytes(data) != expected:
+            return None, None, f"sidecar_tampered:{kind}"
         contents[kind] = data
-    return contents, None
+    contents["config"] = config_bytes
+    return contents, config_doc, None
 
 
 # ---------------------------------------------------------------------------
-# Env gate (§5 step 3, §1.4: unknown environment -> fail closed)
+# Step 3: environment gate (§1.4: unknown environment -> fail closed)
 # ---------------------------------------------------------------------------
 
 
@@ -226,13 +254,19 @@ def _env_mismatch_key(env_doc: object) -> str | None:
     if not isinstance(env_doc, dict):
         return "env_fingerprint"
     stored_env = env_doc.get("env_fingerprint")
-    if stored_env is not None and stored_env != _current_env_fingerprint():
+    if stored_env is not None and stored_env not in {
+        _current_env_fingerprint(),
+        _current_env_fingerprint_contracts(),
+    }:
         return "env_fingerprint"
     stored_code = env_doc.get("code_fingerprint")
     if stored_code is not None and stored_code != _current_code_fingerprint():
         return "code_fingerprint"
     stored_tag = env_doc.get("python_tag")
-    if stored_tag is not None and stored_tag != _current_python_tag():
+    if stored_tag is not None and stored_tag not in {
+        _current_python_tag(),
+        platform.python_version(),
+    }:
         return "python_tag"
     stored_pins = env_doc.get("packages")
     if isinstance(stored_pins, dict):
@@ -244,7 +278,7 @@ def _env_mismatch_key(env_doc: object) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Default executor: lazy runner import (keeps W7 decoupled from W6)
+# Step 4: default executor — lazy runner import (keeps W7 decoupled from W6)
 # ---------------------------------------------------------------------------
 
 
@@ -255,17 +289,13 @@ def _default_executor(spec: RunSpec, vault: Any, tmp_bundle_dir: Path) -> Decisi
     except ImportError as exc:
         raise ReplayUnavailable(f"runner_import:{exc.__class__.__name__}") from exc
     run_proven = getattr(_runner, "run_proven", None)
+    if run_proven is None:
+        raise ReplayUnavailable("quant_fund.proof.runner has no run_proven entry point")
     try:
-        if run_proven is not None:
-            ok, result = run_proven(spec, vault=vault, bundle_dir=tmp_bundle_dir)
-        else:
-            run_backtest_proven = getattr(_runner, "run_backtest_proven", None)
-            if run_backtest_proven is None:
-                raise ReplayUnavailable("quant_fund.proof.runner has no proven entry point")
-            ok, result = run_backtest_proven(spec, vault=vault, bundle_dir=tmp_bundle_dir)
+        ok, result = run_proven(spec, vault=vault, bundle_dir=tmp_bundle_dir)
     except ReplayUnavailable:
         raise
-    except Exception as exc:  # wave-1 stub raises ProofError; treat as unavailable
+    except Exception as exc:  # runner fails closed by raising (§4.4)
         raise ReplayUnavailable(str(exc)) from exc
     if not ok:
         raise ReplayUnavailable(str(result))
@@ -277,7 +307,7 @@ def _default_executor(spec: RunSpec, vault: Any, tmp_bundle_dir: Path) -> Decisi
 
 
 # ---------------------------------------------------------------------------
-# Comparison + metric recomputation (§5 steps 5-6)
+# Steps 5-6: comparison + metric recomputation
 # ---------------------------------------------------------------------------
 
 
@@ -350,7 +380,7 @@ def replay_bundle(
     bundle_path = Path(bundle_path)
     bundle_dir = Path(bundle_dir)
 
-    # Step 1 — load the bundle and hash-check every wave-2 sidecar.
+    # Step 1 — load the bundle and hash-check config + wave-2 sidecars.
     try:
         raw = json.loads(bundle_path.read_bytes())
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -359,8 +389,8 @@ def replay_bundle(
         bundle = ProofBundleV1.model_validate(raw)
     except ValidationError as exc:
         return False, f"bundle_invalid:{exc.error_count()}errors"
-    contents, tamper = _hash_check_sidecars(bundle, bundle_dir)
-    if tamper is not None or contents is None:
+    contents, config_doc, tamper = _hash_check_sidecars(bundle, bundle_dir)
+    if tamper is not None or contents is None or config_doc is None:
         return False, tamper or "sidecar_tampered:unknown"
 
     try:
@@ -373,10 +403,11 @@ def replay_bundle(
         return False, f"trace_chain_invalid:{exc}"
 
     # Step 2 — rebuild the RunSpec from the bundle-anchored config sidecar.
+    run_spec_raw = config_doc.get("run_spec")
     try:
-        spec = RunSpec.model_validate(json.loads(contents["config"]))
-    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
-        return False, f"config_spec_invalid:{exc.__class__.__name__}"
+        spec = RunSpec.model_validate(run_spec_raw)
+    except ValidationError as exc:
+        return False, f"config_spec_invalid:{exc.error_count()}errors"
     if sha256_hex_json(spec.model_dump(mode="json")) != stored_trace.spec_sha256:
         return False, "spec_mismatch:trace_spec_sha256"
 
@@ -385,7 +416,7 @@ def replay_bundle(
         seeds_doc = json.loads(contents["seeds"])
     except (UnicodeDecodeError, json.JSONDecodeError):
         return False, "sidecar_tampered:seeds"
-    if seeds_doc != derive_window_seeds(spec):
+    if seeds_doc != expected_seeds_sidecar(spec):
         return False, "sidecar_tampered:seeds"
 
     # Step 3 — environment gate (§1.4: unknown environment -> fail closed).
