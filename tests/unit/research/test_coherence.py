@@ -146,6 +146,24 @@ def test_non_synthetic_panel_rejected() -> None:
         run_coherence(panels={"independent": fake}, n_train=64, n_eval=16, n_mc=16)
 
 
+def test_verify_receipt_deep_verifies(tmp_path: Path) -> None:
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    _, receipt = _run()
+    path = write_coherence_receipt(receipt, tmp_path)
+    result = verify_receipt_file(path)
+    assert result["errors"] == [], result["errors"]
+    # A receipt with a tampered dataset binding must fail kind consistency.
+    import json as _json
+
+    raw = _json.loads(path.read_text())
+    raw["payload"]["panels"]["gauss_factor"]["y_sha256"] = "0" * 64
+    bad = tmp_path / "tampered.json"
+    bad.write_text(_json.dumps(raw))
+    tampered = verify_receipt_file(bad)
+    assert any("mismatch" in e or "seal" in e for e in tampered["errors"])
+
+
 def test_method_grid_monotone_and_train_only() -> None:
     from quant_fund.research.coherence import _method_grid
 

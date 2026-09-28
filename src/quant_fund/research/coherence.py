@@ -46,7 +46,7 @@ from quant_fund.metrics.scoring import (
 )
 from quant_fund.research.fleet_eval import DEFAULT_TAUS, _atomic_write_text
 from quant_fund.research.receipt_v2 import build_receipt_v2, seal_receipt
-from quant_fund.utils.hashing import hash_bytes
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 COHERENCE_SCHEMA = "coherence_eval.v1"
 METHODS: tuple[str, ...] = ("direct", "naive_sum", "independent_mc", "copula_mc")
@@ -365,6 +365,52 @@ def run_coherence(
         payload=payload,
     )
     return frame, envelope
+
+
+def coherence_dataset_identity(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """The dataset identity bound by the envelope's ``dataset_hash``."""
+    panels = payload.get("panels")
+    if not isinstance(panels, Mapping):
+        raise ValueError("coherence receipt has no panels block")
+    out: dict[str, Any] = {}
+    for name, meta in panels.items():
+        if not isinstance(meta, Mapping):
+            raise ValueError(f"coherence panel {name!r} metadata is not an object")
+        out[str(name)] = {"y_sha256": meta.get("y_sha256"), "n_names": meta.get("n_names")}
+    return out
+
+
+def coherence_params(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """The run parameters bound by the envelope's ``params_hash``."""
+    panels = payload.get("panels")
+    return {
+        "methods": payload.get("methods"),
+        "taus": payload.get("taus"),
+        "n_train": payload.get("n_train"),
+        "n_eval": payload.get("n_eval"),
+        "seed": payload.get("seed"),
+        "panels": sorted(str(name) for name in panels) if isinstance(panels, Mapping) else None,
+        "n_mc": payload.get("n_mc"),
+    }
+
+
+def coherence_v2_consistency_errors(envelope: Mapping[str, Any]) -> list[str]:
+    """Re-derive a coherence receipt.v2 envelope's bound digests from its payload."""
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    errors = coherence_contract_errors(envelope)
+    if errors:
+        return errors
+    try:
+        dataset = coherence_dataset_identity(payload)
+    except ValueError as exc:
+        return [*errors, f"payload_{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(coherence_params(payload))) != envelope.get("params_hash"):
+        errors.append("params_hash_mismatch")
+    return errors
 
 
 def coherence_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
