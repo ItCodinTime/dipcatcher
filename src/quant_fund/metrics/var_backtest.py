@@ -211,3 +211,62 @@ def kratz_test(returns: Array, var_levels: Array, alphas: Array) -> dict[str, fl
         "counts": counts,
         "expected": expected,
     }
+
+
+def _kupiec_lr(x: Array, n: int, p: float) -> Array:
+    """Kupiec LR_uc as a function of the violation count x (vectorized)."""
+    x = np.asarray(x, dtype=float)
+    ll_null = (n - x) * np.log1p(-p) + x * np.log(p)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        phat = x / n
+        ll_alt = np.where(
+            (x > 0) & (x < n),
+            (n - x) * np.log1p(-phat) + x * np.log(phat),
+            np.where(x == 0, n * np.log1p(-0.0), n * np.log(1.0)),
+        )
+    return np.asarray(-2.0 * (ll_null - ll_alt), dtype=float)
+
+
+def dumitrescu_hurlin_test(hits_panel: Array, alpha: float = 0.99) -> dict[str, float]:
+    """Dumitrescu–Hurlin (2012) panel VaR coverage test.
+
+    Pools per-series Kupiec LR_uc statistics across ``N`` series:
+    ``Z = (mean_i LR_i - mean_i E_i) / sqrt(sum_i V_i / N^2) ~ N(0,1)``,
+    where ``E_i``/``V_i`` are the exact binomial moments of the LR
+    statistic under H0 for series length ``n_i`` — LR_uc is a pure
+    function of the count ``x ~ Binomial(n_i, 1-alpha)``, so the
+    correction is computed exactly rather than by simulation as in the
+    original paper.
+
+    ``hits_panel`` is (T, N): column i is series i's hit sequence
+    (binary, finite). Series may have leading all-zero padding; each
+    column's effective length is its full T — ragged panels should be
+    pre-trimmed by the caller.
+    """
+    h = np.asarray(hits_panel, dtype=float)
+    if h.ndim != 2 or h.shape[0] < 30 or h.shape[1] < 2:
+        raise ValueError("hits_panel must be (T, N) with T >= 30, N >= 2")
+    if not np.all(np.isfinite(h)) or not np.all((h == 0.0) | (h == 1.0)):
+        raise ValueError("hits_panel must be finite binary 0/1")
+    if not (0.5 < alpha < 1.0):
+        raise ValueError("alpha must be in (0.5, 1)")
+    t, n_series = h.shape
+    p = 1.0 - alpha
+    lr_i = _kupiec_lr(h.sum(axis=0), t, p)
+    # Exact moments of LR_uc under H0: x ~ Binomial(t, p).
+    xs = np.arange(t + 1, dtype=float)
+    pmf = stats.binom.pmf(xs, t, p)
+    lr_x = _kupiec_lr(xs, t, p)
+    e_lr = float(np.sum(pmf * lr_x))
+    v_lr = float(np.sum(pmf * lr_x * lr_x) - e_lr * e_lr)
+    if v_lr <= 0.0:
+        raise ValueError("degenerate null distribution")
+    z = float((lr_i.mean() - e_lr) / math.sqrt(v_lr / n_series))
+    return {
+        "statistic": z,
+        "pvalue": float(2.0 * stats.norm.sf(abs(z))),
+        "n_series": float(n_series),
+        "t": float(t),
+        "mean_lr": float(lr_i.mean()),
+        "expected_lr": e_lr,
+    }
