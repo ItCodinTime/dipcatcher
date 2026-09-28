@@ -13,6 +13,7 @@ import polars as pl
 from quant_fund.data.sources.base import (
     SourceAdapter,
     SourceError,
+    parse_time,
     pit_frame,
     query_url,
     utc_now,
@@ -776,6 +777,142 @@ class _OptionalLibrarySource(SourceAdapter):
         raise SourceError(
             f"{self.name} requires an explicit {self.library_name} payload; no dependency is installed by default"
         )
+
+
+def _vendor_names(
+    names: object, default: tuple[tuple[str, str], ...]
+) -> tuple[tuple[str, str], ...]:
+    """Coerce ``names`` to ``(security_id, vendor_symbol)`` pairs; ``None`` picks ``default``."""
+    if names is None:
+        return default
+    if isinstance(names, str):
+        pairs: list[tuple[str, str]] = []
+        for item in names.split(","):
+            security_id, sep, symbol = item.partition(":")
+            if not sep or not security_id.strip() or not symbol.strip():
+                raise ValueError(f"names entries must be 'SECURITY:vendor_symbol', got {item!r}")
+            pairs.append((security_id.strip(), symbol.strip()))
+        return tuple(pairs)
+    if isinstance(names, (list, tuple)):
+        pairs = []
+        for entry in names:
+            if not isinstance(entry, (tuple, list)) or len(entry) != 2:
+                raise ValueError(
+                    f"names entries must be (security_id, vendor_symbol) pairs, got {entry!r}"
+                )
+            security_id, symbol = entry
+            pairs.append((str(security_id), str(symbol)))
+        return tuple(pairs)
+    raise ValueError(f"names must be a comma string or pair sequence, got {type(names).__name__}")
+
+
+def _vendor_bool(value: object) -> bool:
+    """Coerce CLI ``--param`` strings to bool; fail closed on anything else."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    raise ValueError(f"strict must be a boolean, got {value!r}")
+
+
+class StooqSource(SourceAdapter):
+    """Stooq daily-equities universe as a PIT-stamped source frame.
+
+    ``fetch`` returns a session-close PIT frame for a comma list of
+    ``SECURITY:stooq_symbol`` names (default US_LIQUID). Per-name fetch
+    failures fail the whole call under ``strict=True`` (the default) so a
+    silently-truncated universe can never reach the pipeline; pass
+    ``strict=false`` to keep the surviving names. ``start``/``end`` are
+    session dates (ISO strings), not instants.
+    """
+
+    name = "stooq"
+
+    def fetch(
+        self,
+        *,
+        names: object = None,
+        start: object = None,
+        end: object = None,
+        pause_s: float = 0.4,
+        max_workers: int = 4,
+        strict: object = True,
+    ) -> pl.DataFrame:
+        # Lazy: data.adapters.__init__ already imports sources.base, so a
+        # top-level edge here would create a module cycle through the registry.
+        from quant_fund.data.adapters.stooq import US_LIQUID, collect_bars
+
+        universe = _vendor_names(names, US_LIQUID)
+        strict_flag = _vendor_bool(strict)
+        start_dt = None if start is None else parse_time(start)
+        end_dt = None if end is None else parse_time(end)
+        bars, errors = collect_bars(
+            universe,
+            start=start_dt,
+            end=end_dt,
+            pause_s=float(pause_s),
+            max_workers=int(max_workers),
+        )
+        if errors and strict_flag:
+            raise SourceError(
+                f"stooq fetch failed for {len(errors)}/{len(universe)} names: {errors}"
+            )
+        if bars.is_empty():
+            raise SourceError(
+                f"stooq fetch returned no bars ({len(errors)}/{len(universe)} names failed)"
+            )
+        return bars
+
+
+class YahooSource(SourceAdapter):
+    """Yahoo v8 daily-equities universe as a PIT-stamped source frame.
+
+    Same contract as :class:`StooqSource` but over Yahoo chart payloads
+    (``SECURITY:yahoo_symbol`` names, e.g. ``AAPL:AAPL`` or ``VOD:VOD.L``;
+    default YAHOO_US). Kept as a separate registered source on purpose — the
+    ``source`` column must name the true vendor, so there is no silent
+    stooq→yahoo fallback.
+    """
+
+    name = "yahoo"
+
+    def fetch(
+        self,
+        *,
+        names: object = None,
+        start: object = None,
+        end: object = None,
+        pause_s: float = 0.15,
+        max_workers: int = 4,
+        strict: object = True,
+    ) -> pl.DataFrame:
+        # Lazy: same module-cycle reason as StooqSource.
+        from quant_fund.data.adapters.yahoo_eod import YAHOO_US, collect_bars
+
+        universe = _vendor_names(names, YAHOO_US)
+        strict_flag = _vendor_bool(strict)
+        start_dt = None if start is None else parse_time(start)
+        end_dt = None if end is None else parse_time(end)
+        bars, errors = collect_bars(
+            universe,
+            start=start_dt,
+            end=end_dt,
+            pause_s=float(pause_s),
+            max_workers=int(max_workers),
+        )
+        if errors and strict_flag:
+            raise SourceError(
+                f"yahoo fetch failed for {len(errors)}/{len(universe)} names: {errors}"
+            )
+        if bars.is_empty():
+            raise SourceError(
+                f"yahoo fetch returned no bars ({len(errors)}/{len(universe)} names failed)"
+            )
+        return bars
 
 
 class CryptofeedSource(_OptionalLibrarySource):

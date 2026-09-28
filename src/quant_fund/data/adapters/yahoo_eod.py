@@ -164,16 +164,15 @@ def parse_yahoo_chart(
     return pl.DataFrame(rows) if rows else pl.DataFrame()
 
 
-def download_yahoo_universe(
-    root: Path,
-    names: tuple[tuple[str, str], ...] = YAHOO_US,
+def collect_bars(
+    names: tuple[tuple[str, str], ...],
     *,
-    start: datetime | None = None,
-    end: datetime | None = None,
-    pause_s: float = 0.15,
-    sectors: dict[str, str] | None = None,
-    max_workers: int = 4,
-) -> dict[str, object]:
+    start: datetime | None,
+    end: datetime | None,
+    pause_s: float,
+    max_workers: int,
+) -> tuple[pl.DataFrame, dict[str, str]]:
+    """Fetch, parse, and bound-check every name; return (bars, per-name errors)."""
     start_ts = start or datetime(2019, 1, 2, tzinfo=UTC)
     end_ts = end or datetime.now(tz=UTC)
 
@@ -207,6 +206,27 @@ def download_yahoo_universe(
         if frame is not None and not frame.is_empty():
             frames.append(frame)
     if not frames:
+        return pl.DataFrame(), errors
+    return (
+        pl.concat(frames, how="diagonal_relaxed").sort(["event_time", "security_id"]),
+        errors,
+    )
+
+
+def download_yahoo_universe(
+    root: Path,
+    names: tuple[tuple[str, str], ...] = YAHOO_US,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    pause_s: float = 0.15,
+    sectors: dict[str, str] | None = None,
+    max_workers: int = 4,
+) -> dict[str, object]:
+    bars, errors = collect_bars(
+        names, start=start, end=end, pause_s=pause_s, max_workers=max_workers
+    )
+    if bars.is_empty():
         return {
             "status": "empty",
             "n_names": 0,
@@ -216,7 +236,6 @@ def download_yahoo_universe(
             "vendor_adjusted": True,
             "sip_vintage": False,
         }
-    bars = pl.concat(frames, how="diagonal_relaxed").sort(["event_time", "security_id"])
     paths = write_file_lake(bars, root, sectors=sectors)
     return {
         "status": "ok",

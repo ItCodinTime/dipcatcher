@@ -20,8 +20,10 @@ from quant_fund.data.sources.adapters import (
     ItchSampleSource,
     OpenBBSource,
     SecEdgarSource,
+    StooqSource,
     TreasurySource,
     WorldBankSource,
+    YahooSource,
 )
 from quant_fund.data.sources.base import SourceAdapter
 
@@ -39,12 +41,14 @@ SOURCE_REGISTRY: dict[str, type[SourceAdapter]] = {
         Fi2010Source,
         GdeltSource,
         SecEdgarSource,
+        StooqSource,
         FredSource,
         AlfredSource,
         TreasurySource,
         CftcSource,
         FinaSource,
         WorldBankSource,
+        YahooSource,
         BeaSource,
         OpenBBSource,
     )
@@ -76,13 +80,17 @@ def _install_hf_ohlcv() -> None:
     SOURCE_REGISTRY[HfOhlcv1mSource.name] = HfOhlcv1mSource
 
 
-def source_names() -> tuple[str, ...]:
+def _install_lazy_sources() -> None:
     _install_hf_ohlcv()
+
+
+def source_names() -> tuple[str, ...]:
+    _install_lazy_sources()
     return tuple(sorted(SOURCE_REGISTRY))
 
 
 def get_source(name: str) -> SourceAdapter:
-    _install_hf_ohlcv()
+    _install_lazy_sources()
     key = ALIASES.get(name.strip().lower(), name.strip().lower())
     try:
         cls = SOURCE_REGISTRY[key]

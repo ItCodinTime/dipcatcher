@@ -265,16 +265,20 @@ def write_file_lake(
     return {"bars": bars_path, "master": master_path, "actions": actions_path}
 
 
-def download_stooq_universe(
-    root: Path,
-    names: tuple[tuple[str, str], ...] = US_LIQUID,
+def collect_bars(
+    names: tuple[tuple[str, str], ...],
     *,
-    start: datetime | None = None,
-    end: datetime | None = None,
-    pause_s: float = 0.4,
-    max_workers: int = 4,
-) -> dict[str, object]:
-    """Download a liquid public universe into ``root`` as a PIT-shaped file tape."""
+    start: datetime | None,
+    end: datetime | None,
+    pause_s: float,
+    max_workers: int,
+) -> tuple[pl.DataFrame, dict[str, str]]:
+    """Fetch, parse, and bound-check every name; return (bars, per-name errors)."""
+
+    # Bounds are session dates: a daily bar's event_time is its session close,
+    # so an instant comparison would silently drop same-day bars.
+    start_d = start.date() if start is not None else None
+    end_d = end.date() if end is not None else None
 
     def _one(pair: tuple[str, str]) -> tuple[str, pl.DataFrame | None, str | None]:
         security_id, symbol = pair
@@ -283,10 +287,10 @@ def download_stooq_universe(
             frame = parse_stooq_csv(text, security_id=security_id, stooq_symbol=symbol)
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
             return security_id, None, str(exc)
-        if start is not None and not frame.is_empty():
-            frame = frame.filter(pl.col("event_time") >= start)
-        if end is not None and not frame.is_empty():
-            frame = frame.filter(pl.col("event_time") <= end)
+        if start_d is not None and not frame.is_empty():
+            frame = frame.filter(pl.col("event_time").dt.date() >= start_d)
+        if end_d is not None and not frame.is_empty():
+            frame = frame.filter(pl.col("event_time").dt.date() <= end_d)
         return security_id, frame, None
 
     fetched = map_ordered(
@@ -304,6 +308,27 @@ def download_stooq_universe(
         if frame is not None and not frame.is_empty():
             frames.append(frame)
     if not frames:
+        return pl.DataFrame(), errors
+    return (
+        pl.concat(frames, how="diagonal_relaxed").sort(["event_time", "security_id"]),
+        errors,
+    )
+
+
+def download_stooq_universe(
+    root: Path,
+    names: tuple[tuple[str, str], ...] = US_LIQUID,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    pause_s: float = 0.4,
+    max_workers: int = 4,
+) -> dict[str, object]:
+    """Download a liquid public universe into ``root`` as a PIT-shaped file tape."""
+    bars, errors = collect_bars(
+        names, start=start, end=end, pause_s=pause_s, max_workers=max_workers
+    )
+    if bars.is_empty():
         return {
             "status": "empty",
             "n_names": 0,
@@ -312,7 +337,6 @@ def download_stooq_universe(
             "vendor_adjusted": True,
             "sip_vintage": False,
         }
-    bars = pl.concat(frames, how="diagonal_relaxed").sort(["event_time", "security_id"])
     paths = write_file_lake(bars, root)
     return {
         "status": "ok",
