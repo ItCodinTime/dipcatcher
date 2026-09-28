@@ -26,9 +26,10 @@ STRICT_BASELINE_SHA256 = "452034ec90dbc11dc2a8ca78f22d950c591ae0fd67b3ecbfabe08d
 # validate_ledger_schema. verify_research_artifact was 196 before the split.
 MCCABE_CEILING = 74
 # `except Exception` handlers under src/quant_fund. Origin/main sat at 75;
-# three catalog lazy-import guards narrowed to ImportError, so the ceiling
-# tightens to 72. New handlers that push the total above this fail the test.
-EXCEPT_EXCEPTION_CEILING = 72
+# four closed lazy-import guards narrowed to ImportError (catalog ×3 +
+# fast_replay forecast overlay), so the ceiling tightens to 71. New handlers
+# that push the total above this fail the test.
+EXCEPT_EXCEPTION_CEILING = 71
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
