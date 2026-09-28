@@ -58,6 +58,33 @@ make sync          # uv sync --frozen --all-groups --all-extras (uv.lock is
 - `fx1_seed_corpus.jsonl` and the root docs (`APPLY.md`, `MATH_SPEC.md`,
   `RESEARCH_REFERENCES.md`) are tracked inputs/notes — don't delete blindly.
 
+## Remote fleet (Windows box `D:\dipcatcher`)
+
+The SOTA/eval fleet runs on a dedicated Windows host; conventions below are
+load-bearing — jobs break silently otherwise.
+
+- **PowerShell-only.** Remote ops scripts are `.ps1`; bash heredocs do not
+  exist there. Quote `cmd /c` inner strings with backtick-escaped quotes.
+- **WMI spawn, not `Start-Process`.** Jobs are created via
+  `Invoke-CimMethod -ClassName Win32_Process -MethodName Create` so they are
+  owned by WMI and survive ssh session teardown. Always wrap the payload in
+  `cmd /c "... 1> stdout.log 2> stderr.log"` — `Win32_Process` has no built-in
+  redirection.
+- **Parametrized launcher.** New fleet work goes through
+  `scripts/fleet_spawn.ps1 -Manifest jobs.json` (one JSON job list, one
+  spawn path) plus `scripts/fleet_watchdog.ps1` (heartbeat file at
+  `.dsh-24x7\fleet_heartbeat.json`, auto-respawn bounded by `-MaxRespawns`).
+  `scripts/fleet_manifest_sota.ps1` regenerates the canonical SOTA manifest.
+  The legacy `spawn_*.ps1` one-offs stay for reference; prefer the launcher.
+- **Durable paths.** Long-running artifacts live under `.dsh-24x7\` (gitignored
+  locally, durable remotely); model weights under `data\models\`; bars under
+  `data\raw\sources\`. Do not write fleet state into temp dirs.
+- **Thread pinning.** Jobs set `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1`,
+  `TOKENIZERS_PARALLELISM=false` in their `env` block — the manifest schema
+  carries this; keep it when authoring new jobs.
+- **Defender exclusions.** The remote host needs `D:\dipcatcher` excluded
+  from real-time scanning or parquet/bar reads get throttled mid-fleet.
+
 ## Key docs
 
 `docs/FX1.md` (model), `docs/FX1_TRAINING.md` (compute ladder + gates),

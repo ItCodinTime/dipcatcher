@@ -385,10 +385,19 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       `np.__config__.CONFIG`, loaded BLAS threadpools via threadpoolctl) with
       a `fingerprint_sha256` digest over the block. Still open: adopt v2 in
       the remaining lanes and sweep fingerprints across machines.
-- [ ] P7.5 Remote-fleet ops: consolidate `spawn_*.ps1` into one parametrized
+- [x] P7.5 Remote-fleet ops: consolidate `spawn_*.ps1` into one parametrized
       launcher + watchdog (auto-respawn dead shards, heartbeat file).
-- [ ] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI
+      Landed: `scripts/fleet_spawn.ps1` (JSON-manifest WMI launcher, same
+      Win32_Process + cmd /c redirect pattern, dry-run + spawn receipt) +
+      `scripts/fleet_watchdog.ps1` (PID liveness, output-file staleness,
+      bounded respawn, `.dsh-24x7/fleet_heartbeat.json` heartbeat) +
+      `scripts/fleet_manifest_sota.ps1` (regenerates the spawn_sota_all job
+      list as a manifest).
+- [x] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI
       spawn, Defender exclusions, durable paths), durable staging dirs.
+      Landed: AGENTS.md "Remote fleet" section — PowerShell-only, WMI spawn
+      survives ssh teardown, parametrized launcher + watchdog, `.dsh-24x7`
+      durable paths, thread-pinning env block, Defender exclusions.
 
 ## Execution rules
 
