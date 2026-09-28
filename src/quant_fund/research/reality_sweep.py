@@ -436,6 +436,7 @@ def prepare_bars(
         "high_quote",
         "low_quote",
         "close_quote",
+        "volume_quote",
         "dividend",
         "return_basis",
     ):

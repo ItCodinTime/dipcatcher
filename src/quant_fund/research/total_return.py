@@ -322,6 +322,7 @@ def _scale_onto_total_return(adjusted: pl.DataFrame) -> pl.DataFrame:
         pl.col("high").alias("high_quote"),
         pl.col("low").alias("low_quote"),
         pl.col("close").alias("close_quote"),
+        pl.col("volume").alias("volume_quote"),
         (pl.col("close_total_return") / pl.col("close_split_adjusted")).alias("_tr_scale"),
     )
     bad = scaled.filter(
@@ -336,5 +337,9 @@ def _scale_onto_total_return(adjusted: pl.DataFrame) -> pl.DataFrame:
         (pl.col("high_split_adjusted") * pl.col("_tr_scale")).alias("high"),
         (pl.col("low_split_adjusted") * pl.col("_tr_scale")).alias("low"),
         pl.col("close_total_return").alias("close"),
+        # Dollar-volume paths read close * volume. When prices move onto the
+        # split-adjusted basis, share volume must follow or ADV halves across
+        # a 2-for-1 and participation limits tighten incorrectly.
+        pl.col("volume_split_adjusted").alias("volume"),
         pl.lit("total_return").alias("return_basis"),
     ).drop("_tr_scale")

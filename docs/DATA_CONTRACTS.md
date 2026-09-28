@@ -54,10 +54,12 @@ vintage). An action whose `available_time` is after `event_time` fails closed.
 
 The research backtest fills at `open` and marks at `close_total_return`, so
 the adjusted panel puts open, high, low, and close on that total-return basis.
-Quote prints stay in `open_quote`, `high_quote`, `low_quote`, and
-`close_quote`. A name bought on the ex-date open does not collect that
-ex-date dividend; a name already held does. Share participation still uses
-quote volume because dollar volume is total-return close times share volume.
+Quote prints stay in `open_quote`, `high_quote`, `low_quote`,
+`close_quote`, and `volume_quote`. A name bought on the ex-date open does
+not collect that ex-date dividend; a name already held does. When the input
+prints are already split-adjusted (Yahoo default), volume is unchanged.
+On raw prints with `prices_already_split_adjusted=False`, volume is moved
+onto the split-adjusted share basis with the OHLC so ADV stays coherent.
 This is research data only. It does not place orders.
 
 ### Hugging Face minute bars (`hf_ohlcv_1m`)

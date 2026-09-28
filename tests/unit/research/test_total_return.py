@@ -259,6 +259,10 @@ def test_raw_prints_follow_adjust_prices() -> None:
     )
     assert out["close"].to_list() == pytest.approx(out["close_total_return"].to_list())
     assert out["close_quote"].to_list() == [200.0, 102.0]
+    # Pre-split raw volume 1e6 becomes 2e6 on the split-adjusted share basis so
+    # ADV = close * volume stays on one basis with the adjusted OHLC.
+    assert out["volume_quote"].to_list() == [1_000_000.0, 1_000_000.0]
+    assert out["volume"].to_list() == pytest.approx([2_000_000.0, 1_000_000.0])
 
 
 def test_dividend_outside_sample_is_dropped_and_gap_fails() -> None:
