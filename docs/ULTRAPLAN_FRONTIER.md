@@ -364,9 +364,24 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
 
 ### P7 — Frontier infrastructure upgrades
 
-- [ ] P7.1 CI reproduction job: merge+inference is pure numpy — gated on the
+- [x] P7.1 CI reproduction job: merge+inference is pure numpy — gated on the
       repo-policy decision (commit loss matrices + bar parquets or fetch
       from artifact store). Draft the workflow; flag for user.
+      Drafted + partially live: `.github/workflows/reproduce_sota.yml` —
+      the *native* leg runs unconditionally (both committed parts reproduce
+      their committed merged receipts bit-exact, verified locally):
+      `nd_*.paths.npz` → `native/MERGED_d1_native.json` and
+      `nh_*.paths.npz` → `native/MERGED_h4_native.json`, verified by
+      `scripts/check_sota_reproduction.py` (recursive compare; volatile
+      timestamp keys dropped, implementation-hash drift reported as
+      warnings, part paths normalized to basename). The kronos leg
+      (`mega-arena/spliced/d1_*.mega.npz` → `mega-arena/merge_d1.json`)
+      stays gated on the real policy decision: the reference receipt's
+      `timestamp_source=reconstructed_from_hash_verified_bars` requires
+      `--bars-root data/raw/sources`, which is gitignored — commit the bar
+      parquets or set the `SOTA_ARTIFACT_URI` repo variable (s3:// prefix
+      mirroring sources/) to lift the gate; the workflow notices-and-skips
+      until then.
 - [ ] P7.2 Receipt v2 schema: unified `receipt.json` fields across eval,
       incumbent, carry, paper lanes (dataset hash, code hash, params,
       environment, `live_pnl_claim`, verdict).

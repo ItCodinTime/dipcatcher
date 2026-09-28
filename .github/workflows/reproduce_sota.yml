@@ -1,0 +1,143 @@
+name: Reproduce SOTA
+
+# P7.1 — CI reproduction of the SOTA merge+inference receipts.
+#
+# The merge step is pure numpy/scipy (~30s): it recomputes the pooled
+# statistics from committed loss-matrix shards and diffs the result against
+# the committed merged receipt — bit-exact, modulo timestamp fields. Any
+# divergence fails the job: either nondeterminism or a data change, both
+# worth knowing.
+#
+# What runs today (no policy decision needed — parts are committed):
+#   - native d1: .dsh-24x7/native/nd_*.paths.npz -> native/MERGED_d1_native.json
+#   - native h4: .dsh-24x7/native/nh_*.paths.npz -> native/MERGED_h4_native.json
+#
+# What stays gated on the repo-policy decision (MEGAPLAN E2 — commit the
+# data or fetch it from an artifact store; user call, not an agent call):
+#   - sota_eval_kronos --merge-parts on .dsh-24x7/eval-full/ parts (gitignored)
+#   - the timestamped inference block needs --bars-root data/raw/sources
+#     (gitignored bar parquets). With bars the merge runs end-to-end;
+#     without them the receipt's inference fields are unavailable.
+#     Set the SOTA_ARTIFACT_URI repo variable (s3://… or https://… prefix
+#     holding dsh-24x7/eval-full/** and data/raw/sources/**) to enable the
+#     gated leg, or commit those paths to lift the gate.
+
+on:
+  pull_request:
+    paths:
+      - scripts/sota_eval_native.py
+      - scripts/sota_eval_kronos.py
+      - scripts/check_sota_reproduction.py
+      - src/quant_fund/metrics/**
+      - src/quant_fund/research/sota_evidence.py
+      - .dsh-24x7/native/**
+      - .github/workflows/reproduce_sota.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/sota_eval_native.py
+      - scripts/sota_eval_kronos.py
+      - scripts/check_sota_reproduction.py
+      - src/quant_fund/metrics/**
+      - src/quant_fund/research/sota_evidence.py
+      - .dsh-24x7/native/**
+      - .github/workflows/reproduce_sota.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce-native-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Recompute native merges
+        run: |
+          uv run python scripts/sota_eval_native.py \
+            --merge-parts .dsh-24x7/native/nd_*.paths.npz \
+            --merge-out "$RUNNER_TEMP/merged_d1.json"
+          uv run python scripts/sota_eval_native.py \
+            --merge-parts .dsh-24x7/native/nh_*.paths.npz \
+            --merge-out "$RUNNER_TEMP/merged_h4.json"
+      - name: Verify bit-exact reproduction
+        run: |
+          uv run python scripts/check_sota_reproduction.py \
+            --recomputed "$RUNNER_TEMP/merged_d1.json" \
+            --reference .dsh-24x7/native/MERGED_d1_native.json
+          uv run python scripts/check_sota_reproduction.py \
+            --recomputed "$RUNNER_TEMP/merged_h4.json" \
+            --reference .dsh-24x7/native/MERGED_h4_native.json
+
+  # The kronos merge reproduces .dsh-24x7/mega-arena/merge_d1.json from the
+  # committed spliced/*.mega.npz parts — but only WITH bar parquets under
+  # data/raw/sources (gitignored): the reference receipt's inference block
+  # has timestamp_source=reconstructed_from_hash_verified_bars, which cannot
+  # be reproduced without them. Enable by committing the bars or setting
+  # SOTA_ARTIFACT_URI to an s3:// prefix that mirrors data/raw/sources/.
+  reproduce-kronos-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Fetch bar parquets from artifact store
+        if: vars.SOTA_ARTIFACT_URI != ''
+        run: |
+          set -euo pipefail
+          uri="${{ vars.SOTA_ARTIFACT_URI }}"
+          case "$uri" in
+            s3://*) aws s3 sync "$uri" data/raw/sources/ ;;
+            *) echo "::error::unsupported SOTA_ARTIFACT_URI scheme (s3:// only)"; exit 1 ;;
+          esac
+      - name: Gate on bar availability
+        id: gate
+        run: |
+          set -euo pipefail
+          if [ -n "$(find data/raw/sources -type f 2>/dev/null | head -1)" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::bar parquets present — running full kronos merge reproduction"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::kronos merge skipped — data/raw/sources is not \
+              committed and SOTA_ARTIFACT_URI is unset. This is the P7.1 \
+              repo-policy gate (MEGAPLAN E2): commit the bar parquets or set \
+              the artifact-store variable to enable this leg."
+          fi
+      - name: Recompute mega-arena d1 merge
+        if: steps.gate.outputs.available == 'true'
+        run: |
+          uv run python scripts/sota_eval_kronos.py \
+            --merge-parts .dsh-24x7/mega-arena/spliced/d1_*.mega.npz \
+            --bars-root data/raw/sources \
+            --merge-out "$RUNNER_TEMP/merged_arena_d1.json" \
+            --seed 7 --n-boot 1000
+      - name: Verify reproduction (cross-platform float tolerance)
+        if: steps.gate.outputs.available == 'true'
+        run: |
+          uv run python scripts/check_sota_reproduction.py \
+            --recomputed "$RUNNER_TEMP/merged_arena_d1.json" \
+            --reference .dsh-24x7/mega-arena/merge_d1.json \
+            --float-rel-tol 1e-9
