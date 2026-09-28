@@ -103,6 +103,78 @@ def _session_ohlc(
     return out
 
 
+def _empty_session_schema() -> dict[str, Any]:
+    return {
+        "security_id": pl.String,
+        "event_time": pl.Datetime(time_zone="UTC"),
+        "available_time": pl.Datetime(time_zone="UTC"),
+        "parent_event_time": pl.Datetime(time_zone="UTC"),
+        "session_index": pl.Int64,
+        "open": pl.Float64,
+        "high": pl.Float64,
+        "low": pl.Float64,
+        "close": pl.Float64,
+        "volume": pl.Float64,
+        "source": pl.String,
+        "revision_id": pl.String,
+    }
+
+
+def _session_rows_for_daily_bar(
+    row: dict[str, Any],
+    *,
+    n_candles: int,
+    high_first: bool,
+    has_symbol: bool,
+    has_available: bool,
+    has_volume: bool,
+) -> list[dict[str, Any]]:
+    """Expand one daily OHLC bar into PIT session-candle rows (or [])."""
+    opn = float(row["open"])
+    high = float(row["high"])
+    low = float(row["low"])
+    close = float(row["close"])
+    if not all(np.isfinite(x) for x in (opn, high, low, close)):
+        return []
+    if close <= 0.0:
+        return []
+    candles = _session_ohlc(opn, high, low, close, n_candles, high_first)
+    parent = row["event_time"]
+    if not isinstance(parent, datetime):
+        raise TypeError("event_time must be datetime")
+    parent_available = row["available_time"] if has_available else parent
+    if not isinstance(parent_available, datetime):
+        raise TypeError("available_time must be datetime")
+    # Pseudo-session timestamps end at the parent bar timestamp. Every
+    # reconstructed row remains unavailable until the completed parent bar
+    # is available; these timestamps never imply an observable intraday tape.
+    start = parent - timedelta(minutes=int(6.5 * 60.0))
+    vol = float(row["volume"]) if has_volume else 0.0
+    slice_vol = vol / float(n_candles) if np.isfinite(vol) else 0.0
+    symbol = str(row["symbol"]) if has_symbol else ""
+    rows: list[dict[str, Any]] = []
+    for i, (o, hi, lo, c) in enumerate(candles):
+        ts = start + timedelta(minutes=int((i + 1) * (6.5 * 60.0) / n_candles))
+        rows.append(
+            {
+                "security_id": str(row["security_id"]),
+                "symbol": symbol,
+                "event_time": ts,
+                "available_time": parent_available,
+                "parent_event_time": parent,
+                "session_index": int(i),
+                "open": o,
+                "high": hi,
+                "low": lo,
+                "close": c,
+                "volume": slice_vol,
+                "source": "synthetic_reconstruction",
+                "revision_id": "NORTHSET_SESSION_v2_PARENT_CLOSE_AVAILABLE",
+            }
+        )
+    return rows
+
+
 def session_candles_from_daily(
     bars: pl.DataFrame,
     *,
@@ -120,22 +192,7 @@ def session_candles_from_daily(
     if missing:
         raise ValueError(f"bars missing required columns: {missing}")
     if bars.height == 0:
-        return pl.DataFrame(
-            schema={
-                "security_id": pl.String,
-                "event_time": pl.Datetime(time_zone="UTC"),
-                "available_time": pl.Datetime(time_zone="UTC"),
-                "parent_event_time": pl.Datetime(time_zone="UTC"),
-                "session_index": pl.Int64,
-                "open": pl.Float64,
-                "high": pl.Float64,
-                "low": pl.Float64,
-                "close": pl.Float64,
-                "volume": pl.Float64,
-                "source": pl.String,
-                "revision_id": pl.String,
-            }
-        )
+        return pl.DataFrame(schema=_empty_session_schema())
     if n_candles < 2:
         raise ValueError("n_candles must be >= 2")
     rng = np.random.default_rng(int(seed))
@@ -145,48 +202,16 @@ def session_candles_from_daily(
     rows: list[dict[str, Any]] = []
     frame = bars.sort(["security_id", "event_time"])
     for row in frame.iter_rows(named=True):
-        opn = float(row["open"])
-        high = float(row["high"])
-        low = float(row["low"])
-        close = float(row["close"])
-        if not all(np.isfinite(x) for x in (opn, high, low, close)):
-            continue
-        if close <= 0.0:
-            continue
-        high_first = bool(rng.random() < 0.5)
-        candles = _session_ohlc(opn, high, low, close, n_candles, high_first)
-        parent = row["event_time"]
-        if not isinstance(parent, datetime):
-            raise TypeError("event_time must be datetime")
-        parent_available = row["available_time"] if has_available else parent
-        if not isinstance(parent_available, datetime):
-            raise TypeError("available_time must be datetime")
-        # Pseudo-session timestamps end at the parent bar timestamp. Every
-        # reconstructed row remains unavailable until the completed parent bar
-        # is available; these timestamps never imply an observable intraday tape.
-        start = parent - timedelta(minutes=int(6.5 * 60.0))
-        vol = float(row["volume"]) if has_volume else 0.0
-        slice_vol = vol / float(n_candles) if np.isfinite(vol) else 0.0
-        symbol = str(row["symbol"]) if has_symbol else ""
-        for i, (o, hi, lo, c) in enumerate(candles):
-            ts = start + timedelta(minutes=int((i + 1) * (6.5 * 60.0) / n_candles))
-            rows.append(
-                {
-                    "security_id": str(row["security_id"]),
-                    "symbol": symbol,
-                    "event_time": ts,
-                    "available_time": parent_available,
-                    "parent_event_time": parent,
-                    "session_index": int(i),
-                    "open": o,
-                    "high": hi,
-                    "low": lo,
-                    "close": c,
-                    "volume": slice_vol,
-                    "source": "synthetic_reconstruction",
-                    "revision_id": "NORTHSET_SESSION_v2_PARENT_CLOSE_AVAILABLE",
-                }
+        rows.extend(
+            _session_rows_for_daily_bar(
+                row,
+                n_candles=n_candles,
+                high_first=bool(rng.random() < 0.5),
+                has_symbol=has_symbol,
+                has_available=has_available,
+                has_volume=has_volume,
             )
+        )
     return pl.DataFrame(rows).sort(["security_id", "event_time"])
 
 

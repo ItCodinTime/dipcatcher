@@ -1091,6 +1091,140 @@ def parameter_sensitivity_grid(
     }
 
 
+def _signal_horizon_event_row(
+    frame: pl.DataFrame,
+    *,
+    signal: str,
+    horizon: int,
+    calendar: pl.DataFrame,
+    config: AppConfig,
+    cost_bps: float,
+    row_index: int,
+) -> tuple[dict[str, Any], float | None]:
+    """One (signal, horizon) event-study row + optional BH p-value."""
+    ns = config.northset
+    target = f"sweep_excess_ret_{horizon}"
+    daily, n_events = _event_daily_frame(frame, signal=signal, target=target)
+    event_vals = (
+        daily["_daily"].to_numpy().astype(float) if daily.height else np.array([], dtype=float)
+    )
+    event_finite = event_vals[np.isfinite(event_vals)]
+    cal_vals, cal_cost_bps = _embed_on_calendar(daily, calendar)
+    sample_adequate = bool(
+        n_events >= int(ns.sweep_min_events) and event_finite.size >= int(ns.sweep_min_dates)
+    )
+    mean = float(np.mean(event_finite)) if event_finite.size else float("nan")
+    if sample_adequate:
+        _mean, t_stat, p_value = mean_tstat(cal_vals, lags=max(1, horizon))
+        lo, hi, _point = bootstrap_mean_ci(
+            cal_vals,
+            n_boot=int(ns.sweep_n_boot),
+            block=max(2, horizon),
+            seed=int(config.validation.seed) + horizon + row_index * 17,
+        )
+    else:
+        t_stat = p_value = lo = hi = float("nan")
+    cost_adjusted = cal_vals - cal_cost_bps / 1e4
+    ca_mean_cal = float(np.mean(cost_adjusted)) if cost_adjusted.size else float("nan")
+    if daily.height:
+        event_cost = daily["_daily_cost_bps"].to_numpy().astype(float)
+        mask = np.isfinite(event_vals) & np.isfinite(event_cost)
+        ca_event = event_vals[mask] - event_cost[mask] / 1e4
+        ca_mean = float(np.mean(ca_event)) if ca_event.size else float("nan")
+    else:
+        ca_mean = float("nan")
+    if sample_adequate:
+        _ca_mean, ca_t, ca_p_two = mean_tstat(cost_adjusted, lags=max(1, horizon))
+        ca_p_greater = onesided_from_twosided(ca_t, ca_p_two, greater=True)
+    else:
+        ca_t = ca_p_greater = float("nan")
+    row: dict[str, Any] = {
+        "signal": signal,
+        "horizon": int(horizon),
+        "entry": "next_open",
+        "exit": f"close_t_plus_{horizon}",
+        "control": "same_date_cross_sectional_mean",
+        "inference_index": "calendar_including_idle_zeros",
+        "n_events": int(n_events),
+        "n_dates": int(event_finite.size),
+        "n_calendar_dates": int(cal_vals.size),
+        "sample_adequate": sample_adequate,
+        "min_events": int(ns.sweep_min_events),
+        "min_dates": int(ns.sweep_min_dates),
+        "mean_excess_bps": float(mean * 1e4),
+        "calendar_mean_excess_bps": float(float(np.mean(cal_vals)) * 1e4)
+        if cal_vals.size
+        else float("nan"),
+        "hac_t": float(t_stat),
+        "p_value": float(p_value),
+        "bootstrap_lo_bps": float(lo * 1e4),
+        "bootstrap_hi_bps": float(hi * 1e4),
+        "hit_rate": float(np.mean(event_finite > 0.0)) if event_finite.size else float("nan"),
+        "round_trip_cost_bps": float(cost_bps),
+        "cost_adjusted_mean_bps": float(ca_mean * 1e4),
+        "cost_adjusted_hac_t": float(ca_t),
+        "cost_adjusted_p_greater": float(ca_p_greater),
+        "calendar_cost_adjusted_mean_bps": float(ca_mean_cal * 1e4)
+        if math.isfinite(ca_mean_cal)
+        else float("nan"),
+        **(
+            _fold_summary(cal_vals, int(ns.sweep_n_folds), horizon)
+            if sample_adequate
+            else {
+                "n_folds": 0,
+                "positive_fraction": float("nan"),
+                "worst_mean_bps": float("nan"),
+                "fold_means_bps": [],
+            }
+        ),
+        "reject_fdr": False,
+    }
+    return row, (float(p_value) if math.isfinite(p_value) else None)
+
+
+def _regime_event_row(
+    frame: pl.DataFrame,
+    *,
+    signal: str,
+    regime: str,
+    calendar: pl.DataFrame,
+    config: AppConfig,
+) -> dict[str, Any]:
+    """One (signal, vol-regime) event-study row."""
+    ns = config.northset
+    daily, n_events = _event_daily_frame(
+        frame,
+        signal=signal,
+        target="sweep_excess_ret_1",
+        regime=regime,
+    )
+    event_vals = (
+        daily["_daily"].to_numpy().astype(float) if daily.height else np.array([], dtype=float)
+    )
+    event_finite = event_vals[np.isfinite(event_vals)]
+    cal_vals, _costs = _embed_on_calendar(daily, calendar)
+    event_mean = float(np.mean(event_finite)) if event_finite.size else float("nan")
+    sample_adequate = bool(
+        n_events >= int(ns.sweep_min_events) and event_finite.size >= int(ns.sweep_min_dates)
+    )
+    if sample_adequate:
+        _mu, t_stat, p_value = mean_tstat(cal_vals, lags=1)
+    else:
+        t_stat = p_value = float("nan")
+    return {
+        "signal": signal,
+        "regime": regime,
+        "n_events": int(n_events),
+        "n_dates": int(event_finite.size),
+        "n_calendar_dates": int(cal_vals.size),
+        "sample_adequate": sample_adequate,
+        "mean_excess_bps": float(event_mean * 1e4),
+        "hac_t": float(t_stat),
+        "p_value": float(p_value),
+        "inference_index": "calendar_including_idle_zeros",
+    }
+
+
 def sweep_evidence_battery(
     sweep_frame: pl.DataFrame,
     config: AppConfig,
@@ -1112,137 +1246,36 @@ def sweep_evidence_battery(
     p_indices: list[int] = []
     for signal in _SIGNALS:
         for horizon in horizons:
-            target = f"sweep_excess_ret_{horizon}"
-            daily, n_events = _event_daily_frame(frame, signal=signal, target=target)
-            event_vals = (
-                daily["_daily"].to_numpy().astype(float)
-                if daily.height
-                else np.array([], dtype=float)
+            row, p_value = _signal_horizon_event_row(
+                frame,
+                signal=signal,
+                horizon=horizon,
+                calendar=calendar,
+                config=config,
+                cost_bps=cost_bps,
+                row_index=len(rows),
             )
-            event_finite = event_vals[np.isfinite(event_vals)]
-            cal_vals, cal_cost_bps = _embed_on_calendar(daily, calendar)
-            sample_adequate = bool(
-                n_events >= int(ns.sweep_min_events)
-                and event_finite.size >= int(ns.sweep_min_dates)
-            )
-            mean = float(np.mean(event_finite)) if event_finite.size else float("nan")
-            if sample_adequate:
-                _mean, t_stat, p_value = mean_tstat(cal_vals, lags=max(1, horizon))
-                lo, hi, _point = bootstrap_mean_ci(
-                    cal_vals,
-                    n_boot=int(ns.sweep_n_boot),
-                    block=max(2, horizon),
-                    seed=int(config.validation.seed) + horizon + len(rows) * 17,
-                )
-            else:
-                t_stat = p_value = lo = hi = float("nan")
-            cost_adjusted = cal_vals - cal_cost_bps / 1e4
-            ca_mean_cal = float(np.mean(cost_adjusted)) if cost_adjusted.size else float("nan")
-            # Cost-adjusted *event* mean (conditional on trading).
-            if daily.height:
-                event_cost = daily["_daily_cost_bps"].to_numpy().astype(float)
-                mask = np.isfinite(event_vals) & np.isfinite(event_cost)
-                ca_event = event_vals[mask] - event_cost[mask] / 1e4
-                ca_mean = float(np.mean(ca_event)) if ca_event.size else float("nan")
-            else:
-                ca_mean = float("nan")
-            if sample_adequate:
-                _ca_mean, ca_t, ca_p_two = mean_tstat(cost_adjusted, lags=max(1, horizon))
-                ca_p_greater = onesided_from_twosided(ca_t, ca_p_two, greater=True)
-            else:
-                ca_t = ca_p_greater = float("nan")
-            row: dict[str, Any] = {
-                "signal": signal,
-                "horizon": int(horizon),
-                "entry": "next_open",
-                "exit": f"close_t_plus_{horizon}",
-                "control": "same_date_cross_sectional_mean",
-                "inference_index": "calendar_including_idle_zeros",
-                "n_events": int(n_events),
-                "n_dates": int(event_finite.size),
-                "n_calendar_dates": int(cal_vals.size),
-                "sample_adequate": sample_adequate,
-                "min_events": int(ns.sweep_min_events),
-                "min_dates": int(ns.sweep_min_dates),
-                "mean_excess_bps": float(mean * 1e4),
-                "calendar_mean_excess_bps": float(float(np.mean(cal_vals)) * 1e4)
-                if cal_vals.size
-                else float("nan"),
-                "hac_t": float(t_stat),
-                "p_value": float(p_value),
-                "bootstrap_lo_bps": float(lo * 1e4),
-                "bootstrap_hi_bps": float(hi * 1e4),
-                "hit_rate": float(np.mean(event_finite > 0.0))
-                if event_finite.size
-                else float("nan"),
-                "round_trip_cost_bps": float(cost_bps),
-                "cost_adjusted_mean_bps": float(ca_mean * 1e4),
-                "cost_adjusted_hac_t": float(ca_t),
-                "cost_adjusted_p_greater": float(ca_p_greater),
-                "calendar_cost_adjusted_mean_bps": float(ca_mean_cal * 1e4)
-                if math.isfinite(ca_mean_cal)
-                else float("nan"),
-                **(
-                    _fold_summary(cal_vals, int(ns.sweep_n_folds), horizon)
-                    if sample_adequate
-                    else {
-                        "n_folds": 0,
-                        "positive_fraction": float("nan"),
-                        "worst_mean_bps": float("nan"),
-                        "fold_means_bps": [],
-                    }
-                ),
-                "reject_fdr": False,
-            }
             rows.append(row)
-            if math.isfinite(p_value):
+            if p_value is not None:
                 p_indices.append(len(rows) - 1)
-                p_values.append(float(p_value))
+                p_values.append(p_value)
     fdr_cutoff = 0.0
     if p_values:
         rejected, fdr_cutoff = benjamini_hochberg(np.asarray(p_values), alpha=0.05)
         for idx, reject in zip(p_indices, rejected, strict=True):
             rows[idx]["reject_fdr"] = bool(reject)
 
-    regime_rows: list[dict[str, Any]] = []
-    for signal in _SIGNALS:
-        for regime in ("low", "high"):
-            daily, n_events = _event_daily_frame(
-                frame,
-                signal=signal,
-                target="sweep_excess_ret_1",
-                regime=regime,
-            )
-            event_vals = (
-                daily["_daily"].to_numpy().astype(float)
-                if daily.height
-                else np.array([], dtype=float)
-            )
-            event_finite = event_vals[np.isfinite(event_vals)]
-            cal_vals, _costs = _embed_on_calendar(daily, calendar)
-            event_mean = float(np.mean(event_finite)) if event_finite.size else float("nan")
-            sample_adequate = bool(
-                n_events >= int(ns.sweep_min_events)
-                and event_finite.size >= int(ns.sweep_min_dates)
-            )
-            if sample_adequate:
-                _mu, t_stat, p_value = mean_tstat(cal_vals, lags=1)
-            else:
-                t_stat = p_value = float("nan")
-            regime_rows.append(
-                {
-                    "signal": signal,
-                    "regime": regime,
-                    "n_events": int(n_events),
-                    "n_dates": int(event_finite.size),
-                    "n_calendar_dates": int(cal_vals.size),
-                    "sample_adequate": sample_adequate,
-                    "mean_excess_bps": float(event_mean * 1e4),
-                    "hac_t": float(t_stat),
-                    "p_value": float(p_value),
-                    "inference_index": "calendar_including_idle_zeros",
-                }
-            )
+    regime_rows: list[dict[str, Any]] = [
+        _regime_event_row(
+            frame,
+            signal=signal,
+            regime=regime,
+            calendar=calendar,
+            config=config,
+        )
+        for signal in _SIGNALS
+        for regime in ("low", "high")
+    ]
 
     placebos: dict[str, dict[str, float | int]] = {}
     for i, signal in enumerate(_SIGNALS):

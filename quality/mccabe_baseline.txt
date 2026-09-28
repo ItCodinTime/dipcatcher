@@ -144,12 +144,7 @@ src/quant_fund/models/volatility.py:GARCHVol.__init__ 13
 src/quant_fund/models/volatility.py:GARCHVol.forecast 10
 src/quant_fund/models/wavelets.py:modwt_mra 11
 src/quant_fund/monitoring/drift.py:model_health_report 12
-src/quant_fund/northset/benches.py:bench_northset 32
-src/quant_fund/northset/identities.py:session_candles_from_daily 10
-src/quant_fund/northset/kyle_ofi.py:fuse_bars_l2_kyle_frame 17
-src/quant_fund/northset/kyle_ofi.py:kyle_lambda_by_date 10
-src/quant_fund/northset/kyle_ofi.py:residual_flow_date_ic 10
-src/quant_fund/northset/sweep_research.py:sweep_evidence_battery 13
+src/quant_fund/northset/benches.py:bench_northset 14
 src/quant_fund/observe/metrics.py:render_prometheus 11
 src/quant_fund/paper/forward_shadow.py:_check_event 52
 src/quant_fund/paper/forward_shadow.py:_check_manifest 18

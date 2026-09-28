@@ -107,7 +107,7 @@ def test_mccabe_per_function_baseline_shape() -> None:
     # Northset worst offender must stay on the ratchet (may only decrease).
     northset_bench = rows.get(("src/quant_fund/northset/benches.py", "bench_northset"))
     assert northset_bench is not None
-    assert northset_bench <= 32
+    assert northset_bench <= 14
 
 
 def test_mccabe_ratchet_rejects_raised_baseline(

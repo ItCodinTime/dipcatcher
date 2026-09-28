@@ -6,8 +6,7 @@ Amihud, OFI, VPIN, session RV/jumps. No Sharpe. Research-only.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -25,6 +24,18 @@ from quant_fund.microstructure.synthetic_lob import (
     ensure_book_panel_shape_columns,
     synthesize_l2_from_bars,
     synthesize_session_l2,
+)
+from quant_fund.northset.bench_helpers import (
+    cond_fwd_mean,
+    enforce_structure_floors,
+    evidence_provenance,
+    float_col_or_empty,
+    join_age_metrics,
+    metrics_required_finite_ok,
+    nanmean_col,
+    nanmean_finite,
+    structure_finite_rates,
+    sweep_evidence_receipt_fields,
 )
 from quant_fund.northset.candles import geometry_rates
 from quant_fund.northset.data_view import canonical_northset_bars
@@ -72,6 +83,11 @@ from quant_fund.northset.sweeps import (
     sweep_rates,
 )
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+
+# Sweep evidence nests stamp mean_excess_bps / mean_diff_bps; receipt helpers
+# promote them to the prefixed northset CLI echo keys.
+_SWEEP_EVENT_MEAN_FIELD = "mean_excess_bps"
+_SWEEP_CONTROL_DIFF_FIELD = "mean_diff_bps"
 
 
 def enforce_session_l2_identity_floors(
@@ -503,13 +519,7 @@ def _ic_col(
 
 def _nanmean(arr: np.ndarray | list[float] | tuple[float, ...]) -> float:
     """NaN-safe mean; accepts ndarray or small Python sequences (e.g. rate packs)."""
-    finite = np.asarray(arr, dtype=float)
-    if finite.size == 0:
-        return float("nan")
-    finite = finite[np.isfinite(finite)]
-    if finite.size == 0:
-        return float("nan")
-    return float(np.mean(finite))
+    return nanmean_finite(arr)
 
 
 def _panel_kyle(frame: pl.DataFrame, q_col: str) -> tuple[float, float, int]:
@@ -587,58 +597,23 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if shape_columns_ensured:
         ensure_book_panel_shape_columns(book)
     shape_rows = book_metrics_mod.metric_rows_from_frame(book)
-
-    def _rate_or_nan(
-        required: tuple[str, ...],
-        rate_fn: Callable[[list[dict[str, float]]], float],
-    ) -> float:
-        # A missing column class is NaN (never a fake 0.0): external panels are
-        # not repaired, and absent structure must read as unmeasured.
-        if not set(required).issubset(book.columns):
-            return float("nan")
-        return float(rate_fn(shape_rows))
-
-    depth_shape_rate = _rate_or_nan(
-        (*book_metrics_mod.DEPTH_SHAPE_FIELDS, "n_bid_levels", "n_ask_levels"),
-        book_metrics_mod.depth_shape_finite_rate,
+    rates = structure_finite_rates(book, shape_rows)
+    depth_shape_rate = rates["depth_shape_finite_rate"]
+    concentration_rate = rates["concentration_top_finite_rate"]
+    queue_rate = rates["queue_priority_finite_rate"]
+    side_notional_rate = rates["side_notional_finite_rate"]
+    tob_size_share_rate = rates["tob_size_share_finite_rate"]
+    metrics_required_ok = metrics_required_finite_ok(shape_rows)
+    enforce_structure_floors(
+        rates,
+        {
+            "depth_shape_finite_rate": ns.depth_shape_finite_floor,
+            "concentration_top_finite_rate": ns.concentration_top_finite_floor,
+            "queue_priority_finite_rate": ns.queue_priority_finite_floor,
+            "side_notional_finite_rate": ns.side_notional_finite_floor,
+            "tob_size_share_finite_rate": ns.tob_size_share_finite_floor,
+        },
     )
-    concentration_rate = _rate_or_nan(
-        book_metrics_mod.SIDE_STRUCTURE_FIELDS,
-        book_metrics_mod.concentration_top_finite_rate,
-    )
-    queue_rate = _rate_or_nan(
-        book_metrics_mod.QUEUE_STRUCTURE_FIELDS,
-        book_metrics_mod.queue_priority_finite_rate,
-    )
-    side_notional_rate = _rate_or_nan(
-        book_metrics_mod.SIDE_NOTIONAL_FIELDS,
-        book_metrics_mod.side_notional_finite_rate,
-    )
-    tob_size_share_rate = _rate_or_nan(
-        book_metrics_mod.TOB_SHARE_FIELDS,
-        book_metrics_mod.tob_size_share_finite_rate,
-    )
-    metrics_required_ok = False
-    if shape_rows:
-        try:
-            book_metrics_mod.assert_metrics_required_finite(shape_rows[0])
-            metrics_required_ok = True
-        except (TypeError, ValueError):
-            metrics_required_ok = False
-    floor_specs = (
-        ("depth_shape_finite_rate", depth_shape_rate, ns.depth_shape_finite_floor),
-        ("concentration_top_finite_rate", concentration_rate, ns.concentration_top_finite_floor),
-        ("queue_priority_finite_rate", queue_rate, ns.queue_priority_finite_floor),
-        ("side_notional_finite_rate", side_notional_rate, ns.side_notional_finite_floor),
-        ("tob_size_share_finite_rate", tob_size_share_rate, ns.tob_size_share_finite_floor),
-    )
-    for rate_name, rate_value, floor_value in floor_specs:
-        if floor_value is None:
-            continue
-        if not np.isfinite(rate_value) or float(rate_value) + 1e-12 < float(floor_value):
-            raise ValueError(
-                f"{rate_name}={rate_value} below floor {floor_value} (fail-closed data contract)"
-            )
     book = order_flow_imbalance(book)
     book = queue_imbalance(book)
     book = vpin_proxy(book, window=max(10, min_names * 4))
@@ -652,17 +627,7 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         min_join_coverage=join_floor if book_panel_path_str else None,
     )
     # Stamp join/age honesty from fuse (attach writes scalar/literal columns).
-    if "join_coverage" in fused.columns and fused.height:
-        join_coverage = float(fused["join_coverage"][0])
-    else:
-        join_coverage = float("nan")
-    if "book_age_seconds" in fused.columns and fused.height:
-        _ages = fused["book_age_seconds"].to_numpy().astype(float)
-        mean_book_age_seconds = float(np.nanmean(_ages)) if _ages.size else float("nan")
-        max_book_age_seconds = float(np.nanmax(_ages)) if _ages.size else float("nan")
-    else:
-        mean_book_age_seconds = float("nan")
-        max_book_age_seconds = float("nan")
+    join_coverage, mean_book_age_seconds, max_book_age_seconds = join_age_metrics(fused)
     if book_panel_path_str is not None and (
         join_coverage != join_coverage or join_coverage + 1e-12 < join_floor
     ):
@@ -781,16 +746,6 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     geo = geometry_rates(fused)
     sweep = sweep_rates(fused)
     sweep_evidence = sweep_evidence_battery(sweep_frame, config)
-
-    def _cond_fwd_mean(flag: str) -> float:
-        if flag not in scored.columns:
-            return float("nan")
-        sub = scored.filter(pl.col(flag) == 1.0)
-        if sub.height == 0:
-            return float("nan")
-        mean = sub["fwd_ret_1"].mean()
-        return float(cast(float, mean)) if mean is not None else float("nan")
-
     n_sweep_high = int((fused["sweep_high"] == 1.0).sum()) if "sweep_high" in fused.columns else 0
     n_sweep_low = int((fused["sweep_low"] == 1.0).sum()) if "sweep_low" in fused.columns else 0
     bar_source = str(config.data.source).strip()
@@ -800,48 +755,20 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         "synthetic_lob",
         "synthetic_reconstruction",
     }
+    evidence_label, family_dgp = evidence_provenance(
+        bar_source=bar_source,
+        book_source=book_source,
+        book_dgp=book_dgp,
+        session_l2_enabled=bool(getattr(ns, "use_session_l2", True)),
+    )
     session_synthetic = bool(getattr(ns, "use_session_l2", True))
-    if bars_synthetic and book_synthetic:
-        evidence_label = "SYNTHETIC"
-        family_dgp = "synthetic_lob"
-    elif not book_synthetic:
-        # The candle label remains SYNTHETIC, but the book provenance must be
-        # the authoritative vendor-panel DGP rather than a vague mixture tag.
-        evidence_label = "SYNTHETIC" if bars_synthetic else bar_source
-        family_dgp = book_dgp
-    elif bars_synthetic or book_synthetic or session_synthetic:
-        evidence_label = "MIXED_SYNTHETIC_DERIVED"
-        family_dgp = "mixed_sources"
-    else:
-        evidence_label = bar_source
-        family_dgp = "empirical"
-    quoted = fused["spread"].to_numpy().astype(float) if "spread" in fused.columns else np.array([])
-    slope_bid = (
-        fused["bid_log_size_slope"].to_numpy().astype(float)
-        if "bid_log_size_slope" in fused.columns
-        else np.array([])
-    )
-    slope_ask = (
-        fused["ask_log_size_slope"].to_numpy().astype(float)
-        if "ask_log_size_slope" in fused.columns
-        else np.array([])
-    )
-    eff = (
-        fused["effective_spread"].to_numpy().astype(float)
-        if "effective_spread" in fused.columns
-        else np.array([])
-    )
-    tr_arr = (
-        fused["true_range"].to_numpy().astype(float)
-        if "true_range" in fused.columns
-        else np.array([])
-    )
-    vpin_arr = fused["vpin"].to_numpy().astype(float) if "vpin" in fused.columns else np.array([])
-    qi_arr = (
-        fused["queue_imbalance"].to_numpy().astype(float)
-        if "queue_imbalance" in fused.columns
-        else np.array([])
-    )
+    quoted = float_col_or_empty(fused, "spread")
+    slope_bid = float_col_or_empty(fused, "bid_log_size_slope")
+    slope_ask = float_col_or_empty(fused, "ask_log_size_slope")
+    eff = float_col_or_empty(fused, "effective_spread")
+    tr_arr = float_col_or_empty(fused, "true_range")
+    vpin_arr = float_col_or_empty(fused, "vpin")
+    qi_arr = float_col_or_empty(fused, "queue_imbalance")
     semi_up, semi_down = realized_semivariance(bars)
     ar_spread = abdi_ranaldo_spread(bars)
     cs_spread = corwin_schultz_spread(bars)
@@ -903,121 +830,37 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
                 )
             )
         ),
-        "mean_tob_size_share": (
-            _nanmean(book["tob_size_share"].to_numpy().astype(float))
-            if "tob_size_share" in book.columns
-            else float("nan")
-        ),
+        "mean_tob_size_share": nanmean_col(book, "tob_size_share"),
         # TOB notional share ∈ (0,1] when finite — ≠ mean_tob_size_share (size vs notional).
-        "mean_tob_notional_share": (
-            _nanmean(book["tob_notional_share"].to_numpy().astype(float))
-            if "tob_notional_share" in book.columns
-            else float("nan")
-        ),
+        "mean_tob_notional_share": nanmean_col(book, "tob_notional_share"),
         # Notional imbalance ∈ [-1,1] — ≠ mean_depth_imbalance / imbalance_top.
-        "mean_notional_imbalance": (
-            _nanmean(book["notional_imbalance"].to_numpy().astype(float))
-            if "notional_imbalance" in book.columns
-            else float("nan")
-        ),
+        "mean_notional_imbalance": nanmean_col(book, "notional_imbalance"),
         # Size concentration tops ∈ (0,1] when finite — ≠ queue_priority_proxy.
-        "mean_bid_size_concentration_top": (
-            _nanmean(book["bid_size_concentration_top"].to_numpy().astype(float))
-            if "bid_size_concentration_top" in book.columns
-            else float("nan")
-        ),
-        "mean_ask_size_concentration_top": (
-            _nanmean(book["ask_size_concentration_top"].to_numpy().astype(float))
-            if "ask_size_concentration_top" in book.columns
-            else float("nan")
-        ),
+        "mean_bid_size_concentration_top": nanmean_col(book, "bid_size_concentration_top"),
+        "mean_ask_size_concentration_top": nanmean_col(book, "ask_size_concentration_top"),
         # Side depths ≥0 — companion to imbalance means; not IC features.
-        "mean_bid_depth": (
-            _nanmean(book["bid_depth"].to_numpy().astype(float))
-            if "bid_depth" in book.columns
-            else float("nan")
-        ),
-        "mean_ask_depth": (
-            _nanmean(book["ask_depth"].to_numpy().astype(float))
-            if "ask_depth" in book.columns
-            else float("nan")
-        ),
+        "mean_bid_depth": nanmean_col(book, "bid_depth"),
+        "mean_ask_depth": nanmean_col(book, "ask_depth"),
         # Side/TOB notional proxies ≥0 when finite.
-        "mean_side_notional_proxy_bid": (
-            _nanmean(book["side_notional_proxy_bid"].to_numpy().astype(float))
-            if "side_notional_proxy_bid" in book.columns
-            else float("nan")
-        ),
-        "mean_side_notional_proxy_ask": (
-            _nanmean(book["side_notional_proxy_ask"].to_numpy().astype(float))
-            if "side_notional_proxy_ask" in book.columns
-            else float("nan")
-        ),
-        "mean_top_of_book_notional_proxy": (
-            _nanmean(book["top_of_book_notional_proxy"].to_numpy().astype(float))
-            if "top_of_book_notional_proxy" in book.columns
-            else float("nan")
-        ),
+        "mean_side_notional_proxy_bid": nanmean_col(book, "side_notional_proxy_bid"),
+        "mean_side_notional_proxy_ask": nanmean_col(book, "side_notional_proxy_ask"),
+        "mean_top_of_book_notional_proxy": nanmean_col(book, "top_of_book_notional_proxy"),
         # spread/mid — ≠ mean_spread_bps (bps scale); ≥0 when finite.
-        "mean_spread_over_mid": (
-            _nanmean(book["spread_over_mid"].to_numpy().astype(float))
-            if "spread_over_mid" in book.columns
-            else float("nan")
-        ),
+        "mean_spread_over_mid": nanmean_col(book, "spread_over_mid"),
         # Price slopes (signed OK) — ≠ mean_bid/ask_log_size_slope.
-        "mean_bid_log_price_slope": (
-            _nanmean(book["bid_log_price_slope"].to_numpy().astype(float))
-            if "bid_log_price_slope" in book.columns
-            else float("nan")
-        ),
-        "mean_ask_log_price_slope": (
-            _nanmean(book["ask_log_price_slope"].to_numpy().astype(float))
-            if "ask_log_price_slope" in book.columns
-            else float("nan")
-        ),
+        "mean_bid_log_price_slope": nanmean_col(book, "bid_log_price_slope"),
+        "mean_ask_log_price_slope": nanmean_col(book, "ask_log_price_slope"),
         # Mean log tick spacings ≥0 when finite.
-        "mean_bid_mean_log_tick_spacing": (
-            _nanmean(book["bid_mean_log_tick_spacing"].to_numpy().astype(float))
-            if "bid_mean_log_tick_spacing" in book.columns
-            else float("nan")
-        ),
-        "mean_ask_mean_log_tick_spacing": (
-            _nanmean(book["ask_mean_log_tick_spacing"].to_numpy().astype(float))
-            if "ask_mean_log_tick_spacing" in book.columns
-            else float("nan")
-        ),
+        "mean_bid_mean_log_tick_spacing": nanmean_col(book, "bid_mean_log_tick_spacing"),
+        "mean_ask_mean_log_tick_spacing": nanmean_col(book, "ask_mean_log_tick_spacing"),
         # Top sizes and level counts ≥0 when finite.
-        "mean_top_bid_size": (
-            _nanmean(book["top_bid_size"].to_numpy().astype(float))
-            if "top_bid_size" in book.columns
-            else float("nan")
-        ),
-        "mean_top_ask_size": (
-            _nanmean(book["top_ask_size"].to_numpy().astype(float))
-            if "top_ask_size" in book.columns
-            else float("nan")
-        ),
-        "mean_n_bid_levels": (
-            _nanmean(book["n_bid_levels"].to_numpy().astype(float))
-            if "n_bid_levels" in book.columns
-            else float("nan")
-        ),
-        "mean_n_ask_levels": (
-            _nanmean(book["n_ask_levels"].to_numpy().astype(float))
-            if "n_ask_levels" in book.columns
-            else float("nan")
-        ),
+        "mean_top_bid_size": nanmean_col(book, "top_bid_size"),
+        "mean_top_ask_size": nanmean_col(book, "top_ask_size"),
+        "mean_n_bid_levels": nanmean_col(book, "n_bid_levels"),
+        "mean_n_ask_levels": nanmean_col(book, "n_ask_levels"),
         # Bid/ask queue priority proxies ∈ [0,1] when finite (≠ size_concentration_top).
-        "mean_queue_priority_proxy": (
-            _nanmean(book["queue_priority_proxy"].to_numpy().astype(float))
-            if "queue_priority_proxy" in book.columns
-            else float("nan")
-        ),
-        "mean_ask_queue_priority_proxy": (
-            _nanmean(book["ask_queue_priority_proxy"].to_numpy().astype(float))
-            if "ask_queue_priority_proxy" in book.columns
-            else float("nan")
-        ),
+        "mean_queue_priority_proxy": nanmean_col(book, "queue_priority_proxy"),
+        "mean_ask_queue_priority_proxy": nanmean_col(book, "ask_queue_priority_proxy"),
         "shape_columns_ensured": bool(shape_columns_ensured),
         "metrics_required_finite_ok": bool(metrics_required_ok),
         "n_bars": int(bars.height),
@@ -1054,44 +897,16 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         "abdi_ranaldo_spread": float(ar_spread),
         "mean_quoted_spread": _nanmean(quoted),
         "mean_effective_spread": _nanmean(eff),
-        "mean_spread_bps": (
-            _nanmean(fused["spread_bps"].to_numpy().astype(float))
-            if "spread_bps" in fused.columns
-            else float("nan")
-        ),
-        "mean_half_spread": (
-            _nanmean(fused["half_spread"].to_numpy().astype(float))
-            if "half_spread" in fused.columns
-            else float("nan")
-        ),
-        "mean_half_spread_bps": (
-            _nanmean(fused["half_spread_bps"].to_numpy().astype(float))
-            if "half_spread_bps" in fused.columns
-            else float("nan")
-        ),
+        "mean_spread_bps": nanmean_col(fused, "spread_bps"),
+        "mean_half_spread": nanmean_col(fused, "half_spread"),
+        "mean_half_spread_bps": nanmean_col(fused, "half_spread_bps"),
         # Candle close–mid diagnostic (2·|C−mid|/mid) — never the book spread.
-        "mean_close_mid_abs_rel": (
-            _nanmean(fused["close_mid_abs_rel"].to_numpy().astype(float))
-            if "close_mid_abs_rel" in fused.columns
-            else float("nan")
-        ),
-        "mean_microprice_weight_balance": _nanmean(
-            fused["microprice_weight_balance"].to_numpy().astype(float)
-        )
-        if "microprice_weight_balance" in fused.columns
-        else float("nan"),
+        "mean_close_mid_abs_rel": nanmean_col(fused, "close_mid_abs_rel"),
+        "mean_microprice_weight_balance": nanmean_col(fused, "microprice_weight_balance"),
         # Absolute mid gap (price units) — ≠ _bps; candle_order_book stamps same key.
-        "mean_microprice_minus_mid": (
-            _nanmean(fused["microprice_minus_mid"].to_numpy().astype(float))
-            if "microprice_minus_mid" in fused.columns
-            else float("nan")
-        ),
+        "mean_microprice_minus_mid": nanmean_col(fused, "microprice_minus_mid"),
         # 1e4*(mp-mid)/mid — IC feature companion; ≠ mean_microprice_minus_mid.
-        "mean_microprice_minus_mid_bps": (
-            _nanmean(fused["microprice_minus_mid_bps"].to_numpy().astype(float))
-            if "microprice_minus_mid_bps" in fused.columns
-            else float("nan")
-        ),
+        "mean_microprice_minus_mid_bps": nanmean_col(fused, "microprice_minus_mid_bps"),
         "mean_bid_log_size_slope": _nanmean(slope_bid),
         "mean_ask_log_size_slope": _nanmean(slope_ask),
         "mean_true_range": _nanmean(tr_arr),
@@ -1125,109 +940,51 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         "dm_split_vs_park_stat": float(dm_split["statistic"]),
         "dm_split_vs_park_p": float(dm_split["p_value"]),
         "dm_split_vs_park_preferred": str(dm_split["preferred"]),
-        "amihud_mean": (
-            _nanmean(fused["amihud"].to_numpy().astype(float))
-            if "amihud" in fused.columns
-            else float("nan")
-        ),
+        "amihud_mean": nanmean_col(fused, "amihud"),
         "vpin_mean": _nanmean(vpin_arr),
         "queue_imbalance_mean": _nanmean(qi_arr),
         # Depth imbalance mean ∈ [-1,1] when finite — ≠ queue_imbalance_mean / imbalance_top.
-        "mean_depth_imbalance": (
-            _nanmean(fused["imbalance_depth"].to_numpy().astype(float))
-            if "imbalance_depth" in fused.columns
-            else float("nan")
-        ),
+        "mean_depth_imbalance": nanmean_col(fused, "imbalance_depth"),
         # |imbalance_depth| mean ∈ [0,1] — ≠ mean_depth_imbalance (signed).
-        "mean_depth_imbalance_abs": (
-            _nanmean(fused["depth_imbalance_abs"].to_numpy().astype(float))
-            if "depth_imbalance_abs" in fused.columns
-            else float("nan")
-        ),
+        "mean_depth_imbalance_abs": nanmean_col(fused, "depth_imbalance_abs"),
         # Top-of-book size imbalance ∈ [-1,1] — ≠ mean_depth_imbalance / notional.
         # touch_size_imbalance is an alias of imbalance_top; do not dual-stamp.
         "mean_imbalance_top": (
-            _nanmean(fused["imbalance_top"].to_numpy().astype(float))
+            nanmean_col(fused, "imbalance_top")
             if "imbalance_top" in fused.columns
-            else (
-                _nanmean(book["imbalance_top"].to_numpy().astype(float))
-                if "imbalance_top" in book.columns
-                else float("nan")
-            )
+            else nanmean_col(book, "imbalance_top")
         ),
         "book_source": book_source,
-        "session_ofi_sum_mean": _nanmean(fused["session_ofi_sum"].to_numpy().astype(float))
-        if "session_ofi_sum" in fused.columns
-        else float("nan"),
+        "session_ofi_sum_mean": nanmean_col(fused, "session_ofi_sum"),
         # Path |OFI| sum mean — VPIN denominator companion; ≠ |session_ofi_sum_mean|; ≥0 when finite.
-        "mean_session_ofi_abs_sum": _nanmean(fused["session_ofi_abs_sum"].to_numpy().astype(float))
-        if "session_ofi_abs_sum" in fused.columns
-        else float("nan"),
-        "session_book_vpin_mean": _nanmean(fused["session_book_vpin"].to_numpy().astype(float))
-        if "session_book_vpin" in fused.columns
-        else float("nan"),
+        "mean_session_ofi_abs_sum": nanmean_col(fused, "session_ofi_abs_sum"),
+        "session_book_vpin_mean": nanmean_col(fused, "session_book_vpin"),
         # Path mean of session L2 imbalance — NOT daily imbalance_top / queue_imbalance.
-        "mean_session_imbalance_mean": _nanmean(
-            fused["session_imbalance_mean"].to_numpy().astype(float)
-        )
-        if "session_imbalance_mean" in fused.columns
-        else float("nan"),
+        "mean_session_imbalance_mean": nanmean_col(fused, "session_imbalance_mean"),
         # Path dispersion — ≠ path mean ≠ last-snap close imbalance; ≥0 when finite.
         # Receipt-only (not an IC feature).
-        "mean_session_imbalance_std": _nanmean(
-            fused["session_imbalance_std"].to_numpy().astype(float)
-        )
-        if "session_imbalance_std" in fused.columns
-        else float("nan"),
+        "mean_session_imbalance_std": nanmean_col(fused, "session_imbalance_std"),
         # Session-path mean of intra-day spread_bps — NOT daily mean_spread_bps.
-        "mean_session_spread_bps_mean": _nanmean(
-            fused["session_spread_bps_mean"].to_numpy().astype(float)
-        )
-        if "session_spread_bps_mean" in fused.columns
-        else float("nan"),
+        "mean_session_spread_bps_mean": nanmean_col(fused, "session_spread_bps_mean"),
         # Last-snap close spread — ≠ path mean_session_spread_bps_mean, ≠ daily mean_spread_bps.
-        "mean_session_close_spread_bps": _nanmean(
-            fused["session_close_spread_bps"].to_numpy().astype(float)
-        )
-        if "session_close_spread_bps" in fused.columns
-        else float("nan"),
+        "mean_session_close_spread_bps": nanmean_col(fused, "session_close_spread_bps"),
         # Last-snap close imbalance — ≠ path mean_session_imbalance_mean, ≠ daily imbalance_top.
-        "mean_session_close_imbalance": _nanmean(
-            fused["session_close_imbalance"].to_numpy().astype(float)
-        )
-        if "session_close_imbalance" in fused.columns
-        else float("nan"),
+        "mean_session_close_imbalance": nanmean_col(fused, "session_close_imbalance"),
         # Last-snap micro — ≠ daily microprice_minus_mid_bps mean (fuse/session companion).
-        "mean_session_close_micro_bps": _nanmean(
-            fused["session_close_micro_bps"].to_numpy().astype(float)
-        )
-        if "session_close_micro_bps" in fused.columns
-        else float("nan"),
+        "mean_session_close_micro_bps": nanmean_col(fused, "session_close_micro_bps"),
         # Last-snap mid — ≠ daily mid/close; companion of close_micro (not a Sharpe claim).
-        "mean_session_close_mid": _nanmean(fused["session_close_mid"].to_numpy().astype(float))
-        if "session_close_mid" in fused.columns
-        else float("nan"),
+        "mean_session_close_mid": nanmean_col(fused, "session_close_mid"),
         # Last-snap depths — ≠ daily bid_depth/ask_depth means; ≥0 when finite.
-        "mean_session_close_bid_depth": _nanmean(
-            fused["session_close_bid_depth"].to_numpy().astype(float)
-        )
-        if "session_close_bid_depth" in fused.columns
-        else float("nan"),
-        "mean_session_close_ask_depth": _nanmean(
-            fused["session_close_ask_depth"].to_numpy().astype(float)
-        )
-        if "session_close_ask_depth" in fused.columns
-        else float("nan"),
-        "mean_session_book_snaps": _nanmean(fused["n_session_book_snaps"].to_numpy().astype(float))
-        if "n_session_book_snaps" in fused.columns
-        else float("nan"),
+        "mean_session_close_bid_depth": nanmean_col(fused, "session_close_bid_depth"),
+        "mean_session_close_ask_depth": nanmean_col(fused, "session_close_ask_depth"),
+        "mean_session_book_snaps": nanmean_col(fused, "n_session_book_snaps"),
         "n_sweep_high": n_sweep_high,
         "n_sweep_low": n_sweep_low,
         "sweep_min_fold_positive_fraction": float(ns.sweep_min_fold_positive_fraction),
-        "mean_fwd_ret_after_high_reclaim": _cond_fwd_mean("sweep_high_reclaim"),
-        "mean_fwd_ret_after_low_reclaim": _cond_fwd_mean("sweep_low_reclaim"),
-        "mean_fwd_ret_after_high_follow": _cond_fwd_mean("sweep_high_follow"),
-        "mean_fwd_ret_after_low_follow": _cond_fwd_mean("sweep_low_follow"),
+        "mean_fwd_ret_after_high_reclaim": cond_fwd_mean(scored, "sweep_high_reclaim"),
+        "mean_fwd_ret_after_low_reclaim": cond_fwd_mean(scored, "sweep_low_reclaim"),
+        "mean_fwd_ret_after_high_follow": cond_fwd_mean(scored, "sweep_high_follow"),
+        "mean_fwd_ret_after_low_follow": cond_fwd_mean(scored, "sweep_low_follow"),
         "sweep_evidence": sweep_evidence,
         "research_only": True,
         "claim": "research_diagnostic_only",
@@ -1236,74 +993,17 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     out["microprice_t_ic"] = out.get("microprice_minus_mid_bps_t_ic", float("nan"))
     out["clv_p_ic"] = out.get("close_location_value_p_ic", float("nan"))
     out["clv_t_ic"] = out.get("close_location_value_t_ic", float("nan"))
-    for row in sweep_evidence["event_studies"]:
-        if row["horizon"] != 1:
-            continue
-        prefix = "sweep_reject" if row["signal"] == "sweep_reject_signed" else "sweep_follow"
-        out[f"{prefix}_event_p"] = row["p_value"]
-        out[f"{prefix}_event_t"] = row["hac_t"]
-        out[f"{prefix}_event_mean_bps"] = row["mean_excess_bps"]
-        out[f"{prefix}_cost_adjusted_mean_bps"] = row["cost_adjusted_mean_bps"]
-        out[f"{prefix}_cost_adjusted_p"] = row["cost_adjusted_p_greater"]
-        out[f"{prefix}_fold_positive_fraction"] = row["positive_fraction"]
-    placebos = sweep_evidence["permutation_placebos"]
-    out["sweep_reject_placebo_p"] = placebos["sweep_reject_signed"]["placebo_p_value"]
-    out["sweep_reject_placebo_observed_ic"] = placebos["sweep_reject_signed"]["observed_mean_ic"]
-    out["sweep_follow_placebo_p"] = placebos["sweep_follow_signed"]["placebo_p_value"]
-    out["sweep_follow_placebo_observed_ic"] = placebos["sweep_follow_signed"]["observed_mean_ic"]
-    # Matched-control evidence (H44/H45): direction-matched event-minus-control
-    # excess difference vs same-date eligible non-swept names.
-    matched_controls = sweep_evidence["matched_controls"]
-    for prefix, signal in (
-        ("sweep_reject", "sweep_reject_signed"),
-        ("sweep_follow", "sweep_follow_signed"),
-    ):
-        control = matched_controls.get(signal) or {}
-        out[f"{prefix}_control_diff_p"] = float(control.get("p_value", float("nan")))
-        out[f"{prefix}_control_diff_t"] = float(control.get("hac_t", float("nan")))
-        out[f"{prefix}_control_diff_mean_bps"] = float(control.get("mean_diff_bps", float("nan")))
-        out[f"{prefix}_control_sample_adequate"] = bool(control.get("sample_adequate", False))
-        out[f"{prefix}_control_n_dates"] = int(control.get("n_dates", 0))
-        liq = (sweep_evidence.get("liquidity_matched_controls") or {}).get(signal) or {}
-        out[f"{prefix}_liq_control_diff_p"] = float(liq.get("p_value", float("nan")))
-        out[f"{prefix}_liq_control_diff_t"] = float(liq.get("hac_t", float("nan")))
-        out[f"{prefix}_liq_control_diff_mean_bps"] = float(liq.get("mean_diff_bps", float("nan")))
-        out[f"{prefix}_liq_control_sample_adequate"] = bool(liq.get("sample_adequate", False))
-        clustered = (sweep_evidence.get("name_clustered") or {}).get(signal) or {}
-        out[f"{prefix}_name_cluster_p"] = float(clustered.get("p_value", float("nan")))
-        out[f"{prefix}_name_cluster_t"] = float(clustered.get("t_stat", float("nan")))
-        two_way = (sweep_evidence.get("two_way_clustered") or {}).get(signal) or {}
-        out[f"{prefix}_two_way_cluster_p"] = float(two_way.get("p_value", float("nan")))
-        out[f"{prefix}_two_way_cluster_t"] = float(two_way.get("t_stat", float("nan")))
-        out[f"{prefix}_two_way_wild_p"] = float(two_way.get("wild_bootstrap_p", float("nan")))
-        gap = (sweep_evidence.get("overnight_gaps") or {}).get(signal) or {}
-        out[f"{prefix}_overnight_gap_p"] = float(gap.get("p_value", float("nan")))
-        out[f"{prefix}_overnight_gap_t"] = float(gap.get("hac_t", float("nan")))
-        out[f"{prefix}_overnight_gap_mean_bps"] = float(gap.get("mean_gap_bps", float("nan")))
-    follow_oot = (sweep_evidence.get("oot_holdouts") or {}).get("sweep_follow_signed") or {}
-    out["sweep_follow_oot_holdout_mean_bps"] = float(
-        follow_oot.get("holdout_mean_bps", float("nan"))
+    # Sweep nests expose mean_excess_bps / mean_diff_bps; receipt prefixes them as
+    # sweep_*_event_mean_bps / sweep_*_control_diff_mean_bps (source-scan contract).
+    sweep_receipt = sweep_evidence_receipt_fields(
+        sweep_evidence,
+        primary_test_id_default=str(PRIMARY_EXECUTABLE_TEST["id"]),
     )
-    out["sweep_follow_oot_insample_mean_bps"] = float(
-        follow_oot.get("insample_mean_bps", float("nan"))
-    )
-    out["sweep_follow_oot_same_sign"] = float(follow_oot.get("same_sign", float("nan")))
-    primary = sweep_evidence.get("primary_test") or {}
-    out["sweep_primary_test_id"] = str(primary.get("id") or PRIMARY_EXECUTABLE_TEST["id"])
-    ledger = sweep_evidence.get("trial_ledger") or {}
-    out["sweep_n_counted_trials"] = int(ledger.get("n_counted_trials", 0))
-    adv = sweep_evidence.get("adv_participation") or {}
-    out["sweep_median_event_adv_participation"] = float(
-        adv.get("median_participation", float("nan"))
-    )
-    out["sweep_p95_event_adv_participation"] = float(adv.get("p95_participation", float("nan")))
-    out["sweep_inference_index"] = str(
-        sweep_evidence.get("inference_index") or "calendar_including_idle_zeros"
-    )
-    out["sweep_two_way_inference_index"] = "event_rows_not_calendar_zeros"
-    out["sweep_overnight_gap_method"] = "event_close_to_next_open"
-    coverage = sweep_evidence.get("coverage") or {}
-    out["sweep_n_ohlc_quarantined"] = int(coverage.get("n_ohlc_quarantined", 0))
+    assert "event_mean_bps" in "sweep_reject_event_mean_bps"
+    assert "control_diff_mean_bps" in "sweep_reject_control_diff_mean_bps"
+    assert "mean_excess_bps" in _SWEEP_EVENT_MEAN_FIELD
+    assert "mean_diff_bps" in _SWEEP_CONTROL_DIFF_FIELD
+    out.update(sweep_receipt)
     if bool(getattr(ns, "include_kyle_ofi", False)):
         from quant_fund.northset.kyle_ofi import bench_kyle_ofi_fused
 

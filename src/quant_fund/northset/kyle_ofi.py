@@ -138,6 +138,113 @@ def _stamp_book_honesty(book: pl.DataFrame, *, synthesized: bool) -> tuple[str, 
     return book_source, f"vendor_panel:{book_source}"
 
 
+def _join_bars_book_panel(
+    bars: pl.DataFrame,
+    book: pl.DataFrame | None,
+) -> tuple[pl.DataFrame, str, str, bool]:
+    """Inner-join bars to book (or passthrough); return frame + honesty stamps."""
+    synthesized = book is None
+    if book is not None:
+        book_source, book_dgp = _stamp_book_honesty(book, synthesized=False)
+        join_keys = ["security_id", "event_time"]
+        for key in join_keys:
+            if key not in bars.columns or key not in book.columns:
+                raise ValueError(f"bars/book missing join key {key}")
+        overlap = [c for c in book.columns if c in bars.columns and c not in join_keys]
+        book_use = book.drop(overlap) if overlap else book
+        frame = bars.join(book_use, on=join_keys, how="inner")
+        if frame.height == 0:
+            raise ValueError("bars/book join produced empty frame (timestamp mismatch)")
+        return frame, book_source, book_dgp, synthesized
+    if "source" in bars.columns:
+        book_source, book_dgp = _stamp_book_honesty(bars, synthesized=False)
+    else:
+        book_source, book_dgp = "synthetic_lob", "synthetic_lob"
+    return bars, book_source, book_dgp, synthesized
+
+
+def _ensure_depth_aliases(frame: pl.DataFrame) -> pl.DataFrame:
+    """Alias top sizes to bid/ask depth when depth columns are absent."""
+    if "bid_depth" not in frame.columns:
+        frame = frame.with_columns(pl.col("top_bid_size").alias("bid_depth"))
+    if "ask_depth" not in frame.columns:
+        frame = frame.with_columns(pl.col("top_ask_size").alias("ask_depth"))
+    return frame
+
+
+def _forward_target_exprs(
+    *,
+    mid_col: str,
+    book_source: str,
+    book_dgp: str,
+    join_coverage: float,
+    has_close: bool,
+) -> list[pl.Expr]:
+    """Kyle/OFI forward-target and honesty literal expressions."""
+    exprs = [
+        (pl.col("bid_depth") - pl.col("ask_depth")).alias("signed_depth"),
+        (pl.col(mid_col).shift(-1).over("security_id") - pl.col(mid_col)).alias("delta_mid"),
+        (pl.col(mid_col).shift(-1).over("security_id") - pl.col(mid_col)).alias("fwd_delta_mid"),
+        (pl.col(mid_col).shift(-1).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_1"),
+        (pl.col(mid_col).shift(-2).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_2"),
+        (pl.col(mid_col).shift(-3).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_3"),
+        pl.lit(book_source).alias("book_source"),
+        pl.lit(book_dgp).alias("book_dgp"),
+        pl.lit(float(join_coverage)).alias("join_coverage"),
+    ]
+    if has_close:
+        exprs.extend(
+            [
+                (pl.col("close").shift(-1).over("security_id") / pl.col("close") - 1.0).alias(
+                    "fwd_close_ret_1"
+                ),
+                (pl.col("close").shift(-2).over("security_id") / pl.col("close") - 1.0).alias(
+                    "fwd_close_ret_2"
+                ),
+                (pl.col("close").shift(-3).over("security_id") / pl.col("close") - 1.0).alias(
+                    "fwd_close_ret_3"
+                ),
+            ]
+        )
+    return exprs
+
+
+def _prefer_close_forward_returns(frame: pl.DataFrame) -> pl.DataFrame:
+    """Overwrite mid-based fwd_ret_* with close-based when close returns exist."""
+    replacements: list[pl.Expr] = []
+    for src, dst in (
+        ("fwd_close_ret_1", "fwd_ret_1"),
+        ("fwd_close_ret_2", "fwd_ret_2"),
+        ("fwd_close_ret_3", "fwd_ret_3"),
+    ):
+        if src in frame.columns:
+            replacements.append(pl.col(src).alias(dst))
+    if replacements:
+        frame = frame.with_columns(replacements)
+    return frame
+
+
+def _attach_ofi_if_missing(frame: pl.DataFrame) -> pl.DataFrame:
+    """Compute Cont OFI when the fused frame lacks an ``ofi`` column."""
+    if "ofi" in frame.columns:
+        return frame
+    ofi_frame = cont_ofi_by_security(
+        frame.select(
+            "security_id",
+            "event_time",
+            "best_bid",
+            "best_ask",
+            "top_bid_size",
+            "top_ask_size",
+        )
+    )
+    return frame.join(
+        ofi_frame.select("security_id", "event_time", "ofi"),
+        on=["security_id", "event_time"],
+        how="left",
+    )
+
+
 def fuse_bars_l2_kyle_frame(
     bars: pl.DataFrame,
     book: pl.DataFrame | None = None,
@@ -161,25 +268,7 @@ def fuse_bars_l2_kyle_frame(
     if bars.height == 0:
         raise ValueError("bars must be non-empty")
     n_bar_rows = int(bars.height)
-    synthesized = book is None
-    frame = bars
-    book_source, book_dgp = "synthetic_lob", "synthetic_lob"
-    if book is not None:
-        book_source, book_dgp = _stamp_book_honesty(book, synthesized=False)
-        join_keys = ["security_id", "event_time"]
-        for k in join_keys:
-            if k not in bars.columns or k not in book.columns:
-                raise ValueError(f"bars/book missing join key {k}")
-        overlap = [c for c in book.columns if c in bars.columns and c not in join_keys]
-        book_use = book.drop(overlap) if overlap else book
-        frame = bars.join(book_use, on=join_keys, how="inner")
-        if frame.height == 0:
-            raise ValueError("bars/book join produced empty frame (timestamp mismatch)")
-    else:
-        if "source" in bars.columns:
-            book_source, book_dgp = _stamp_book_honesty(bars, synthesized=False)
-        else:
-            book_source, book_dgp = "synthetic_lob", "synthetic_lob"
+    frame, book_source, book_dgp, synthesized = _join_bars_book_panel(bars, book)
 
     join_coverage = float(frame.height) / float(n_bar_rows) if n_bar_rows else 0.0
     if min_join_coverage is None:
@@ -203,62 +292,18 @@ def fuse_bars_l2_kyle_frame(
     if missing:
         raise ValueError(f"fused frame missing columns: {missing}")
 
-    if "bid_depth" not in frame.columns:
-        frame = frame.with_columns(pl.col("top_bid_size").alias("bid_depth"))
-    if "ask_depth" not in frame.columns:
-        frame = frame.with_columns(pl.col("top_ask_size").alias("ask_depth"))
-
-    fwd_exprs = [
-        (pl.col("bid_depth") - pl.col("ask_depth")).alias("signed_depth"),
-        (pl.col(mid_col).shift(-1).over("security_id") - pl.col(mid_col)).alias("delta_mid"),
-        (pl.col(mid_col).shift(-1).over("security_id") - pl.col(mid_col)).alias("fwd_delta_mid"),
-        (pl.col(mid_col).shift(-1).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_1"),
-        (pl.col(mid_col).shift(-2).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_2"),
-        (pl.col(mid_col).shift(-3).over("security_id") / pl.col(mid_col) - 1.0).alias("fwd_ret_3"),
-        pl.lit(book_source).alias("book_source"),
-        pl.lit(book_dgp).alias("book_dgp"),
-        pl.lit(float(join_coverage)).alias("join_coverage"),
-    ]
-    # Prefer close-to-close forward return when OHLCV close is present
-    if "close" in frame.columns:
-        fwd_exprs.append(
-            (pl.col("close").shift(-1).over("security_id") / pl.col("close") - 1.0).alias(
-                "fwd_close_ret_1"
-            )
+    frame = _ensure_depth_aliases(frame)
+    frame = frame.sort(["security_id", "event_time"]).with_columns(
+        _forward_target_exprs(
+            mid_col=mid_col,
+            book_source=book_source,
+            book_dgp=book_dgp,
+            join_coverage=join_coverage,
+            has_close="close" in frame.columns,
         )
-        fwd_exprs.append(
-            (pl.col("close").shift(-2).over("security_id") / pl.col("close") - 1.0).alias(
-                "fwd_close_ret_2"
-            )
-        )
-        fwd_exprs.append(
-            (pl.col("close").shift(-3).over("security_id") / pl.col("close") - 1.0).alias(
-                "fwd_close_ret_3"
-            )
-        )
-    frame = frame.sort(["security_id", "event_time"]).with_columns(fwd_exprs)
-    if "fwd_close_ret_1" in frame.columns:
-        frame = frame.with_columns(pl.col("fwd_close_ret_1").alias("fwd_ret_1"))
-    if "fwd_close_ret_2" in frame.columns:
-        frame = frame.with_columns(pl.col("fwd_close_ret_2").alias("fwd_ret_2"))
-    if "fwd_close_ret_3" in frame.columns:
-        frame = frame.with_columns(pl.col("fwd_close_ret_3").alias("fwd_ret_3"))
-    if "ofi" not in frame.columns:
-        ofi_frame = cont_ofi_by_security(
-            frame.select(
-                "security_id",
-                "event_time",
-                "best_bid",
-                "best_ask",
-                "top_bid_size",
-                "top_ask_size",
-            )
-        )
-        frame = frame.join(
-            ofi_frame.select("security_id", "event_time", "ofi"),
-            on=["security_id", "event_time"],
-            how="left",
-        )
+    )
+    frame = _prefer_close_forward_returns(frame)
+    frame = _attach_ofi_if_missing(frame)
     return frame.sort(["security_id", "event_time"])
 
 
@@ -287,6 +332,56 @@ def ensure_forward_targets(fused: pl.DataFrame, *, mid_col: str = "mid") -> pl.D
     return frame
 
 
+def _book_honesty_from_fused(fused: pl.DataFrame) -> tuple[str, str]:
+    """Read book_source/book_dgp stamps from a fused frame (synthetic defaults)."""
+    book_source = (
+        str(fused["book_source"][0])
+        if "book_source" in fused.columns and fused.height
+        else "synthetic_lob"
+    )
+    book_dgp = (
+        str(fused["book_dgp"][0])
+        if "book_dgp" in fused.columns and fused.height
+        else "synthetic_lob"
+    )
+    return book_source, book_dgp
+
+
+def _within_date_residual_flow(
+    fused: pl.DataFrame,
+    *,
+    flow_col: str,
+    ctrl_col: str,
+    target: str,
+    min_names: int,
+) -> pl.DataFrame:
+    """Per-date residual of ``flow_col`` after linear control; concat keepers."""
+    parts: list[pl.DataFrame] = []
+    ordered = fused.sort(["event_time", "security_id"])
+    for _date, grp in ordered.group_by("event_time", maintain_order=True):
+        if grp.height < min_names:
+            continue
+        f = grp[flow_col].to_numpy().astype(float)
+        c = grp[ctrl_col].to_numpy().astype(float)
+        y = grp[target].to_numpy().astype(float)
+        mask = np.isfinite(f) & np.isfinite(c) & np.isfinite(y)
+        if int(mask.sum()) < min_names:
+            continue
+        f2, c2 = f[mask], c[mask]
+        c_var = float(np.dot(c2 - c2.mean(), c2 - c2.mean()))
+        if c_var <= 1e-18:
+            resid = f2 - f2.mean()
+        else:
+            beta = float(np.dot(c2 - c2.mean(), f2 - f2.mean()) / c_var)
+            resid = f2 - (f2.mean() + beta * (c2 - c2.mean()))
+        keep = [bool(x) for x in mask.tolist()]
+        sub = grp.filter(pl.Series(keep)).with_columns(pl.Series("residual_flow", resid))
+        parts.append(sub)
+    if not parts:
+        raise ValueError("no dates with enough names for residual flow IC")
+    return pl.concat(parts)
+
+
 def residual_flow_date_ic(
     fused: pl.DataFrame,
     *,
@@ -312,30 +407,13 @@ def residual_flow_date_ic(
         if col not in fused.columns:
             raise ValueError(f"fused missing {col}")
 
-    parts: list[pl.DataFrame] = []
-    ordered = fused.sort(["event_time", "security_id"])
-    for _date, grp in ordered.group_by("event_time", maintain_order=True):
-        if grp.height < min_names:
-            continue
-        f = grp[flow_col].to_numpy().astype(float)
-        c = grp[ctrl_col].to_numpy().astype(float)
-        y = grp[target].to_numpy().astype(float)
-        mask = np.isfinite(f) & np.isfinite(c) & np.isfinite(y)
-        if int(mask.sum()) < min_names:
-            continue
-        f2, c2 = f[mask], c[mask]
-        c_var = float(np.dot(c2 - c2.mean(), c2 - c2.mean()))
-        if c_var <= 1e-18:
-            resid = f2 - f2.mean()
-        else:
-            beta = float(np.dot(c2 - c2.mean(), f2 - f2.mean()) / c_var)
-            resid = f2 - (f2.mean() + beta * (c2 - c2.mean()))
-        keep = [bool(x) for x in mask.tolist()]
-        sub = grp.filter(pl.Series(keep)).with_columns(pl.Series("residual_flow", resid))
-        parts.append(sub)
-    if not parts:
-        raise ValueError("no dates with enough names for residual flow IC")
-    sample = pl.concat(parts)
+    sample = _within_date_residual_flow(
+        fused,
+        flow_col=flow_col,
+        ctrl_col=ctrl_col,
+        target=target,
+        min_names=min_names,
+    )
     ic = date_ic_series(
         sample["residual_flow"].to_numpy().astype(float),
         sample[target].to_numpy().astype(float),
@@ -343,16 +421,7 @@ def residual_flow_date_ic(
         min_names=min_names,
         hac_lags=hac_lags,
     )
-    book_source = (
-        str(fused["book_source"][0])
-        if "book_source" in fused.columns and fused.height
-        else "synthetic_lob"
-    )
-    book_dgp = (
-        str(fused["book_dgp"][0])
-        if "book_dgp" in fused.columns and fused.height
-        else "synthetic_lob"
-    )
+    book_source, book_dgp = _book_honesty_from_fused(fused)
     out: dict[str, Any] = {
         "family": "kyle_ofi",
         "diagnostic": f"residual_{flow}_ex_{control}_to_{target}",
@@ -570,6 +639,30 @@ def kyle_lambda_ofi_depth_corr(
     return out
 
 
+def _per_date_kyle_lambdas(
+    sample: pl.DataFrame,
+    *,
+    flow_col: str,
+    target: str,
+    min_names: int,
+) -> tuple[np.ndarray, list[object]]:
+    """Cross-sectional Kyle λ per date; returns (λ series, kept date keys)."""
+    lambdas: list[float] = []
+    kept_dates: list[object] = []
+    for date, grp in sample.group_by("event_time", maintain_order=True):
+        if grp.height < min_names:
+            continue
+        lam = kyle_lambda_ols(
+            grp[target].to_numpy().astype(float),
+            grp[flow_col].to_numpy().astype(float),
+        )
+        if not np.isfinite(lam):
+            continue
+        lambdas.append(float(lam))
+        kept_dates.append(date[0] if isinstance(date, tuple) else date)
+    return np.asarray(lambdas, dtype=float), kept_dates
+
+
 def kyle_lambda_by_date(
     fused: pl.DataFrame,
     *,
@@ -593,22 +686,9 @@ def kyle_lambda_by_date(
     if sample.height == 0:
         raise ValueError(f"no finite {target}/flow rows")
 
-    # Per-date OLS λ across names (cross-section of names that day)
-    lambdas: list[float] = []
-    kept_dates: list[object] = []
-    for date, grp in sample.group_by("event_time", maintain_order=True):
-        if grp.height < min_names:
-            continue
-        lam = kyle_lambda_ols(
-            grp[target].to_numpy().astype(float),
-            grp[flow_col].to_numpy().astype(float),
-        )
-        if not np.isfinite(lam):
-            continue
-        lambdas.append(float(lam))
-        kept_dates.append(date[0] if isinstance(date, tuple) else date)
-
-    lam_arr = np.asarray(lambdas, dtype=float)
+    lam_arr, kept_dates = _per_date_kyle_lambdas(
+        sample, flow_col=flow_col, target=target, min_names=min_names
+    )
     if lam_arr.size >= 3:
         mean_lam, t_lam, p_lam = mean_tstat(lam_arr, hac_lags)
     else:
@@ -621,16 +701,7 @@ def kyle_lambda_by_date(
     dates = sample["event_time"].to_numpy()
     ic = date_ic_series(x, y, dates, min_names=min_names, hac_lags=hac_lags)
 
-    book_source = (
-        str(fused["book_source"][0])
-        if "book_source" in fused.columns and fused.height
-        else "synthetic_lob"
-    )
-    book_dgp = (
-        str(fused["book_dgp"][0])
-        if "book_dgp" in fused.columns and fused.height
-        else "synthetic_lob"
-    )
+    book_source, book_dgp = _book_honesty_from_fused(fused)
     out: dict[str, Any] = {
         "family": "kyle_ofi",
         "diagnostic": f"kyle_lambda_{flow}_{target}",
