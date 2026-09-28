@@ -204,6 +204,25 @@ def test_panel_missing_feature_columns_fail_closed(tmp_path) -> None:
         panel(cfg, feature_names=["definitely_not_a_feature_zzz"])
 
 
+def test_panel_carries_label_end_time_columns(tmp_path) -> None:
+    """label_end_time_* purge endpoints survive the gold join.
+
+    Regression: panel() used to join only ``future_*`` + keys, which silently
+    dropped the observed label ends and forced every train lane onto
+    index-arithmetic purging on sparse/asynchronous panels.
+    """
+    cfg = _write_valid_gold_lake(tmp_path)
+    ends = [datetime(2020, 1, 3, tzinfo=UTC), datetime(2020, 1, 4, tzinfo=UTC)]
+    labels = pl.read_parquet(tmp_path / "gold" / "labels.parquet").with_columns(
+        pl.Series("label_end_time_1", ends)
+    )
+    labels.write_parquet(tmp_path / "gold" / "labels.parquet")
+    clear_panel_cache()
+    out = panel(cfg)
+    assert "label_end_time_1" in out.columns
+    assert out["label_end_time_1"].to_list() == ends
+
+
 def test_panel_missing_label_fail_closed(tmp_path) -> None:
     cfg = _write_valid_gold_lake(tmp_path)
     clear_panel_cache()

@@ -205,7 +205,14 @@ def panel(
     require_panel_keys_in_membership(labs, membership)
 
     keys = ["security_id", "event_time"]
-    lab_cols = [c for c in labs.columns if c.startswith("future_") or c in keys]
+    # label_end_time_* columns are row-aligned purge endpoints; carrying them
+    # through the join is what lets _aligned_label_end_times prefer observed
+    # label ends over session arithmetic on sparse/asynchronous panels.
+    lab_cols = [
+        c
+        for c in labs.columns
+        if c.startswith("future_") or c.startswith("label_end_time_") or c in keys
+    ]
     out = feats.join(labs.select(lab_cols), on=keys, how="inner")
     if feature_names is not None:
         missing_feats = [c for c in feature_names if c not in out.columns]
