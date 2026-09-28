@@ -1008,6 +1008,7 @@ LEGACY_NAMES: dict[str, tuple[str, ...]] = {
         "lab",
         "report",
         "tearsheet_cmd",
+        "regime_performance_cmd",
         "api",
         "paper",
         "monitor",
