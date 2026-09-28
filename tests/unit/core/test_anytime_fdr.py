@@ -15,6 +15,8 @@ from numpy.typing import NDArray
 
 from quant_fund.metrics.anytime_fdr import (
     ELond,
+    ELord,
+    ESaffron,
     e_bh,
     stopped_e_bh,
 )
@@ -286,3 +288,184 @@ def test_elond_fail_closed(alpha: float, gamma: list[float] | None, e_seq: list[
         proc = ELond(alpha, gamma=gamma)
         for e in e_seq:
             proc.submit(e)
+
+
+# ---------------------------------------------------------------- e-GAI ----
+
+
+def test_elord_fdr_global_null() -> None:
+    rng = np.random.default_rng(SEED + 11)
+    stream_len, m, reps, alpha = 60, 15, 300, 0.05
+    any_rej = []
+    min_omega, max_omega, min_rw = 1.0, 0.0, float("inf")
+    for _ in range(reps):
+        proc = ELord(alpha, omega1=0.05, phi=0.5, psi=0.5)
+        for _ in range(stream_len):
+            proc.submit(float(_coin_e_values(rng, 1, m)[0]))
+            min_omega = min(min_omega, proc.omega)
+            max_omega = max(max_omega, proc.omega)
+            min_rw = min(min_rw, proc.remaining_wealth)
+        any_rej.append(proc.num_rejected > 0)
+    assert float(np.mean(any_rej)) <= alpha + 0.02
+    # Remark 3.3 box: omega_t stays strictly inside (0, 1); wealth stays positive.
+    assert min_omega > 0.0
+    assert max_omega < 1.0
+    assert min_rw > 0.0
+    assert all(level >= 0.0 for level in proc.levels)
+
+
+def test_esaffron_fdr_global_null() -> None:
+    rng = np.random.default_rng(SEED + 12)
+    stream_len, m, reps, alpha = 60, 15, 300, 0.05
+    any_rej = []
+    min_rw = float("inf")
+    for _ in range(reps):
+        proc = ESaffron(alpha, lam=0.1, omega1=0.05, phi=0.5, psi=0.5)
+        for _ in range(stream_len):
+            proc.submit(float(_coin_e_values(rng, 1, m)[0]))
+            min_rw = min(min_rw, proc.remaining_wealth)
+        any_rej.append(proc.num_rejected > 0)
+    assert float(np.mean(any_rej)) <= alpha + 0.02
+    assert min_rw > 0.0
+
+
+def test_elord_levels_and_omega_recursion() -> None:
+    # omega1=0.1, phi=psi=0.5: omega path is pinned by the RAI closed form.
+    proc = ELord(0.05, omega1=0.1, phi=0.5, psi=0.5)
+    assert proc.omega == 0.1
+    assert proc.remaining_wealth == pytest.approx(0.05)
+    # alpha_1 = alpha*omega1*(R0+1) = 0.05*0.1; e=0.5 < 200 -> no reject.
+    assert not proc.submit(0.5)
+    assert proc.levels[0] == pytest.approx(0.005)
+    assert proc.omega == pytest.approx(0.1 * (1.0 + 0.5))  # phi sum after 1 non-rejection
+    # rw = 0.05 - 0.005 = 0.045; alpha_2 = 0.15*0.045*1 = 0.00675 -> 1e9 rejects.
+    assert proc.submit(1e9)
+    assert proc.levels[1] == pytest.approx(0.00675)
+    # After 1 non-rejection + 1 rejection: omega = 0.1*(1 + 0.5 - 0.5).
+    assert proc.omega == pytest.approx(0.1)
+    # e-LORD charges every test: rw = 0.045 - 0.00675/1 = 0.03825.
+    assert proc.remaining_wealth == pytest.approx(0.03825)
+    # alpha_3 = 0.1*0.03825*(R+1=2) = 0.00765; e=0.5 < 130.7 -> no reject.
+    assert not proc.submit(0.5)
+    assert proc.levels[2] == pytest.approx(0.00765)
+    assert proc.omega == pytest.approx(0.1 * (1.0 + 0.5 + 0.25 - 0.5))
+    assert proc.rejections == (False, True, False)
+    assert proc.num_submitted == 3
+    assert proc.num_rejected == 1
+
+
+def test_esaffron_levels_and_wealth_bookkeeping() -> None:
+    # lam=0.1 -> budget alpha*(1-lam) = 0.045; phi=psi=0 freezes omega at omega1.
+    proc = ESaffron(0.05, lam=0.1, omega1=0.05, phi=0.0, psi=0.0)
+    # alpha_1 = 0.05*0.9*0.05 = 0.00225; e=0.5 < 1/lam=10 is a weak null: no
+    # reject, charged alpha_1/(R0+1) = 0.00225.
+    assert not proc.submit(0.5)
+    assert proc.levels[0] == pytest.approx(0.00225)
+    assert proc.remaining_wealth == pytest.approx(0.045 - 0.00225)
+    # e=1e18 rejects (>= 1/0.00225 and >= 1/lam) and is NEVER charged. The
+    # rejecting level itself is alpha_2 = omega1*rw*(R1+1=1).
+    rw_before = proc.remaining_wealth
+    assert proc.submit(1e18)
+    assert proc.levels[1] == pytest.approx(min(0.1, 0.05 * rw_before * 1.0))
+    assert proc.remaining_wealth == pytest.approx(rw_before)
+    # Rejection lifts the multiplier: alpha_3 = omega1*rw*(R2+1=2), and the
+    # weak null is charged alpha_3/(R2+1) = alpha_3/2.
+    assert not proc.submit(0.5)
+    assert proc.levels[2] == pytest.approx(min(0.1, 0.05 * rw_before * 2.0))
+    expected = rw_before - proc.levels[2] / 2.0
+    assert proc.remaining_wealth == pytest.approx(expected)
+
+
+def test_esaffron_level_capped_at_lambda() -> None:
+    proc = ESaffron(0.05, lam=0.1, omega1=0.4, phi=0.5, psi=0.0)
+    # Repeated huge e-values keep rejecting; the raw level grows with (R+1)
+    # but the reference-implementation cap pins it at lambda.
+    for _ in range(8):
+        assert proc.submit(1e18)
+    assert all(level <= 0.1 for level in proc.levels)
+    assert proc.num_rejected == 8
+    # Wealth never drained by rejections: still the full budget.
+    assert proc.remaining_wealth == pytest.approx(0.05 * 0.9)
+
+
+def test_elord_and_esaffron_reject_signal_stream() -> None:
+    rng = np.random.default_rng(SEED + 13)
+    stream_len, m_null = 60, 15
+    signal_idx = {i for i in range(stream_len) if i % 4 == 3}
+    lord = ELord(0.05, omega1=0.02, phi=0.5, psi=0.5)
+    saffron = ESaffron(0.05, lam=0.1, omega1=0.02, phi=0.5, psi=0.5)
+    lond = ELond(0.05)
+    lord_hits, saffron_hits, lond_hits = (set() for _ in range(3))
+    for j in range(stream_len):
+        if j in signal_idx:
+            e = 1e6  # planted strong signal, as in the e-LOND signal test
+        else:
+            e = float(_coin_e_values(rng, 1, m_null)[0])
+        if lord.submit(e):
+            lord_hits.add(j)
+        if saffron.submit(e):
+            saffron_hits.add(j)
+        if lond.submit(e):
+            lond_hits.add(j)
+    # Both e-GAI variants catch every planted signal ...
+    assert signal_idx <= saffron_hits
+    assert signal_idx <= lord_hits
+    # ... and adaptivity earns e-SAFFRON at least e-LORD's total on this stream.
+    assert saffron.num_rejected >= lord.num_rejected
+    assert saffron.num_rejected >= lond.num_rejected
+    # The mechanism: rejections and strong-e submissions never drain the
+    # e-SAFFRON budget, so strictly more wealth survives this stream.
+    assert saffron.remaining_wealth > lord.remaining_wealth
+
+
+def test_esaffron_preloaded_constructor() -> None:
+    rng = np.random.default_rng(SEED + 14)
+    e = _coin_e_values(rng, 10, 15)
+    proc = ESaffron(0.05, lam=0.1, omega1=0.05, e_values=e)
+    assert proc.num_submitted == 10
+    streamed = ESaffron(0.05, lam=0.1, omega1=0.05)
+    for x in e:
+        streamed.submit(float(x))
+    assert proc.levels == streamed.levels
+    assert proc.rejections == streamed.rejections
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"alpha": 0.0},
+        {"alpha": 1.0},
+        {"alpha": -0.1},
+        {"alpha": float("nan")},
+        {"omega1": 0.0},
+        {"omega1": 0.5},
+        {"omega1": -0.1},
+        {"omega1": float("nan")},
+        {"phi": -0.1},
+        {"phi": 0.51},
+        {"phi": float("nan")},
+        {"psi": -0.1},
+        {"psi": 0.51},
+        {"psi": float("nan")},
+    ],
+)
+def test_egai_fail_closed_ctor(kwargs: dict[str, float]) -> None:
+    params = {"alpha": 0.05, **kwargs}
+    with pytest.raises(ValueError):
+        ELord(**params)
+    with pytest.raises(ValueError):
+        ESaffron(**params)
+
+
+@pytest.mark.parametrize("lam", [0.0, 1.0, -0.1, float("nan")])
+def test_esaffron_fail_closed_lambda(lam: float) -> None:
+    with pytest.raises(ValueError):
+        ESaffron(0.05, lam=lam)
+
+
+@pytest.mark.parametrize("bad_e", [-1.0, float("nan"), float("inf")])
+def test_egai_fail_closed_submit(bad_e: float) -> None:
+    with pytest.raises(ValueError):
+        ELord(0.05).submit(bad_e)
+    with pytest.raises(ValueError):
+        ESaffron(0.05).submit(bad_e)
