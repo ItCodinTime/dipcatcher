@@ -6,6 +6,8 @@ References:
 - Haas (2001): TUFF — time until first failure.
 - Basel Committee (1996): traffic-light zones for 99% VaR over 250 days.
 - Berkowitz, Christoffersen & Pelletier (2011): censored-normal transform.
+- Kratz, Lok & McNeil (2018): multinomial test across nested VaR levels —
+  evaluates tail shape, not just the violation rate at one level.
 """
 
 from __future__ import annotations
@@ -152,4 +154,60 @@ def basel_zone(hits: Array, alpha: float = 0.99) -> dict[str, float | str]:
         "failures": float(x),
         "n": float(n),
         "tail_prob": tail,
+    }
+
+
+def kratz_test(returns: Array, var_levels: Array, alphas: Array) -> dict[str, float | Array]:
+    """Kratz–Lok–McNeil (2018) multinomial tail test.
+
+    Instead of one VaR level, takes forecasts at ``K`` nested levels
+    ``alphas`` (strictly increasing, e.g. ``[0.95, 0.975, 0.99, 0.999]``).
+    Each day lands in one of ``K+1`` bands between consecutive VaR
+    forecasts; under correct specification the band probabilities are
+    the fixed differences ``pi_j = alpha_{j+1} - alpha_j`` regardless of
+    how the VaR moves in time, so band counts are multinomial and a
+    Pearson X^2 (and LR) statistic is ~ chi2(K). Detects tail-shape
+    misspecification that a single-level Kupiec test cannot.
+
+    Loss convention like the rest of the module: ``r_t > var_t`` is an
+    exceedance, so ``var_levels`` must be non-decreasing across columns.
+    """
+    r = np.asarray(returns, dtype=float).reshape(-1)
+    v = np.asarray(var_levels, dtype=float)
+    a = np.asarray(alphas, dtype=float).reshape(-1)
+    if r.size < 50:
+        raise ValueError("returns must have length >= 50")
+    if v.ndim != 2 or v.shape[0] != r.size or v.shape[1] < 2:
+        raise ValueError("var_levels must be (n, K) with K >= 2")
+    if a.size != v.shape[1]:
+        raise ValueError("alphas must match var_levels columns")
+    if not (np.all(np.isfinite(r)) and np.all(np.isfinite(v)) and np.all(np.isfinite(a))):
+        raise ValueError("inputs must be finite")
+    if np.any(a <= 0.0) or np.any(a >= 1.0) or np.any(np.diff(a) <= 0.0):
+        raise ValueError("alphas must be strictly increasing in (0, 1)")
+    if np.any(np.diff(v, axis=1) < 0.0):
+        raise ValueError("var_levels must be non-decreasing across levels each day")
+    k = a.size
+    n = r.size
+    # Band j: r_t in (var_{j-1}, var_j]; band 0 is (-inf, var_1],
+    # band K is (var_K, +inf). Fixed probabilities under correct spec.
+    edges = np.concatenate([np.full((n, 1), -np.inf), v, np.full((n, 1), np.inf)], axis=1)
+    band = np.sum(r[:, None] > edges[:, 1:], axis=1)  # count of thresholds exceeded
+    counts = np.bincount(band, minlength=k + 1).astype(float)
+    pi = np.diff(np.concatenate([[0.0], a, [1.0]]))
+    expected = n * pi
+    if np.any(expected < 1.0):
+        raise ValueError("expected band counts < 1 — raise n or drop extreme levels")
+    x2 = float(np.sum((counts - expected) ** 2 / expected))
+    nz = counts > 0
+    g2 = float(2.0 * np.sum(counts[nz] * np.log(counts[nz] / expected[nz])))
+    return {
+        "statistic": x2,
+        "lr": g2,
+        "pvalue": float(1.0 - stats.chi2.cdf(x2, k)),
+        "pvalue_lr": float(1.0 - stats.chi2.cdf(g2, k)),
+        "df": float(k),
+        "n": float(n),
+        "counts": counts,
+        "expected": expected,
     }
