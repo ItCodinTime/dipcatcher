@@ -174,6 +174,18 @@ def test_tearsheet_period_table_and_empty() -> None:
     assert empty["summary"]["status"] == "empty_or_short"
 
 
+def test_tearsheet_nonfinite_nav_breaks_chain() -> None:
+    # An interior NaN/inf NAV must not join the surrounding bars into a
+    # fabricated single-bar return: the only measurable pair is 100->101.
+    eq = _equity([100.0, 101.0, float("nan"), 200.0, 202.0])
+    sheet = build_tearsheet(eq, periods_per_year=12.0)
+    s = sheet["summary"]
+    assert s["hit_rate"] == pytest.approx(1.0)
+    assert s["mean_ret"] == pytest.approx(np.mean([0.01, 0.01]))
+    # nav is reported on the finite subsequence; endpoints stay honest.
+    assert s["nav_start"] == 100.0 and s["nav_end"] == 202.0
+
+
 # ---------- Implementation shortfall ----------
 
 

@@ -41,13 +41,17 @@ def _nav_and_returns(equity: pl.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     if "nav" not in equity.columns:
         raise ValueError("equity frame requires a 'nav' column")
     nav = equity["nav"].to_numpy().astype(float)
-    nav = nav[np.isfinite(nav)]
-    if nav.size < 2:
-        return nav, np.array([], dtype=float)
+    finite = np.isfinite(nav)
+    if finite.sum() < 2:
+        return nav[finite], np.array([], dtype=float)
+    # A bar return is only measurable when both endpoints are observed.
+    # Non-finite interior rows break the chain instead of silently joining
+    # a multi-bar gap into one "1-bar" return.
+    pair_ok = finite[:-1] & finite[1:]
     with np.errstate(divide="ignore", invalid="ignore"):
-        rets = nav[1:] / nav[:-1] - 1.0
-    rets = rets[np.isfinite(rets)]
-    return nav, rets
+        raw = nav[1:] / nav[:-1] - 1.0
+    rets = raw[pair_ok & np.isfinite(raw)]
+    return nav[finite], rets
 
 
 def period_returns_table(equity: pl.DataFrame) -> dict[str, float]:
