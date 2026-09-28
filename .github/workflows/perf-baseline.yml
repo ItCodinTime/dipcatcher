@@ -1,0 +1,98 @@
+name: Perf baseline gate
+
+# pybroker-style regression gate for the scoring/inference hot paths in
+# scripts/perf_baseline.py. Baselines are recorded on CI runners (local
+# timings are not comparable across machines) and published as a
+# stable-named artifact; PRs compare against the latest main-branch
+# artifact. A bench slower than 1.5x baseline (normalized ratio) fails the PR
+# job; missing benches fail closed via scripts/perf_baseline.py.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 0" # weekly refresh keeps the baseline on current CI hardware
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read # compare job lists runs + downloads the baseline artifact
+
+jobs:
+  record:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --group dev
+      - name: Record baseline on CI hardware
+        run: uv run python scripts/perf_baseline.py record --output perf-baseline.json
+      - name: Publish baseline artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-baseline
+          path: perf-baseline.json
+          retention-days: 60
+          if-no-files-found: error
+
+  compare:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --group dev
+      - name: Record current timings
+        run: uv run python scripts/perf_baseline.py record --output perf-current.json
+      - name: Fetch main-branch baseline artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id="$(gh run list --workflow perf-baseline.yml --branch main \
+            --status success --limit 1 --json databaseId \
+            --jq '.[0].databaseId // empty')"
+          if [ -z "${run_id}" ]; then
+            echo "::error::no main-branch perf-baseline artifact found." >&2
+            echo "::error::seed it via 'gh workflow run perf-baseline.yml' or any push to main." >&2
+            exit 1
+          fi
+          if ! gh run download "${run_id}" --name perf-baseline --dir baseline; then
+            echo "::error::baseline artifact on run ${run_id} expired (retention)." >&2
+            echo "::error::record a fresh one via 'gh workflow run perf-baseline.yml'." >&2
+            exit 1
+          fi
+          test -s baseline/perf-baseline.json
+      - name: Compare against baseline (1.5x normalized gate)
+        run: |
+          uv run python scripts/perf_baseline.py compare \
+            --baseline baseline/perf-baseline.json \
+            --current perf-current.json --json
+      - name: Upload current timings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-current-pr-${{ github.event.pull_request.number }}
+          path: perf-current.json
+          if-no-files-found: error
