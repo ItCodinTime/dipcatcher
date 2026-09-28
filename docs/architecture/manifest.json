@@ -6443,7 +6443,15 @@
       "src": "quant_fund.research.receipt_schema"
     },
     {
+      "dst": "quant_fund.research.capacity_overlay",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
       "dst": "quant_fund.research.catalog",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
+      "dst": "quant_fund.research.cross_sectional",
       "src": "quant_fund.research.receipt_v2"
     },
     {
@@ -9168,7 +9176,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 102,
       "src": "quant_fund.research"
     },
     {
