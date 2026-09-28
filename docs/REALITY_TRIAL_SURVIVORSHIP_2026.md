@@ -76,7 +76,7 @@ return is not the best holdout in the new family.
 - Renames without a remove/add pair keep the snapshot's later ticker for the whole span (META, BKNG). Yahoo's series under that ticker is what gets fetched. The historical ticker is not reconstructed.
 - Names Yahoo does not serve are absent. That is residual survivorship, counted in the receipt, not corrected by substitution.
 - The delisting exit copies the last close. Wipeouts that halted above the recovery are not marked to zero.
-- Quote closes omit dividends. A high-yield name is understated relative to a total-return index.
+- Quote closes omit dividends. A high-yield name is understated relative to a total-return index. The paired re-score on one Yahoo fetch with cash-dividend reinvestment is in `docs/REALITY_TRIAL_SURVIVORSHIP_TOTAL_RETURN_2026.md`.
 - The same frozen net cap of 0.2 applies. This is not a fully invested S&P book. The round-1 baseline used that cap too, so the compounded-return comparison is on the same risk budget.
 
 Holdout was summarized after the new trials were appended.
