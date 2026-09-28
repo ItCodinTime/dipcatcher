@@ -47,10 +47,26 @@ from quant_fund.research.reality_sweep import (
 _ROOT = Path(__file__).resolve().parents[3]
 _SPEC = _ROOT / "research" / "reality" / "survivorship" / "preregistration.json"
 _MEMBERSHIP = _ROOT / "research" / "reality" / "survivorship" / "membership.json"
-_LEDGER = _ROOT / "research" / "reality" / "trials.jsonl"
-_CSV = _ROOT / "research" / "reality" / "trials.csv"
+# Round-1 ledger was archived under studies/ after #201. The frozen hash still
+# matches those bytes. Pending top-level trials.jsonl stays empty for the next
+# undecided study.
+_PRIOR_LEDGER = (
+    _ROOT
+    / "research"
+    / "reality"
+    / "studies"
+    / "reality-us-liquid-daily-2026-09-27"
+    / "trials.jsonl"
+)
+_PRIOR_CSV = (
+    _ROOT / "research" / "reality" / "studies" / "reality-us-liquid-daily-2026-09-27" / "trials.csv"
+)
+_LEDGER = _PRIOR_LEDGER
+_CSV = _PRIOR_CSV
 _EXIT_SOURCE = "last_close_delisting_exit"
 _MIN_LEG = 5
+_RETURN_QUOTE = "quote_close"
+_RETURN_TOTAL = "total_return"
 
 
 def load_membership(path: Path | None = None) -> dict[str, Any]:
@@ -786,20 +802,51 @@ def append_csv_rows(path: Path, rows: list[Any]) -> None:
         raise RuntimeError("CSV append changed existing rows")
 
 
-def _fetch_one(ticker: str, *, start: datetime, end: datetime, cache: Path) -> pl.DataFrame | None:
+def _fetch_one(
+    ticker: str,
+    *,
+    start: datetime,
+    end: datetime,
+    cache: Path,
+    events: str | None = None,
+) -> tuple[pl.DataFrame | None, pl.DataFrame]:
     from quant_fund.data.adapters.yahoo_eod import fetch_yahoo_chart, parse_yahoo_chart
+    from quant_fund.research.total_return import parse_yahoo_corporate_actions
 
     symbol = yahoo_symbol(ticker)
     cached = cache / "bars" / f"{ticker}.parquet"
+    actions_cached = cache / "actions" / f"{ticker}.parquet"
     missing = cache / "missing" / f"{ticker}.json"
-    if cached.exists():
+    empty_actions = pl.DataFrame(
+        schema={
+            "security_id": pl.String(),
+            "event_time": pl.Datetime(time_zone="UTC"),
+            "available_time": pl.Datetime(time_zone="UTC"),
+            "action_type": pl.String(),
+            "amount": pl.Float64(),
+            "factor": pl.Float64(),
+            "source": pl.String(),
+            "revision_id": pl.String(),
+        }
+    )
+    if cached.exists() and (events is None or actions_cached.exists()):
         frame = pl.read_parquet(cached)
-        return frame if frame.height else None
+        actions = pl.read_parquet(actions_cached) if actions_cached.exists() else empty_actions
+        if frame.height == 0:
+            return None, empty_actions
+        return frame, actions
     if missing.exists():
-        return None
+        return None, empty_actions
     try:
-        payload = fetch_yahoo_chart(symbol, start=start, end=end, retries=3, timeout=30.0)
+        payload = fetch_yahoo_chart(
+            symbol, start=start, end=end, retries=3, timeout=30.0, events=events
+        )
         frame = parse_yahoo_chart(payload, security_id=ticker, yahoo_symbol=symbol)
+        actions = (
+            parse_yahoo_corporate_actions(payload, security_id=ticker, yahoo_symbol=symbol)
+            if events is not None
+            else empty_actions
+        )
     except urllib.error.HTTPError as exc:
         if exc.code in {404, 400}:
             missing.parent.mkdir(parents=True, exist_ok=True)
@@ -807,7 +854,7 @@ def _fetch_one(ticker: str, *, start: datetime, end: datetime, cache: Path) -> p
                 json.dumps({"ticker": ticker, "yahoo_symbol": symbol, "status": exc.code}),
                 encoding="utf-8",
             )
-            return None
+            return None, empty_actions
         raise
     if frame.is_empty():
         missing.parent.mkdir(parents=True, exist_ok=True)
@@ -815,22 +862,31 @@ def _fetch_one(ticker: str, *, start: datetime, end: datetime, cache: Path) -> p
             json.dumps({"ticker": ticker, "yahoo_symbol": symbol, "status": "empty"}),
             encoding="utf-8",
         )
-        return None
+        return None, empty_actions
     cached.parent.mkdir(parents=True, exist_ok=True)
     frame.write_parquet(cached)
-    return frame
+    if events is not None:
+        actions_cached.parent.mkdir(parents=True, exist_ok=True)
+        actions.write_parquet(actions_cached)
+    return frame, actions
 
 
 def fetch_yahoo_members(
     tickers: list[str],
     spec: dict[str, Any],
     cache: Path,
-) -> tuple[pl.DataFrame, pl.DataFrame, list[dict[str, str]]]:
-    """Download real Yahoo bars. Failures are recorded. Prices are not invented."""
+    *,
+    events: str | None = None,
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, list[dict[str, str]]]:
+    """Download real Yahoo bars. Failures are recorded. Prices are not invented.
+
+    Pass ``events`` (for example ``div,split``) to also cache corporate actions.
+    """
     data = spec["data"]
     start = datetime.fromisoformat(str(data["fetch_start_utc"]))
     end = datetime.fromisoformat(str(data["fetch_end_utc"]))
     frames: list[pl.DataFrame] = []
+    action_frames: list[pl.DataFrame] = []
     failures: list[dict[str, str]] = []
     symbols = list(tickers)
     regime = str(data["regime_symbol"])
@@ -842,7 +898,7 @@ def fetch_yahoo_members(
         if index % 25 == 0:
             print(f"fetch {index}/{len(symbols)} {ticker}", flush=True)
         try:
-            frame = _fetch_one(ticker, start=start, end=end, cache=cache)
+            frame, actions = _fetch_one(ticker, start=start, end=end, cache=cache, events=events)
         except Exception as exc:
             failures.append({"ticker": ticker, "error": f"{type(exc).__name__}: {exc}"})
             continue
@@ -850,19 +906,39 @@ def fetch_yahoo_members(
             failures.append({"ticker": ticker, "error": "no bars"})
             continue
         frames.append(frame)
+        if actions.height:
+            action_frames.append(actions)
     if not frames:
         raise RuntimeError("Yahoo returned no bars; stopping without a synthetic substitute")
     panel = pl.concat(frames, how="diagonal_relaxed")
     panel = panel.unique(subset=["security_id", "event_time"], keep="last").sort(
         ["security_id", "event_time"]
     )
+    if action_frames:
+        actions_panel = pl.concat(action_frames, how="diagonal_relaxed")
+        actions_panel = actions_panel.unique(
+            subset=["security_id", "event_time", "action_type"], keep="last"
+        ).sort(["security_id", "event_time", "action_type"])
+    else:
+        actions_panel = pl.DataFrame(
+            schema={
+                "security_id": pl.String(),
+                "event_time": pl.Datetime(time_zone="UTC"),
+                "available_time": pl.Datetime(time_zone="UTC"),
+                "action_type": pl.String(),
+                "amount": pl.Float64(),
+                "factor": pl.Float64(),
+                "source": pl.String(),
+                "revision_id": pl.String(),
+            }
+        )
     spy = panel.filter(pl.col("security_id") == regime)
     if spy.is_empty():
         raise RuntimeError("SPY regime series is missing; stopping")
     stocks = panel.filter(pl.col("security_id") != regime)
     if stocks.is_empty():
         raise RuntimeError("no constituent bars; stopping")
-    return stocks, spy, failures
+    return stocks, spy, actions_panel, failures
 
 
 def _ledger_best_raw_dsr(rows: list[Any]) -> float:
@@ -1040,7 +1116,7 @@ def run_study(
     prefix = assert_prior_ledger(ledger, spec)
     cache = cache_dir or (_ROOT / "data" / "reality_sweep_survivorship")
     tickers = fetch_universe(membership, spec)
-    stocks, spy, failures = fetch_yahoo_members(tickers, spec, cache)
+    stocks, spy, _actions, failures = fetch_yahoo_members(tickers, spec, cache)
     prepared = prepare_bars(stocks)
     prepared = with_eligibility(prepared, membership)
     coverage = anchor_coverage(prepared, membership, list(spec["data"]["coverage_anchors"]))
@@ -1199,7 +1275,7 @@ def run_study(
     returns_sha = sha256_hex_bytes(returns_file.read_bytes())
     from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
 
-    prior = _prior_baseline(_ROOT / str(spec["prior_study"]["receipt"]))
+    prior = _prior_baseline(_prior_receipt_path(spec))
     trials_public = [
         {
             "trial_id": row.trial_id,
@@ -1295,7 +1371,365 @@ def run_study(
     return safe
 
 
+def _prior_receipt_path(spec: dict[str, Any]) -> Path:
+    """Round-1 receipt moved under studies/ after archival; fall back to the frozen path."""
+    frozen = _ROOT / str(spec["prior_study"]["receipt"])
+    if frozen.exists():
+        return frozen
+    archived = (
+        _ROOT
+        / "research"
+        / "reality"
+        / "studies"
+        / str(spec["prior_study"]["study_id"])
+        / "receipt.json"
+    )
+    if archived.exists():
+        return archived
+    raise FileNotFoundError(f"prior receipt missing at {frozen} and {archived}")
+
+
+def _trial_public_row(row: ScoredCell, rejects: dict[str, dict[str, int]]) -> dict[str, Any]:
+    return {
+        "trial_id": row.trial_id,
+        "strategy": row.cell.strategy,
+        "cluster_id": row.cell.cluster_id,
+        "params": row.cell.params,
+        "returns_sha256": _returns_sha(row.validation_returns),
+        "risk_gate_rejects": rejects[row.trial_id]["risk_gate_rejects"],
+        "cash_rejects": rejects[row.trial_id]["cash_rejects"],
+        "windows": {name: _public_window(row.by_window[name]) for name in row.by_window},
+    }
+
+
+def _score_panel(
+    *,
+    cells: list[Cell],
+    real: pl.DataFrame,
+    spy: pl.DataFrame,
+    panel: pl.DataFrame,
+    config: AppConfig,
+    spec: dict[str, Any],
+    name_cap: float,
+    net_cap: float,
+    label: str,
+) -> tuple[list[ScoredCell], dict[str, dict[str, int]]]:
+    scored: list[ScoredCell] = []
+    rejects: dict[str, dict[str, int]] = {}
+    for cell in cells:
+        print(
+            f"score[{label}] {cell.strategy} {json.dumps(cell.params, sort_keys=True)}",
+            flush=True,
+        )
+        weights = weights_for_cell(cell, real, spy, name_cap=name_cap, net_cap=net_cap)
+        scored_row, row_rejects = _score_weights(cell, panel, weights, config, spec)
+        scored.append(scored_row)
+        rejects[scored_row.trial_id] = row_rejects
+    if len(scored) != len(cells):
+        raise RuntimeError(f"{label}: a cell was dropped before recording")
+    return scored, rejects
+
+
+def _prepare_eligible_panel(
+    stocks: pl.DataFrame,
+    membership: dict[str, Any],
+    spec: dict[str, Any],
+    *,
+    actions: pl.DataFrame | None,
+) -> tuple[pl.DataFrame, pl.DataFrame, list[dict[str, Any]], int]:
+    prepared = prepare_bars(stocks, actions)
+    prepared = with_eligibility(prepared, membership)
+    coverage = anchor_coverage(prepared, membership, list(spec["data"]["coverage_anchors"]))
+    floor = float(spec["data"]["coverage_floor"])
+    for report in coverage:
+        print(
+            f"coverage {report['anchor']} session={report['session']} "
+            f"{report['with_bar']}/{report['members']}={report['coverage']:.4f}",
+            flush=True,
+        )
+        if float(report["coverage"]) < floor:
+            raise RuntimeError(
+                f"coverage {report['coverage']:.4f} on {report['session']} is below {floor}; "
+                "not scoring"
+            )
+    real = prepared.filter(pl.col("source") == "yahoo")
+    panel, n_exit = append_delisting_exits(
+        real.drop(
+            [
+                column
+                for column in ("ny_date", "is_last_real", "in_index", "eligible")
+                if column in real.columns
+            ]
+        )
+    )
+    return real, panel, coverage, n_exit
+
+
+def compare_return_bases(
+    *,
+    spec_path: Path | None = None,
+    membership_path: Path | None = None,
+    cache_dir: Path | None = None,
+    output_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Score the frozen 13-cell grid on quote closes and on total-return marks.
+
+    One Yahoo fetch with ``events=div,split`` feeds both panels. Does not
+    append to the trial ledger, does not re-sign the sealed audit chain, and
+    does not edit reality-filter thresholds. Research diagnostic only.
+    """
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+    from quant_fund.research.total_return import YAHOO_CHART_EVENTS
+
+    spec_file = spec_path or _SPEC
+    spec = load_spec(spec_file)
+    membership_file = membership_path or _MEMBERSHIP
+    member_hash = sha256_hex_bytes(membership_file.read_bytes())
+    if member_hash != str(spec["data"]["membership_sha256"]):
+        raise RuntimeError("membership file hash does not match the pre-registration")
+    membership = load_membership(membership_file)
+    cells = grid_cells(spec)
+    config = load_config(_ROOT / "configs" / "backtest.yaml")
+    assert_cost_lock(config, spec)
+    cache = cache_dir or (_ROOT / "data" / "reality_sweep_survivorship_tr")
+    out_dir = output_dir or (_ROOT / "research" / "reality" / "survivorship" / "total_return")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tickers = fetch_universe(membership, spec)
+    stocks, spy, actions, failures = fetch_yahoo_members(
+        tickers, spec, cache, events=YAHOO_CHART_EVENTS
+    )
+    # Regime series stays on quote closes for the causal SPY filter in both
+    # modes so the on/off mask is identical; only constituent marks change.
+    name_cap = float(spec["risk_gate"]["max_name"])
+    net_cap = float(spec["risk_gate"]["max_net"])
+    modes: dict[str, dict[str, Any]] = {}
+    for mode, mode_actions in ((_RETURN_QUOTE, None), (_RETURN_TOTAL, actions)):
+        print(f"prepare mode={mode}", flush=True)
+        real, panel, coverage, n_exit = _prepare_eligible_panel(
+            stocks, membership, spec, actions=mode_actions
+        )
+        scored, rejects = _score_panel(
+            cells=cells,
+            real=real,
+            spy=spy,
+            panel=panel,
+            config=config,
+            spec=spec,
+            name_cap=name_cap,
+            net_cap=net_cap,
+            label=mode,
+        )
+        winner = select_winner(scored)
+        pbo = pbo_on_pre_holdout(scored, n_splits=int(spec["pbo"]["n_splits"]))
+        modes[mode] = {
+            "return_basis": mode,
+            "n_dividend_rows": int(
+                actions.filter(
+                    pl.col("action_type").is_in(["cash_dividend", "special_dividend"])
+                ).height
+            )
+            if mode == _RETURN_TOTAL
+            else 0,
+            "n_names_with_bars": int(real["security_id"].n_unique()),
+            "n_delisting_exit_bars": n_exit,
+            "selected_trial_id": winner.trial_id,
+            "selected_strategy": winner.cell.strategy,
+            "pbo": pbo,
+            "coverage": [
+                {key: value for key, value in row.items() if key != "missing"}
+                | {"n_missing": len(row["missing"])}
+                for row in coverage
+            ],
+            "trials": [
+                _trial_public_row(row, rejects)
+                for row in sorted(scored, key=lambda item: item.trial_id)
+            ],
+        }
+
+    sealed = json.loads(
+        (_ROOT / "research" / "reality" / "survivorship" / "receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    comparison_rows = []
+    quote_by_id = {row["trial_id"]: row for row in modes[_RETURN_QUOTE]["trials"]}
+    total_by_id = {row["trial_id"]: row for row in modes[_RETURN_TOTAL]["trials"]}
+    sealed_by_id = {row["trial_id"]: row for row in sealed["trials"]}
+    for trial_id in sorted(quote_by_id):
+        quote = quote_by_id[trial_id]
+        total = total_by_id[trial_id]
+        published = sealed_by_id.get(trial_id)
+        comparison_rows.append(
+            {
+                "trial_id": trial_id,
+                "strategy": quote["strategy"],
+                "params": quote["params"],
+                "published_quote_holdout_compounded": (
+                    None
+                    if published is None
+                    else published["windows"]["holdout"]["compounded_return"]
+                ),
+                "recomputed_quote_holdout_compounded": quote["windows"]["holdout"][
+                    "compounded_return"
+                ],
+                "total_return_holdout_compounded": total["windows"]["holdout"]["compounded_return"],
+                "published_quote_validation_annualized": (
+                    None
+                    if published is None
+                    else published["windows"]["validation"]["annualized_ratio"]
+                ),
+                "recomputed_quote_validation_annualized": quote["windows"]["validation"][
+                    "annualized_ratio"
+                ],
+                "total_return_validation_annualized": total["windows"]["validation"][
+                    "annualized_ratio"
+                ],
+                "published_quote_holdout_annualized": (
+                    None
+                    if published is None
+                    else published["windows"]["holdout"]["annualized_ratio"]
+                ),
+                "recomputed_quote_holdout_annualized": quote["windows"]["holdout"][
+                    "annualized_ratio"
+                ],
+                "total_return_holdout_annualized": total["windows"]["holdout"]["annualized_ratio"],
+            }
+        )
+
+    from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
+
+    body: dict[str, Any] = {
+        "schema": "dipcatcher.reality_survivorship_total_return_comparison.v1",
+        "live_pnl_claim": False,
+        "study_id": spec["study_id"],
+        "note": (
+            "Paired quote-close vs cash-dividend total-return marks on one Yahoo "
+            "fetch. Does not append to the trial ledger. Not a live-trading claim."
+        ),
+        "preregistration_sha256": sha256_hex_bytes(spec_file.read_bytes()),
+        "membership_sha256": member_hash,
+        "n_fetch_failures": len(failures),
+        "fetch_failures": failures,
+        "n_corporate_action_rows": int(actions.height),
+        "n_cash_dividend_rows": int(
+            actions.filter(
+                pl.col("action_type").is_in(["cash_dividend", "special_dividend"])
+            ).height
+        ),
+        "modes": modes,
+        "comparison": comparison_rows,
+        "sealed_quote_receipt_sha256": sealed.get("receipt_sha256"),
+        "provenance": {
+            "git_revision": git_revision(),
+            "git_worktree_sha256": git_worktree_sha256(),
+            "execution_claim": "historical_backtest_simulation",
+            "point_in_time_membership": True,
+            "point_in_time_prices": False,
+            "return_bases": [_RETURN_QUOTE, _RETURN_TOTAL],
+        },
+    }
+    safe = _sanitize(body)
+    if not isinstance(safe, dict):
+        raise RuntimeError("comparison sanitizer dropped the object")
+    encoded = json.dumps(safe, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    safe["receipt_sha256"] = sha256_hex_bytes(encoded)
+    receipt_path = out_dir / "comparison.json"
+    receipt_path.write_text(
+        json.dumps(safe, indent=2, sort_keys=True, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    write_comparison_markdown(
+        _ROOT / "docs" / "REALITY_TRIAL_SURVIVORSHIP_TOTAL_RETURN_2026.md", safe
+    )
+    print(
+        f"comparison written n_trials={len(comparison_rows)} "
+        f"dividends={safe['n_cash_dividend_rows']} receipt={safe['receipt_sha256']}",
+        flush=True,
+    )
+    return safe
+
+
+def write_comparison_markdown(path: Path, receipt: dict[str, Any]) -> None:
+    """Before/after note for quote closes vs dividend total-return marks."""
+    lines = [
+        "# Survivorship trial: quote close vs total return",
+        "",
+        "Research diagnostic only. Same point-in-time S&P membership grid as",
+        "`docs/REALITY_TRIAL_SURVIVORSHIP_2026.md`, scored twice on one Yahoo",
+        "fetch: once on quote closes (default), once after cash-dividend",
+        "reinvestment through `prepare_bars(..., actions)`. Reality-filter",
+        "thresholds and the sealed ledger were not edited. Not a live-trading",
+        "claim.",
+        "",
+        f"Comparison receipt sha256: `{receipt['receipt_sha256']}`.",
+        f"Cash-dividend rows on the fetch: {receipt['n_cash_dividend_rows']}.",
+        f"Fetch failures: {receipt['n_fetch_failures']}.",
+        "",
+        "## Equal-weight pit baseline",
+        "",
+        "| return basis | validation compounded | holdout compounded | validation annualized | holdout annualized |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for mode in (_RETURN_QUOTE, _RETURN_TOTAL):
+        pit = next(
+            row for row in receipt["modes"][mode]["trials"] if row["strategy"] == "equal_weight_pit"
+        )
+        lines.append(
+            "| {mode} | {v} | {h} | {va} | {ha} |".format(
+                mode=mode,
+                v=_fmt(pit["windows"]["validation"]["compounded_return"]),
+                h=_fmt(pit["windows"]["holdout"]["compounded_return"]),
+                va=_fmt(pit["windows"]["validation"]["annualized_ratio"]),
+                ha=_fmt(pit["windows"]["holdout"]["annualized_ratio"]),
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Every cell: holdout compounded return",
+            "",
+            "| strategy | params | published quote | recomputed quote | total return | delta (TR − quote) |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for row in receipt["comparison"]:
+        quote = float(row["recomputed_quote_holdout_compounded"])
+        total = float(row["total_return_holdout_compounded"])
+        published = row["published_quote_holdout_compounded"]
+        lines.append(
+            "| {strategy} | `{params}` | {published} | {quote} | {total} | {delta} |".format(
+                strategy=row["strategy"],
+                params=json.dumps(row["params"], sort_keys=True),
+                published=_fmt(published),
+                quote=_fmt(quote),
+                total=_fmt(total),
+                delta=_fmt(total - quote),
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "- Published quote figures are the sealed survivorship receipt",
+            "  (quote closes, dividends omitted).",
+            "- Recomputed quote and total-return figures share one Yahoo download",
+            "  with `events=div,split`, so the delta isolates dividend reinvestment.",
+            "- Fills stay at the open on the same price basis as the mark.",
+            "- Annualized ratio is mean/std × √252 on net simple returns; it is an",
+            "  overfitting diagnostic here, not a promotion.",
+            "",
+        ]
+    )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main() -> None:
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "compare-return-bases":
+        compare_return_bases()
+        return
     run_study()
 
 

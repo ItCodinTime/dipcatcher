@@ -31,9 +31,16 @@ from quant_fund.research.reality_survivorship import (
 from quant_fund.research.reality_sweep import assert_cost_lock
 
 _ROOT = Path(__file__).resolve().parents[2]
+_LEDGER = (
+    _ROOT
+    / "research"
+    / "reality"
+    / "studies"
+    / "reality-us-liquid-daily-2026-09-27"
+    / "trials.jsonl"
+)
 _SPEC = _ROOT / "research" / "reality" / "survivorship" / "preregistration.json"
 _MEMBERSHIP = _ROOT / "research" / "reality" / "survivorship" / "membership.json"
-_LEDGER = _ROOT / "research" / "reality" / "trials.jsonl"
 
 
 def _spec() -> dict:
