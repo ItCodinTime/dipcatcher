@@ -513,8 +513,53 @@ def capacity(
     typer.echo(f"receipt={path}")
 
 
+@app.command("concordance")
+def concordance_cmd(
+    n_train: int = typer.Option(512, help="Fit window per shard."),
+    n_eval: int = typer.Option(256, help="Causal eval horizon per shard."),
+    alpha: float = typer.Option(0.10, help="Selector level for all three tests."),
+    n_boot: int = typer.Option(500, help="Stationary-bootstrap replicates per selector."),
+    block: float | None = typer.Option(
+        None, help="Mean bootstrap block; None = Politis–White per selector."
+    ),
+    seed: int = typer.Option(0, help="Shard/head/bootstrap seed."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Selection-concordance: do the multiple-comparison selectors agree?
+
+    Runs MCS / Romano-Wolf StepM / pairwise DM on the same per-row pinball
+    loss tensor and measures agreement (eliminated-set Jaccard, Kendall-tau
+    on elimination confidence) plus SPA/Reality-Check decisiveness on the
+    differentials vs the observed winner. Flags heads where the selectors
+    disagree — dependence-fragile selections. Proper scores only; SYNTHETIC,
+    receipt.v2.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "concordance is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.concordance import (
+        format_concordance_table,
+        run_concordance_eval,
+        write_concordance_receipt,
+    )
+
+    try:
+        frame, receipt = run_concordance_eval(
+            seed=seed, n_train=n_train, n_eval=n_eval, alpha=alpha, n_boot=n_boot, block=block
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_concordance_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_concordance_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
     "capacity",
+    "concordance_cmd",
     "execution_sensitivity_cmd",
     "fleet",
     "rankic",

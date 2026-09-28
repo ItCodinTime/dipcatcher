@@ -1,0 +1,614 @@
+{
+  "code_files": {
+    "concordance.py": "f254220d642e96bd7df29a9b83b3553d1dd6287bf0e95390c7eb8f23f141a810"
+  },
+  "code_sha256": "29850778b49069d2a28dc0e089e11d31c901d0f55ba014d7fe7f55981e7aa0b2",
+  "data_label": "SYNTHETIC",
+  "dataset_hash": "982dca72f99ef77a84027d13bbbf7cc1d76c67a2b6245a66ca758804dd06c82e",
+  "environment": {
+    "blas": {
+      "found": true,
+      "name": "accelerate",
+      "version": null
+    },
+    "byteorder": "little",
+    "fingerprint_sha256": "207a7ded44205cd3554555ff934f3b8bc709709ad1635770d1a75739a5be6aab",
+    "implementation": "CPython",
+    "lapack": {
+      "found": true,
+      "name": "accelerate",
+      "version": null
+    },
+    "machine": "arm64",
+    "packages": {
+      "numpy": "2.5.3",
+      "polars": "1.44.2",
+      "scipy": "1.18.1"
+    },
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.14",
+    "threadpools": []
+  },
+  "generated_at": "2026-09-28T05:55:24.544258+00:00",
+  "git_revision": "3246b8d37c1ffda200754c943d9c97879cddd5a6",
+  "kind": "selection_concordance",
+  "live_pnl_claim": false,
+  "params_hash": "25df53328e1bcc41f27a0ec4692d3a9eeebea5534e2b399d003c41cda6b67ceb",
+  "payload": {
+    "alpha": 0.1,
+    "block": null,
+    "n_boot": 300,
+    "n_eval": 128,
+    "n_rows": 135,
+    "n_taus": 7,
+    "n_train": 384,
+    "schema": "selection_concordance.v1",
+    "seed": 0,
+    "shards": [
+      {
+        "alpha": 0.1,
+        "best": "qar",
+        "block": 1.7113493281720593,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "empirical",
+            "nbeats",
+            "nhits"
+          ],
+          "mcs": [
+            "nbeats",
+            "nhits"
+          ],
+          "stepm": [
+            "nbeats",
+            "nhits"
+          ]
+        },
+        "eliminated_intersection": [
+          "nbeats",
+          "nhits"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.6666666666666666,
+            "kendall_tau": 0.6150813955507916
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 1.0,
+            "kendall_tau": 0.7197633633294866
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.6666666666666666,
+            "kendall_tau": 0.5847351773491256
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "iid_gaussian",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "regime",
+        "block": 1.0218475437775143,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "empirical",
+            "gaussian",
+            "hstep_emp",
+            "hstep_t",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "stack"
+          ],
+          "mcs": [
+            "empirical",
+            "gaussian",
+            "hstep_emp",
+            "hstep_t",
+            "lgbm_q2",
+            "nbeats",
+            "nhits"
+          ],
+          "stepm": [
+            "gaussian",
+            "hstep_t",
+            "nbeats",
+            "nhits",
+            "stack"
+          ]
+        },
+        "eliminated_intersection": [
+          "gaussian",
+          "hstep_t",
+          "nbeats",
+          "nhits"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.875,
+            "kendall_tau": 0.9050124966251124
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 0.5,
+            "kendall_tau": 0.7024393586862705
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.625,
+            "kendall_tau": 0.6248192335464722
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "bimodal_mixture",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "conf_t",
+        "block": 1.6319780057582054,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "fhs_skew",
+            "nbeats",
+            "nhits",
+            "skew_t",
+            "stack"
+          ],
+          "mcs": [
+            "nbeats",
+            "nhits"
+          ],
+          "stepm": [
+            "nbeats",
+            "nhits"
+          ]
+        },
+        "eliminated_intersection": [
+          "nbeats",
+          "nhits"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.4,
+            "kendall_tau": 0.9111396372656012
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 1.0,
+            "kendall_tau": 0.7090880313044139
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.4,
+            "kendall_tau": 0.7765104378637272
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "heavy_tail",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "regime",
+        "block": 1.0,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_t",
+            "nbeats",
+            "nhits",
+            "stack"
+          ],
+          "mcs": [
+            "fhs_skew",
+            "gaussian",
+            "hstep_t",
+            "nbeats",
+            "nhits",
+            "stack"
+          ],
+          "stepm": [
+            "fhs_skew",
+            "gaussian",
+            "hstep_t",
+            "nbeats",
+            "nhits",
+            "qar"
+          ]
+        },
+        "eliminated_intersection": [
+          "fhs_skew",
+          "gaussian",
+          "hstep_t",
+          "nbeats",
+          "nhits"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.8571428571428571,
+            "kendall_tau": 0.8999732473284427
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 0.7142857142857143,
+            "kendall_tau": 0.9093977234462831
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.625,
+            "kendall_tau": 0.884559439890032
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "left_skew",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "qar",
+        "block": 8.398424531025052,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "fhs_skew",
+            "gaussian",
+            "nbeats",
+            "nhits"
+          ],
+          "mcs": [
+            "nbeats",
+            "nhits"
+          ],
+          "stepm": [
+            "conf_t",
+            "fhs_skew",
+            "nbeats",
+            "nhits"
+          ]
+        },
+        "eliminated_intersection": [
+          "nbeats",
+          "nhits"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.5,
+            "kendall_tau": 0.8462396997155366
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 0.5,
+            "kendall_tau": 0.834057656228299
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.6,
+            "kendall_tau": 0.7867957924694431
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "regime_switch",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "stack",
+        "block": 1.4807529162595143,
+        "concordant": true,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "conf_t",
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "regime",
+            "skew_t"
+          ],
+          "mcs": [
+            "conf_t",
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "regime",
+            "skew_t"
+          ],
+          "stepm": [
+            "conf_t",
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "regime",
+            "skew_t"
+          ]
+        },
+        "eliminated_intersection": [
+          "conf_t",
+          "empirical",
+          "fhs_skew",
+          "gaussian",
+          "gmm",
+          "hstep_emp",
+          "hstep_t",
+          "isotonic",
+          "lgbm_q2",
+          "nbeats",
+          "nhits",
+          "qar",
+          "regime",
+          "skew_t"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 1.0,
+            "kendall_tau": 0.36514837167011077
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 1.0,
+            "kendall_tau": null
+          },
+          "stepm_vs_dm": {
+            "jaccard": 1.0,
+            "kendall_tau": null
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "garch_cluster",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "regime",
+        "block": 1.0,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "skew_t",
+            "stack"
+          ],
+          "mcs": [
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "skew_t",
+            "stack"
+          ],
+          "stepm": [
+            "conf_t",
+            "empirical",
+            "fhs_skew",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "hstep_t",
+            "isotonic",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "qar",
+            "skew_t",
+            "stack"
+          ]
+        },
+        "eliminated_intersection": [
+          "empirical",
+          "fhs_skew",
+          "gaussian",
+          "gmm",
+          "hstep_emp",
+          "hstep_t",
+          "isotonic",
+          "lgbm_q2",
+          "nbeats",
+          "nhits",
+          "qar",
+          "skew_t",
+          "stack"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 1.0,
+            "kendall_tau": 0.50709255283711
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 0.9285714285714286,
+            "kendall_tau": 1.0
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.9285714285714286,
+            "kendall_tau": 0.37796447300922725
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "vol_break",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "qar",
+        "block": 1.0,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "conf_t",
+            "empirical",
+            "fhs_skew",
+            "nbeats",
+            "nhits",
+            "regime"
+          ],
+          "mcs": [
+            "conf_t",
+            "fhs_skew",
+            "nbeats",
+            "nhits",
+            "regime"
+          ],
+          "stepm": [
+            "conf_t",
+            "fhs_skew",
+            "nbeats",
+            "nhits",
+            "regime"
+          ]
+        },
+        "eliminated_intersection": [
+          "conf_t",
+          "fhs_skew",
+          "nbeats",
+          "nhits",
+          "regime"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.8333333333333334,
+            "kendall_tau": 0.7500062987893729
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 1.0,
+            "kendall_tau": 0.8832055150452627
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.8333333333333334,
+            "kendall_tau": 0.7703288865196433
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "gjr_leverage",
+        "spa_p_consistent": 0.0033222591362126247
+      },
+      {
+        "alpha": 0.1,
+        "best": "qar",
+        "block": 2.1615551628596816,
+        "concordant": false,
+        "decisive": true,
+        "eliminated": {
+          "dm": [
+            "empirical",
+            "gaussian",
+            "gmm",
+            "hstep_emp",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "regime",
+            "skew_t",
+            "stack"
+          ],
+          "mcs": [
+            "empirical",
+            "gaussian",
+            "hstep_emp",
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "regime"
+          ],
+          "stepm": [
+            "lgbm_q2",
+            "nbeats",
+            "nhits",
+            "regime",
+            "stack"
+          ]
+        },
+        "eliminated_intersection": [
+          "lgbm_q2",
+          "nbeats",
+          "nhits",
+          "regime"
+        ],
+        "n_boot": 300,
+        "n_heads_ok": 15,
+        "pair_stats": {
+          "mcs_vs_dm": {
+            "jaccard": 0.7,
+            "kendall_tau": 0.9710083124552246
+          },
+          "mcs_vs_stepm": {
+            "jaccard": 0.5,
+            "kendall_tau": 0.8195737385236203
+          },
+          "stepm_vs_dm": {
+            "jaccard": 0.5,
+            "kendall_tau": 0.7799080767991882
+          }
+        },
+        "rc_p": 0.0033222591362126247,
+        "shard": "ar1_lagged_x",
+        "spa_p_consistent": 0.0033222591362126247
+      }
+    ]
+  },
+  "receipt_sha256": "df424fa2f6b1c4e9c52a20d07a9b76ca2eaecf8b87473df713cf7416e878928c",
+  "schema": "receipt.v2",
+  "schema_version": 2,
+  "verdict": "pass"
+}
