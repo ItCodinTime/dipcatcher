@@ -1,0 +1,17 @@
+# Offline demo config — 1-minute slice. Reads the generated vendor-shaped
+# month cache under data/demo/minute_cache/ via the hf_ohlcv_1m provider
+# (offline: allow_download stays off). See `make demo-data` and
+# docs/DEMO_DATA.md. SYNTHETIC data — correctness testing only.
+inherit: base.yaml
+runtime:
+  mode: research
+data:
+  root: data/demo/minute
+  source: hf_ohlcv_1m
+  source_path: data/demo/minute_cache
+  source_symbol: "S0001,S0002"
+  source_interval: "1m"
+universe:
+  # Minute bars: membership needs history measured in bars, not days.
+  min_history_bars: 30
+  min_price: 1.0

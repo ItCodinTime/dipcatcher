@@ -149,6 +149,7 @@ nav:
       - Labels: DATA_SOURCE_LABELS.md
       - Hugging Face OHLCV-1m: HF_OHLCV_1M.md
       - Data lake: DATA_LAKE.md
+      - Demo data: DEMO_DATA.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
       - Research 100: RESEARCH100.md

@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke demo-data
 
 .DEFAULT_GOAL := help
 
@@ -54,6 +54,9 @@ audit: ## Locked-deps vulnerability audit (pip-audit)
 
 doctor: ## Harness environment check
 	uv run dipcatcher doctor
+
+demo-data: ## Generate labeled-SYNTHETIC offline demo dataset into data/demo/
+	uv run python scripts/gen_demo_data.py
 
 native: ## Build optional quant_core (Rust + maturin). NumPy stays the fallback.
 	uv pip install "maturin>=1.7,<2"

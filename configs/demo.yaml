@@ -1,0 +1,21 @@
+# Offline demo config — reads the generated labeled-SYNTHETIC file panel
+# under data/demo/daily/ (see `make demo-data`, scripts/gen_demo_data.py,
+# docs/DEMO_DATA.md). Results prove pipeline correctness only; the bars carry
+# source="synthetic" so honesty labels propagate downstream.
+inherit: base.yaml
+runtime:
+  mode: research
+data:
+  root: data/demo/daily
+  source: file
+  benchmark_id: SEC_MKT
+universe:
+  # Members from the first session so every silver date is a usable decision
+  # date for the end-to-end demo backtest (the 20-bar trailing ADV warmup
+  # would otherwise leave the first ~19 sessions without a universe).
+  min_history_bars: 1
+  min_adv: 0.0
+validation:
+  train_bars: 40
+  val_bars: 15
+  test_bars: 15
