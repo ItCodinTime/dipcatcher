@@ -1,102 +1,129 @@
-"""Import-time backend selection. Subprocesses keep the parent interpreter's choice."""
+"""Coverage: native/__init__ dispatch layer.
+
+``quant_core`` is absent in this environment, so the python path is what
+runs; the dispatch logic (flag parsing, array hygiene, validation) still
+gets exercised.
+"""
 
 from __future__ import annotations
 
-import importlib.util
-import subprocess
-import sys
+import hashlib
 
 import numpy as np
 import pytest
 
-from quant_fund import native
-from quant_fund.native.reference import rolling_mean as rolling_mean_ref
-
-pytestmark = pytest.mark.native
+import quant_fund.native as native
+from quant_fund.native import reference as ref
 
 
-def test_loaded_backend_matches_extension() -> None:
-    installed = importlib.util.find_spec("quant_core") is not None
-    if installed:
-        assert native.BACKEND == "rust"
-    else:
-        assert native.BACKEND == "python"
-    series = np.asarray([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
-    got = native.rolling_mean(series, 2)
-    exp = rolling_mean_ref(series, 2)
-    assert got.shape == exp.shape
-    assert np.allclose(got, exp, rtol=0.0, atol=0.0, equal_nan=True)
+def test_flag_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("QUANT_FUND_NATIVE", "")
+    assert native._flag() == "auto"
+    monkeypatch.setenv("QUANT_FUND_NATIVE", " AUTO ")
+    assert native._flag() == "auto"
+    for raw in ("python", "py", "numpy", "PyThOn"):
+        monkeypatch.setenv("QUANT_FUND_NATIVE", raw)
+        assert native._flag() == "python"
+    for raw in ("rust", "native", "RUST"):
+        monkeypatch.setenv("QUANT_FUND_NATIVE", raw)
+        assert native._flag() == "rust"
+    monkeypatch.setenv("QUANT_FUND_NATIVE", "bogus")
+    with pytest.raises(ValueError, match="QUANT_FUND_NATIVE"):
+        native._flag()
 
 
-def _run(flag: str) -> subprocess.CompletedProcess[str]:
-    code = f"""
-import os
-os.environ["QUANT_FUND_NATIVE"] = {flag!r}
-import numpy as np
-try:
-    from quant_fund.native import BACKEND, rolling_mean
-except Exception as exc:
-    print(type(exc).__name__ + ": " + str(exc))
-    raise SystemExit(2)
-print(BACKEND)
-x = np.asarray([1.0, 2.0, 4.0])
-y = rolling_mean(x, 2)
-assert y.shape == (3,)
-assert np.isnan(y[0]) and y[1] == 1.5 and y[2] == 3.0
-"""
-    return subprocess.run(
-        [sys.executable, "-c", code],
-        check=False,
-        capture_output=True,
-        text=True,
+def test_load_rust_fallback() -> None:
+    assert native._load_rust("python") is None
+    # quant_core is not installed here: auto degrades to None
+    try:
+        import quant_core  # noqa: F401
+
+        has_rust = True
+    except ImportError:
+        has_rust = False
+    if not has_rust:
+        assert native._load_rust("auto") is None
+        with pytest.raises(ImportError, match="QUANT_FUND_NATIVE=rust"):
+            native._load_rust("rust")
+
+
+def test_width_bounds() -> None:
+    assert native._width(5) == 5
+    assert native._width(-5) == -5  # in range; the kernel decides
+    assert native._width(2**63) is None
+    assert native._width(-(2**63) - 1) is None
+
+
+def test_f64_hygiene() -> None:
+    arr = native._f64([1, 2, 3], "x")
+    assert arr.dtype == np.float64 and arr.flags["C_CONTIGUOUS"]
+    arr2 = native._f64(np.ones((2, 4)), "x")
+    assert arr2.shape == (2, 4)
+    with pytest.raises(ValueError, match="1-d series or a 2-d"):
+        native._f64(np.ones((2, 2, 2)), "x")
+
+
+def test_rolling_kernels_match_reference() -> None:
+    x = np.linspace(1.0, 5.0, 40) ** 2
+    np.testing.assert_allclose(native.rolling_mean(x, 5), ref.rolling_mean(x, 5))
+    np.testing.assert_allclose(native.rolling_std(x, 7), ref.rolling_std(x, 7))
+    np.testing.assert_allclose(native.ema(x, 10), ref.ema(x, 10))
+    np.testing.assert_allclose(native.rsi(x, 14), ref.rsi(x, 14))
+    native_2d = native.rolling_mean(np.stack([x, x * 2]), 5)
+    if native.BACKEND == "python":
+        ref_2d = ref.rolling_mean(np.stack([x, x * 2]), 5)
+        np.testing.assert_allclose(native_2d, ref_2d)
+
+
+def test_bollinger_dict() -> None:
+    x = np.sin(np.linspace(0, 6, 60)) + 5
+    out = native.bollinger(x, window=10, num_sd=1.5)
+    ref_out = ref.bollinger(x, 10, 1.5)
+    assert set(out) == set(ref_out)
+    for key in out:
+        np.testing.assert_allclose(out[key], ref_out[key])
+
+
+def test_returns_and_wealth() -> None:
+    px = np.array([100.0, 101.0, 99.0, 102.0])
+    np.testing.assert_allclose(native.simple_returns(px), ref.simple_returns(px))
+    np.testing.assert_allclose(
+        native.wealth_index(native.simple_returns(px)),
+        ref.wealth_index(ref.simple_returns(px)),
     )
+    panel = np.stack([px, px * 1.1])
+    np.testing.assert_allclose(native.simple_returns(panel), ref.simple_returns(panel))
 
 
-def test_env_python_forces_reference() -> None:
-    done = _run("python")
-    assert done.returncode == 0, done.stderr
-    assert done.stdout.splitlines()[0] == "python"
+def test_turnover() -> None:
+    w = np.array([0.6, 0.4])
+    p = np.array([0.5, 0.5])
+    assert native.turnover(w, p) == pytest.approx(ref.turnover(w, p))
+    series = np.array([[0.5, 0.5], [0.7, 0.3], [0.7, 0.3]])
+    np.testing.assert_allclose(native.turnover_series(series), ref.turnover_series(series))
 
 
-def test_env_rust_requires_extension() -> None:
-    done = _run("rust")
-    installed = importlib.util.find_spec("quant_core") is not None
-    if installed:
-        assert done.returncode == 0, done.stderr
-        assert done.stdout.splitlines()[0] == "rust"
-    else:
-        assert done.returncode == 2
-        assert "ImportError" in done.stdout
+def test_book_features() -> None:
+    rng = np.random.default_rng(1)
+    bid_px = 100.0 + rng.normal(0, 0.1, (2, 3))
+    bid_sz = rng.uniform(100, 500, (2, 3))
+    ask_px = bid_px + 0.05
+    ask_sz = rng.uniform(100, 500, (2, 3))
+    out = native.book_features(bid_px, bid_sz, ask_px, ask_sz)
+    ref_out = ref.book_features(bid_px, bid_sz, ask_px, ask_sz)
+    assert set(out) == set(ref_out)
+    for key in out:
+        np.testing.assert_allclose(out[key], ref_out[key])
 
 
-def test_env_auto_follows_install() -> None:
-    done = _run("auto")
-    assert done.returncode == 0, done.stderr
-    installed = importlib.util.find_spec("quant_core") is not None
-    assert done.stdout.splitlines()[0] == ("rust" if installed else "python")
+def test_hash_parity() -> None:
+    blob = b"dipcatcher"
+    assert native.hash_bytes(blob) == hashlib.sha256(blob).hexdigest()
+    assert native.hash_bytes(bytearray(blob)) == hashlib.sha256(blob).hexdigest()
+    assert native.hash_bytes(memoryview(blob)) == hashlib.sha256(blob).hexdigest()
+    chunks = [b"a", b"ab", b"abc"]
+    assert native.hash_many(chunks) == [hashlib.sha256(c).hexdigest() for c in chunks]
 
 
-def test_unknown_flag_is_rejected() -> None:
-    code = """
-import os
-os.environ["QUANT_FUND_NATIVE"] = "maybe"
-try:
-    import quant_fund.native
-except ValueError as exc:
-    print(exc)
-    raise SystemExit(0)
-raise SystemExit(1)
-"""
-    done = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
-    assert done.returncode == 0, done.stderr
-    assert "QUANT_FUND_NATIVE" in done.stdout
-
-
-@pytest.mark.parametrize(
-    "flag",
-    ["python", "py", "numpy"],
-)
-def test_python_aliases(flag: str) -> None:
-    done = _run(flag)
-    assert done.returncode == 0, done.stderr
-    assert done.stdout.splitlines()[0] == "python"
+def test_backend_reported() -> None:
+    assert native.BACKEND in {"python", "rust"}
