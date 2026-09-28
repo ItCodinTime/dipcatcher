@@ -386,6 +386,10 @@ def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
+    if payload.get("kind") == "selection_concordance":
+        from quant_fund.research.concordance import concordance_consistency_errors
+
+        return concordance_consistency_errors(payload)
     return []
 
 

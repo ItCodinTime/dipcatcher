@@ -34,13 +34,15 @@ Reported per shard:
   differentials matrix, plus ``decisive = min(p) < alpha``.
 
 Receipt.v2 ``kind = "selection_concordance"``; verdict ``pass`` when no head
-fails. ``verify-receipt`` kind-registration deferred (dispatcher is being
-edited by three open branches).
+fails. ``verify-receipt`` re-derives the embedded agreement stats
+(intersection, ``concordant``, Jaccard pairs, ``decisive``) via
+``concordance_consistency_errors``.
 """
 
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import combinations
 from pathlib import Path
@@ -467,6 +469,54 @@ def concordance_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def concordance_consistency_errors(body: Mapping[str, Any]) -> list[str]:
+    """Re-derive the embedded agreement stats from the sealed elimination
+    sets — catches a tampered ``concordant``/``pair_stats``/intersection."""
+    payload = body.get("payload")
+    if not isinstance(payload, Mapping):
+        return []
+    shards = payload.get("shards")
+    if not isinstance(shards, list):
+        return []
+    errors: list[str] = []
+    for report in shards:
+        if not isinstance(report, Mapping):
+            continue
+        tag = report.get("shard", "?")
+        eliminated = report.get("eliminated")
+        if not isinstance(eliminated, Mapping):
+            continue
+        sets = {s: set(v) for s, v in eliminated.items() if isinstance(v, list)}
+        intersection = sorted(set.intersection(*sets.values())) if sets else []
+        if report.get("eliminated_intersection") != intersection:
+            errors.append(f"intersection_mismatch:{tag}")
+        expected_concordant = len({frozenset(s) for s in sets.values()}) == 1
+        if bool(report.get("concordant")) != expected_concordant:
+            errors.append(f"concordant_mismatch:{tag}")
+        pair_stats = report.get("pair_stats")
+        if isinstance(pair_stats, Mapping):
+            for pair_key, stats in pair_stats.items():
+                parts = str(pair_key).split("_vs_")
+                if len(parts) != 2 or not isinstance(stats, Mapping):
+                    continue
+                a, b = parts
+                if a in sets and b in sets and "jaccard" in stats:
+                    want = _jaccard(sets[a], sets[b])
+                    got = stats.get("jaccard")
+                    if got is None or not math.isclose(
+                        float(got), want, rel_tol=0.0, abs_tol=1e-12
+                    ):
+                        errors.append(f"jaccard_mismatch:{tag}:{pair_key}")
+        alpha = payload.get("alpha")
+        spa_p = report.get("spa_p_consistent")
+        rc_p = report.get("rc_p")
+        if isinstance(alpha, (int, float)) and spa_p is not None and rc_p is not None:
+            want_decisive = min(float(spa_p), float(rc_p)) < float(alpha)
+            if bool(report.get("decisive")) != want_decisive:
+                errors.append(f"decisive_mismatch:{tag}")
+    return errors
+
+
 def write_concordance_receipt(receipt: Mapping[str, Any], out_dir: Path) -> Path:
     """Write the sealed receipt under ``receipts/`` keyed by content digest."""
     errors = concordance_contract_errors(receipt)
@@ -500,6 +550,7 @@ def format_concordance_table(frame: pl.DataFrame) -> str:
 __all__ = [
     "CONCORDANCE_KIND",
     "CONCORDANCE_SCHEMA",
+    "concordance_consistency_errors",
     "concordance_contract_errors",
     "format_concordance_table",
     "run_concordance",
