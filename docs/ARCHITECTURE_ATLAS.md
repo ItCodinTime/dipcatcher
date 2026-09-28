@@ -245,6 +245,7 @@ flowchart LR
   quant_fund_hedge_lab -->|1| quant_fund_reality
   quant_fund_hedge_lab -->|6| quant_fund_research
   quant_fund_hedge_lab -->|5| quant_fund_risk
+  quant_fund_hedge_lab -->|1| quant_fund_utils
   quant_fund_hedge_lab -->|1| quant_fund_validation
   quant_fund_labels -->|1| quant_fund_config
   quant_fund_labels -->|1| quant_fund_data
@@ -638,7 +639,7 @@ sequenceDiagram
 
 - Modules scanned: **733**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **249**
 
 <!-- END GENERATED: coverage -->
 

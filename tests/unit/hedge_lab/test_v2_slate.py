@@ -189,11 +189,57 @@ def test_rolling_vol_shape_and_value() -> None:
 def test_write_receipt_dual_writes(tmp_path) -> None:
     artifact = tmp_path / "artifacts" / "lane.json"
     out = v2._write_receipt({"a": 1}, str(artifact), tmp_path)
-    assert json.loads(artifact.read_text()) == {"a": 1}
+    written = json.loads(artifact.read_text())
     meta = tmp_path / "metadata" / "lane.json"
-    assert json.loads(meta.read_text()) == {"a": 1}
+    assert written["a"] == 1
+    assert len(written["receipt_sha256"]) == 64
+    assert json.loads(meta.read_text()) == written
     assert out["artifact_path"] == str(artifact)
     assert out["metadata_path"] == str(meta)
+    # Returned dict carries post-seal path keys; the sealed bytes do not.
+    assert "artifact_path" not in written
+
+
+def _lane_receipt() -> dict:
+    return {
+        "catalog": "hedge_lab_analytics",
+        "protocol_id": "dipcatcher.sota.v2",
+        "lane": 1,
+        "lane_name": "ml",
+        "research_only": True,
+        "live_pnl_claim": False,
+        "execution_claim": "paper_backtest",
+        "champion": "ridge",
+        "blend_weight": 0.0,
+        "data_source": "SYNTHETIC",
+    }
+
+
+def test_slate_receipt_verifies_and_detects_tamper(tmp_path) -> None:
+    artifact = tmp_path / "lane.json"
+    v2._write_receipt(_lane_receipt(), str(artifact), tmp_path)
+    assert v2.verify_slate_receipt(artifact) == []
+    # Retro-promotion after sealing fails closed.
+    tampered = json.loads(artifact.read_text())
+    tampered["blend_weight"] = 0.9
+    artifact.write_text(json.dumps(tampered, indent=2), encoding="utf-8")
+    assert "receipt_sha256" in v2.verify_slate_receipt(artifact)
+
+
+def test_slate_receipt_fails_closed_on_claim_drift_and_garbage(tmp_path) -> None:
+    artifact = tmp_path / "lane.json"
+    v2._write_receipt(_lane_receipt(), str(artifact), tmp_path)
+    drifted = json.loads(artifact.read_text())
+    drifted["live_pnl_claim"] = True
+    drifted["receipt_sha256"] = v2.hash_bytes(
+        v2.canonical_json_bytes(
+            {k: v for k, v in drifted.items() if k not in v2._RECEIPT_PATH_KEYS}
+        )
+    )
+    artifact.write_text(json.dumps(drifted, indent=2), encoding="utf-8")
+    assert "live_pnl_claim" in v2.verify_slate_receipt(artifact)
+    artifact.write_text("not json{", encoding="utf-8")
+    assert v2.verify_slate_receipt(artifact)[0].startswith("unreadable:")
 
 
 def test_base_receipt_marks_synthetic(tmp_path) -> None:

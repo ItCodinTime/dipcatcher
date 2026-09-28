@@ -2435,6 +2435,10 @@
       "src": "quant_fund.hedge_lab.v2_slate"
     },
     {
+      "dst": "quant_fund.utils.hashing",
+      "src": "quant_fund.hedge_lab.v2_slate"
+    },
+    {
       "dst": "quant_fund.hedge_lab.resources",
       "src": "quant_fund.hedge_lab.zoo"
     },
@@ -8469,6 +8473,11 @@
     {
       "dst": "quant_fund.risk",
       "imports": 5,
+      "src": "quant_fund.hedge_lab"
+    },
+    {
+      "dst": "quant_fund.utils",
+      "imports": 1,
       "src": "quant_fund.hedge_lab"
     },
     {

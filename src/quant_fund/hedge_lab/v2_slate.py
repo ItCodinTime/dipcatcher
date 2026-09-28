@@ -48,6 +48,7 @@ from quant_fund.models.ranking import PUBLIC_FEATURES, available_features, drop_
 from quant_fund.pipeline.dataset import build_gold, design_matrix, panel
 from quant_fund.pipeline.train import _label_horizon
 from quant_fund.research.benches import oos_rank_scores
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 Array = NDArray[np.float64]
 
@@ -310,17 +311,55 @@ def _calibration(cfg: Any) -> dict[str, Any]:
         }
 
 
+_RECEIPT_PATH_KEYS = ("receipt_sha256", "artifact_path", "metadata_path")
+
+
+def slate_receipt_seal_errors(receipt: dict[str, Any]) -> list[str]:
+    """Digest errors for a written lane receipt (path keys are post-seal)."""
+    unsigned = {k: v for k, v in receipt.items() if k not in _RECEIPT_PATH_KEYS}
+    expected = hash_bytes(canonical_json_bytes(unsigned))
+    return [] if receipt.get("receipt_sha256") == expected else ["receipt_sha256"]
+
+
+def slate_receipt_contract_errors(receipt: dict[str, Any]) -> list[str]:
+    """Contract errors every sealed v2 lane receipt must satisfy."""
+    errors: list[str] = []
+    if receipt.get("research_only") is not True:
+        errors.append("research_only")
+    if receipt.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim")
+    if receipt.get("execution_claim") != "paper_backtest":
+        errors.append("execution_claim")
+    return errors
+
+
+def verify_slate_receipt(path: str | Path) -> list[str]:
+    """Fail-closed verification of a written lane receipt file."""
+    try:
+        loaded = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"unreadable:{exc}"]
+    if not isinstance(loaded, dict):
+        return ["not_an_object"]
+    return slate_receipt_contract_errors(loaded) + slate_receipt_seal_errors(loaded)
+
+
 def _write_receipt(receipt: dict[str, Any], artifact: str, root: Path) -> dict[str, Any]:
-    payload = json.dumps(receipt, indent=2, default=str)
+    # Lane receipts are paper_backtest-claimed artifacts: their embedded
+    # economic scorecards legitimately carry sharpe/sortino/calmar diagnostics,
+    # so the research-family forbidden-key scan does not apply here (the
+    # honesty fields below are the guard).
+    sealed = {**receipt, "receipt_sha256": hash_bytes(canonical_json_bytes(receipt))}
+    payload = json.dumps(sealed, indent=2, default=str)
     public = Path(artifact)
     public.parent.mkdir(parents=True, exist_ok=True)
     public.write_text(payload, encoding="utf-8")
     meta = root / "metadata" / public.name
     meta.parent.mkdir(parents=True, exist_ok=True)
     meta.write_text(payload, encoding="utf-8")
-    receipt["artifact_path"] = str(public)
-    receipt["metadata_path"] = str(meta)
-    return receipt
+    sealed["artifact_path"] = str(public)
+    sealed["metadata_path"] = str(meta)
+    return sealed
 
 
 def _base_receipt(
