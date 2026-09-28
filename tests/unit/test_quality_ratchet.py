@@ -25,9 +25,8 @@ STRICT_MODULE_FLOOR = 397
 STRICT_BASELINE_SHA256 = "452034ec90dbc11dc2a8ca78f22d950c591ae0fd67b3ecbfabe08d5906f7cdcd"
 # validate_ledger_schema. verify_research_artifact was 196 before the split.
 MCCABE_CEILING = 74
-# `except Exception` handlers under src/quant_fund. Origin/main sat at 75;
-# three catalog lazy-import guards narrowed to ImportError, so the ceiling
-# tightens to 72. New handlers that push the total above this fail the test.
+# `except Exception` handlers under src/quant_fund — measured count 74.
+# New handlers that push the total above this fail the test.
 EXCEPT_EXCEPTION_CEILING = 74
 
 
