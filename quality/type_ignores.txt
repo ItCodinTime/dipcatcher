@@ -1,0 +1,53 @@
+# Per-file `type: ignore` suppression manifest for src/.
+# Drift fails `test_type_ignore_manifest_matches_tree`; regen with:
+#   python scripts/update_type_ignores.py
+# Prefer a real type fix over adding a suppression.
+src/fx1/data/sources/adapters.py 2
+src/fx1/data/sources/router.py 1
+src/fx1/eval/suite.py 1
+src/fx1/serve/backends.py 1
+src/fx1/train/tracking.py 1
+src/quant_fund/api/app.py 1
+src/quant_fund/backtest/event_sim/fills.py 1
+src/quant_fund/backtest/event_sim/sensitivity.py 2
+src/quant_fund/backtest/fast_replay.py 3
+src/quant_fund/cli/ops_cmds.py 4
+src/quant_fund/data/concurrent_io.py 1
+src/quant_fund/data/point_in_time.py 1
+src/quant_fund/formal/traces.py 1
+src/quant_fund/leakage/ast_scan.py 4
+src/quant_fund/metrics/evalues.py 1
+src/quant_fund/models/arma.py 1
+src/quant_fund/models/covariance.py 1
+src/quant_fund/models/robinhood_plus/engine.py 1
+src/quant_fund/models/volatility.py 4
+src/quant_fund/observe/install.py 1
+src/quant_fund/paper/recon.py 2
+src/quant_fund/parity/checker.py 2
+src/quant_fund/parity/session.py 2
+src/quant_fund/parity/shortfall.py 1
+src/quant_fund/pipeline/forecast/garch.py 2
+src/quant_fund/pipeline/forecast/realized.py 1
+src/quant_fund/pipeline/train/splits.py 2
+src/quant_fund/pretrade/shadow.py 12
+src/quant_fund/proof/bundle.py 2
+src/quant_fund/proofcore/contracts.py 6
+src/quant_fund/quant_models/greeks.py 2
+src/quant_fund/quant_models/heston.py 2
+src/quant_fund/quant_models/tsmom.py 1
+src/quant_fund/reality/report.py 1
+src/quant_fund/reporting/regime_performance.py 1
+src/quant_fund/research/benches/families.py 3
+src/quant_fund/research/catalog/candle.py 38
+src/quant_fund/research/catalog/ic_packs.py 14
+src/quant_fund/research/catalog/kyle.py 1
+src/quant_fund/research/catalog/primitives.py 4
+src/quant_fund/research/catalog/receipt.py 35
+src/quant_fund/research/catalog/session.py 27
+src/quant_fund/research/catalog/sweep.py 24
+src/quant_fund/research/explainability/attribution.py 1
+src/quant_fund/research/reality_sweep.py 1
+src/quant_fund/research/receipt_v2.py 1
+src/quant_fund/research/sota_protocol.py 2
+src/quant_fund/simtest/session.py 1
+src/quant_fund/utils/logging.py 1
