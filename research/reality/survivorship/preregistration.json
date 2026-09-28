@@ -1,0 +1,220 @@
+{
+  "schema": "dipcatcher.reality_preregistration.v2",
+  "study_id": "reality-sp500-pit-daily-2026-09-28",
+  "status": "frozen_before_results",
+  "claim": "research_diagnostic_only",
+  "live_pnl_claim": false,
+  "prior_study": {
+    "study_id": "reality-us-liquid-daily-2026-09-27",
+    "ledger": "research/reality/trials.jsonl",
+    "ledger_sha256": "37b438e46c9c3650605c4859b91345244f5293dc66e7ebc95aaed4a9c3d2b0f5",
+    "n_trials": 29,
+    "receipt": "research/reality/receipt.json",
+    "rule": "Append new rows. Do not rewrite, delete, or reorder existing lines. Refuse to start if the ledger file hash or the line count differs."
+  },
+  "why_these_strategies": {
+    "xs_momentum": "Jegadeesh-Titman cross-sectional momentum: long the top quintile of a trailing formation return and short the bottom quintile, with a one-month skip. One cluster, three lookbacks. Not a search over sizing.",
+    "st_reversal": "Short-term reversal: long the prior losers and short the prior winners over a one-week and a one-month formation. One cluster.",
+    "low_vol": "Long-only low volatility: equal weight the lowest-volatility quintile inside the same net cap as the baseline. One cluster, three windows.",
+    "dip_regime": "The existing sweep_reclaim dip sleeve, long side only, and only while a causal SPY trailing return is negative. One cluster. The short side of the sleeve is not used.",
+    "equal_weight_pit": "The round-1 equal-weight long rule on this universe, one cell. Same name cap and net cap. It is the survivorship comparison, not a searched signal."
+  },
+  "data": {
+    "membership_source": "https://github.com/coiltrade/point-in-time-sp500",
+    "membership_commit": "e3b838430677f8c28bad9cf505b5b05a3ca85d26",
+    "membership_file": "research/reality/survivorship/membership.json",
+    "membership_sha256": "6bedcb36dbf5713bec084f8b4c44ea7d59680a0a05a39a1214d712c52f00df19",
+    "membership_license": "CC BY 4.0, Coil (coil.trade). Derived from Wikipedia 'List of S&P 500 companies' (CC BY-SA).",
+    "snapshot_date": "2026-06-30",
+    "members_asof": "Start from current. Walk changes newest-first. Stop at the first event whose date is on or before the requested date. Undo every newer event by dropping added and restoring removed. A change dated D is already in effect on D.",
+    "prices": "yahoo",
+    "adapter": "quant_fund.data.adapters.yahoo_eod.fetch_yahoo_chart",
+    "parser": "quant_fund.data.adapters.yahoo_eod.parse_yahoo_chart",
+    "revision_id": "YAHOO_VENDOR_ADJ",
+    "yahoo_symbol_rule": "Replace '.' with '-' (BF.B -> BF-B, BRK.B -> BRK-B). No other alias, rename, or share-class substitution. security_id stays the membership ticker.",
+    "regime_symbol": "SPY",
+    "regime_not_a_constituent": true,
+    "fetch_start_utc": "2014-01-02T00:00:00+00:00",
+    "fetch_end_utc": "2025-01-01T00:00:00+00:00",
+    "fetch_universe": "Union of members_asof on 2014-01-02, on 2024-12-31, and on every change-log date in [2014-01-02, 2025-01-01], plus SPY. Do not add names that fail.",
+    "missing_prices": "A ticker whose Yahoo fetch fails or returns no bars is listed and excluded. Do not impute, and do not retry under a different symbol.",
+    "price_fields": "Adapter quote open/high/low/close. close_total_return equals close. No separate dividend series. Not a SIP vintage.",
+    "delisting_exit": "If a name's last real bar is strictly before the panel's last session, append one bar on the next existing panel session, copying that name's last open/high/low/close/volume/adv/vol_20. source is last_close_delisting_exit. The bar exists so the engine can flatten. It is not a market print. No extra haircut: the membership file does not label acquisitions versus bankruptcies. Bankruptcy losses can be understated when the last print is above the recovery. On a name's last real session the target weight is 0, so the flatten fills on the exit bar and no new risk is opened there.",
+    "cache_dir": "data/reality_sweep_survivorship",
+    "commit_prices": false,
+    "coverage_floor": 0.40,
+    "coverage_anchors": ["2016-01-04", "2020-01-02", "2023-01-03"],
+    "coverage_rule": "On the first New York session of the fetched panel on or after each anchor, coverage is the count of members_asof(that session) with a real Yahoo bar that session, divided by the member count. If any anchor is below the floor, stop before scoring and do not append trials. Do not lower the floor. Do not fill the hole with today's liquid names.",
+    "remaining_bias": [
+      "The change log is Wikipedia's selected-changes table, not CRSP. Event dates can be announcement dates. The source validated price coverage from 2016-06-30, not the economic identity of every earlier event. Train begins 2016-01-04, so January-June 2016 membership is inside the source's unvalidated tail.",
+      "Renames without a remove/add pair keep the snapshot's later ticker for the whole span (META, BKNG). Yahoo's series under that ticker is what gets fetched. The historical ticker is not reconstructed.",
+      "Names Yahoo does not serve are absent. That is residual survivorship, counted in the receipt, not corrected by substitution.",
+      "The delisting exit copies the last close. Wipeouts that halted above the recovery are not marked to zero.",
+      "Quote closes omit dividends. A high-yield name is understated relative to a total-return index.",
+      "The same frozen net cap of 0.2 applies. This is not a fully invested S&P book. The round-1 baseline used that cap too, so the compounded-return comparison is on the same risk budget."
+    ]
+  },
+  "calendar": "America/New_York session date of event_time",
+  "splits": {
+    "train": ["2016-01-04", "2020-01-01"],
+    "validation": ["2020-01-02", "2023-01-01"],
+    "holdout": ["2023-01-03", "2025-01-01"]
+  },
+  "split_rule": "Half-open on the New York session date of the equity mark that the return lands on. Same windows as the round-1 study. Train is in-sample diagnostics. Validation is the only selection sample and the series stored in the trial ledger. Holdout is summarized once, after every new trial is appended, and is not an input to selection, the ledger ratio, or PBO.",
+  "eligibility": "A name may receive a non-zero target on a session only if it is in members_asof of that New York date, the bar's source is yahoo, and the session is not that name's last real Yahoo session. Formation statistics may use earlier Yahoo bars from before the name entered the index. A non-member is targeted to 0. Signals do not see last_close_delisting_exit bars.",
+  "costs": {
+    "config": "configs/backtest.yaml",
+    "inherits": "configs/base.yaml",
+    "commission_bps": 1.0,
+    "half_spread_bps": 5.0,
+    "impact_y": 0.1,
+    "bps_per_turnover": 0.0,
+    "borrow_bps_per_year": 50.0,
+    "financing_bps_per_year": 0.0,
+    "frictionless": false,
+    "participation_limit": 0.1,
+    "fill": "next_open",
+    "initial_nav": 1000000.0
+  },
+  "risk_gate": {
+    "max_order_notional": 1000000.0,
+    "max_gross": 2.0,
+    "max_net": 0.2,
+    "max_name": 0.05,
+    "max_participation": 0.1,
+    "max_predicted_vol": 0.4,
+    "stale_price_bars": 3
+  },
+  "cost_lock": "Load configs/backtest.yaml and refuse to start if costs or risk_gate differ from this file. Thresholds are not loosened. Orders the gate rejects stay rejected.",
+  "signal_math": {
+    "formation_return": "close.shift(1+skip) / close.shift(1+skip+lookback) - 1, per security_id. The close on the decision row is not an input.",
+    "rank": "polars rank(method='average') / count, among names eligible that session with a finite signal. Long momentum when percentile > 1-quantile. Short momentum when percentile <= quantile. Reversal swaps the legs. Low volatility is long-only on percentile <= quantile of trailing volatility.",
+    "volatility": "rolling_std of close-to-close simple returns, min_samples = max(10, window//2), then shift(1).",
+    "min_leg": 5,
+    "flat_rule": "If a required leg has fewer than min_leg names, that session's targets are 0.",
+    "long_short_sizing": "Each long name gets +0.5/n_long and each short name gets -0.5/n_short, then clip to +/- max_name and scale gross down to gross_scale when the absolute sum exceeds it.",
+    "long_only_sizing": "equal_weight_long with name_cap = max_name and net_cap = max_net.",
+    "rebalance": "Session index on the sorted unique real-panel event times. A rebalance fires when the index modulo rebalance_bars is 0. Between rebalances the last rebalance targets are carried forward, then ineligible names are set to 0. Every session with a target map emits that map so a dropped name is not held by omission.",
+    "spy_regime": "SPY formation return with skip 0 and lookback = regime_lookback. The dip book may be long only when that return is finite and strictly negative. Otherwise every dip target that session is 0."
+  },
+  "grid": {
+    "xs_momentum": {
+      "cluster_id": "xs_momentum",
+      "family": "discovery",
+      "lookback": [63, 126, 252],
+      "skip": [21],
+      "quantile": [0.2],
+      "rebalance_bars": 21,
+      "gross_scale": 1.0,
+      "max_name": 0.05
+    },
+    "st_reversal": {
+      "cluster_id": "st_reversal",
+      "family": "discovery",
+      "lookback": [5, 21],
+      "skip": [1],
+      "quantile": [0.2],
+      "rebalance_bars": "lookback",
+      "gross_scale": 1.0,
+      "max_name": 0.05
+    },
+    "low_vol": {
+      "cluster_id": "low_vol",
+      "family": "discovery",
+      "vol_window": [21, 63, 126],
+      "quantile": [0.2],
+      "rebalance_bars": 21,
+      "name_cap": "risk_gate.max_name",
+      "net_cap": "risk_gate.max_net"
+    },
+    "dip_regime": {
+      "cluster_id": "dip_regime",
+      "family": "discovery",
+      "function": "quant_fund.backtest.sleeves.sweep_reclaim_weights",
+      "lookback": [20, 40],
+      "hold_bars": [10, 21],
+      "decay": [1.0],
+      "regime_lookback": [63],
+      "max_name": 0.05,
+      "gross_scale": 1.0,
+      "side": "long_only"
+    },
+    "equal_weight_pit": {
+      "cluster_id": "equal_weight_pit",
+      "family": "discovery",
+      "cells": 1,
+      "function": "quant_fund.research.reality_sweep.equal_weight_long",
+      "name_cap": "risk_gate.max_name",
+      "net_cap": "risk_gate.max_net"
+    }
+  },
+  "expected_trials": {
+    "xs_momentum": 3,
+    "st_reversal": 2,
+    "low_vol": 3,
+    "dip_regime": 4,
+    "equal_weight_pit": 1,
+    "new_total": 13,
+    "prior_total": 29,
+    "ledger_total": 42
+  },
+  "selection": {
+    "sample": "validation",
+    "score": "per-period mean/std with ddof=1 of net-of-cost simple equity returns",
+    "scope": "The study winner is the best new cell. The reality-filter best row is the best row in the appended ledger, including the original 29. Ties break on lexicographic trial_id.",
+    "degenerate": "A validation series with fewer than 4 finite points or zero standard deviation is recorded and cannot win. Its ledger ratio is 0, skew is 0, raw fourth-moment ratio is 3."
+  },
+  "ledger": {
+    "every_trial": true,
+    "including_losers": true,
+    "append_only": true,
+    "series": "validation net-of-cost simple returns",
+    "ratio": "per-period, not annualized",
+    "periods_per_year": 252,
+    "cluster_rule": "One new cluster_id per strategy. Parameter cells of one strategy share a cluster. Prior clusters are unchanged. The reality filter's effective-trial rule is not edited.",
+    "family": "discovery",
+    "committed_ledger": "research/reality/trials.jsonl",
+    "committed_csv": "research/reality/trials.csv"
+  },
+  "diagnostics": {
+    "bootstrap_ci": {
+      "function": "quant_fund.metrics.inference.bootstrap_sharpe_ci",
+      "n_boot": 2000,
+      "seed": 7,
+      "alpha": 0.05,
+      "periods": 252
+    },
+    "pbo": {
+      "function": "quant_fund.reality.cscv.cscv_pbo",
+      "sample": "train then validation of the 13 new trials only",
+      "holdout_excluded": true,
+      "prior_trials_excluded": "The original 29 return series were not committed. This PBO does not include them. The gate PBO stays unset because the JSONL ledger has no return series.",
+      "s_blocks": 16,
+      "length_rule": "keep the trailing window whose length is divisible by 16; require at least 32 points"
+    },
+    "deflated_ratio_gate": "quant_fund.reality.dsr.dsr_from_ledger on the appended ledger. Cluster count includes the original three clusters plus the five new ones.",
+    "deflated_ratio_raw_count": "quant_fund.metrics.overfitting.deflated_sharpe on the ledger's best row, n_trials equal to the appended row count, variance of every recorded per-period ratio including the original 29.",
+    "prior_baseline": "Read the round-1 receipt's equal_weight_long compounded holdout and validation figures. Do not recompute them. The new equal_weight_pit cell is the same sizing rule on this universe."
+  },
+  "reality_filter": {
+    "thresholds_unchanged": true,
+    "min_trials": 10,
+    "min_effective_trials": 3,
+    "dsr_pass": 0.95,
+    "pbo_deflate": 0.5,
+    "fdr_q": 0.05,
+    "note": "Do not edit quant_fund.reality.report thresholds. make reality-gate scores research/reality/trials.jsonl."
+  },
+  "outputs": {
+    "receipt": "research/reality/survivorship/receipt.json",
+    "audit_dir": "research/reality/survivorship/audit",
+    "results": "docs/REALITY_TRIAL_SURVIVORSHIP_2026.md",
+    "do_not_touch": [
+      "research/reality/preregistration.json",
+      "research/reality/receipt.json",
+      "research/reality/audit",
+      "receipts",
+      "docs/evidence"
+    ]
+  }
+}
