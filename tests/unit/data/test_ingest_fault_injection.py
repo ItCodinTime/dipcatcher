@@ -15,7 +15,6 @@ chaos-tested below).
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
@@ -71,11 +70,13 @@ def _nonpositive(draw) -> float:
     return draw(st.sampled_from([0.0, -0.0001, -1.0, -1e6]))
 
 
-def _is_finite_float_text(text: str) -> bool:
+def _unparseable_float_text(text: str) -> bool:
+    """Text float() cannot parse at all (distinct from parseable non-finite)."""
     try:
-        return math.isfinite(float(text))
+        float(text)
     except (TypeError, ValueError):
-        return False
+        return True
+    return False
 
 
 @settings(max_examples=60, deadline=None)
@@ -168,7 +169,11 @@ def test_duplicate_security_time_keys_fail_closed(
         normalize_ohlcv(batch, source="fault")
 
 
-_NONNUMERIC_TEXT = st.text(min_size=1).filter(lambda s: not _is_finite_float_text(s))
+_NONNUMERIC_TEXT = st.text(min_size=1).filter(_unparseable_float_text)
+
+# Parseable non-finite text ("nan", "inf", "1e999") exercises a different,
+# deliberately distinct failure mode: "not finite", not "not numeric".
+_NONFINITE_TEXT = st.sampled_from(["nan", "-nan", "inf", "-inf", "Infinity", "1e999"])
 
 
 @settings(max_examples=60, deadline=None)
@@ -180,9 +185,24 @@ _NONNUMERIC_TEXT = st.text(min_size=1).filter(lambda s: not _is_finite_float_tex
 def test_non_numeric_fields_fail_closed(
     batch: list[dict[str, object]], field: str, bad: object
 ) -> None:
-    """Non-numeric vendor values (garbage strings, None, bytes) raise SourceError."""
+    """Unparseable vendor values (garbage strings, None, bytes) raise SourceError."""
     batch[0][field] = bad
     with pytest.raises(SourceError, match="not numeric"):
+        normalize_ohlcv(batch, source="fault")
+
+
+@settings(max_examples=40, deadline=None)
+@given(
+    batch=valid_batch(),
+    field=st.sampled_from((*PRICE_FIELDS, "volume")),
+    bad=_NONFINITE_TEXT,
+)
+def test_non_finite_fields_fail_closed(
+    batch: list[dict[str, object]], field: str, bad: object
+) -> None:
+    """Parseable-but-non-finite values raise the distinct 'not finite' error."""
+    batch[0][field] = bad
+    with pytest.raises(SourceError, match="not finite"):
         normalize_ohlcv(batch, source="fault")
 
 
