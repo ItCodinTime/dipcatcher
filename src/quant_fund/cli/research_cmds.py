@@ -318,6 +318,50 @@ def fleet(
     typer.echo(f"receipt={path}")
 
 
+@app.command("coherence-bench")
+def coherence_bench(
+    panels: str | None = typer.Option(
+        None, help="Comma-separated panel names (default: all synthetic panels)."
+    ),
+    methods: str | None = typer.Option(
+        None, help="Comma-separated methods (default: direct,naive_sum,independent_mc,copula_mc)."
+    ),
+    n_train: int = typer.Option(384, help="Leading fit rows per panel."),
+    n_eval: int = typer.Option(128, help="Trailing scored rows per panel."),
+    n_mc: int = typer.Option(512, help="Monte Carlo draws per aggregate grid."),
+    seed: int = typer.Option(0, help="Base seed."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Distributional coherence bench on SYNTHETIC correlated panels.
+
+    Reconciles per-name marginal quantile grids to the aggregate via
+    naive-sum, independent-MC, and a Gaussian copula fit on in-sample
+    residual z-scores — proper scores only. Writes a sealed receipt.v2.
+    """
+    from quant_fund.research.coherence import (
+        METHODS,
+        format_coherence_table,
+        run_coherence,
+        write_coherence_receipt,
+    )
+
+    try:
+        frame, receipt = run_coherence(
+            None if panels is None else panels.split(","),
+            n_train=n_train,
+            n_eval=n_eval,
+            seed=seed,
+            n_mc=n_mc,
+            methods=METHODS if methods is None else methods.split(","),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_coherence_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_coherence_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 @app.command("verify-receipt")
 def verify_receipt_cmd(
     path: Path = typer.Argument(..., help="Receipt JSON file to verify."),
@@ -515,6 +559,7 @@ def capacity(
 
 __all__ = [
     "capacity",
+    "coherence_bench",
     "execution_sensitivity_cmd",
     "fleet",
     "rankic",
