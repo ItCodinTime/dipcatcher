@@ -179,7 +179,8 @@
       "status": "audited"
     },
     "robustness": {
-      "status": "pending"
+      "n_modules": 13,
+      "status": "audited"
     },
     "schemas": {
       "doc": "docs/AUDIT_FRONTIER.md",
