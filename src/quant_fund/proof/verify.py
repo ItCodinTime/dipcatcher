@@ -139,17 +139,22 @@ def _check_data_manifest(bundle: ProofBundleV1, reasons: list[str]) -> None:
 def _check_sidecars(
     bundle: ProofBundleV1, bundle_dir: Path, reasons: list[str]
 ) -> dict[str, bytes]:
-    """Check 6: re-hash signal_log/trade_log/metrics sidecar files."""
+    """Check 6: re-hash signal_log/trade_log/metrics/config sidecar files.
+
+    ADVERSARIAL R2 §2-CFG: the config sidecar is hash-checked too — a
+    tampered recorded config previously passed plain ``verify_bundle`` and
+    was only caught by replay. Fail closed with
+    ``sidecar:config_sha256_mismatch``.
+    """
     sidecars = sidecar_paths(bundle_dir, bundle.bundle_id)
     expected = {
         "signal_log": bundle.signal_log_sha256,
         "trade_log": bundle.trade_log_sha256,
         "metrics": bundle.metrics_sha256,
+        "config": bundle.config_sha256,
     }
     contents: dict[str, bytes] = {}
     for kind, path in sidecars.items():
-        if kind == "config":
-            continue
         if path.is_symlink():
             reasons.append(f"sidecar:{kind}:unsafe_symlink")
             continue
@@ -219,7 +224,7 @@ def verify_bundle(
     3. chain: bundle is present in bundles.jsonl with valid self-hashes and links
     4. signature: HMAC verify (strict) or report scheme='none' as reason
     5. data_manifest: recompute per-read leaf hashes + Merkle root
-    6. re-hash signal_log/trade_log/metrics sidecar files
+    6. re-hash signal_log/trade_log/metrics/config sidecar files
     7. RECOMPUTE metrics from trade log bytes and compare (rtol 1e-9, atol 1e-12)
     8. env_fingerprint comparison -> env_mismatch warning (A3 F5.2, non-fatal)
     9. replay: fail closed until decision-time vault reads are implemented

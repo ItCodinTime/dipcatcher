@@ -120,6 +120,31 @@ def test_tampered_signal_log_fails(tmp_path) -> None:
     assert "sidecar:signal_log_sha256_mismatch" in result.reasons
 
 
+def test_tampered_config_sidecar_fails(tmp_path) -> None:
+    """ADVERSARIAL R2 §2-CFG regression: the config sidecar is hash-checked —
+    editing the recorded config must fail plain verify (previously skipped)."""
+    bundle, bundle_dir = mint_synthetic_bundle(tmp_path)
+    config_path = sidecar_paths(bundle_dir, bundle.bundle_id)["config"]
+    payload = json.loads(config_path.read_bytes())
+    payload["seed"] = 12345  # attacker edits the recorded config
+    config_path.write_bytes(json.dumps(payload).encode())
+    result = verify_bundle(
+        _bundle_file(bundle_dir, bundle), bundle_dir=bundle_dir, strict_signature=False
+    )
+    assert not result.ok
+    assert "sidecar:config_sha256_mismatch" in result.reasons
+
+
+def test_pristine_config_sidecar_passes(tmp_path) -> None:
+    """Control: the untouched config sidecar verifies clean."""
+    bundle, bundle_dir = mint_synthetic_bundle(tmp_path)
+    result = verify_bundle(
+        _bundle_file(bundle_dir, bundle), bundle_dir=bundle_dir, strict_signature=False
+    )
+    assert result.ok, result.reasons
+    assert "sidecar:config_sha256_mismatch" not in result.reasons
+
+
 def test_tampered_metrics_recompute_fails(tmp_path) -> None:
     """Editing the recorded metrics_recompute breaks self-hash AND comparison."""
     bundle, bundle_dir = mint_synthetic_bundle(tmp_path)
