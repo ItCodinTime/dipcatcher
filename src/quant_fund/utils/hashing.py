@@ -9,9 +9,21 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+# Lowercase hex digest length of SHA-256. Receipt code compares against this,
+# not a bare 64, so the digest width cannot drift between checkers.
+SHA256_HEX_LENGTH = 64
+
 
 def hash_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+    """SHA-256 hex digest.
+
+    Uses the optional ``quant_core`` extension when that module was selected
+    at import (``QUANT_FUND_NATIVE``). The digest matches ``hashlib`` either way,
+    so receipt fingerprints do not move.
+    """
+    from quant_fund.native import hash_bytes as native_hash_bytes
+
+    return native_hash_bytes(data)
 
 
 def hash_file(path: Path) -> str:
@@ -22,12 +34,27 @@ def hash_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _json_sort_key(value: Any) -> str:
+    """Order already-canonical values without depending on hash randomization."""
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+        default=str,
+    )
+
+
 def _canonicalize(value: Any) -> Any:
     """Convert common research values to a strict, stable JSON representation."""
     if isinstance(value, dict):
         return {str(key): _canonicalize(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_canonicalize(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        items = [_canonicalize(item) for item in value]
+        return sorted(items, key=_json_sort_key)
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, float):
@@ -35,13 +62,58 @@ def _canonicalize(value: Any) -> Any:
     if isinstance(value, bytes):
         return value.hex()
     # Numpy/Pandas scalar values expose ``item`` without requiring either
-    # package as a dependency of this small utility module.
+    # package as a dependency of this small utility module. Size>1 arrays
+    # raise from ``item`` and fall through to ``tolist``.
     item = getattr(value, "item", None)
     if callable(item):
         try:
             return _canonicalize(item())
         except (TypeError, ValueError):
             pass
+    if type(value).__module__ == "numpy":
+        tolist = getattr(value, "tolist", None)
+        if callable(tolist):
+            return _canonicalize(tolist())
+    return value
+
+
+def receipt_tree(value: Any) -> Any:
+    """Copy a receipt payload into deterministic JSON containers.
+
+    Non-finite Python floats are preserved so existing ``allow_nan`` digests
+    stay byte-compatible. Sets and ndarrays become sorted or nested lists
+    instead of process-dependent ``str`` forms. Plain dicts and lists are
+    deep-copied without changing their JSON.
+    """
+    if isinstance(value, dict):
+        return {
+            key if isinstance(key, str) else str(key): receipt_tree(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [receipt_tree(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        items = [receipt_tree(item) for item in value]
+        return sorted(
+            items,
+            key=lambda item: json.dumps(
+                item,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                default=str,
+            ),
+        )
+    if type(value).__module__ == "numpy":
+        scalar = getattr(value, "item", None)
+        if callable(scalar):
+            try:
+                return receipt_tree(scalar())
+            except (TypeError, ValueError):
+                pass
+        tolist = getattr(value, "tolist", None)
+        if callable(tolist):
+            return receipt_tree(tolist())
     return value
 
 
@@ -60,12 +132,13 @@ def canonical_json_bytes(value: Any) -> bytes:
 def canonical_frame_fingerprint(frame: Any) -> str:
     """Hash a materialized tabular frame independent of row/column ordering.
 
-    The function intentionally uses only the frame's public ``columns``,
-    ``schema`` and ``to_dicts`` protocol, so the hashing layer does not depend
-    on a particular dataframe implementation. Duplicate rows remain counted.
+    The frame must expose ``columns``, strict list-of-name ``__getitem__``,
+    ``schema`` and ``to_dicts``. Duplicate rows remain counted.
     """
     columns = sorted(str(column) for column in frame.columns)
-    selected = frame.select(columns)
+    # List indexing resolves literal names; select parses "*" and digit names
+    # as expressions and can duplicate or reorder projected columns.
+    selected = frame[columns]
     records = [_canonicalize(row) for row in selected.to_dicts()]
     records.sort(key=canonical_json_bytes)
     schema = {

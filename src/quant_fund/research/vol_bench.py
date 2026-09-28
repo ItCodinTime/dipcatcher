@@ -1,0 +1,665 @@
+"""Volatility-forecast bench on seeded SYNTHETIC vol shards (ULTRAPLAN P3.5).
+
+Each shard generator draws a latent variance path — GJR-GARCH clustering,
+rough fOU log-vol, or a planted structural break — then fills every bar with
+intraday increments so each bar carries a close-to-close return, a realized
+variance (sum of squared increments), and a Parkinson-style range measure.
+Origins index the first unobserved bar (the ``garch_benchmark`` protocol):
+models refit on observed history only and forecast cumulative realized
+variance over the next ``h`` bars. Scores are proper rules only — mean QLIKE
+(Patton 2011, robust to proxy noise) and MSE — never headline P&L metrics.
+``write_vol_bench_receipt`` seals hash-stamped JSON evidence under
+``receipts/`` (the ``fleet_eval`` convention). All output is SYNTHETIC
+correctness evidence, not market data.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import warnings
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import Any
+
+import numpy as np
+import polars as pl
+from numpy.typing import NDArray
+
+from quant_fund.metrics.vol_eval import mse as mse_loss
+from quant_fund.metrics.vol_eval import qlike as qlike_loss
+from quant_fund.metrics.vol_eval import vol_loss_diff
+from quant_fund.models.har import har_forecast, har_rv_fit
+from quant_fund.models.realized_garch import RealizedGARCHVol
+from quant_fund.models.rough_vol import simulate_fou
+from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+from quant_fund.research.garch_benchmark import build_origins
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
+from quant_fund.utils.reproducibility import git_revision
+
+Array = NDArray[np.float64]
+
+VOL_BENCH_SCHEMA = "vol_bench.v1"
+DEFAULT_HORIZONS: tuple[int, ...] = (1, 5)
+DM_REFERENCE = "har"
+
+_VARIANCE_FLOOR = 1e-12
+_INTRADAY_STEPS = 24
+_LN2 = float(np.log(2.0))
+_EWMA_LAMBDA = 0.94
+
+
+@dataclass(frozen=True)
+class VolShard:
+    """One seeded SYNTHETIC vol shard: returns + realized-variance proxies.
+
+    ``returns`` are bar close-to-close returns, ``rv`` the per-bar realized
+    variance (sum of squared intraday increments — the scored target), and
+    ``parkinson`` the per-bar Parkinson range measure consumed by
+    ``RealizedGARCHVol``.
+    """
+
+    name: str
+    returns: Array
+    rv: Array
+    parkinson: Array
+    config: dict[str, Any]
+
+
+VolShardGenerator = Callable[[int, int], VolShard]
+# (returns_hist, rv_hist, parkinson_hist, horizon, seed) -> cumulative
+# variance forecast over the next ``horizon`` bars.
+VolForecaster = Callable[[Array, Array, Array, int, int], float]
+
+
+def _require_n(n: int) -> int:
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("shard size n must be a positive integer")
+    return int(n)
+
+
+def _fill_bars(cond_var: Array, rng: np.random.Generator) -> tuple[Array, Array, Array]:
+    """Fill each bar with intraday increments drawn at its latent variance.
+
+    Returns (close-to-close return, realized variance, Parkinson range).
+    The Parkinson measure uses the intraday cumulative path's high-low
+    range: ``(max - min)^2 / (4 ln 2)``. Fail-closed on a degenerate
+    non-positive draw.
+    """
+    var = np.asarray(cond_var, dtype=float).ravel()
+    if var.size == 0 or not np.isfinite(var).all() or (var <= 0.0).any():
+        raise ValueError("cond_var must be finite and positive")
+    increments = (
+        rng.normal(0.0, 1.0, (var.size, _INTRADAY_STEPS)) * np.sqrt(var / _INTRADAY_STEPS)[:, None]
+    )
+    returns = increments.sum(axis=1)
+    rv = (increments**2).sum(axis=1)
+    path = np.concatenate([np.zeros((var.size, 1)), np.cumsum(increments, axis=1)], axis=1)
+    parkinson = (path.max(axis=1) - path.min(axis=1)) ** 2 / (4.0 * _LN2)
+    if (rv <= 0.0).any() or (parkinson <= 0.0).any():
+        raise ValueError("degenerate intraday fill produced a non-positive measure")
+    return (
+        np.asarray(returns, dtype=float),
+        np.asarray(rv, dtype=float),
+        np.asarray(parkinson, dtype=float),
+    )
+
+
+def garch_vol(n: int, seed: int) -> VolShard:
+    """GJR-GARCH(1,1) latent vol path with intraday fill (SYNTHETIC).
+
+    The variance recursion is driven by the process's own innovations —
+    emitted bar returns are intraday sums at that variance, mirroring how
+    real RV proxies observe latent vol with measurement noise.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "process": "gjr_garch_1_1",
+        "omega": 4e-6,
+        "alpha": 0.05,
+        "gamma": 0.08,
+        "beta": 0.9,
+        "burn": 128,
+        "intraday_steps": _INTRADAY_STEPS,
+    }
+    n = _require_n(n)
+    omega = float(config["omega"])
+    alpha = float(config["alpha"])
+    gamma = float(config["gamma"])
+    beta = float(config["beta"])
+    persistence = alpha + gamma / 2.0 + beta
+    if not 0.0 < persistence < 1.0:
+        raise ValueError("GJR-GARCH persistence must lie in (0, 1)")
+    burn = int(config["burn"])
+    total = n + burn
+    z = rng.normal(0.0, 1.0, total)
+    eps = np.empty(total, dtype=float)
+    var = np.empty(total, dtype=float)
+    var[0] = omega / (1.0 - persistence)
+    eps[0] = np.sqrt(var[0]) * z[0]
+    for t in range(1, total):
+        var[t] = omega + (alpha + gamma * (eps[t - 1] < 0.0)) * eps[t - 1] ** 2 + beta * var[t - 1]
+        eps[t] = np.sqrt(var[t]) * z[t]
+    returns, rv, parkinson = _fill_bars(var[burn:], rng)
+    config["persistence"] = float(persistence)
+    return VolShard("garch_vol", returns, rv, parkinson, config)
+
+
+def rough_vol(n: int, seed: int) -> VolShard:
+    """Rough-vol shard: log-vol follows an fOU path (H=0.1; SYNTHETIC).
+
+    ``simulate_fou`` draws the centered log-vol factor; it is standardized
+    to unit scale and mapped to variance as ``base_var * exp(vol_of_logvol
+    * lv)`` so the path stays bounded and seeded-reproducible.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "process": "rough_fou_logvol",
+        "hurst": 0.1,
+        "base_var": 4e-4,
+        "vol_of_logvol": 0.75,
+        "burn": 128,
+        "intraday_steps": _INTRADAY_STEPS,
+    }
+    n = _require_n(n)
+    burn = int(config["burn"])
+    total = n + burn
+    if total < 50:
+        raise ValueError("rough-vol shard needs n + burn >= 50")
+    logvol = simulate_fou(total, float(config["hurst"]), seed=int(seed))
+    logvol = (logvol - logvol.mean()) / max(float(logvol.std()), 1e-12)
+    cond_var = float(config["base_var"]) * np.exp(float(config["vol_of_logvol"]) * logvol)
+    cond_var = np.clip(cond_var, _VARIANCE_FLOOR, None)
+    returns, rv, parkinson = _fill_bars(cond_var[burn:], rng)
+    return VolShard("rough_vol", returns, rv, parkinson, config)
+
+
+def break_vol(n: int, seed: int) -> VolShard:
+    """Structural-break shard: piecewise-constant variance levels (SYNTHETIC).
+
+    Two planted breaks split the path into thirds with low, crisis-high and
+    settled variance regimes — the persistent-break case where cascade
+    models must relocate the level.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "process": "piecewise_variance_break",
+        "levels": (4e-4, 2.2e-3, 6e-4),
+        "breaks": (0.4, 0.75),
+        "intraday_steps": _INTRADAY_STEPS,
+    }
+    n = _require_n(n)
+    levels = np.asarray(config["levels"], dtype=float)
+    if levels.ndim != 1 or levels.size != 3 or (levels <= 0.0).any():
+        raise ValueError("break shard requires three positive variance levels")
+    b1, b2 = (int(round(float(f) * n)) for f in config["breaks"])
+    if not (0 < b1 < b2 < n):
+        raise ValueError("breaks must land strictly inside the shard")
+    cond_var = np.empty(n, dtype=float)
+    cond_var[:b1] = levels[0]
+    cond_var[b1:b2] = levels[1]
+    cond_var[b2:] = levels[2]
+    returns, rv, parkinson = _fill_bars(cond_var, rng)
+    config["break_bars"] = (int(b1), int(b2))
+    return VolShard("break_vol", returns, rv, parkinson, config)
+
+
+VOL_SHARD_GENERATORS: dict[str, VolShardGenerator] = {
+    "garch_vol": garch_vol,
+    "rough_vol": rough_vol,
+    "break_vol": break_vol,
+}
+
+
+def resolve_vol_shard_generators(
+    names: Iterable[str] | None = None,
+) -> dict[str, VolShardGenerator]:
+    """Resolve shard names against ``VOL_SHARD_GENERATORS`` (default: all)."""
+    if names is None:
+        return dict(VOL_SHARD_GENERATORS)
+    resolved: dict[str, VolShardGenerator] = {}
+    for raw in names:
+        name = str(raw).strip()
+        if not name:
+            continue
+        if name not in VOL_SHARD_GENERATORS:
+            raise ValueError(f"unknown vol shard {name!r}")
+        resolved[name] = VOL_SHARD_GENERATORS[name]
+    if not resolved:
+        raise ValueError("vol bench requires at least one shard")
+    return resolved
+
+
+def _forecast_rv_roll(rets: Array, rv: Array, park: Array, h: int, seed: int) -> float:
+    """Baseline: trailing-20 mean RV scaled to the horizon."""
+    del rets, park, seed
+    return max(h * float(np.mean(rv[-20:])), _VARIANCE_FLOOR)
+
+
+def _forecast_rv_ewma(rets: Array, rv: Array, park: Array, h: int, seed: int) -> float:
+    """Baseline: EWMA (lambda=0.94) of the RV series scaled to the horizon."""
+    del rets, park, seed
+    ewma = float(rv[0])
+    for value in rv[1:]:
+        ewma = _EWMA_LAMBDA * ewma + (1.0 - _EWMA_LAMBDA) * float(value)
+    return max(h * ewma, _VARIANCE_FLOOR)
+
+
+def _forecast_har(rets: Array, rv: Array, park: Array, h: int, seed: int) -> float:
+    """HAR-RV (Corsi 2009) via ``models.har``; recursive rollout for h > 1."""
+    del rets, park, seed
+    fit = har_rv_fit(np.asarray(rv, dtype=float))
+    history = list(np.asarray(rv, dtype=float))
+    total = 0.0
+    for _ in range(h):
+        step = har_forecast(fit, np.asarray(history, dtype=float))
+        step = max(float(step), _VARIANCE_FLOOR)
+        total += step
+        history.append(step)
+    return max(total, _VARIANCE_FLOOR)
+
+
+def _forecast_realized_garch(rets: Array, rv: Array, park: Array, h: int, seed: int) -> float:
+    """Realized-GARCH log-linear fit on returns + daily Parkinson measure."""
+    del rv, seed
+    model = RealizedGARCHVol(mean="Zero")
+    model.fit_returns(np.asarray(rets, dtype=float), np.asarray(park, dtype=float))
+    forecast = model.forecast(horizon=h)
+    variance = np.asarray(forecast["variance"], dtype=float)
+    if variance.shape != (h,) or not np.isfinite(variance).all():
+        raise ValueError("realized_garch returned a degenerate variance path")
+    return max(float(np.sum(variance)), _VARIANCE_FLOOR)
+
+
+def _forecast_dip_garch_t(rets: Array, rv: Array, park: Array, h: int, seed: int) -> float:
+    """``dip_garch_t`` — GARCH(1,1)-t (Constant mean), the quantile_signals spec."""
+    del rv, park, seed
+    from arch import arch_model
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fit = arch_model(
+            np.asarray(rets, dtype=float) * 100.0,
+            mean="Constant",
+            vol="GARCH",
+            p=1,
+            o=0,
+            q=1,
+            dist="t",
+            rescale=False,
+        ).fit(disp="off", show_warning=False, options={"maxiter": 300})
+    if not np.isfinite(fit.params).all():
+        raise ValueError("garch_t fit produced non-finite parameters")
+    forecast = fit.forecast(horizon=h, method="analytic", reindex=False)
+    variance = np.asarray(forecast.variance, dtype=float)[-1] / 100.0**2
+    if variance.shape != (h,) or not np.isfinite(variance).all() or (variance <= 0.0).any():
+        raise ValueError("garch_t returned a degenerate variance path")
+    return max(float(np.sum(variance)), _VARIANCE_FLOOR)
+
+
+VOL_MODEL_REGISTRY: dict[str, VolForecaster] = {
+    "rv_roll": _forecast_rv_roll,
+    "rv_ewma": _forecast_rv_ewma,
+    "har": _forecast_har,
+    "realized_garch": _forecast_realized_garch,
+    "dip_garch_t": _forecast_dip_garch_t,
+}
+
+
+def resolve_vol_models(names: Iterable[str] | None = None) -> dict[str, VolForecaster]:
+    """Resolve model names against ``VOL_MODEL_REGISTRY`` (default: all)."""
+    if names is None:
+        return dict(VOL_MODEL_REGISTRY)
+    resolved: dict[str, VolForecaster] = {}
+    for raw in names:
+        name = str(raw).strip()
+        if not name:
+            continue
+        if name not in VOL_MODEL_REGISTRY:
+            raise ValueError(f"unknown vol model {name!r}")
+        resolved[name] = VOL_MODEL_REGISTRY[name]
+    if not resolved:
+        raise ValueError("vol bench requires at least one model")
+    return resolved
+
+
+def _check_int(value: int, name: str, lo: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
+        raise ValueError(f"{name} must be an integer")
+    if int(value) < lo:
+        raise ValueError(f"{name} must be >= {lo}")
+    return int(value)
+
+
+def _check_horizons(horizons: Sequence[int]) -> tuple[int, ...]:
+    resolved = tuple(sorted({_check_int(h, "horizons", 1) for h in horizons}))
+    if not resolved:
+        raise ValueError("horizons must be a nonempty set of positive integers")
+    return resolved
+
+
+def _validate_shard(shard: VolShard, shard_name: str, n_bars: int) -> VolShard:
+    if not isinstance(shard, VolShard):
+        raise ValueError(f"shard {shard_name!r} did not return a VolShard")
+    returns = np.asarray(shard.returns, dtype=float).reshape(-1)
+    rv = np.asarray(shard.rv, dtype=float).reshape(-1)
+    parkinson = np.asarray(shard.parkinson, dtype=float).reshape(-1)
+    if shard.name != shard_name or shard.config.get("data_label") != "SYNTHETIC":
+        raise ValueError(f"shard {shard_name!r} must match its name and SYNTHETIC label")
+    for label, series in (("returns", returns), ("rv", rv), ("parkinson", parkinson)):
+        if series.shape != (n_bars,):
+            raise ValueError(
+                f"shard {shard_name!r} produced {series.size} {label} rows; needs exactly {n_bars}"
+            )
+        if not np.isfinite(series).all():
+            raise ValueError(f"shard {shard_name!r} produced non-finite {label}")
+    if (rv <= 0.0).any() or (parkinson <= 0.0).any():
+        raise ValueError(f"shard {shard_name!r} produced non-positive rv/parkinson")
+    return VolShard(shard.name, returns, rv, parkinson, dict(shard.config))
+
+
+def _eval_shard_model(
+    shard: VolShard,
+    forecaster: VolForecaster,
+    horizon: int,
+    origins: Array,
+    shard_seed: int,
+) -> tuple[Array, Array] | str:
+    """Return (targets, forecasts) over origins, or an error string."""
+    targets = np.empty(origins.size, dtype=float)
+    forecasts = np.empty(origins.size, dtype=float)
+    try:
+        for i, origin in enumerate(origins):
+            o = int(origin)
+            forecasts[i] = forecaster(
+                shard.returns[:o],
+                shard.rv[:o],
+                shard.parkinson[:o],
+                horizon,
+                shard_seed + o,
+            )
+            if not np.isfinite(forecasts[i]) or forecasts[i] <= 0.0:
+                raise ValueError(f"forecast {forecasts[i]!r} at origin {o} is not finite/positive")
+            targets[i] = float(np.sum(shard.rv[o : o + horizon]))
+        return targets, forecasts
+    except Exception as exc:  # recorded as an error row, never silent
+        return str(exc)
+
+
+def run_vol_bench(
+    models: Mapping[str, VolForecaster] | Iterable[str] | None = None,
+    shards: Iterable[str] | Mapping[str, VolShardGenerator] | None = None,
+    *,
+    horizons: Sequence[int] = DEFAULT_HORIZONS,
+    min_history: int = 300,
+    n_origins: int = 24,
+    stride: int | None = None,
+    n_bars: int | None = None,
+    seed: int = 0,
+) -> tuple[pl.DataFrame, dict[str, Any]]:
+    """Walk-forward vol bench: QLIKE + MSE on h-step cumulative realized variance.
+
+    Scores are proper rules only; per-origin loss differentials vs the
+    ``har`` reference use a Newey-West ``vol_loss_diff`` (negative
+    ``dm_qlike_mean`` = model beats the reference). A model that fails
+    at an origin records an ``error`` row (visible, never silent); the
+    harness itself fails closed on degenerate arguments or shard output.
+    Returns the results frame plus the unsealed receipt payload.
+    """
+    if isinstance(models, Mapping):
+        forecasters = dict(models)
+    else:
+        forecasters = resolve_vol_models(models)
+    if not forecasters:
+        raise ValueError("vol bench requires at least one model")
+    for name in forecasters:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("model names must be nonempty strings")
+
+    if isinstance(shards, Mapping):
+        resolved_shards = shards
+    else:
+        resolved_shards = resolve_vol_shard_generators(shards)
+    if not resolved_shards:
+        raise ValueError("vol bench requires at least one shard")
+    for name in resolved_shards:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("shard names must be nonempty strings")
+
+    horizon_set = _check_horizons(horizons)
+    min_history = _check_int(min_history, "min_history", 30)
+    n_origins = _check_int(n_origins, "n_origins", 10)
+    stride_eff = max(horizon_set) if stride is None else _check_int(stride, "stride", 1)
+    required_bars = min_history + (n_origins - 1) * stride_eff + max(horizon_set)
+    n_bars = required_bars if n_bars is None else _check_int(n_bars, "n_bars", 1)
+    if n_bars < required_bars:
+        raise ValueError(f"n_bars={n_bars} cannot host the schedule; needs >= {required_bars}")
+
+    columns = [
+        "shard",
+        "model",
+        "horizon",
+        "status",
+        "error",
+        "seed",
+        "n_origins",
+        "qlike",
+        "mse",
+        "dm_qlike_mean",
+        "dm_qlike_se",
+        "dm_qlike_t",
+    ]
+    rows: list[dict[str, Any]] = []
+    shard_meta: dict[str, Any] = {}
+    for shard_index, (shard_name, generator) in enumerate(resolved_shards.items()):
+        shard_seed = int(seed) + shard_index
+        shard = _validate_shard(generator(n_bars, shard_seed), shard_name, n_bars)
+        shard_meta[shard_name] = {
+            "n": int(n_bars),
+            "seed": shard_seed,
+            "returns_sha256": hash_bytes(shard.returns.tobytes()),
+            "rv_sha256": hash_bytes(shard.rv.tobytes()),
+            "parkinson_sha256": hash_bytes(shard.parkinson.tobytes()),
+            "config": shard.config,
+        }
+        for horizon in horizon_set:
+            origins = build_origins(
+                n_dates=n_bars,
+                h=horizon,
+                min_history=min_history,
+                stride=stride_eff,
+                n_origins=n_origins,
+            )
+            losses: dict[str, tuple[Array, Array]] = {}
+            row_refs: dict[str, dict[str, Any]] = {}
+            for model_name, forecaster in forecasters.items():
+                row: dict[str, Any] = {
+                    "shard": shard_name,
+                    "model": model_name,
+                    "horizon": horizon,
+                    "status": "ok",
+                    "error": None,
+                    "seed": shard_seed,
+                    "n_origins": int(origins.size),
+                    "qlike": None,
+                    "mse": None,
+                    "dm_qlike_mean": None,
+                    "dm_qlike_se": None,
+                    "dm_qlike_t": None,
+                }
+                scored = _eval_shard_model(shard, forecaster, horizon, origins, shard_seed)
+                if isinstance(scored, str):
+                    row["status"] = "error"
+                    row["error"] = scored
+                else:
+                    targets, forecasts = scored
+                    losses[model_name] = (targets, forecasts)
+                    row["qlike"] = float(np.mean(qlike_loss(targets, forecasts)))
+                    row["mse"] = float(np.mean(mse_loss(targets, forecasts)))
+                rows.append(row)
+                row_refs[model_name] = row
+            if DM_REFERENCE in losses:
+                ref_targets, ref_forecasts = losses[DM_REFERENCE]
+                for model_name, (targets, forecasts) in losses.items():
+                    if model_name == DM_REFERENCE:
+                        continue
+                    diff = vol_loss_diff(targets, forecasts, ref_forecasts, loss="qlike")
+                    row_refs[model_name]["dm_qlike_mean"] = float(diff["mean_diff"])
+                    row_refs[model_name]["dm_qlike_se"] = float(diff["se"])
+                    row_refs[model_name]["dm_qlike_t"] = float(diff["t"])
+
+    frame = pl.DataFrame(
+        rows,
+        schema={
+            "shard": pl.String,
+            "model": pl.String,
+            "horizon": pl.Int64,
+            "status": pl.String,
+            "error": pl.String,
+            "seed": pl.Int64,
+            "n_origins": pl.Int64,
+            "qlike": pl.Float64,
+            "mse": pl.Float64,
+            "dm_qlike_mean": pl.Float64,
+            "dm_qlike_se": pl.Float64,
+            "dm_qlike_t": pl.Float64,
+        },
+        orient="row",
+    ).select(columns)
+
+    inputs_sha256 = hash_bytes(
+        canonical_json_bytes(
+            {
+                "shards": {
+                    name: {
+                        "returns_sha256": meta["returns_sha256"],
+                        "rv_sha256": meta["rv_sha256"],
+                        "parkinson_sha256": meta["parkinson_sha256"],
+                    }
+                    for name, meta in shard_meta.items()
+                },
+                "models": sorted(str(k) for k in forecasters),
+                "horizons": [int(h) for h in horizon_set],
+                "min_history": min_history,
+                "n_origins": n_origins,
+                "stride": stride_eff,
+                "n_bars": n_bars,
+                "seed": int(seed),
+            }
+        )
+    )
+    receipt: dict[str, Any] = {
+        "schema": VOL_BENCH_SCHEMA,
+        "kind": "vol_bench",
+        "claim": "research_only",
+        "data_label": "SYNTHETIC",
+        "live_pnl_claim": False,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "git_revision": git_revision(),
+        "seed": int(seed),
+        "horizons": [int(h) for h in horizon_set],
+        "min_history": min_history,
+        "n_origins": n_origins,
+        "stride": stride_eff,
+        "n_bars": n_bars,
+        "target": "cumulative_realized_variance",
+        "dm_reference": DM_REFERENCE,
+        "models": sorted(str(k) for k in forecasters),
+        "shards": shard_meta,
+        "inputs_sha256": inputs_sha256,
+        "n_rows": len(rows),
+        "n_error_rows": sum(1 for row in rows if row["status"] != "ok"),
+        "results": rows,
+    }
+    return frame, receipt
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Publish a complete immutable text artifact without replacing an existing one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise FileExistsError(f"receipt path is a symlink: {path}")
+    if path.exists():
+        if path.read_text(encoding="utf-8") != content:
+            raise FileExistsError(f"receipt already exists with different content: {path}")
+        return
+    temporary_path: Path | None = None
+    try:
+        with NamedTemporaryFile(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(content)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            if path.is_symlink() or path.read_text(encoding="utf-8") != content:
+                raise FileExistsError(
+                    f"receipt already exists with different content: {path}"
+                ) from None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
+def write_vol_bench_receipt(
+    receipt: Mapping[str, Any],
+    receipts_dir: Path | str = Path("receipts"),
+) -> Path:
+    """Seal a vol-bench receipt and write ``receipts/vol_bench_<hash>.json``.
+
+    The filename hash is the sha256 of the canonical receipt payload; the
+    same digest is embedded as ``receipt_sha256`` (the fleet_eval seal
+    convention). The write is atomic and fail-closed on tampering.
+    """
+    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
+    if (
+        receipt.get("schema") != VOL_BENCH_SCHEMA
+        or receipt.get("kind") != "vol_bench"
+        or receipt.get("data_label") != "SYNTHETIC"
+        or receipt.get("live_pnl_claim") is not False
+        or not isinstance(receipt.get("results"), list)
+        or not receipt["results"]
+        or not family_blob_forbidden_metrics_absent(research_blob)
+    ):
+        raise ValueError("vol-bench receipt violates its synthetic research contract")
+    canonical = json.loads(canonical_json_bytes(dict(receipt)))
+    digest = hash_bytes(canonical_json_bytes(canonical))
+    payload = {**canonical, "receipt_sha256": digest}
+    path = Path(receipts_dir) / f"vol_bench_{digest[:16]}.json"
+    _atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return path
+
+
+__all__ = [
+    "DM_REFERENCE",
+    "VOL_BENCH_SCHEMA",
+    "VOL_MODEL_REGISTRY",
+    "VOL_SHARD_GENERATORS",
+    "VolForecaster",
+    "VolShard",
+    "VolShardGenerator",
+    "break_vol",
+    "garch_vol",
+    "resolve_vol_models",
+    "resolve_vol_shard_generators",
+    "rough_vol",
+    "run_vol_bench",
+    "write_vol_bench_receipt",
+]

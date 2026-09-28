@@ -1,0 +1,17 @@
+version: 1
+slos:
+  - id: stage_latency_p99
+    description: Operational p99 stage latency, using the histogram bucket upper bound.
+    metric: latency_p99_seconds
+    comparator: le
+    threshold: 2.0
+  - id: error_ratio
+    description: Share of instrumented stage spans that recorded an error.
+    metric: error_ratio
+    comparator: lt
+    threshold: 0.01
+  - id: data_freshness
+    description: Age of the newest input observed by a stage.
+    metric: freshness_seconds
+    comparator: lt
+    threshold: 86400

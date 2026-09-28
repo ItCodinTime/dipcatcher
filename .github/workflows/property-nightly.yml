@@ -1,0 +1,44 @@
+name: Adversarial properties (nightly)
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  adversarial-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups --all-extras
+      - name: Hypothesis adversarial suite (nightly profile)
+        env:
+          HYPOTHESIS_PROFILE: nightly
+          MLFLOW_DISABLE_AGENT_HINT: "1"
+        run: |
+          set -o pipefail
+          start=$(uv run python -c 'import time; print(time.time())')
+          uv run pytest -q --durations=20 -p no:cacheprovider \
+            tests/property/test_adversarial_costs.py \
+            tests/property/test_adversarial_returns_and_sizing.py \
+            tests/property/test_adversarial_backtest.py \
+            tests/property/test_adversarial_lookahead.py \
+            tests/property/test_adversarial_resample_and_sources.py \
+            tests/property/test_adversarial_receipts.py
+          uv run python -c "import time; print('ELAPSED_SEC {:.3f}'.format(time.time() - float('${start}')))"

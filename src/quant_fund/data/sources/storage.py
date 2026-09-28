@@ -54,7 +54,15 @@ def write_source_frame(
             raise SourceError(f"frame source labels do not match {source!r}")
     destination = _safe_destination(root, source, filename)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    frame.write_parquet(destination)
+    # Write-then-rename so a crash cannot leave a torn parquet at the
+    # canonical path the receipt then hashes.
+    tmp = destination.with_name(destination.name + ".tmp")
+    try:
+        frame.write_parquet(tmp)
+        tmp.replace(destination)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
     receipt: dict[str, Any] = {
         "schema_version": 2,
@@ -72,7 +80,11 @@ def write_source_frame(
         "provenance": provenance or {},
     }
     receipt_path = destination.with_suffix(".json")
-    receipt_path.write_text(
+    # Receipts are immutable evidence: publish atomically so a torn JSON is
+    # never visible under the .json name.
+    receipt_tmp = receipt_path.with_name(receipt_path.name + ".tmp")
+    receipt_tmp.write_text(
         json.dumps(receipt, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8"
     )
+    receipt_tmp.replace(receipt_path)
     return {"data": destination, "receipt": receipt_path}

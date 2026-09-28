@@ -35,7 +35,8 @@ trains are skipped (fail-closed). See `validation/cpcv.py` and
 The research notebook includes a `cpcv` integrity family that records the
 observed versus expected fold count and validates date-level train/test
 separation. It is a validation audit, not a performance or profitability
-claim.
+claim. Schema 2 notebooks also stamp PBO, DSR, PSR, MinTRL, and the trial
+counts; how to read them is `docs/BACKTEST_OVERFITTING.md`.
 
 ## Hyperparameters
 
@@ -140,3 +141,27 @@ Honest research/validation posture after Waves 1–15 (no live P&L claims):
 Wave 15 SYNTHETIC smoke (research-only — **NOT** live P&L): `dipcatcher research`
 oracle_raw IC≈0.79; `quant validate` ok=true promote=false; `--claim-live`
 ok=false; `dipcatcher paper --max-steps 8` → 173 fills, would_promote_live=false.
+
+## Historical Phase-1 code drift
+
+The 2026-09-25 Phase-1 receipts are retrospective evidence. Their previous
+index revision is `c564646b14849d72c5891a90034d8e26361fe0f5`, with index
+receipt `0ce794b56249952fce5b2ff1046eea9e50b2f4e6d691539b8019959131873204`.
+The published tournament `code_sha256` map was re-sealed at
+`5c4e0c876f6d5f74e42d1205468a8768752e14e2`. That map still matches the six
+sealed modules on `origin/main` `0fdba02c04ab778fe6928d9b6b32b1cabfa7aa6b`.
+The audit trail is `data/metadata/research/PHASE1_CODE_RESEAL.md`.
+
+Since that index revision, the sealed modules that changed are
+`net_replay.py`, `cost_allocation.py`, and `metrics/inference.py`.
+`net_tournament.py`, `real_benchmark.py`, and `snooping.py` are unchanged.
+`#131` (`01e69522`) does not reformat `inference.py`. That blob is the same
+from `6360b2d` through `0fdba02`. `#150`
+(`51cf6e7026f5aad88a748e3a76b3079b09ad9137`) keeps a historical-commit
+fallback in `examples/05_phase1_evidence.py` for a later checkout drift.
+The re-sealed map matches the current sources, so the example passes on
+that direct hash match.
+
+Numeric study results were not recomputed. The paper adapter pins the
+re-sealed index receipt. `docs/FORWARD_SHADOW_POWER.md` still cites the
+2026-09-25 receipts as the pre-collection plan bind.

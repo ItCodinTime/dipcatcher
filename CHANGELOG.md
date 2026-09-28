@@ -8,6 +8,47 @@ The version source is `fx1.__version__`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **reality-filter CI**: `data/metadata/proofcore.duckdb` is not in the
+  repository at HEAD or on main, so `quant proofcore export` creates an
+  empty database and writes 0 trial rows. `quant reality preflight --db`
+  exits 3 with `REALITY_FILTER_SKIP` for that missing file (and for an
+  export that has no rows). `make reality-gate` exits 0 and the workflow
+  annotates the skip as a notice. Recorded rows are scored with the same
+  thresholds, and a verdict other than `pass` fails the job.
+- **A1 F1 (PROOFCORE W4)**: `hedge_lab/scoreboard.py` `book_economic_scoreboard`
+  no longer feeds the **annualized** Sharpe into `probabilistic_sharpe` /
+  `min_track_record_length` with a per-day observation count — that inflated
+  the z-statistic by ~sqrt(252) (~15.9x) and short-circuited `psr_vs_zero` to
+  ~1.0 for any positive-Sharpe book. PSR/MinTRL now route through the new
+  unit-safe returns-only API (`quant_fund.reality.psr.psr_from_returns` /
+  `min_trl_from_returns`), which computes the per-period SR internally.
+  **Diagnostic values change by design (~15.9x z-deflation)**: `psr_vs_zero`
+  and `min_trl_days` in scoreboard receipts now follow the correct Bailey &
+  López de Prado per-period convention; `min_trl_days` is a period count. The
+  annualized Sharpe remains display-only. Receipts already label these fields
+  as research diagnostics.
+- **A1 F1-class, second site (PROOFCORE W4)**: `validation/multiple_testing.py`
+  `TrialLedger.dsr_for` fed the default (annualized, `periods_per_year=252`)
+  `sharpe_ratio` into `deflated_sharpe` with a per-period observation count —
+  the same ~15.9x z-inflation as scoreboard F1. It now uses the per-period
+  convention (`irregular=True`). Diagnostic values change by design.
+
+### Added
+
+- **PROOFCORE W4 reality filter** (`quant_fund/reality/`): unit-safe PSR /
+  MinTRL, Deflated Sharpe with effective-trials clustering (Bailey & López de
+  Prado 2014), CSCV/PBO (Bailey–Borwein–López de Prado–Zhu combinatorially
+  symmetric CV), SPA / White reality-check drivers, BH-FDR over the trial
+  ledger (family-split, never pooled), `RealityReport` assembly, and the
+  `quant reality` sub-typer (`trial-report`, `ledger-gate`; mounting owned by
+  W5). Shared PROOFCORE schemas live in `quant_fund/proofcore/contracts.py`.
+- `metrics.returns.sharpe_ratio_batch`: vectorized canonical Sharpe; the
+  ad-hoc Sharpe copies in `paper/sim_live.py` and `hedge_lab/scoreboard.py`
+  (bootstrap) now delegate to `metrics/returns.py` (A2 F4). The scoring.py
+  IC-based information ratio is re-exported as `ic_information_ratio`.
+
 ### Changed
 
 - README opens on dipcatcher: purpose, badges, architecture diagram, and a

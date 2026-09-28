@@ -248,6 +248,10 @@ def run_perp_backtest(
         for sid in close_mark:
             if sid not in marked:
                 next_ages[sid] = next_ages.get(sid, 0) + 1
+        # Marks knowable at execution time: before this bar's close prints.
+        # Non-executing names valued at this bar's close would leak future
+        # prices into sizing and the leverage cap.
+        pre_exec_marks = last_marks
         last_marks = close_mark
         mark_ages = next_ages
         stale_held = {
@@ -260,7 +264,7 @@ def run_perp_backtest(
             raise StaleValuationError("held perp position valuation stale beyond limit: " + details)
 
         # --- execute pending orders at this bar's open ---
-        nav_prices = {**last_marks, **exec_mark}
+        nav_prices = {**pre_exec_marks, **exec_mark}
         # No early equity<=0 break here: the wick-liquidation pass below must
         # first model the forced unwind; ruin is declared after close marking.
         traded_turn = 0.0
@@ -277,14 +281,22 @@ def run_perp_backtest(
             delta = desired_qty - current
             if abs(delta) * price < 1.0:
                 continue
-            # Hard leverage cap: scale back orders that would breach it.
+            # Hard leverage cap on the projected position, not the trade
+            # size: clamp the resulting quantity to the headroom left after
+            # other names. Reductions and flips must always pass the part
+            # that deleverages — capping |delta| on top of existing gross
+            # would trap an over-levered book.
             gross_now = book.gross_notional(nav_prices)
             cap = perp.max_leverage * equity
-            if gross_now + abs(delta) * price > cap and cap > gross_now:
-                delta = np.sign(delta) * max(0.0, (cap - gross_now)) / price
-            elif gross_now + abs(delta) * price > cap:
-                margin_reject_count += 1
-                continue
+            others_gross = gross_now - abs(current) * price
+            projected_qty = current + delta
+            room_qty = max(0.0, cap - others_gross) / price
+            if abs(projected_qty) > room_qty:
+                capped_delta = np.sign(projected_qty) * room_qty - current
+                if capped_delta == 0.0 or np.sign(capped_delta) != np.sign(delta):
+                    margin_reject_count += 1
+                    continue
+                delta = capped_delta
             if abs(delta) * price < 1.0:
                 continue
             costs = total_cost(delta, price, advs.get(sid, 1.0), vols.get(sid, 0.02), config.costs)

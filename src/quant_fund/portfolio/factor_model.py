@@ -24,10 +24,21 @@ Research diagnostics only — never a live P&L claim.
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 import polars as pl
 
 FACTOR_NAMES = ("mkt", "mom", "liq", "carry")
+
+
+class _FactorObservation(TypedDict):
+    event_time: object
+    mkt: float
+    mom: float
+    liq: float
+    carry: float
+    n_names: int
 
 
 def _tercile_spread(signal: np.ndarray, forward: np.ndarray) -> float:
@@ -92,7 +103,7 @@ def crypto_factor_returns(
     else:
         panel = panel.with_columns(pl.lit(None, dtype=pl.Float64).alias("funding_rate"))
 
-    rows: list[dict] = []
+    rows: list[_FactorObservation] = []
     for (et,), grp in panel.group_by("event_time", maintain_order=True):
         ret1 = grp["ret1"].to_numpy().astype(float)
         mom_sig = grp["mom_sig"].to_numpy().astype(float)
@@ -177,7 +188,7 @@ def estimate_factor_betas(
     fmat = factors.select("event_time", *fcols).sort("event_time")
     joined = frets.join(fmat, on="event_time", how="left")
 
-    out_rows: list[dict] = []
+    out_rows: list[dict[str, object]] = []
     for (sid,), grp in joined.group_by("security_id", maintain_order=True):
         y = grp["ret1"].to_numpy().astype(float)
         x = np.column_stack([grp[c].to_numpy().astype(float) for c in fcols])
@@ -185,7 +196,7 @@ def estimate_factor_betas(
         beta = _rolling_beta(y, x, window, ridge)
         times = grp["event_time"].to_list()
         for t in range(len(times)):
-            row: dict = {"security_id": sid, "event_time": times[t]}
+            row: dict[str, object] = {"security_id": sid, "event_time": times[t]}
             for j, c in enumerate(fcols):
                 row[f"beta_{c}"] = float(beta[t, j]) if np.isfinite(beta[t, j]) else None
             out_rows.append(row)

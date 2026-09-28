@@ -16,13 +16,26 @@ class Lake:
             (self.root / part).mkdir(parents=True, exist_ok=True)
 
     def write_parquet(self, frame: pl.DataFrame, rel: str) -> Path:
+        # Write-then-rename: a crash mid-write must not leave a truncated
+        # parquet at the canonical path, so readers never see a torn file.
         path = self.root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(path)
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            frame.write_parquet(tmp)
+            tmp.replace(path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
         return path
 
-    def read_parquet(self, rel: str) -> pl.DataFrame:
-        return pl.read_parquet(self.root / rel)
+    def read_parquet(self, rel: str, columns: list[str] | None = None) -> pl.DataFrame:
+        """Memory-map a lake parquet file.
+
+        ``columns`` projects before the frame is materialized. Omit it to read
+        every stored column, which is what existing callers do.
+        """
+        return pl.read_parquet(self.root / rel, columns=columns, memory_map=True)
 
     def exists(self, rel: str) -> bool:
         return (self.root / rel).exists()

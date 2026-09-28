@@ -18,18 +18,18 @@ References:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
+
+from quant_fund.utils.series import finite_observations
 
 Array = NDArray[np.float64]
 
 
 def _as_vector(x: Array, name: str = "x", *, min_obs: int = 32) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    v = v[np.isfinite(v)]
-    if v.size < min_obs:
-        raise ValueError(f"{name} must contain at least {min_obs} finite observations")
-    return v
+    return finite_observations(x, name, min_obs=min_obs)
 
 
 def _dyadic_windows(n: int, min_win: int, max_win: int) -> list[int]:
@@ -166,13 +166,14 @@ def roughness_battery(x: Array) -> dict[str, float]:
     """Convenience bundle: Hurst (R/S + DFA) and FD (Katz, Higuchi, Sevcik)."""
     v = _as_vector(x)
     out: dict[str, float] = {}
-    for name, fn in (
-        ("hurst_rs", lambda: hurst_rs(v)["hurst"]),
-        ("hurst_dfa", lambda: dfa_hurst(v)["hurst"]),
-        ("katz_fd", lambda: katz_fd(v)),
-        ("higuchi_fd", lambda: higuchi_fd(v)),
-        ("sevcik_fd", lambda: sevcik_fd(v)),
-    ):
+    checks: tuple[tuple[str, Callable[[], float]], ...] = (
+        ("hurst_rs", lambda: float(hurst_rs(v)["hurst"])),
+        ("hurst_dfa", lambda: float(dfa_hurst(v)["hurst"])),
+        ("katz_fd", lambda: float(katz_fd(v))),
+        ("higuchi_fd", lambda: float(higuchi_fd(v))),
+        ("sevcik_fd", lambda: float(sevcik_fd(v))),
+    )
+    for name, fn in checks:
         try:
             out[name] = float(fn())
         except ValueError:

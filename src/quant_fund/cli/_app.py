@@ -1,16 +1,29 @@
-"""Typer app, sub-CLI mounts, and shared helpers for the quant CLI."""
+"""Typer app, sub-CLI mounts, and shared helpers for the quant CLI.
+
+``quant_fund.cli.app.app`` is this same ``app`` object.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
-from quant_fund.config import dump_resolved, load_config
-from quant_fund.hmm.cli import hmm_app
-from quant_fund.lightspeed.cli import ls_app
-from quant_fund.quant_models.cli import qm_app
-from quant_fund.utils.logging import configure_logging
+from quant_fund.hmm.cli import hmm_app as hmm_app
+from quant_fund.leakage.cli import leakage_app
+from quant_fund.lightspeed.cli import ls_app as ls_app
+from quant_fund.pit.cli import pit_app
+from quant_fund.proof.cli import proof_app
+from quant_fund.proofcore.cli import proofcore_app
+from quant_fund.quant_models.cli import qm_app as qm_app
+from quant_fund.reality.cli import reality_app
+from quant_fund.research.research100_cli import research100_app
+from quant_fund.stress.cli import stress_app
+
+if TYPE_CHECKING:
+    from quant_fund.config.models import AppConfig
 
 
 def format_data_label(*, synthetic: bool, data_source: str) -> str:
@@ -18,7 +31,7 @@ def format_data_label(*, synthetic: bool, data_source: str) -> str:
     return f"DATA_LABEL={'SYNTHETIC' if synthetic else data_source}"
 
 
-def format_fdr_families(hypotheses: list) -> str:
+def format_fdr_families(hypotheses: Sequence[object]) -> str:
     """BH-FDR family split summary — calibration/discovery/bound never pooled."""
     cal_n = sum(1 for h in hypotheses if getattr(h, "family", None) == "calibration")
     disc_n = sum(1 for h in hypotheses if getattr(h, "family", None) == "discovery")
@@ -50,10 +63,20 @@ train_app = typer.Typer(help="Train a forecast family.")
 app.add_typer(train_app, name="train")
 app.add_typer(hmm_app, name="hmm")
 app.add_typer(ls_app, name="ls")
+app.add_typer(pit_app, name="pit")
 app.add_typer(qm_app, name="qm")
+app.add_typer(research100_app, name="research100")
+app.add_typer(proof_app, name="proof")
+app.add_typer(leakage_app, name="leakage")
+app.add_typer(reality_app, name="reality")
+app.add_typer(proofcore_app, name="proofcore")
+app.add_typer(stress_app, name="stress")
 
 
-def _cfg(config: Path):
+def _cfg(config: Path) -> AppConfig:
+    from quant_fund.config import dump_resolved, load_config
+    from quant_fund.utils.logging import configure_logging
+
     cfg = load_config(config)
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")

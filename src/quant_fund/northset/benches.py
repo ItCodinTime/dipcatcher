@@ -6,6 +6,7 @@ Amihud, OFI, VPIN, session RV/jumps. No Sharpe. Research-only.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, cast
 
 import numpy as np
@@ -15,7 +16,10 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.cross_section import DateICResult, date_ic_series
 from quant_fund.metrics.scoring import qlike
 from quant_fund.microstructure import book_metrics as book_metrics_mod
-from quant_fund.microstructure.candle_book_features import attach_candle_book_features
+from quant_fund.microstructure.candle_book_features import (
+    attach_candle_book_features,
+    forward_close_return_labels,
+)
 from quant_fund.microstructure.synthetic_lob import (
     aggregate_session_book_to_daily,
     ensure_book_panel_shape_columns,
@@ -586,7 +590,7 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
 
     def _rate_or_nan(
         required: tuple[str, ...],
-        rate_fn,
+        rate_fn: Callable[[list[dict[str, float]]], float],
     ) -> float:
         # A missing column class is NaN (never a fake 0.0): external panels are
         # not repaired, and absent structure must read as unmeasured.
@@ -696,12 +700,15 @@ def bench_northset(bars: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
         session_book_rows = int(session_book.height)
         daily_session_book = aggregate_session_book_to_daily(session_book)
         fused = fused.join(daily_session_book, on=["security_id", "event_time"], how="left")
-    fused = fused.sort(["security_id", "event_time"]).with_columns(
-        (
-            pl.col("candle_return_close").shift(-1).over("security_id")
-            / pl.col("candle_return_close")
-            - 1.0
-        ).alias("fwd_ret_1"),
+    # The 1-bar label pairs each fused row with the NEXT BAR for the same
+    # security (MATH_SPEC y_{i,t+1} = C_{t+1}/C_t − 1) on the canonical frame,
+    # never the next surviving fused row (the book join can drop candles).
+    fused = fused.sort(["security_id", "event_time"]).join(
+        forward_close_return_labels(bars, price_col="return_close"),
+        on=["security_id", "event_time"],
+        how="left",
+    )
+    fused = fused.with_columns(
         (pl.col("mid").shift(-1).over("security_id") - pl.col("mid")).alias("delta_mid"),
         (pl.col("bid_depth") - pl.col("ask_depth")).alias("signed_volume"),
         pl.col("ofi").shift(1).over("security_id").alias("ofi_lag"),

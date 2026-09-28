@@ -17,16 +17,13 @@ from numpy.typing import NDArray
 from scipy import optimize as opt
 from scipy import stats
 
+from quant_fund.utils.series import finite_nonconstant_series
+
 Array = NDArray[np.float64]
 
 
 def _v(x: Array, n: int = 64) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    if v.size < n or not np.all(np.isfinite(v)):
-        raise ValueError(f"series must be finite with length >= {n}")
-    if v.std() == 0:
-        raise ValueError("degenerate (constant) series")
-    return v
+    return finite_nonconstant_series(x, n)
 
 
 def _periodogram(v: Array) -> tuple[Array, Array]:

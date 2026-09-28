@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/artificial-hedge/dipcatcher/schemas/receipt_v2.schema.json",
+  "title": "dipcatcher receipt.v2",
+  "description": "Unified sealed-receipt envelope for research evidence (ULTRAPLAN P7.2 + P7.4). Lane-specific content lives in `payload`; the envelope binds dataset/code/params digests, the numeric environment fingerprint, and the honesty flags. The executable contract is `quant_fund.research.receipt_v2.ReceiptV2`; keep this file in sync with it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "kind",
+    "data_label",
+    "generated_at",
+    "git_revision",
+    "dataset_hash",
+    "params_hash",
+    "code_sha256",
+    "code_files",
+    "environment",
+    "live_pnl_claim",
+    "verdict",
+    "payload"
+  ],
+  "properties": {
+    "schema": {
+      "const": "receipt.v2",
+      "description": "Envelope discriminator."
+    },
+    "schema_version": {
+      "const": 2,
+      "description": "Integer schema version."
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Lane identifier, e.g. distribution_fleet_eval."
+    },
+    "data_label": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Honesty label for the evidence source, e.g. SYNTHETIC. Never REAL for synthetic lanes."
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO-8601 timestamp with explicit timezone."
+    },
+    "git_revision": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Checked-out revision or an explicit unknown marker."
+    },
+    "dataset_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of the canonical JSON identity of the evaluated dataset (e.g. per-shard content hashes)."
+    },
+    "params_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of the canonical JSON run parameters (models, grid, sizes, seed)."
+    },
+    "code_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of the canonical JSON map of writer source file hashes."
+    },
+    "code_files": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/sha256"},
+      "description": "Writer source files keyed by basename; the audit trail behind code_sha256."
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "python",
+        "implementation",
+        "platform",
+        "machine",
+        "byteorder",
+        "packages",
+        "blas",
+        "lapack",
+        "threadpools",
+        "fingerprint_sha256"
+      ],
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "implementation": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "byteorder": {"enum": ["little", "big"]},
+        "packages": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "minLength": 1},
+          "description": "Distribution versions; must cover numpy, polars, scipy."
+        },
+        "blas": {"$ref": "#/$defs/blasDependency"},
+        "lapack": {"$ref": "#/$defs/blasDependency"},
+        "threadpools": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/threadpool"},
+          "description": "Loaded BLAS threadpools (threadpoolctl); empty when unavailable."
+        },
+        "fingerprint_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 of the canonical JSON of every other environment field — the P7.4 determinism fingerprint."
+        }
+      }
+    },
+    "live_pnl_claim": {
+      "const": false,
+      "description": "Honesty flag: receipts never claim live P&L."
+    },
+    "verdict": {
+      "enum": ["pass", "fail", "blocked"],
+      "description": "Top-line evidence verdict. blocked = intentionally incomplete evidence (e.g. frozen-slate failure), not a pass."
+    },
+    "payload": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Lane-specific receipt body (e.g. a fleet_eval.v1 payload verbatim). Must not contain forbidden headline metric keys (sharpe/sortino/calmar/pnl/nav)."
+    },
+    "receipt_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "Seal: SHA-256 of the canonical JSON of every other top-level field. Required on sealed files; absent only pre-seal."
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "blasDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "found"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "found": {"type": "boolean"},
+        "version": {"type": ["string", "null"]}
+      }
+    },
+    "threadpool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix", "user_api", "internal_api", "num_threads"],
+      "properties": {
+        "prefix": {"type": "string", "minLength": 1},
+        "user_api": {"type": "string", "minLength": 1},
+        "internal_api": {"type": "string", "minLength": 1},
+        "version": {"type": ["string", "null"]},
+        "num_threads": {"type": "integer", "minimum": 1},
+        "threading_layer": {"type": ["string", "null"]},
+        "architecture": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

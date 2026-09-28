@@ -67,8 +67,9 @@ def reconcile_broker_states(
     act_shares = {str(k): _num(v) for k, v in dict(actual.get("shares") or {}).items()}
     share_deltas: dict[str, float] = {}
     for sid in sorted(set(exp_shares) | set(act_shares)):
-        a = exp_shares.get(sid) or 0.0
-        b = act_shares.get(sid) or 0.0
+        # Absent key = flat (0.0); present-but-non-numeric = None -> flagged.
+        a = exp_shares.get(sid, 0.0)
+        b = act_shares.get(sid, 0.0)
         if a is None or b is None:
             mismatches.append(f"shares[{sid}]: non-numeric")
             continue
@@ -83,6 +84,17 @@ def reconcile_broker_states(
     missing_marks = sorted(set(exp_marks) ^ set(act_marks))
     for sid in missing_marks:
         mismatches.append(f"last_marks[{sid}]: present in one book only")
+    mark_deltas: dict[str, float] = {}
+    for sid in sorted(set(exp_marks) & set(act_marks)):
+        a, b = exp_marks[sid], act_marks[sid]
+        if a is None or b is None:
+            mismatches.append(f"last_marks[{sid}]: non-numeric")
+            continue
+        if abs(b - a) > tol:
+            mark_deltas[sid] = b - a
+            mismatches.append(f"last_marks[{sid}]: expected {a} got {b}")
+    if mark_deltas:
+        deltas["mark_deltas"] = mark_deltas  # type: ignore[assignment]
 
     for key in ("kill_state", "fill_convention", "slot"):
         if expected.get(key) != actual.get(key):
@@ -115,31 +127,43 @@ def reconcile_equity(
         missing = {time_col, "nav"} - set(frame.columns)
         if missing:
             raise ValueError(f"{name} equity missing columns: {sorted(missing)}")
+    # Unmatched = timestamp present on one side only. A matched timestamp
+    # carrying a null nav is not "unmatched" — count it separately so a null
+    # nav cannot masquerade as a missing row.
+    exp_times = set(expected[time_col].drop_nulls().to_list())
+    act_times = set(actual[time_col].drop_nulls().to_list())
+    only_exp = len(exp_times - act_times)
+    only_act = len(act_times - exp_times)
     joined = expected.select(time_col, pl.col("nav").alias("nav_exp")).join(
         actual.select(time_col, pl.col("nav").alias("nav_act")),
         on=time_col,
-        how="full",
+        how="inner",
     )
-    both = joined.drop_nulls()
-    only_exp = joined.filter(pl.col("nav_act").is_null()).height
-    only_act = joined.filter(pl.col("nav_exp").is_null()).height
+    matched_nulls = int(
+        joined.filter(pl.col("nav_exp").is_null() | pl.col("nav_act").is_null()).height
+    )
+    both = joined.drop_nulls().sort(time_col)
     if both.height == 0:
         return {
             "match": False,
             "n_matched": 0,
             "unmatched_expected": int(only_exp),
             "unmatched_actual": int(only_act),
+            "matched_null_nav": matched_nulls,
             "status": "no_shared_timestamps",
             "live_pnl_claim": False,
             "research_only": True,
         }
+    # Sorted so last_nav_delta is the delta at the most recent shared
+    # timestamp, not whichever row the join emitted last.
     delta = (both["nav_act"] - both["nav_exp"]).to_numpy().astype(float)
     max_abs = float(np.max(np.abs(delta)))
     return {
-        "match": bool(max_abs <= tol and only_exp == 0 and only_act == 0),
+        "match": bool(max_abs <= tol and only_exp == 0 and only_act == 0 and matched_nulls == 0),
         "n_matched": int(both.height),
         "unmatched_expected": int(only_exp),
         "unmatched_actual": int(only_act),
+        "matched_null_nav": matched_nulls,
         "max_abs_nav_delta": max_abs,
         "mean_nav_delta": float(np.mean(delta)),
         "last_nav_delta": float(delta[-1]),

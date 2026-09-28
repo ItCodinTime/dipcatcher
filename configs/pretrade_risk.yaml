@@ -1,0 +1,37 @@
+# Pre-trade risk snapshot. Shadow evaluation only.
+# The HMAC key is supplied at load time and is not stored in this file.
+schema_version: 1
+limits:
+  max_order_notional: 250000
+  max_order_quantity: 10000
+  price_collar_bps: 50
+  max_position_notional: 500000
+  max_position_quantity: 20000
+  max_gross_notional: 2000000
+  max_net_notional: 1000000
+  max_name_concentration: 0.25
+  max_daily_loss_fraction: 0.02
+  max_trailing_drawdown_fraction: 0.05
+  max_orders_per_window: 20
+  max_messages_per_window: 50
+  rate_window_ns: 1000000000
+  duplicate_window_ns: 2000000000
+  max_reference_age_ns: 5000000000
+  max_mark_age_ns: 5000000000
+  pdt_equity_threshold: 25000
+  pdt_window_sessions: 5
+  pdt_max_day_trades: 3
+  settlement_ns: 86400000000000
+  qty_tick: 0.0001
+  price_tick: 0.0001
+  cash_account: true
+  restrict_to_settled_cash: true
+  max_lots_per_symbol: 8
+  ring_capacity: 256
+  symbol_capacity: 256
+  day_trade_capacity: 32
+  unsettled_capacity: 32
+session:
+  timezone: America/New_York
+  open_minute: 570
+  close_minute: 960

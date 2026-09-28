@@ -185,10 +185,15 @@ def test_example_runs_offline(name: str) -> None:
         assert "redistribution=refused" in stdout
     elif name == "05_phase1_evidence.py":
         assert "verifier=phase1_evidence_index" in stdout
-        assert "index_kind=phase1_evidence_index" in stdout
-        assert "seal_errors=0" in stdout
-        assert "research_only=true" in stdout
-        assert "live_pnl_claim=false" in stdout
         assert "verification_authorizes_live_trading=false" in stdout
-        assert "state=blocked" in stdout
-        assert "state=complete" in stdout
+        if "SKIP:" in stdout:
+            assert "tracked real US snapshot absent" in stdout
+            assert "data_label=absent_tracked_real_snapshot" in stdout
+            assert "index_valid=true" not in stdout
+        else:
+            assert "index_kind=phase1_evidence_index" in stdout
+            assert "seal_errors=0" in stdout
+            assert "research_only=true" in stdout
+            assert "live_pnl_claim=false" in stdout
+            assert "state=blocked" in stdout
+            assert "state=complete" in stdout
