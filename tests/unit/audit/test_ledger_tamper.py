@@ -455,3 +455,24 @@ def test_unattested_extra_entry_field_is_rejected(tmp_path: Path) -> None:
     report = verify_ledger(ledger.root)
     assert report["valid"] is False
     assert "unexpected_entry_fields:0" in report["errors"]
+
+
+def test_ledger_files_are_lf_only_on_every_platform(tmp_path: Path) -> None:
+    """On Windows ``os.open`` without ``O_BINARY`` writes CRLF, which the
+    verifier reads back as ``carriage_return`` corruption. Pin the byte
+    contract: every file the ledger emits is LF-canonical."""
+    signer = Ed25519Signer.generate()
+    key = tmp_path / "key"
+    signer.write(key)
+    ledger = AuditLedger(
+        tmp_path / "ledger", signer=signer, sign_every=1, clock=lambda: "2020-01-01T00:00:00Z"
+    )
+    ledger.append("paper_decision", {"simulation_only": True, "live_pnl_claim": False})
+    ledger.checkpoint()
+    for emitted in (tmp_path / "ledger").iterdir():
+        if emitted.name != ".lock":
+            raw = emitted.read_bytes()
+            assert b"\r" not in raw, f"{emitted.name} contains a carriage return"
+    for emitted in tmp_path.iterdir():
+        if emitted.is_file():
+            assert b"\r" not in emitted.read_bytes()

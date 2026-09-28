@@ -210,7 +210,9 @@ class AuditLedger:
     @contextmanager
     def _lock(self) -> Iterator[None]:
         self.root.mkdir(parents=True, exist_ok=True)
-        fd = os.open(self.root / ".lock", os.O_CREAT | os.O_RDWR, 0o600)
+        fd = os.open(
+            self.root / ".lock", os.O_CREAT | os.O_RDWR | getattr(os, "O_BINARY", 0), 0o600
+        )
         locked = False
         try:
             if sys.platform == "win32":
@@ -327,12 +329,14 @@ class AuditLedger:
         self._append_line(self.checkpoints_path, canonical_json_bytes(record))
         if signer.scheme == "ed25519" and signature.public_key_hex:
             pub = self.root / "ed25519.pub"
-            pub.write_text(signature.public_key_hex + "\n", encoding="ascii")
+            pub.write_bytes((signature.public_key_hex + "\n").encode("ascii"))
         return record
 
     def _append_line(self, path: Path, body: bytes) -> None:
         line = body + b"\n"
-        fd = os.open(path, os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o644)
+        fd = os.open(
+            path, os.O_CREAT | os.O_APPEND | os.O_WRONLY | getattr(os, "O_BINARY", 0), 0o644
+        )
         try:
             view = line
             while view:
