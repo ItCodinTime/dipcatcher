@@ -433,6 +433,10 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
+    elif payload.get("schema_version") == 1 and isinstance(payload.get("artifacts"), dict):
+        from quant_fund.data.ingest import data_manifest_contract_errors
+
+        errors.extend(data_manifest_contract_errors(payload))
     return _result(path, payload, convention, errors)
 
 

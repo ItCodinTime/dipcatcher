@@ -16,6 +16,7 @@ from quant_fund.config import load_config
 from quant_fund.config.models import AppConfig, RuntimeMode
 from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION, BENCHMARK_FAMILY_ORDER
 from quant_fund.research.verify import verify_research_artifact
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 _REQUIRED_ARTIFACTS = frozenset({"bars", "actions", "master", "silver", "universe"})
 _SHA256: re.Pattern[str] | None = None
@@ -65,6 +66,10 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
                 and _REQUIRED_ARTIFACTS.issubset(artifacts)
                 and blob.get("source") == str(cfg.data.source)
             )
+            seal = blob.get("receipt_sha256")
+            if seal is not None:
+                body = {key: value for key, value in blob.items() if key != "receipt_sha256"}
+                valid = valid and seal == hash_bytes(canonical_json_bytes(body))
             root_resolved = root.resolve()
             if isinstance(artifacts, dict):
                 for name in _REQUIRED_ARTIFACTS:
