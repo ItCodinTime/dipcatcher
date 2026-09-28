@@ -127,6 +127,18 @@ def test_atlas_splice_requires_marker_pair(tmp_path, monkeypatch) -> None:
     assert str(gen.ATLAS_DOC) in gen.stale_artifacts(repo)
 
 
+def test_atlas_splice_rejects_duplicate_marker_pair(tmp_path, monkeypatch) -> None:
+    repo = _make_repo(tmp_path)
+    _without_curated(monkeypatch)
+    gen.write_all(repo)
+    doc = repo / gen.ATLAS_DOC
+    doc.write_text(
+        doc.read_text()
+        + "\n<!-- BEGIN GENERATED: module_deps -->\n<!-- END GENERATED: module_deps -->\n"
+    )
+    assert str(gen.ATLAS_DOC) in gen.stale_artifacts(repo)
+
+
 def test_check_reports_stale_path(tmp_path, monkeypatch, capsys) -> None:
     repo = _make_repo(tmp_path)
     _without_curated(monkeypatch)
