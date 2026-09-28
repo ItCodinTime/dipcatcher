@@ -325,11 +325,11 @@ Matched-workload comparison against qlib. Terminal account levels whose
 field names tokenize to a forbidden research-headline metric are omitted.
 Parity residuals from the correctness object are copied under redacted keys.
 
-### `receipts/incumbent_bench_qlib.json`
+### `receipts/legacy-unsealed/incumbent_bench_qlib.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/incumbent_bench_qlib.json | f455123351b44151d68876d1a93fa3a2dc449c51d280ee83926f22cd9861984f | absent | no_embedded_seal | absent | workload.bar_files_sha256.btcusdt_1d.parquet=4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6, workload.bar_files_sha256.ethusdt_1d.parquet=6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250, workload.bar_files_sha256.solusdt_1d.parquet=bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb | real | absent | true | false |
+| receipts/legacy-unsealed/incumbent_bench_qlib.json | f455123351b44151d68876d1a93fa3a2dc449c51d280ee83926f22cd9861984f | absent | no_embedded_seal | absent | workload.bar_files_sha256.btcusdt_1d.parquet=4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6, workload.bar_files_sha256.ethusdt_1d.parquet=6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250, workload.bar_files_sha256.solusdt_1d.parquet=bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb | real | absent | true | false |
 
 Incumbent: `qlib` `0.9.7`
 Schema: `incumbent_bench.v1`
@@ -374,13 +374,13 @@ Workload fields copied from the receipt:
 
 Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
 
-Disclaimer copied verbatim from `receipts/incumbent_bench_qlib.json`:
+Disclaimer copied verbatim from `receipts/legacy-unsealed/incumbent_bench_qlib.json`:
 
 <!-- verbatim-receipt-text -->
 > Single matched workload vs qlib 0.9.x on real Binance daily bars. Correctness is NAV parity; latency is single-process wall time. Not a claim of superiority across all product dimensions.
 <!-- /verbatim-receipt-text -->
 
-Known semantic differences copied verbatim from `receipts/incumbent_bench_qlib.json`:
+Known semantic differences copied verbatim from `receipts/legacy-unsealed/incumbent_bench_qlib.json`:
 
 <!-- verbatim-receipt-text -->
 > qlib quotes are float32 (.bin format); dipcatcher uses float64 parquet prices. Residual NAV divergence is f32 price quantization (~1e-7 rel, ~$0.18 worst day on ~$1.5M).
@@ -440,7 +440,7 @@ Brier, ECE, and log loss are the receipt's proper scores.
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/dip_bench_crypto_1d_20260925.json | 584eb681dcd18fc65835c1573360b4b5fc9ebb72aa662bcbb9e7c101b06e2f03 | absent | no_embedded_seal | absent | inputs_sha256.adausdt_1d.parquet=59b5ec1a9076065bbedc3e14e49e59ee5f3781646721710dffca0aeab093a3f2, inputs_sha256.avaxusdt_1d.parquet=40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359, inputs_sha256.bnbusdt_1d.parquet=822ec14bb30fda27bd14b4ab2a99070ae2d78858794c08444f8c0adbf75a80c1, inputs_sha256.btcusdt_1d.parquet=4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6, inputs_sha256.dogeusdt_1d.parquet=a8a8005ee958a265c313ac6ee3da9f0dacf1e1d7be95b7496bb5a58d687bf7c7, inputs_sha256.ethusdt_1d.parquet=6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250, inputs_sha256.linkusdt_1d.parquet=e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512, inputs_sha256.ltcusdt_1d.parquet=ce5bd0ab9540792895940afae9e0934db0eaf0e221bf3ae7bd3d1e89ce361b3a, inputs_sha256.solusdt_1d.parquet=bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb, inputs_sha256.trxusdt_1d.parquet=9eb8c62328057e0eef19013be9e435b585d880a9ebe14a6f59bc1cc14427d3f3, inputs_sha256.xrpusdt_1d.parquet=d03430a83a62632adaa02878069c6124f9855247238fc2f635d19b0c6bf91f30 | real | absent | true | false |
+| receipts/legacy-unsealed/dip_bench_crypto_1d_20260925.json | 584eb681dcd18fc65835c1573360b4b5fc9ebb72aa662bcbb9e7c101b06e2f03 | absent | no_embedded_seal | absent | inputs_sha256.adausdt_1d.parquet=59b5ec1a9076065bbedc3e14e49e59ee5f3781646721710dffca0aeab093a3f2, inputs_sha256.avaxusdt_1d.parquet=40028d2c07bced6cc2d37b6629538959f99fabc8b6653c8c696d87c0a7cc2359, inputs_sha256.bnbusdt_1d.parquet=822ec14bb30fda27bd14b4ab2a99070ae2d78858794c08444f8c0adbf75a80c1, inputs_sha256.btcusdt_1d.parquet=4467995a27dc580f8ace646bad30fe0c04f76dddd7454ba2822a057b8267e0c6, inputs_sha256.dogeusdt_1d.parquet=a8a8005ee958a265c313ac6ee3da9f0dacf1e1d7be95b7496bb5a58d687bf7c7, inputs_sha256.ethusdt_1d.parquet=6f560f88c070d2845e8da146e50963f4bd69b1dcef31cf4b481c5b5f9ce60250, inputs_sha256.linkusdt_1d.parquet=e09b987e4a7c9fbb9b8fe659d68677d75fe687b963451b09f14698dbe997b512, inputs_sha256.ltcusdt_1d.parquet=ce5bd0ab9540792895940afae9e0934db0eaf0e221bf3ae7bd3d1e89ce361b3a, inputs_sha256.solusdt_1d.parquet=bda7989c04cf8014a6aae32f92a23800a1b42e434108d4ff85b3192e24d393fb, inputs_sha256.trxusdt_1d.parquet=9eb8c62328057e0eef19013be9e435b585d880a9ebe14a6f59bc1cc14427d3f3, inputs_sha256.xrpusdt_1d.parquet=d03430a83a62632adaa02878069c6124f9855247238fc2f635d19b0c6bf91f30 | real | absent | true | false |
 
 Recorded data label: `historical 1d bars (real market data; descriptive research)`
 Events: `176`
@@ -500,7 +500,7 @@ P(recovery) = unconditional baseline frequency (in-sample, descriptive — not a
 | TRXUSDT | 999 | 9 |
 | XRPUSDT | 999 | 15 |
 
-Disclaimer copied verbatim from `receipts/dip_bench_crypto_1d_20260925.json`:
+Disclaimer copied verbatim from `receipts/legacy-unsealed/dip_bench_crypto_1d_20260925.json`:
 
 <!-- verbatim-receipt-text -->
 > Research/backtest evidence on historical data, not live performance. The climatology forecaster is an in-sample descriptive baseline; it is not a tradeable signal and authorizes nothing.
@@ -511,297 +511,6 @@ Disclaimer copied verbatim from `receipts/dip_bench_crypto_1d_20260925.json`:
 Remaining files under `receipts/`. Result fields are copied. Fields whose
 names tokenize to a forbidden research-headline metric are omitted and
 counted. Prose that contains such a token is quoted verbatim.
-
-### `receipts/adaptive_mix_20asset_1d_20260922.json`
-
-| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/adaptive_mix_20asset_1d_20260922.json | b59422415e556f674ea03fb8e9a3b867408bf6d163cf7c11c64feeb7e33b4313 | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3 | unspecified | absent | true | false |
-
-- `schema`: adaptive_mix_replay.v1
-- `created_at`: 2026-09-22T15:44:07.498331+00:00
-- `evidence_level`: historical_exploratory_tail_reused
-- `research_only`: true
-- `data_source`: binance_usdtm_perp
-- `n_assets`: 20
-- `bar_count`: 43912
-- `holdout_cut`: 2025-04-26 00:00:00+00:00
-- `allocator`:
-  - `window`: 60
-  - `min_obs`: 20
-  - `temperature`: 1.0
-  - `equal_anchor`: 0.2
-  - `input`:
-<!-- verbatim-receipt-text -->
-> costed sleeve NAV through completed close
-<!-- /verbatim-receipt-text -->
-  - `fill`: following bar open
-- `results`:
-  - `adaptive`:
-    - `segments`:
-      - `development`:
-        - `n`: 2055
-        - `net_return`: -0.050257767747253546
-        - `cagr`: -0.009123090410010026
-        - `max_drawdown`: -0.08711026995149562
-      - `historical_tail_exploratory`:
-        - `n`: 514
-        - `net_return`: 0.02571011661273359
-        - `cagr`: 0.018202461927767866
-        - `max_drawdown`: -0.029565209645673107
-    - `full_path_risk_gate_rejects`: 68
-    - `full_path_liquidations`: 0
-    - `full_path_costs`:
-      - `commission`: 10707.819063275427
-      - `spread`: 53539.095316377076
-      - `impact`: 2931.9030167522837
-  - `equal`:
-    - `segments`:
-      - `development`:
-        - `n`: 2055
-        - `net_return`: -0.09162984419899656
-        - `cagr`: -0.0169360824848912
-        - `max_drawdown`: -0.13144875185724092
-      - `historical_tail_exploratory`:
-        - `n`: 514
-        - `net_return`: 0.04438495980724566
-        - `cagr`: 0.031341295283180415
-        - `max_drawdown`: -0.03316082801239051
-    - `full_path_risk_gate_rejects`: 42
-    - `full_path_liquidations`: 0
-    - `full_path_costs`:
-      - `commission`: 9199.821275233466
-      - `spread`: 45999.10637616721
-      - `impact`: 2661.070875599598
-- `paper_sleeves`:
-  - `carry`:
-    - `development`:
-      - `n`: 2055
-      - `net_return`: 0.13921179068155332
-      - `cagr`: 0.023436075933308764
-      - `max_drawdown`: -0.02124751383521928
-    - `historical_tail_exploratory`:
-      - `n`: 514
-      - `net_return`: -0.01292817978287042
-      - `cagr`: -0.009204086642884413
-      - `max_drawdown`: -0.01954388780574723
-  - `fade`:
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.1010058568098029
-      - `cagr`: -0.018747281400395388
-      - `max_drawdown`: -0.12347201732005986
-    - `historical_tail_exploratory`:
-      - `n`: 514
-      - `net_return`: 0.014295825918295924
-      - `cagr`: 0.010137772432946779
-      - `max_drawdown`: -0.015142390623816837
-  - `momentum`:
-    - `development`:
-      - `n`: 2055
-      - `net_return`: 0.1829170111890468
-      - `cagr`: 0.030307095892233793
-      - `max_drawdown`: -0.19683287994774645
-    - `historical_tail_exploratory`:
-      - `n`: 514
-      - `net_return`: 0.08068636345502589
-      - `cagr`: 0.05668876861045957
-      - `max_drawdown`: -0.05448879753982827
-  - `sweep`:
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.45771614875694644
-      - `cagr`: -0.10306249168386028
-      - `max_drawdown`: -0.4901462881448232
-    - `historical_tail_exploratory`:
-      - `n`: 514
-      - `net_return`: 0.04046353851169804
-      - `cagr`: 0.028588026058157467
-      - `max_drawdown`: -0.06868424667379747
-  - `trend`:
-    - `development`:
-      - `n`: 2055
-      - `net_return`: 0.03611793221429993
-      - `cagr`: 0.00632621597641192
-      - `max_drawdown`: -0.12078424009757494
-    - `historical_tail_exploratory`:
-      - `n`: 514
-      - `net_return`: 0.058717960871798924
-      - `cagr`: 0.04137930948008739
-      - `max_drawdown`: -0.07982618739838132
-- `mean_adaptive_allocation`:
-  - `development`:
-    - `carry`: 0.2484398409058769
-    - `fade`: 0.1665964980707751
-    - `momentum`: 0.22625875949232244
-    - `sweep`: 0.16271173590126117
-    - `trend`: 0.19599316562976446
-  - `historical_tail_exploratory`:
-    - `carry`: 0.18021988979794917
-    - `fade`: 0.1835988639194764
-    - `momentum`: 0.2162850206060653
-    - `sweep`: 0.24675865974495423
-    - `trend`: 0.17313756593155488
-
-Omitted 14 fields whose names tokenize to a forbidden research-headline metric.
-
-### `receipts/adaptive_mix_band_search_20asset_1d_20260922.json`
-
-| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/adaptive_mix_band_search_20asset_1d_20260922.json | 5e02918850944a68d1d45815b5928f1eed462d456eac4723ac9290514e7b97f4 | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3 | unspecified | absent | true | false |
-
-- `schema`: adaptive_mix_band_search.v1
-- `created_at`: 2026-09-22T15:44:08.787931+00:00
-- `evidence_level`: historical_development_only
-- `research_only`: true
-- `n_assets`: 20
-- `holdout_cut`: 2025-04-26 00:00:00+00:00
-- `selection_rule`:
-<!-- verbatim-receipt-text -->
-> positive net CAGR and Sharpe, max drawdown under 5%; then highest development Sharpe
-<!-- /verbatim-receipt-text -->
-- `candidates`:
-  - [0]
-    - `band`: 0.0
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.050257767747253546
-      - `cagr`: -0.009123090410010026
-      - `max_drawdown`: -0.08711026995149562
-    - `eligible`: false
-    - `n_target_requests`: 33632
-    - `risk_gate_rejects`: 37
-    - `costs`:
-      - `commission`: 8224.208607185903
-      - `spread`: 41121.04303592964
-      - `impact`: 2304.530065197563
-  - [1]
-    - `band`: 0.0025
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.09216156577727797
-      - `cagr`: -0.01703838495591936
-      - `max_drawdown`: -0.10523395988832385
-    - `eligible`: false
-    - `n_target_requests`: 9551
-    - `risk_gate_rejects`: 23
-    - `costs`:
-      - `commission`: 6438.732052437595
-      - `spread`: 32193.66026218792
-      - `impact`: 2072.5069912422623
-  - [2]
-    - `band`: 0.005
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.07140452984843793
-      - `cagr`: -0.013080836079716662
-      - `max_drawdown`: -0.09359214429608098
-    - `eligible`: false
-    - `n_target_requests`: 5592
-    - `risk_gate_rejects`: 28
-    - `costs`:
-      - `commission`: 5460.666130636665
-      - `spread`: 27303.33065318333
-      - `impact`: 1956.104097916909
-  - [3]
-    - `band`: 0.01
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.019231316573260715
-      - `cagr`: -0.0034454666210986806
-      - `max_drawdown`: -0.1139716110675979
-    - `eligible`: false
-    - `n_target_requests`: 2518
-    - `risk_gate_rejects`: 13
-    - `costs`:
-      - `commission`: 3813.098350123
-      - `spread`: 19065.491750614976
-      - `impact`: 1629.4556694918513
-  - [4]
-    - `band`: 0.02
-    - `development`:
-      - `n`: 2055
-      - `net_return`: -0.13106407203519255
-      - `cagr`: -0.024660410714203884
-      - `max_drawdown`: -0.27657440301956515
-    - `eligible`: false
-    - `n_target_requests`: 662
-    - `risk_gate_rejects`: 3
-    - `costs`:
-      - `commission`: 1433.8767650540135
-      - `spread`: 7169.383825270064
-      - `impact`: 826.4444476240769
-- `selected_band`: null
-
-Omitted 5 fields whose names tokenize to a forbidden research-headline metric.
-
-### `receipts/basis_pair_candidate_20asset_1d_20260922.json`
-
-| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/basis_pair_candidate_20asset_1d_20260922.json | d021801c94e33d8720f9084762138893978a61e36ef670b4c0140edeaf37c1ec | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.adausdt_1d.spot.parquet=8f6393c9c6056a922eced1612696e45a9c39ece856dee82324b665891e9b8304, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.aptusdt_1d.spot.parquet=0162c78cb3c1d64cad82ff53be6bd212af1dd40b06dd8e88fe5fd23f8501aa78, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.arbusdt_1d.spot.parquet=14dd4758db2369d61f2a57696e2ceaef2aab8d703d91269a6971dad67f99ee98, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.atomusdt_1d.spot.parquet=335499224afcc280ee3f0e25041652dafe3afe2b18e256a492c258adfe8d189a, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.avaxusdt_1d.spot.parquet=07dc4a61d7d3c3add63f74b7f5d849797bd1d5e902a2e4ba4f0117fdc9b40ff4, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bchusdt_1d.spot.parquet=81c05b927aa6afa0909f02eb52adfd97da79ca921ce3b3983859d5d2039814f5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.bnbusdt_1d.spot.parquet=b42d2456a72867745bf663176c094850f4991975cbc72165fc5bf10f67fa1ccb, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.btcusdt_1d.spot.parquet=3dbd53cd2a483f37dac9599786f2dadbca5c122734dc63d59e8dc606897d5c22, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dogeusdt_1d.spot.parquet=dc2589d4d64fea57bd65a45d699392463a0d1f9da644d97b3bee4c4968fde88f, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.dotusdt_1d.spot.parquet=d31160f702dea385addfe50a4de9794dfae26a892ad738de1eb4ea011040315f, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.ethusdt_1d.spot.parquet=daebae805af104c5f9de6f26e4eeafe64394ae71d393e2b9c0c1169d4cf184c5, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.filusdt_1d.spot.parquet=d116cb9e54f168067ac2f58b0e2c02c445a0c0765781f95f72a62bab8346bebb, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.linkusdt_1d.spot.parquet=4e9dfb100be0b659893e9a99737625eef4f27f2c40a8e49cb22d03f051470819, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.ltcusdt_1d.spot.parquet=7106b554434e8c887a736efc01501793d4377014ad729f7c3308fde450fa8a14, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.nearusdt_1d.spot.parquet=0f9454be77d4e3ae74befa7d0b308bc0c943e3b980afe07bb9fd356151dce8fb, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.solusdt_1d.spot.parquet=68f14a781c0243037bf0397726543a8e23d794862862c59d06c2594be97a59d6, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.suiusdt_1d.spot.parquet=b5c16d647d7465cdb4e5f3a4cd029b13aea7b34b4ab6fe0046a1ac256ae5d3e0, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.trxusdt_1d.spot.parquet=ff7113fe2f0c8fafb27f0acdb0ede039625c23327e1de3a430c4332a5f25e84f, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.uniusdt_1d.spot.parquet=42dbf32e89f03ea36d38bfdf5e4f98dec630baed501c3648cc3fe7b551ff483c, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3, input_hashes.xrpusdt_1d.spot.parquet=c341c55f9aa945bcd110d7536fc26466f598d6534ef77b8dc955903c4960bf2d | unspecified | absent | true | false |
-
-- `schema`: basis_pair_candidate.v1
-- `created_at`: 2026-09-22T15:43:37.776452+00:00
-- `evidence_level`: historical_development_only
-- `research_only`: true
-- `source`: binance_spot_perp_funding
-- `survivorship`: currently listed Binance symbols; historical delistings absent
-- `n_assets`: 20
-- `development_cut`: 2025-04-26 00:00:00+00:00
-- `n_target_events`: 4082
-- `development`:
-  - `total_return`: -0.09214520216663091
-  - `cagr`: -0.017035235885943356
-  - `max_drawdown`: -0.09216765565151375
-  - `n`: 2055
-  - `periods_per_year`: 365.25
-  - `funding_net`: 27118.42200570218
-  - `mean_turnover`: 0.05794611672643284
-  - `liquidation_count`: 0
-  - `risk_gate_rejects`: 561
-  - `commission`: 22763.080253655593
-  - `spread`: 113815.40126827796
-  - `impact`: 26287.22382882894
-  - `ruined`: false
-- `development_eligible`: false
-
-Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
-
-### `receipts/basis_reversion_screen_20asset_1d_20260922.json`
-
-| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/basis_reversion_screen_20asset_1d_20260922.json | 61c9c8f5b3e502f0c5218dd743ad030ecbb962d6822bb7b81a2b962445aa378f | absent | no_embedded_seal | absent | input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.adausdt_1d.spot.parquet=8f6393c9c6056a922eced1612696e45a9c39ece856dee82324b665891e9b8304, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.aptusdt_1d.spot.parquet=0162c78cb3c1d64cad82ff53be6bd212af1dd40b06dd8e88fe5fd23f8501aa78, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.arbusdt_1d.spot.parquet=14dd4758db2369d61f2a57696e2ceaef2aab8d703d91269a6971dad67f99ee98, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.atomusdt_1d.spot.parquet=335499224afcc280ee3f0e25041652dafe3afe2b18e256a492c258adfe8d189a, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.avaxusdt_1d.spot.parquet=07dc4a61d7d3c3add63f74b7f5d849797bd1d5e902a2e4ba4f0117fdc9b40ff4, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bchusdt_1d.spot.parquet=81c05b927aa6afa0909f02eb52adfd97da79ca921ce3b3983859d5d2039814f5, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.bnbusdt_1d.spot.parquet=b42d2456a72867745bf663176c094850f4991975cbc72165fc5bf10f67fa1ccb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.btcusdt_1d.spot.parquet=3dbd53cd2a483f37dac9599786f2dadbca5c122734dc63d59e8dc606897d5c22, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dogeusdt_1d.spot.parquet=dc2589d4d64fea57bd65a45d699392463a0d1f9da644d97b3bee4c4968fde88f, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.dotusdt_1d.spot.parquet=d31160f702dea385addfe50a4de9794dfae26a892ad738de1eb4ea011040315f, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.ethusdt_1d.spot.parquet=daebae805af104c5f9de6f26e4eeafe64394ae71d393e2b9c0c1169d4cf184c5, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.filusdt_1d.spot.parquet=d116cb9e54f168067ac2f58b0e2c02c445a0c0765781f95f72a62bab8346bebb, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.linkusdt_1d.spot.parquet=4e9dfb100be0b659893e9a99737625eef4f27f2c40a8e49cb22d03f051470819, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.ltcusdt_1d.spot.parquet=7106b554434e8c887a736efc01501793d4377014ad729f7c3308fde450fa8a14, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.nearusdt_1d.spot.parquet=0f9454be77d4e3ae74befa7d0b308bc0c943e3b980afe07bb9fd356151dce8fb, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.solusdt_1d.spot.parquet=68f14a781c0243037bf0397726543a8e23d794862862c59d06c2594be97a59d6, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.suiusdt_1d.spot.parquet=b5c16d647d7465cdb4e5f3a4cd029b13aea7b34b4ab6fe0046a1ac256ae5d3e0, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.trxusdt_1d.spot.parquet=ff7113fe2f0c8fafb27f0acdb0ede039625c23327e1de3a430c4332a5f25e84f, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.uniusdt_1d.spot.parquet=42dbf32e89f03ea36d38bfdf5e4f98dec630baed501c3648cc3fe7b551ff483c, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3, input_hashes.xrpusdt_1d.spot.parquet=c341c55f9aa945bcd110d7536fc26466f598d6534ef77b8dc955903c4960bf2d | unspecified | absent | true | false |
-
-- `schema`: basis_reversion_screen.v1
-- `created_at`: 2026-09-22T15:37:20.535305+00:00
-- `evidence_level`: development_pre_cost_diagnostic
-- `research_only`: true
-- `bar_interval`: 1d
-- `signal`: negative 30-bar z-score of same-asset perp/spot closing basis
-- `target`: next-bar perp open-to-close, long top quartile and short bottom quartile
-- `development_cut`: 2025-04-26 00:00:00+00:00
-- `n_assets`: 20
-- `n_dates`: 1881
-- `mean_daily_gross_spread`: 0.0015632331277941444
-- `median_daily_gross_spread`: 0.0010410200759501664
-- `positive_day_fraction`: 0.5231259968102073
-- `four_chronological_fold_means`:
-  - 0.005967220927493027
-  - 0.00046005410140306937
-  - 0.001252727212214577
-  - -0.001436439916741964
-- `hedged_pair_rule`: long spot/short perp when basis is positive and z-score exceeds 1
-- `hedged_pair_excludes`: funding, commissions, spread, impact, margin costs
-- `hedged_pair_active_date_fraction`: 0.5555555555555556
-- `hedged_pair_mean_daily_gross_return`: 0.00018387810420158332
-- `hedged_pair_four_fold_means`:
-  - 0.00033789209517964727
-  - 0.00015650157077502314
-  - 0.00012397308872545248
-  - 0.00011681797278370385
 
 ### `receipts/capacity_eval_cd0854242ed8a9ec.json`
 
@@ -1085,16 +794,16 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
 - `schema`: capacity_overlay.v1
 - `seed`: 11
 
-### `receipts/evidence_audit_a3dd2a79c76661fa.json`
+### `receipts/evidence_audit_3464d8f8197bf737.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/evidence_audit_a3dd2a79c76661fa.json | b7d0f308dc38e5f86874564bcd0229d8f5ccf97885e96f77c7fa107dad6b0c1e | a3dd2a79c76661fa8bc8cb728d7dd548816027047c23a5fdefa132c5b8ce1344 | not_checked | 3246b8d37c1ffda200754c943d9c97879cddd5a6 | absent | unspecified | absent | absent | false |
+| receipts/evidence_audit_3464d8f8197bf737.json | 77c38c8edc534276ad901f4c64c5024f8e79c99c5ece43b001b003f362584a5d | 3464d8f8197bf73712dfdbe29e13668a345d29279659d08ae9bae9bb351f42f0 | not_checked | b3b489d52ee8f9e0a6e817bcb320e8a4b3f2b1c6 | absent | unspecified | absent | absent | false |
 
 - `code_files`:
   - `evidence_audit.py`: 7c30b69bbcb62a4682195e77b3d2e1b8f5abb36899543fbd710478a98002ce47
 - `data_label`: META
-- `dataset_hash`: 3a793494767e7e25349b741b8aea2109d5d62a8b3c704c6cf60c4d364089b6e8
+- `dataset_hash`: b91b978722482d22d546e0947a62d21ca6a4e30efff980781341c46049cb7f6e
 - `environment`:
   - `blas`:
     - `found`: true
@@ -1115,8 +824,8 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - `platform`: macOS-26.5.2-arm64-arm-64bit
   - `python`: 3.12.14
   - `threadpools`:
-- `generated_at`: 2026-09-28T06:13:40.474394+00:00
-- `git_revision`: 3246b8d37c1ffda200754c943d9c97879cddd5a6
+- `generated_at`: 2026-09-28T06:22:08.701025+00:00
+- `git_revision`: b3b489d52ee8f9e0a6e817bcb320e8a4b3f2b1c6
 - `kind`: evidence_audit
 - `params_hash`: 310f4d153960b0eefb359a85344a67e97474b12e4cf51a0275440e00aa555918
 - `payload`:
@@ -1124,54 +833,6 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - `duplicate_seals`:
   - `files`:
     - [0]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: adaptive_mix_20asset_1d_20260922.json
-      - `file_sha256`: b59422415e556f674ea03fb8e9a3b867408bf6d163cf7c11c64feeb7e33b4313
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: adaptive_mix_replay.v1
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: null
-    - [1]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: adaptive_mix_band_search_20asset_1d_20260922.json
-      - `file_sha256`: 5e02918850944a68d1d45815b5928f1eed462d456eac4723ac9290514e7b97f4
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: adaptive_mix_band_search.v1
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: null
-    - [2]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: basis_pair_candidate_20asset_1d_20260922.json
-      - `file_sha256`: d021801c94e33d8720f9084762138893978a61e36ef670b4c0140edeaf37c1ec
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: basis_pair_candidate.v1
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: null
-    - [3]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: basis_reversion_screen_20asset_1d_20260922.json
-      - `file_sha256`: 61c9c8f5b3e502f0c5218dd743ad030ecbb962d6822bb7b81a2b962445aa378f
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: basis_reversion_screen.v1
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: null
-    - [4]
       - `digest_convention`: canonical_json
       - `errors`:
       - `file`: capacity_eval_cd0854242ed8a9ec.json
@@ -1182,31 +843,7 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
       - `sealed`: true
       - `valid`: true
       - `verdict`: null
-    - [5]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: dip_bench_crypto_1d_20260925.json
-      - `file_sha256`: 584eb681dcd18fc65835c1573360b4b5fc9ebb72aa662bcbb9e7c101b06e2f03
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: fx1.dip_bench/v1
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: null
-    - [6]
-      - `digest_convention`: null
-      - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: fast_replay_p42_conformance_20260927.json
-      - `file_sha256`: 8236a26489e9253dfcc1f3d879a2fd276c0023fb4d167c764c5330406ce950d8
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: unknown
-      - `sealed`: false
-      - `valid`: false
-      - `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
-    - [7]
+    - [1]
       - `digest_convention`: canonical_json
       - `errors`:
       - `file`: fleet_eval_5ddf15b0dc7d3ca1.json
@@ -1217,19 +854,103 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
       - `sealed`: true
       - `valid`: true
       - `verdict`: null
-    - [8]
-      - `digest_convention`: null
+    - [2]
+      - `digest_convention`: canonical_json
       - `errors`:
-        - receipt_sha256_missing_or_invalid
-      - `file`: incumbent_bench_qlib.json
-      - `file_sha256`: f455123351b44151d68876d1a93fa3a2dc449c51d280ee83926f22cd9861984f
-      - `filename_digest_ok`: null
-      - `kind`: null
-      - `schema`: incumbent_bench.v1
-      - `sealed`: false
-      - `valid`: false
+      - `file`: rankic_eval_9ebdad7da83e7348.json
+      - `file_sha256`: ff139132f80998e336918077dffacfe6d7a660305d025ca635cdcbe7837251d4
+      - `filename_digest_ok`: true
+      - `kind`: cross_sectional_rankic_eval
+      - `schema`: cross_sectional_rankic.v1
+      - `sealed`: true
+      - `valid`: true
       - `verdict`: null
-    - [9]
+  - `findings`:
+  - `index_fresh`: null
+  - `n_files`: 3
+  - `n_invalid_sealed`: 0
+  - `n_sealed`: 3
+  - `n_unsealed`: 0
+  - `n_valid`: 3
+  - `receipts_dir`: receipts
+  - `schema`: evidence_audit.v1
+- `receipt_sha256`: 3464d8f8197bf73712dfdbe29e13668a345d29279659d08ae9bae9bb351f42f0
+- `schema`: receipt.v2
+- `schema_version`: 2
+- `verdict`: pass
+
+### `receipts/evidence_audit_d449e1ca0cc119a6.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/evidence_audit_d449e1ca0cc119a6.json | deb75d4ab1744617a0032397524891613c50282581f913d344e4acda9c6cd9d1 | d449e1ca0cc119a62dbef15f3916494ff65cc018494b36253a6f6f5807173b2b | not_checked | 35a8ef1b63b31595488141e287ca67cbff5e2727 | absent | unspecified | absent | absent | false |
+
+- `code_files`:
+  - `evidence_audit.py`: 7c30b69bbcb62a4682195e77b3d2e1b8f5abb36899543fbd710478a98002ce47
+- `data_label`: META
+- `dataset_hash`: b8cebe8cca2312fdf51e089d8c8c71664137f3900dd0d0e085a0987559fa6b0a
+- `environment`:
+  - `blas`:
+    - `found`: true
+    - `name`: accelerate
+    - `version`: null
+  - `byteorder`: little
+  - `fingerprint_sha256`: 207a7ded44205cd3554555ff934f3b8bc709709ad1635770d1a75739a5be6aab
+  - `implementation`: CPython
+  - `lapack`:
+    - `found`: true
+    - `name`: accelerate
+    - `version`: null
+  - `machine`: arm64
+  - `packages`:
+    - `numpy`: 2.5.3
+    - `polars`: 1.44.2
+    - `scipy`: 1.18.1
+  - `platform`: macOS-26.5.2-arm64-arm-64bit
+  - `python`: 3.12.14
+  - `threadpools`:
+- `generated_at`: 2026-09-28T06:28:31.032124+00:00
+- `git_revision`: 35a8ef1b63b31595488141e287ca67cbff5e2727
+- `kind`: evidence_audit
+- `params_hash`: 310f4d153960b0eefb359a85344a67e97474b12e4cf51a0275440e00aa555918
+- `payload`:
+  - `check_index`: true
+  - `duplicate_seals`:
+  - `files`:
+    - [0]
+      - `digest_convention`: canonical_json
+      - `errors`:
+      - `file`: capacity_eval_cd0854242ed8a9ec.json
+      - `file_sha256`: e0a6c8250891cd5065edfc3bb385e6fdd640e5ca376cac496420815ab16881ed
+      - `filename_digest_ok`: true
+      - `kind`: capacity_overlay_eval
+      - `schema`: capacity_overlay.v1
+      - `sealed`: true
+      - `valid`: true
+      - `verdict`: null
+    - [1]
+      - `digest_convention`: canonical_json
+      - `errors`:
+      - `file`: evidence_audit_3464d8f8197bf737.json
+      - `file_sha256`: 77c38c8edc534276ad901f4c64c5024f8e79c99c5ece43b001b003f362584a5d
+      - `filename_digest_ok`: true
+      - `kind`: evidence_audit
+      - `schema`: receipt.v2
+      - `sealed`: true
+      - `valid`: true
+      - `verdict`: pass
+    - [2]
+      - `digest_convention`: canonical_json
+      - `errors`:
+      - `file`: fleet_eval_5ddf15b0dc7d3ca1.json
+      - `file_sha256`: 67713fe534eb3c4a508e4c0211836026af4f9efe8c27cd2cc7d69118a9cd1b98
+      - `filename_digest_ok`: true
+      - `kind`: distribution_fleet_eval
+      - `schema`: fleet_eval.v1
+      - `sealed`: true
+      - `valid`: true
+      - `verdict`: null
+    - [3]
       - `digest_convention`: canonical_json
       - `errors`:
       - `file`: rankic_eval_9ebdad7da83e7348.json
@@ -1242,49 +963,17 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
       - `verdict`: null
   - `findings`:
   - `index_fresh`: true
-  - `n_files`: 10
+  - `n_files`: 4
   - `n_invalid_sealed`: 0
-  - `n_sealed`: 3
-  - `n_unsealed`: 7
-  - `n_valid`: 3
+  - `n_sealed`: 4
+  - `n_unsealed`: 0
+  - `n_valid`: 4
   - `receipts_dir`: receipts
   - `schema`: evidence_audit.v1
-- `receipt_sha256`: a3dd2a79c76661fa8bc8cb728d7dd548816027047c23a5fdefa132c5b8ce1344
+- `receipt_sha256`: d449e1ca0cc119a62dbef15f3916494ff65cc018494b36253a6f6f5807173b2b
 - `schema`: receipt.v2
 - `schema_version`: 2
 - `verdict`: pass
-
-### `receipts/fast_replay_p42_conformance_20260927.json`
-
-| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/fast_replay_p42_conformance_20260927.json | 8236a26489e9253dfcc1f3d879a2fd276c0023fb4d167c764c5330406ce950d8 | absent | no_embedded_seal | absent | absent | unspecified | absent | true | false |
-
-- `receipt`: fast_replay_p42_conformance
-- `generated`: 2026-09-27T00:00:00Z
-- `ultraplan_item`: P4.2
-- `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
-- `base_commit`: 7d2e01e4dba09d178ed46ad802950d2296d3eae6
-- `evidence`:
-  - tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type
-  - tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)
-  - tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload
-- `fixes`:
-  - engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)
-  - run_backtest_fast now carries the dispatcher's panel/completeness refusals itself — direct calls and fast=True share one fail-closed source of truth
-  - fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)
-- `gaps_refused`:
-  - allow_close_auction=True (close-auction order semantics not replicated)
-  - risk_overlay (mid-loop target scaling/flattening not replicated)
-  - GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 — refused rather than approximate)
-  - empty/duplicate-key/non-Datetime/mismatched-unit panels
-- `known_issue_out_of_lane`: aggregate_shortfall orders top_cost_names/by_side by group_by+sort on the aggregated value alone; exact ties keep polars hash-partition order — nondeterministic across executions even in the reference engine (observed on a generated workload with total_is ties of 0.0). Conformance suite canonicalizes element order in those two lists; fix belongs to execution/implementation_shortfall.py.
-- `rerun`: uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q
-- `research_only`: true
-- `disclaimer`:
-<!-- verbatim-receipt-text -->
-> All workloads are SYNTHETIC generated fixtures. This receipt attests engine conformance, not performance; NAV/fee/P&L numbers are not evidence of live-trading results.
-<!-- /verbatim-receipt-text -->
 
 ### `receipts/fleet_eval_5ddf15b0dc7d3ca1.json`
 
@@ -3954,6 +3643,329 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.75
   - 0.9
   - 0.95
+
+### `receipts/legacy-unsealed/adaptive_mix_20asset_1d_20260922.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/legacy-unsealed/adaptive_mix_20asset_1d_20260922.json | b59422415e556f674ea03fb8e9a3b867408bf6d163cf7c11c64feeb7e33b4313 | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3 | unspecified | absent | true | false |
+
+- `schema`: adaptive_mix_replay.v1
+- `created_at`: 2026-09-22T15:44:07.498331+00:00
+- `evidence_level`: historical_exploratory_tail_reused
+- `research_only`: true
+- `data_source`: binance_usdtm_perp
+- `n_assets`: 20
+- `bar_count`: 43912
+- `holdout_cut`: 2025-04-26 00:00:00+00:00
+- `allocator`:
+  - `window`: 60
+  - `min_obs`: 20
+  - `temperature`: 1.0
+  - `equal_anchor`: 0.2
+  - `input`:
+<!-- verbatim-receipt-text -->
+> costed sleeve NAV through completed close
+<!-- /verbatim-receipt-text -->
+  - `fill`: following bar open
+- `results`:
+  - `adaptive`:
+    - `segments`:
+      - `development`:
+        - `n`: 2055
+        - `net_return`: -0.050257767747253546
+        - `cagr`: -0.009123090410010026
+        - `max_drawdown`: -0.08711026995149562
+      - `historical_tail_exploratory`:
+        - `n`: 514
+        - `net_return`: 0.02571011661273359
+        - `cagr`: 0.018202461927767866
+        - `max_drawdown`: -0.029565209645673107
+    - `full_path_risk_gate_rejects`: 68
+    - `full_path_liquidations`: 0
+    - `full_path_costs`:
+      - `commission`: 10707.819063275427
+      - `spread`: 53539.095316377076
+      - `impact`: 2931.9030167522837
+  - `equal`:
+    - `segments`:
+      - `development`:
+        - `n`: 2055
+        - `net_return`: -0.09162984419899656
+        - `cagr`: -0.0169360824848912
+        - `max_drawdown`: -0.13144875185724092
+      - `historical_tail_exploratory`:
+        - `n`: 514
+        - `net_return`: 0.04438495980724566
+        - `cagr`: 0.031341295283180415
+        - `max_drawdown`: -0.03316082801239051
+    - `full_path_risk_gate_rejects`: 42
+    - `full_path_liquidations`: 0
+    - `full_path_costs`:
+      - `commission`: 9199.821275233466
+      - `spread`: 45999.10637616721
+      - `impact`: 2661.070875599598
+- `paper_sleeves`:
+  - `carry`:
+    - `development`:
+      - `n`: 2055
+      - `net_return`: 0.13921179068155332
+      - `cagr`: 0.023436075933308764
+      - `max_drawdown`: -0.02124751383521928
+    - `historical_tail_exploratory`:
+      - `n`: 514
+      - `net_return`: -0.01292817978287042
+      - `cagr`: -0.009204086642884413
+      - `max_drawdown`: -0.01954388780574723
+  - `fade`:
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.1010058568098029
+      - `cagr`: -0.018747281400395388
+      - `max_drawdown`: -0.12347201732005986
+    - `historical_tail_exploratory`:
+      - `n`: 514
+      - `net_return`: 0.014295825918295924
+      - `cagr`: 0.010137772432946779
+      - `max_drawdown`: -0.015142390623816837
+  - `momentum`:
+    - `development`:
+      - `n`: 2055
+      - `net_return`: 0.1829170111890468
+      - `cagr`: 0.030307095892233793
+      - `max_drawdown`: -0.19683287994774645
+    - `historical_tail_exploratory`:
+      - `n`: 514
+      - `net_return`: 0.08068636345502589
+      - `cagr`: 0.05668876861045957
+      - `max_drawdown`: -0.05448879753982827
+  - `sweep`:
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.45771614875694644
+      - `cagr`: -0.10306249168386028
+      - `max_drawdown`: -0.4901462881448232
+    - `historical_tail_exploratory`:
+      - `n`: 514
+      - `net_return`: 0.04046353851169804
+      - `cagr`: 0.028588026058157467
+      - `max_drawdown`: -0.06868424667379747
+  - `trend`:
+    - `development`:
+      - `n`: 2055
+      - `net_return`: 0.03611793221429993
+      - `cagr`: 0.00632621597641192
+      - `max_drawdown`: -0.12078424009757494
+    - `historical_tail_exploratory`:
+      - `n`: 514
+      - `net_return`: 0.058717960871798924
+      - `cagr`: 0.04137930948008739
+      - `max_drawdown`: -0.07982618739838132
+- `mean_adaptive_allocation`:
+  - `development`:
+    - `carry`: 0.2484398409058769
+    - `fade`: 0.1665964980707751
+    - `momentum`: 0.22625875949232244
+    - `sweep`: 0.16271173590126117
+    - `trend`: 0.19599316562976446
+  - `historical_tail_exploratory`:
+    - `carry`: 0.18021988979794917
+    - `fade`: 0.1835988639194764
+    - `momentum`: 0.2162850206060653
+    - `sweep`: 0.24675865974495423
+    - `trend`: 0.17313756593155488
+
+Omitted 14 fields whose names tokenize to a forbidden research-headline metric.
+
+### `receipts/legacy-unsealed/adaptive_mix_band_search_20asset_1d_20260922.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/legacy-unsealed/adaptive_mix_band_search_20asset_1d_20260922.json | 5e02918850944a68d1d45815b5928f1eed462d456eac4723ac9290514e7b97f4 | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3 | unspecified | absent | true | false |
+
+- `schema`: adaptive_mix_band_search.v1
+- `created_at`: 2026-09-22T15:44:08.787931+00:00
+- `evidence_level`: historical_development_only
+- `research_only`: true
+- `n_assets`: 20
+- `holdout_cut`: 2025-04-26 00:00:00+00:00
+- `selection_rule`:
+<!-- verbatim-receipt-text -->
+> positive net CAGR and Sharpe, max drawdown under 5%; then highest development Sharpe
+<!-- /verbatim-receipt-text -->
+- `candidates`:
+  - [0]
+    - `band`: 0.0
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.050257767747253546
+      - `cagr`: -0.009123090410010026
+      - `max_drawdown`: -0.08711026995149562
+    - `eligible`: false
+    - `n_target_requests`: 33632
+    - `risk_gate_rejects`: 37
+    - `costs`:
+      - `commission`: 8224.208607185903
+      - `spread`: 41121.04303592964
+      - `impact`: 2304.530065197563
+  - [1]
+    - `band`: 0.0025
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.09216156577727797
+      - `cagr`: -0.01703838495591936
+      - `max_drawdown`: -0.10523395988832385
+    - `eligible`: false
+    - `n_target_requests`: 9551
+    - `risk_gate_rejects`: 23
+    - `costs`:
+      - `commission`: 6438.732052437595
+      - `spread`: 32193.66026218792
+      - `impact`: 2072.5069912422623
+  - [2]
+    - `band`: 0.005
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.07140452984843793
+      - `cagr`: -0.013080836079716662
+      - `max_drawdown`: -0.09359214429608098
+    - `eligible`: false
+    - `n_target_requests`: 5592
+    - `risk_gate_rejects`: 28
+    - `costs`:
+      - `commission`: 5460.666130636665
+      - `spread`: 27303.33065318333
+      - `impact`: 1956.104097916909
+  - [3]
+    - `band`: 0.01
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.019231316573260715
+      - `cagr`: -0.0034454666210986806
+      - `max_drawdown`: -0.1139716110675979
+    - `eligible`: false
+    - `n_target_requests`: 2518
+    - `risk_gate_rejects`: 13
+    - `costs`:
+      - `commission`: 3813.098350123
+      - `spread`: 19065.491750614976
+      - `impact`: 1629.4556694918513
+  - [4]
+    - `band`: 0.02
+    - `development`:
+      - `n`: 2055
+      - `net_return`: -0.13106407203519255
+      - `cagr`: -0.024660410714203884
+      - `max_drawdown`: -0.27657440301956515
+    - `eligible`: false
+    - `n_target_requests`: 662
+    - `risk_gate_rejects`: 3
+    - `costs`:
+      - `commission`: 1433.8767650540135
+      - `spread`: 7169.383825270064
+      - `impact`: 826.4444476240769
+- `selected_band`: null
+
+Omitted 5 fields whose names tokenize to a forbidden research-headline metric.
+
+### `receipts/legacy-unsealed/basis_pair_candidate_20asset_1d_20260922.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/legacy-unsealed/basis_pair_candidate_20asset_1d_20260922.json | d021801c94e33d8720f9084762138893978a61e36ef670b4c0140edeaf37c1ec | absent | no_embedded_seal | absent | input_hashes.adausdt.funding.parquet=3121dea41a3d971b1dff9e16d3dd07ba7f7731306d1b451b7eb4edf2d6778dab, input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.adausdt_1d.spot.parquet=8f6393c9c6056a922eced1612696e45a9c39ece856dee82324b665891e9b8304, input_hashes.aptusdt.funding.parquet=2fccda54f91815de3852038e6b68988a5d5a750f016edfc8360fd0808a0d5d53, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.aptusdt_1d.spot.parquet=0162c78cb3c1d64cad82ff53be6bd212af1dd40b06dd8e88fe5fd23f8501aa78, input_hashes.arbusdt.funding.parquet=9d91771028d18cd5820db949fbd52cb83c5bae19c09d5823a6acb6a5ef9eec8c, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.arbusdt_1d.spot.parquet=14dd4758db2369d61f2a57696e2ceaef2aab8d703d91269a6971dad67f99ee98, input_hashes.atomusdt.funding.parquet=b0aa0ddc3a6cc940b0c9149b82c27d61121334eef578af29778bb55d14edd87f, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.atomusdt_1d.spot.parquet=335499224afcc280ee3f0e25041652dafe3afe2b18e256a492c258adfe8d189a, input_hashes.avaxusdt.funding.parquet=8b2243986a3bdd5d1fe7362d41c1a984b44e25f2a709b3dead0376ad8cfcfa62, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.avaxusdt_1d.spot.parquet=07dc4a61d7d3c3add63f74b7f5d849797bd1d5e902a2e4ba4f0117fdc9b40ff4, input_hashes.bchusdt.funding.parquet=b8c170ec7fa4a93b7b04b41de90a1a1908e83dc2eabd34e7f393ebc3b309c3bf, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bchusdt_1d.spot.parquet=81c05b927aa6afa0909f02eb52adfd97da79ca921ce3b3983859d5d2039814f5, input_hashes.bnbusdt.funding.parquet=aa72fc43a9be3964527949c11bb1534234ff8b921d78622950f19641e9c01ff2, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.bnbusdt_1d.spot.parquet=b42d2456a72867745bf663176c094850f4991975cbc72165fc5bf10f67fa1ccb, input_hashes.btcusdt.funding.parquet=88869e924cb5117c7b192846172944201f1c68edc18cdd70510cbd82d3f63fbb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.btcusdt_1d.spot.parquet=3dbd53cd2a483f37dac9599786f2dadbca5c122734dc63d59e8dc606897d5c22, input_hashes.dogeusdt.funding.parquet=cbbcd14947a99abbe006a7b948b628f526def777092b03fabbec5f2dd833c5df, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dogeusdt_1d.spot.parquet=dc2589d4d64fea57bd65a45d699392463a0d1f9da644d97b3bee4c4968fde88f, input_hashes.dotusdt.funding.parquet=5c7e24aad965dd4cfb045430b74b9458749f437b8b622ebfe3e495342c1da4b5, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.dotusdt_1d.spot.parquet=d31160f702dea385addfe50a4de9794dfae26a892ad738de1eb4ea011040315f, input_hashes.ethusdt.funding.parquet=4ade6cddbad88d2947856a5b01faa37236272be6f8e94bd1c8c29f2427d612d2, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.ethusdt_1d.spot.parquet=daebae805af104c5f9de6f26e4eeafe64394ae71d393e2b9c0c1169d4cf184c5, input_hashes.filusdt.funding.parquet=0259dd625800dc873c25c318cfd1eeada8d48f5a85a7fc0adb1a961ea29a9e93, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.filusdt_1d.spot.parquet=d116cb9e54f168067ac2f58b0e2c02c445a0c0765781f95f72a62bab8346bebb, input_hashes.linkusdt.funding.parquet=bb67718195e20e2ffc25c78f2fb520ebeedbca1761d19d8e7d4d464d48445b98, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.linkusdt_1d.spot.parquet=4e9dfb100be0b659893e9a99737625eef4f27f2c40a8e49cb22d03f051470819, input_hashes.ltcusdt.funding.parquet=90bbb126ed3941b4a23534650f91d9184146d0db2be59e1c41c00501f2d7681c, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.ltcusdt_1d.spot.parquet=7106b554434e8c887a736efc01501793d4377014ad729f7c3308fde450fa8a14, input_hashes.nearusdt.funding.parquet=6ea882a1e14d65dcbee88a6c046166dea347b63838ba818697816d48600a54a0, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.nearusdt_1d.spot.parquet=0f9454be77d4e3ae74befa7d0b308bc0c943e3b980afe07bb9fd356151dce8fb, input_hashes.solusdt.funding.parquet=7675713eeb78c9beb362ec29fbb77f528f5c2489d0b61221e7b57a7b2393ef05, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.solusdt_1d.spot.parquet=68f14a781c0243037bf0397726543a8e23d794862862c59d06c2594be97a59d6, input_hashes.suiusdt.funding.parquet=83f972ffd68bc1db53a610a3a9c19ea89d20821519054976ea31ee1e00dae10e, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.suiusdt_1d.spot.parquet=b5c16d647d7465cdb4e5f3a4cd029b13aea7b34b4ab6fe0046a1ac256ae5d3e0, input_hashes.trxusdt.funding.parquet=80ffb4b6e52fb1be033ce9d7984d9d2270962856ca54ce5d64ee8b11db895d1c, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.trxusdt_1d.spot.parquet=ff7113fe2f0c8fafb27f0acdb0ede039625c23327e1de3a430c4332a5f25e84f, input_hashes.uniusdt.funding.parquet=0c6c104dde6a2a39a1153818abd50243f9675397125b59249cf087d322901254, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.uniusdt_1d.spot.parquet=42dbf32e89f03ea36d38bfdf5e4f98dec630baed501c3648cc3fe7b551ff483c, input_hashes.xrpusdt.funding.parquet=a1465a46d13fe61d7f2b47fdc4ce3b84910a67ae18ef5fedfee86dad54491fdd, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3, input_hashes.xrpusdt_1d.spot.parquet=c341c55f9aa945bcd110d7536fc26466f598d6534ef77b8dc955903c4960bf2d | unspecified | absent | true | false |
+
+- `schema`: basis_pair_candidate.v1
+- `created_at`: 2026-09-22T15:43:37.776452+00:00
+- `evidence_level`: historical_development_only
+- `research_only`: true
+- `source`: binance_spot_perp_funding
+- `survivorship`: currently listed Binance symbols; historical delistings absent
+- `n_assets`: 20
+- `development_cut`: 2025-04-26 00:00:00+00:00
+- `n_target_events`: 4082
+- `development`:
+  - `total_return`: -0.09214520216663091
+  - `cagr`: -0.017035235885943356
+  - `max_drawdown`: -0.09216765565151375
+  - `n`: 2055
+  - `periods_per_year`: 365.25
+  - `funding_net`: 27118.42200570218
+  - `mean_turnover`: 0.05794611672643284
+  - `liquidation_count`: 0
+  - `risk_gate_rejects`: 561
+  - `commission`: 22763.080253655593
+  - `spread`: 113815.40126827796
+  - `impact`: 26287.22382882894
+  - `ruined`: false
+- `development_eligible`: false
+
+Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
+
+### `receipts/legacy-unsealed/basis_reversion_screen_20asset_1d_20260922.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/legacy-unsealed/basis_reversion_screen_20asset_1d_20260922.json | 61c9c8f5b3e502f0c5218dd743ad030ecbb962d6822bb7b81a2b962445aa378f | absent | no_embedded_seal | absent | input_hashes.adausdt_1d.perp.parquet=f06a3b4c084985bc5d4166393eb60a90ba829243eb6ad450486ea5360dc92951, input_hashes.adausdt_1d.spot.parquet=8f6393c9c6056a922eced1612696e45a9c39ece856dee82324b665891e9b8304, input_hashes.aptusdt_1d.perp.parquet=c5ec8e6badd3de2097fc91a1f00198a1ccdeec77c971f1100a80453b75d7240d, input_hashes.aptusdt_1d.spot.parquet=0162c78cb3c1d64cad82ff53be6bd212af1dd40b06dd8e88fe5fd23f8501aa78, input_hashes.arbusdt_1d.perp.parquet=349e879fa54f8569cfa2efccf96bcf47f7359fe7f1f8a3188380afdaa9c989a1, input_hashes.arbusdt_1d.spot.parquet=14dd4758db2369d61f2a57696e2ceaef2aab8d703d91269a6971dad67f99ee98, input_hashes.atomusdt_1d.perp.parquet=13d177c80cc6e65cf4c2f3a6831a17415a7083771ac18cc3e473b85429434760, input_hashes.atomusdt_1d.spot.parquet=335499224afcc280ee3f0e25041652dafe3afe2b18e256a492c258adfe8d189a, input_hashes.avaxusdt_1d.perp.parquet=31f164333caa19d70c207b622d4eda172c1ee1ff029ca4a7cb88c803a36dcc93, input_hashes.avaxusdt_1d.spot.parquet=07dc4a61d7d3c3add63f74b7f5d849797bd1d5e902a2e4ba4f0117fdc9b40ff4, input_hashes.bchusdt_1d.perp.parquet=ae7fdedfc50baa70437a66106125e42aed7b8450a3f62876655d8c34e295cfc5, input_hashes.bchusdt_1d.spot.parquet=81c05b927aa6afa0909f02eb52adfd97da79ca921ce3b3983859d5d2039814f5, input_hashes.bnbusdt_1d.perp.parquet=d73c419c08cee6fcaf5e6bd605a8bbefa7543acf1c4aae0a234a5146ceda20fa, input_hashes.bnbusdt_1d.spot.parquet=b42d2456a72867745bf663176c094850f4991975cbc72165fc5bf10f67fa1ccb, input_hashes.btcusdt_1d.perp.parquet=40dc02291c10fcdc459fdda31eafd649d894793a5641518157d886ef25ca541a, input_hashes.btcusdt_1d.spot.parquet=3dbd53cd2a483f37dac9599786f2dadbca5c122734dc63d59e8dc606897d5c22, input_hashes.dogeusdt_1d.perp.parquet=d96509d1c25207c9b4bafe48fdd14c0c8363c9d22ba44e4712506b55e33adc45, input_hashes.dogeusdt_1d.spot.parquet=dc2589d4d64fea57bd65a45d699392463a0d1f9da644d97b3bee4c4968fde88f, input_hashes.dotusdt_1d.perp.parquet=a2bdb79938cfe010e55ef9ff8a10f6275be0a7578ce1a2412fe52dd22d4959e4, input_hashes.dotusdt_1d.spot.parquet=d31160f702dea385addfe50a4de9794dfae26a892ad738de1eb4ea011040315f, input_hashes.ethusdt_1d.perp.parquet=5e18e263c57d3cc08dca49e09229b469dc58b2d9b916b357306f755ac6415ecb, input_hashes.ethusdt_1d.spot.parquet=daebae805af104c5f9de6f26e4eeafe64394ae71d393e2b9c0c1169d4cf184c5, input_hashes.filusdt_1d.perp.parquet=5e01b97a5dab2fb7e5fac0b3b8b2169860001b20e344d6ca833926b91476f330, input_hashes.filusdt_1d.spot.parquet=d116cb9e54f168067ac2f58b0e2c02c445a0c0765781f95f72a62bab8346bebb, input_hashes.linkusdt_1d.perp.parquet=5957081c3773ca644cc5b62d02f1fef36dd52d4eb74ec45c2568f6badaf3e033, input_hashes.linkusdt_1d.spot.parquet=4e9dfb100be0b659893e9a99737625eef4f27f2c40a8e49cb22d03f051470819, input_hashes.ltcusdt_1d.perp.parquet=58f778841bfd806499bda2349bdf955082cb1bfd417769e5620288f55640f039, input_hashes.ltcusdt_1d.spot.parquet=7106b554434e8c887a736efc01501793d4377014ad729f7c3308fde450fa8a14, input_hashes.nearusdt_1d.perp.parquet=5a564fa008ed7cb66e75290de1a55d0b5da5d44ff34d6b744a189ef2be9eebed, input_hashes.nearusdt_1d.spot.parquet=0f9454be77d4e3ae74befa7d0b308bc0c943e3b980afe07bb9fd356151dce8fb, input_hashes.solusdt_1d.perp.parquet=20920ce122dc212cc495e4ba8a36b64e251688aa0ebc2a3922dffaa219bf2ba4, input_hashes.solusdt_1d.spot.parquet=68f14a781c0243037bf0397726543a8e23d794862862c59d06c2594be97a59d6, input_hashes.suiusdt_1d.perp.parquet=f3ea5a801b0379501c29c0d994e0fa8eba5c7b32824b9de19d0ced4e91a90fab, input_hashes.suiusdt_1d.spot.parquet=b5c16d647d7465cdb4e5f3a4cd029b13aea7b34b4ab6fe0046a1ac256ae5d3e0, input_hashes.trxusdt_1d.perp.parquet=b12ff45a4d31f321acd19890c33da494f2850dde9fdd3b5414a6fd8ffd5f61e5, input_hashes.trxusdt_1d.spot.parquet=ff7113fe2f0c8fafb27f0acdb0ede039625c23327e1de3a430c4332a5f25e84f, input_hashes.uniusdt_1d.perp.parquet=67f4d8ede2aaa087d805a898e3e3429e9988dc571f60ffe8b698310ec3dc2801, input_hashes.uniusdt_1d.spot.parquet=42dbf32e89f03ea36d38bfdf5e4f98dec630baed501c3648cc3fe7b551ff483c, input_hashes.xrpusdt_1d.perp.parquet=528661bd82bb8e7828cd60cd6dec3d3832ad0499b000690ce358dd1c968746c3, input_hashes.xrpusdt_1d.spot.parquet=c341c55f9aa945bcd110d7536fc26466f598d6534ef77b8dc955903c4960bf2d | unspecified | absent | true | false |
+
+- `schema`: basis_reversion_screen.v1
+- `created_at`: 2026-09-22T15:37:20.535305+00:00
+- `evidence_level`: development_pre_cost_diagnostic
+- `research_only`: true
+- `bar_interval`: 1d
+- `signal`: negative 30-bar z-score of same-asset perp/spot closing basis
+- `target`: next-bar perp open-to-close, long top quartile and short bottom quartile
+- `development_cut`: 2025-04-26 00:00:00+00:00
+- `n_assets`: 20
+- `n_dates`: 1881
+- `mean_daily_gross_spread`: 0.0015632331277941444
+- `median_daily_gross_spread`: 0.0010410200759501664
+- `positive_day_fraction`: 0.5231259968102073
+- `four_chronological_fold_means`:
+  - 0.005967220927493027
+  - 0.00046005410140306937
+  - 0.001252727212214577
+  - -0.001436439916741964
+- `hedged_pair_rule`: long spot/short perp when basis is positive and z-score exceeds 1
+- `hedged_pair_excludes`: funding, commissions, spread, impact, margin costs
+- `hedged_pair_active_date_fraction`: 0.5555555555555556
+- `hedged_pair_mean_daily_gross_return`: 0.00018387810420158332
+- `hedged_pair_four_fold_means`:
+  - 0.00033789209517964727
+  - 0.00015650157077502314
+  - 0.00012397308872545248
+  - 0.00011681797278370385
+
+### `receipts/legacy-unsealed/fast_replay_p42_conformance_20260927.json`
+
+| source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| receipts/legacy-unsealed/fast_replay_p42_conformance_20260927.json | 8236a26489e9253dfcc1f3d879a2fd276c0023fb4d167c764c5330406ce950d8 | absent | no_embedded_seal | absent | absent | unspecified | absent | true | false |
+
+- `receipt`: fast_replay_p42_conformance
+- `generated`: 2026-09-27T00:00:00Z
+- `ultraplan_item`: P4.2
+- `verdict`: vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed
+- `base_commit`: 7d2e01e4dba09d178ed46ad802950d2296d3eae6
+- `evidence`:
+  - tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type
+  - tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)
+  - tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload
+- `fixes`:
+  - engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)
+  - run_backtest_fast now carries the dispatcher's panel/completeness refusals itself — direct calls and fast=True share one fail-closed source of truth
+  - fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)
+- `gaps_refused`:
+  - allow_close_auction=True (close-auction order semantics not replicated)
+  - risk_overlay (mid-loop target scaling/flattening not replicated)
+  - GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 — refused rather than approximate)
+  - empty/duplicate-key/non-Datetime/mismatched-unit panels
+- `known_issue_out_of_lane`: aggregate_shortfall orders top_cost_names/by_side by group_by+sort on the aggregated value alone; exact ties keep polars hash-partition order — nondeterministic across executions even in the reference engine (observed on a generated workload with total_is ties of 0.0). Conformance suite canonicalizes element order in those two lists; fix belongs to execution/implementation_shortfall.py.
+- `rerun`: uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q
+- `research_only`: true
+- `disclaimer`:
+<!-- verbatim-receipt-text -->
+> All workloads are SYNTHETIC generated fixtures. This receipt attests engine conformance, not performance; NAV/fee/P&L numbers are not evidence of live-trading results.
+<!-- /verbatim-receipt-text -->
 
 ### `receipts/rankic_eval_9ebdad7da83e7348.json`
 

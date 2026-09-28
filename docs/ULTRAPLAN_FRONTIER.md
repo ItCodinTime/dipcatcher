@@ -396,9 +396,11 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       `evidence_audit` receipt. Also fixed `receipts-reverify` dispatch:
       v2 envelopes and sealed v1 receipts now route to `verify-receipt`
       instead of the notebook-schema `verify-research`, which had never
-      verified a sealed receipt correctly. Honest finding: 7 of 10
-      committed receipts are unsealed legacy artifacts — reported as
-      `n_unsealed`, not retroactively failed.
+      verified a sealed receipt correctly. The 7 committed pre-envelope
+      artifacts (no `receipt_sha256`, wrong schema family for
+      `verify-research`) moved to `receipts/legacy-unsealed/` — retained
+      for provenance, still rendered on the evidence page, outside the
+      seal-verified set. `make receipts-reverify` is green again.
 
 ## Execution rules
 

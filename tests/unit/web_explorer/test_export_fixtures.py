@@ -56,10 +56,13 @@ def test_receipt_fixtures_are_byte_identical_to_sealed_sources() -> None:
 
 
 def test_receipts_declare_research_only_flags() -> None:
+    """Every exported receipt must carry the honesty pair. Legacy receipts
+    use ``research_only: true``; sealed receipts (v1 writers and the v2
+    envelope) carry ``data_label`` + the mandatory ``live_pnl_claim: false``."""
     for path in sorted((FIXTURES / "receipts").glob("*.json")):
         payload = json.loads(path.read_text())
-        assert payload.get("research_only") is True, path.name
         assert payload.get("live_pnl_claim") is False, path.name
+        assert payload.get("research_only") is True or payload.get("data_label"), path.name
 
 
 def test_equity_fixtures_are_finite_sorted_series() -> None:

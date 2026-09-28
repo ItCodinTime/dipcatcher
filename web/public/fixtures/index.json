@@ -1,8 +1,10 @@
 {
- "generated_at": "2026-09-27T10:58:40.156720+00:00",
+ "generated_at": "2026-09-28T06:26:44.401251+00:00",
  "generator": "web/scripts/export_fixtures.py",
  "hash_matches": {
-  "54d2687facc424c40db20205e3d6ea19f0ad6bf25abce0233eeb322cac3f4c99": "src/quant_fund/metrics/returns.py"
+  "67713fe534eb3c4a508e4c0211836026af4f9efe8c27cd2cc7d69118a9cd1b98": "receipts/fleet_eval_5ddf15b0dc7d3ca1.json",
+  "e0a6c8250891cd5065edfc3bb385e6fdd640e5ca376cac496420815ab16881ed": "receipts/capacity_eval_cd0854242ed8a9ec.json",
+  "ff139132f80998e336918077dffacfe6d7a660305d025ca635cdcbe7837251d4": "receipts/rankic_eval_9ebdad7da83e7348.json"
  },
  "honesty": {
   "live_pnl_claim": false,
@@ -11,73 +13,51 @@
  },
  "receipts": [
   {
-   "created_at": "2026-09-22T15:44:07.498331+00:00",
-   "evidence_level": "historical_exploratory_tail_reused",
-   "file": "receipts/adaptive_mix_20asset_1d_20260922.json",
-   "id": "adaptive_mix_20asset_1d_20260922",
-   "live_pnl_claim": false,
-   "n_hash_matches": 1,
-   "n_hashes": 46,
-   "research_only": true,
-   "schema": "adaptive_mix_replay.v1"
-  },
-  {
-   "created_at": "2026-09-22T15:44:08.787931+00:00",
-   "evidence_level": "historical_development_only",
-   "file": "receipts/adaptive_mix_band_search_20asset_1d_20260922.json",
-   "id": "adaptive_mix_band_search_20asset_1d_20260922",
-   "live_pnl_claim": false,
-   "n_hash_matches": 1,
-   "n_hashes": 46,
-   "research_only": true,
-   "schema": "adaptive_mix_band_search.v1"
-  },
-  {
-   "created_at": "2026-09-22T15:43:37.776452+00:00",
-   "evidence_level": "historical_development_only",
-   "file": "receipts/basis_pair_candidate_20asset_1d_20260922.json",
-   "id": "basis_pair_candidate_20asset_1d_20260922",
-   "live_pnl_claim": false,
-   "n_hash_matches": 1,
-   "n_hashes": 64,
-   "research_only": true,
-   "schema": "basis_pair_candidate.v1"
-  },
-  {
-   "created_at": "2026-09-22T15:37:20.535305+00:00",
-   "evidence_level": "development_pre_cost_diagnostic",
-   "file": "receipts/basis_reversion_screen_20asset_1d_20260922.json",
-   "id": "basis_reversion_screen_20asset_1d_20260922",
-   "live_pnl_claim": false,
-   "n_hash_matches": 0,
-   "n_hashes": 41,
-   "research_only": true,
-   "schema": "basis_reversion_screen.v1"
-  },
-  {
-   "created_at": "2026-09-25T14:18:53.413467+00:00",
+   "created_at": "2026-09-27T21:25:11.550539+00:00",
    "evidence_level": null,
-   "file": "receipts/dip_bench_crypto_1d_20260925.json",
-   "id": "dip_bench_crypto_1d_20260925",
+   "file": "receipts/capacity_eval_cd0854242ed8a9ec.json",
+   "id": "capacity_eval_cd0854242ed8a9ec",
    "live_pnl_claim": false,
    "n_hash_matches": 0,
-   "n_hashes": 11,
-   "research_only": true,
-   "schema": "fx1.dip_bench/v1"
+   "n_hashes": 10,
+   "research_only": null,
+   "schema": "capacity_overlay.v1"
   },
   {
-   "created_at": null,
+   "created_at": "2026-09-28T06:22:08.701025+00:00",
    "evidence_level": null,
-   "file": "receipts/incumbent_bench_qlib.json",
-   "id": "incumbent_bench_qlib",
+   "file": "receipts/evidence_audit_3464d8f8197bf737.json",
+   "id": "evidence_audit_3464d8f8197bf737",
+   "live_pnl_claim": false,
+   "n_hash_matches": 3,
+   "n_hashes": 8,
+   "research_only": null,
+   "schema": "receipt.v2"
+  },
+  {
+   "created_at": "2026-09-27T20:34:00.299434+00:00",
+   "evidence_level": null,
+   "file": "receipts/fleet_eval_5ddf15b0dc7d3ca1.json",
+   "id": "fleet_eval_5ddf15b0dc7d3ca1",
    "live_pnl_claim": false,
    "n_hash_matches": 0,
-   "n_hashes": 4,
-   "research_only": true,
-   "schema": "incumbent_bench.v1"
+   "n_hashes": 20,
+   "research_only": null,
+   "schema": "fleet_eval.v1"
+  },
+  {
+   "created_at": "2026-09-27T21:18:24.498923+00:00",
+   "evidence_level": null,
+   "file": "receipts/rankic_eval_9ebdad7da83e7348.json",
+   "id": "rankic_eval_9ebdad7da83e7348",
+   "live_pnl_claim": false,
+   "n_hash_matches": 0,
+   "n_hashes": 22,
+   "research_only": null,
+   "schema": "cross_sectional_rankic.v1"
   }
  ],
- "repo_revision": "46517ac92629c6da10f56f1de88b679c804cbdef",
+ "repo_revision": "35a8ef1b63b31595488141e287ca67cbff5e2727",
  "strategies": [
   {
    "data_source": "UNVERIFIED",

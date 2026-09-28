@@ -15,9 +15,9 @@
  "live_pnl_claim": false,
  "name": "Adaptive mix replay \u2014 adaptive allocator",
  "provenance": {
-  "note": "Segment stats recorded in sealed receipt adaptive_mix_20asset_1d_20260922.json; no equity series exported.",
+  "note": "Segment stats recorded in sealed receipt legacy-unsealed/adaptive_mix_20asset_1d_20260922.json; no equity series exported.",
   "pointer": "results.adaptive",
-  "receipt": "receipts/adaptive_mix_20asset_1d_20260922.json"
+  "receipt": "receipts/legacy-unsealed/adaptive_mix_20asset_1d_20260922.json"
  },
  "research_only": true,
  "segments": {

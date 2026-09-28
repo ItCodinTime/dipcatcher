@@ -9,7 +9,7 @@
  "provenance": {
   "note": "Paper-sleeve segment stats recorded in sealed receipt; diagnostic only, no equity series exported.",
   "pointer": "paper_sleeves.trend",
-  "receipt": "receipts/adaptive_mix_20asset_1d_20260922.json"
+  "receipt": "receipts/legacy-unsealed/adaptive_mix_20asset_1d_20260922.json"
  },
  "research_only": true,
  "segments": {
