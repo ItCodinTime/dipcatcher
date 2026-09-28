@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 736,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -239,6 +239,10 @@
       "src": "fx1.eval"
     },
     {
+      "dst": "fx1.eval.capability",
+      "src": "fx1.eval"
+    },
+    {
       "dst": "fx1.eval.compare",
       "src": "fx1.eval"
     },
@@ -281,6 +285,26 @@
     {
       "dst": "quant_fund.metrics.calibration_tests",
       "src": "fx1.eval.calibration_eval"
+    },
+    {
+      "dst": "fx1.eval.calibration_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.retrieval_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.suite",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.tooluse_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.ts_reasoning",
+      "src": "fx1.eval.capability"
     },
     {
       "dst": "fx1.data.quality",
@@ -6368,6 +6392,66 @@
     },
     {
       "dst": "quant_fund.audit.ledger",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.audit.record",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.audit.signing",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.backtest.engine",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.backtest.sleeves",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.config.loader",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.config.models",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.data.adapters.yahoo_eod",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.metrics.overfitting",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.proof.bundle",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.proofcore.contracts",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.reality.report",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.research.reality_sweep",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.research.total_return",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.utils.reproducibility",
+      "src": "quant_fund.research.reality_survivorship"
+    },
+    {
+      "dst": "quant_fund.audit.ledger",
       "src": "quant_fund.research.reality_sweep"
     },
     {
@@ -6432,6 +6516,10 @@
     },
     {
       "dst": "quant_fund.reality.report",
+      "src": "quant_fund.research.reality_sweep"
+    },
+    {
+      "dst": "quant_fund.research.total_return",
       "src": "quant_fund.research.reality_sweep"
     },
     {
@@ -6533,6 +6621,22 @@
     {
       "dst": "quant_fund.research.catalog",
       "src": "quant_fund.research.sota_protocol"
+    },
+    {
+      "dst": "quant_fund.data.adapters.stooq",
+      "src": "quant_fund.research.total_return"
+    },
+    {
+      "dst": "quant_fund.data.adapters.yahoo_eod",
+      "src": "quant_fund.research.total_return"
+    },
+    {
+      "dst": "quant_fund.data.corporate_actions",
+      "src": "quant_fund.research.total_return"
+    },
+    {
+      "dst": "quant_fund.schemas.errors",
+      "src": "quant_fund.research.total_return"
     },
     {
       "dst": "quant_fund.northset.benches",
@@ -7119,6 +7223,7 @@
     "fx1.eval",
     "fx1.eval.bank",
     "fx1.eval.calibration_eval",
+    "fx1.eval.capability",
     "fx1.eval.compare",
     "fx1.eval.contamination",
     "fx1.eval.masking",
@@ -7750,6 +7855,7 @@
     "quant_fund.research.prospective_sota",
     "quant_fund.research.ranker_probability",
     "quant_fund.research.real_benchmark",
+    "quant_fund.research.reality_survivorship",
     "quant_fund.research.reality_sweep",
     "quant_fund.research.receipt_schema",
     "quant_fund.research.receipt_v2",
@@ -7759,6 +7865,7 @@
     "quant_fund.research.shadow_journal",
     "quant_fund.research.sota_evidence",
     "quant_fund.research.sota_protocol",
+    "quant_fund.research.total_return",
     "quant_fund.research.verify",
     "quant_fund.research.vol_bench",
     "quant_fund.risk",
@@ -7923,7 +8030,7 @@
     },
     {
       "dst": "fx1.eval",
-      "imports": 18,
+      "imports": 24,
       "src": "fx1.eval"
     },
     {
@@ -9093,22 +9200,22 @@
     },
     {
       "dst": "quant_fund.audit",
-      "imports": 3,
+      "imports": 6,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.backtest",
-      "imports": 2,
+      "imports": 4,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.config",
-      "imports": 10,
+      "imports": 12,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.data",
-      "imports": 1,
+      "imports": 5,
       "src": "quant_fund.research"
     },
     {
@@ -9118,7 +9225,7 @@
     },
     {
       "dst": "quant_fund.metrics",
-      "imports": 49,
+      "imports": 50,
       "src": "quant_fund.research"
     },
     {
@@ -9148,17 +9255,17 @@
     },
     {
       "dst": "quant_fund.proof",
-      "imports": 1,
+      "imports": 2,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.proofcore",
-      "imports": 3,
+      "imports": 4,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.reality",
-      "imports": 2,
+      "imports": 3,
       "src": "quant_fund.research"
     },
     {
@@ -9168,7 +9275,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 103,
       "src": "quant_fund.research"
     },
     {
@@ -9178,12 +9285,12 @@
     },
     {
       "dst": "quant_fund.schemas",
-      "imports": 1,
+      "imports": 2,
       "src": "quant_fund.research"
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 22,
+      "imports": 23,
       "src": "quant_fund.research"
     },
     {
