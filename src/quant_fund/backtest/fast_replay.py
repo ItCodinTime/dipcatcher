@@ -40,6 +40,7 @@ from quant_fund.backtest.engine import (
     _fast_replay_is_complete,
     _fast_replay_panel_supported,
     _target_weight_map,
+    _validate_bar_panel,
     run_backtest,
 )
 from quant_fund.config.models import AppConfig, FillConvention
@@ -910,6 +911,9 @@ def run_backtest_fast(
     if risk_overlay is not None:
         raise ValueError("fast replay does not support risk_overlay")
     _validate_panel_fast(weights)
+    # Shared with the event loop: duplicate bar keys raise the same
+    # ValueError("duplicate bars …") rather than a fast-only refuse string.
+    _validate_bar_panel(bars)
     # Panel-shape and completeness refusals mirror the dispatcher's, so a
     # direct call is guarded exactly like run_backtest(fast=True). Without
     # them the matrices would silently collapse duplicate bar keys, align
