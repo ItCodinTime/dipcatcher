@@ -21,14 +21,18 @@ checks on append.
 ## Phase 2 — proof bundle primitives (W2)
 
 W2 supplies fingerprinting, read recording, bundle construction, signing, and
-independent bundle hash/sidecar/metric checks. The `quant proof run` and replay
-entry points fail closed: a far-future whole-panel vault read cannot prove
-what was known at each historical decision. An explicit decision schedule and
-corresponding as-of reads are required before enabling them. `run_backtest`
+independent bundle hash/sidecar/metric checks. In this phase the
+`quant proof run` and replay entry points fail closed: a far-future
+whole-panel vault read cannot prove what was known at each historical
+decision. An explicit decision schedule and corresponding as-of reads are
+required before enabling them. `run_backtest`
 and the receipt format are unchanged. Committed `receipts/*.json` remain valid
 under their existing contracts. The heterogeneous committed receipt classes
 do not yet have one universal verifier; `make receipts-reverify` fails closed
-and is not a blocking CI gate. Future proof bundles live in `proofs/`
+and is not a blocking CI gate. (Superseded by wave 2 — see WAVE2.md:
+`quant proof run` now executes causal proven runs over a declared allowlist
+surface and replay is live; the wave-1 `run_backtest_proven` API stays
+fail-closed by design.) Future proof bundles live in `proofs/`
 (gitignored, like `data/`); the provenance DB lives at
 `data/metadata/proofcore.duckdb` (gitignored).
 

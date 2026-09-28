@@ -8,6 +8,26 @@ The version source is `fx1.__version__`.
 
 ## [Unreleased]
 
+### Added
+
+- **PROOFCORE wave 2 — causal proven runs + cryptographic replay + IO
+  guard**: `quant_fund.proofcore.scheduler` (pure decision-window scheduler),
+  `quant_fund.proof.runner.run_proven` (causal walk-forward over a declared
+  RunSpec allowlist surface; hash-chained decision trace; trace/env/seeds
+  sidecars committed in the config sidecar; atomic no-partial-bundle mint),
+  `quant_fund.proof.replay.replay_bundle` (bit-exact re-execution gate,
+  env-fingerprinted, first-divergence reporting), and
+  `quant_fund.leakage.guard.install_io_guard` (runtime interposition on raw
+  `read_parquet`/`open()` inside decision windows; the runner drives it in
+  enforce mode). New CLI: `quant proof run --spec … --vault-root …
+  --bundle-dir … [--signing-key-env VAR]` and `quant proof replay --bundle …
+  --bundle-dir … [--vault-root …]`. `verify_bundle` additionally hash-checks
+  the wave-2 sidecars committed in `config["sidecars"]`. Scope limits are
+  documented in `docs/proofcore/README.md` (fixed grid, no calendar
+  awareness, two reference estimators; replay verdicts are re-executability
+  evidence only). The wave-1 `run_backtest_proven` API stays fail-closed by
+  design (WAVE2.md amendment A4).
+
 ### Fixed
 
 - **reality-filter CI**: `data/metadata/proofcore.duckdb` is not in the
