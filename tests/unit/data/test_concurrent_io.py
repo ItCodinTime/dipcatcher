@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 import threading
 import time
@@ -374,6 +375,7 @@ def test_pooled_request_reuses_redirects_and_limits(
     with pytest.raises(IoError, match="exceeded"):
         pooled_stream(_url(http_server, "/big"), oversize, timeout=2, max_bytes=8, pool=pool)
     assert not oversize.exists()
+    assert not list(tmp_path.glob("*.tmp"))
 
     monkeypatch.setattr("quant_fund.data.concurrent_io._default_sleep", lambda _delay: None)
     client = HttpClient(timeout=2, retries=1, max_bytes=100)
@@ -381,6 +383,109 @@ def test_pooled_request_reuses_redirects_and_limits(
     assert http_server.flaky_hits == 2
     with pytest.raises(SourceError, match="failed after retries"):
         client.get_bytes(_url(http_server, "/missing"))
+
+
+class _BoomResponse:
+    """Two-block body whose second read raises a BaseException."""
+
+    status = 200
+    will_close = True
+
+    def __init__(self, boom: type[BaseException]) -> None:
+        self.boom = boom
+        self.calls = 0
+
+    def read(self, _n: int) -> bytes:
+        self.calls += 1
+        if self.calls == 1:
+            return b"partial-"
+        raise self.boom()
+
+    def getheader(self, _name: str) -> None:
+        return None
+
+
+class _BoomConn:
+    def __init__(self, boom: type[BaseException]) -> None:
+        self.response = _BoomResponse(boom)
+        self.timeout = 0
+
+    def request(self, *_a: object, **_k: object) -> None:
+        pass
+
+    def getresponse(self) -> _BoomResponse:
+        return self.response
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.mark.parametrize("boom", [KeyboardInterrupt, SystemExit])
+def test_pooled_stream_base_exception_leaves_no_partial_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boom: type[BaseException]
+) -> None:
+    """Interrupts mid-stream must not leave a truncated ``dest``."""
+    pool = ConnectionPool()
+    monkeypatch.setattr(pool, "checkout", lambda *_a, **_k: _BoomConn(boom))
+    dest = tmp_path / "interrupted.bin"
+    dest.write_bytes(b"stale-prior-content")
+    with pytest.raises(boom):
+        pooled_stream("http://pool.test/ok", dest, timeout=1, max_bytes=4096, pool=pool)
+    assert not dest.exists()
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_pooled_stream_replaces_existing_dest_atomically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful stream swaps ``dest`` in one os.replace — no window where
+    a reader sees a half-written file."""
+    seen: list[tuple[str, bytes]] = []
+    real_replace = os.replace
+
+    def spy_replace(src: object, dst: object) -> None:
+        seen.append((str(src), Path(dst).read_bytes() if Path(dst).exists() else b""))
+        real_replace(src, dst)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("quant_fund.data.concurrent_io.os.replace", spy_replace)
+    pool = ConnectionPool()
+    body = b"complete-payload"
+
+    class _OkResponse:
+        status = 200
+        will_close = True
+
+        def __init__(self) -> None:
+            self.done = False
+
+        def read(self, _n: int) -> bytes:
+            if self.done:
+                return b""
+            self.done = True
+            return body
+
+        def getheader(self, _name: str) -> None:
+            return None
+
+    class _OkConn:
+        timeout = 0
+
+        def request(self, *_a: object, **_k: object) -> None:
+            pass
+
+        def getresponse(self) -> _OkResponse:
+            return _OkResponse()
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(pool, "checkout", lambda *_a, **_k: _OkConn())
+    dest = tmp_path / "out.bin"
+    dest.write_bytes(b"old")
+    assert pooled_stream("http://pool.test/ok", dest, timeout=1, max_bytes=4096, pool=pool) == 200
+    assert dest.read_bytes() == body
+    assert len(seen) == 1 and seen[0][1] == b"old"  # replace read the stale pre-swap bytes
+    assert not list(tmp_path.glob("*.tmp"))
 
 
 def test_yahoo_and_stooq_downloads_keep_order(

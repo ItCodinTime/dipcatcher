@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import http.client
 import inspect
+import os
 import random
 import threading
 import time
@@ -245,7 +246,7 @@ async def _call_async[T, R](
     while True:
         try:
             if inspect.iscoroutinefunction(fn):
-                value = await fn(item)  # type: ignore[misc]
+                value = await fn(item)
             else:
                 value = await asyncio.to_thread(fn, item)
             return cast(R, value)
@@ -520,23 +521,36 @@ def pooled_stream(
                 current = urljoin(current, location)
                 continue
             total = 0
-            with path.open("wb") as handle:
-                while True:
-                    block = response.read(_CHUNK)
-                    if not block:
-                        break
-                    total += len(block)
-                    if total > max_bytes:
-                        pool.discard(conn)
-                        handed_off = True
-                        raise IoError(f"response exceeded {max_bytes} bytes: {current}")
-                    handle.write(block)
+            # Write to a same-dir temp file and promote with os.replace:
+            # ``dest`` is never a partial file — a crash or
+            # KeyboardInterrupt mid-stream leaves no truncated artifact
+            # for downstream readers to mistake for content.
+            tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+            try:
+                with tmp_path.open("wb") as handle:
+                    while True:
+                        block = response.read(_CHUNK)
+                        if not block:
+                            break
+                        total += len(block)
+                        if total > max_bytes:
+                            pool.discard(conn)
+                            handed_off = True
+                            raise IoError(f"response exceeded {max_bytes} bytes: {current}")
+                        handle.write(block)
+            except BaseException:
+                tmp_path.unlink(missing_ok=True)
+                path.unlink(missing_ok=True)
+                raise
             _release_response(pool, scheme, host, port, conn, response)
             handed_off = True
             if status >= 400 or total < 1:
+                tmp_path.unlink(missing_ok=True)
                 path.unlink(missing_ok=True)
+                return status
+            os.replace(tmp_path, path)
             return status
-        except Exception:
+        except BaseException:
             if not handed_off:
                 pool.discard(conn)
             path.unlink(missing_ok=True)
