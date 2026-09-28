@@ -1,8 +1,8 @@
 {
   "code_files": {
-    "multih_fleet.py": "5e3e9b122e9f75cc90ff5231ae96f002adc547a211343418c5b9b7ea388543f7"
+    "multih_fleet.py": "59cb6d8a0940c0dd954f4975b6f217acbbd1c261fc780db5e719bbabda6f1b79"
   },
-  "code_sha256": "ba2155ee39fb84b8333a4fadfac7f61010dab2b4c3b838b625870914f0473ab8",
+  "code_sha256": "f740e36900ab8594cb7c2f69fc63675b558ceb64ef7b5ae13b11c6c2726df88b",
   "data_label": "SYNTHETIC",
   "dataset_hash": "0c715e67351db2e18c0bee008b36be1ce008065fe8efd1eed1b8a69d68b81466",
   "environment": {
@@ -29,8 +29,8 @@
     "python": "3.12.14",
     "threadpools": []
   },
-  "generated_at": "2026-09-28T07:03:02.318008+00:00",
-  "git_revision": "3246b8d37c1ffda200754c943d9c97879cddd5a6",
+  "generated_at": "2026-09-28T07:06:53.366878+00:00",
+  "git_revision": "ecb77bdd2f96530c6ab4c31fe4c92b93db36382f",
   "kind": "multih_fleet_eval",
   "live_pnl_claim": false,
   "params_hash": "1f318dca919f3831cac47b633f4bf77966d98e1068172f9f8f471a0a2932b77d",
@@ -16276,7 +16276,7 @@
     ],
     "schema": "multih_fleet_eval.v1"
   },
-  "receipt_sha256": "5d78f50dfc8613b82492fa6db11b43dc27a582b723782b5475425135d05568bc",
+  "receipt_sha256": "5db1cab214e291d7c691974021048221a38a67eb0ccf3ef6ba155bd0b7f9d593",
   "schema": "receipt.v2",
   "schema_version": 2,
   "verdict": "pass"

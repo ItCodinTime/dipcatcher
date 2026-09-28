@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
@@ -109,6 +110,16 @@ def test_run_multih_fleet_eval_smoke(tmp_path: Path) -> None:
     path = write_multih_receipt(receipt, tmp_path)
     verification = verify_receipt_file(path)
     assert verification["valid"], verification["errors"]
+
+    # Tampered leaderboard is caught by the kind-consistency re-derivation.
+    sealed = json.loads(path.read_text())
+    cells = list(sealed["payload"]["leaders"])
+    sealed["payload"]["leaders"][cells[0]] = "forged:entry"
+    forged = tmp_path / "forged.json"
+    forged.write_text(json.dumps(sealed))
+    bad = verify_receipt_file(forged)
+    assert not bad["valid"]
+    assert any("leader_mismatch" in e or "seal" in e for e in bad["errors"])
 
 
 def test_bad_horizon_fails_closed() -> None:

@@ -386,6 +386,10 @@ def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
+    if payload.get("kind") == "multih_fleet_eval":
+        from quant_fund.research.multih_fleet import multih_fleet_consistency_errors
+
+        return multih_fleet_consistency_errors(payload)
     return []
 
 

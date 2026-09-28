@@ -3786,14 +3786,14 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - 0.9
   - 0.95
 
-### `receipts/multih_fleet_eval_5d78f50dfc8613b8.json`
+### `receipts/multih_fleet_eval_5db1cab214e291d7.json`
 
 | source | file sha256 | embedded seal | seal | git revision | dataset hash | data class | promote | research_only | live_pnl_claim |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| receipts/multih_fleet_eval_5d78f50dfc8613b8.json | bfeeb0ab66f421230be288fa17962ecb721cd4b4bdac02500b611812308d68b7 | 5d78f50dfc8613b82492fa6db11b43dc27a582b723782b5475425135d05568bc | not_checked | 3246b8d37c1ffda200754c943d9c97879cddd5a6 | absent | unspecified | absent | absent | false |
+| receipts/multih_fleet_eval_5db1cab214e291d7.json | 07cd44dd6a795bc0b93e21824b5a963f9c89902f405f91ce6c991e38cbdd4516 | 5db1cab214e291d7c691974021048221a38a67eb0ccf3ef6ba155bd0b7f9d593 | not_checked | ecb77bdd2f96530c6ab4c31fe4c92b93db36382f | absent | unspecified | absent | absent | false |
 
 - `code_files`:
-  - `multih_fleet.py`: 5e3e9b122e9f75cc90ff5231ae96f002adc547a211343418c5b9b7ea388543f7
+  - `multih_fleet.py`: 59cb6d8a0940c0dd954f4975b6f217acbbd1c261fc780db5e719bbabda6f1b79
 - `data_label`: SYNTHETIC
 - `dataset_hash`: 0c715e67351db2e18c0bee008b36be1ce008065fe8efd1eed1b8a69d68b81466
 - `environment`:
@@ -3816,8 +3816,8 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
   - `platform`: macOS-26.5.2-arm64-arm-64bit
   - `python`: 3.12.14
   - `threadpools`:
-- `generated_at`: 2026-09-28T07:03:02.318008+00:00
-- `git_revision`: 3246b8d37c1ffda200754c943d9c97879cddd5a6
+- `generated_at`: 2026-09-28T07:06:53.366878+00:00
+- `git_revision`: ecb77bdd2f96530c6ab4c31fe4c92b93db36382f
 - `kind`: multih_fleet_eval
 - `params_hash`: 1f318dca919f3831cac47b633f4bf77966d98e1068172f9f8f471a0a2932b77d
 - `payload`:
@@ -19247,7 +19247,7 @@ Omitted 3 fields whose names tokenize to a forbidden research-headline metric.
       - `shard`: ar1_lagged_x
       - `status`: ok
   - `schema`: multih_fleet_eval.v1
-- `receipt_sha256`: 5d78f50dfc8613b82492fa6db11b43dc27a582b723782b5475425135d05568bc
+- `receipt_sha256`: 5db1cab214e291d7c691974021048221a38a67eb0ccf3ef6ba155bd0b7f9d593
 - `schema`: receipt.v2
 - `schema_version`: 2
 - `verdict`: pass

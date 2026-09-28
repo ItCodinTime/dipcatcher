@@ -364,6 +364,36 @@ def run_multih_fleet_eval(
     return rows, receipt
 
 
+def multih_fleet_consistency_errors(body: Mapping[str, Any]) -> list[str]:
+    """Re-derive the leaderboard from the sealed rows — catches a receipt
+    whose ``leaders`` block was edited without recomputing the scores."""
+    payload = body.get("payload")
+    if not isinstance(payload, Mapping):
+        return []
+    rows = payload.get("rows")
+    leaders = payload.get("leaders")
+    if not isinstance(rows, list) or not isinstance(leaders, dict):
+        return []
+    pinball_keys = [k for k in rows[0] if k.startswith("pinball_")] if rows else []
+    errors: list[str] = []
+    recomputed: dict[str, str] = {}
+    cells: dict[str, list[Mapping[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, Mapping) or row.get("status") != "ok":
+            continue
+        cells.setdefault(f"{row.get('shard')}/h{row.get('horizon')}", []).append(row)
+    for cell, cell_rows in cells.items():
+        best = min(
+            cell_rows,
+            key=lambda r: float(np.nanmean([float(r.get(k, np.nan)) for k in pinball_keys])),
+        )
+        recomputed[cell] = f"{best.get('model')}:{best.get('construction')}"
+    for cell, winner in recomputed.items():
+        if leaders.get(cell) != winner:
+            errors.append(f"leader_mismatch:{cell}")
+    return errors
+
+
 def write_multih_receipt(receipt: Mapping[str, Any], out_dir: Path) -> Path:
     """Persist as ``multih_fleet_eval_<sha16>.json``."""
     import json
