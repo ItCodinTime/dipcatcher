@@ -66,6 +66,7 @@ from quant_fund.cli.report_cmds import (
     lab,
     report,
     tearsheet_cmd,
+    regime_performance_cmd,
 )
 from quant_fund.cli.lake_cmds import (
     lake_import,
@@ -178,6 +179,7 @@ __all__ = [
     "lab",
     "report",
     "tearsheet_cmd",
+    "regime_performance_cmd",
     "lake_import",
     "lake_quality",
     "lineage_show",
