@@ -102,7 +102,10 @@ def _load_rl_cached(config: AppConfig) -> tuple[Any, list[str], str] | None:
     )
     if path is None:
         return None
-    key = (str(path.resolve()), path.stat().st_mtime)
+    # Cache identity is artifact bytes, matching the ranker/GARCH loaders:
+    # an mtime-preserving rewrite (os.utime, same-size swap) must not reuse
+    # a stale policy.
+    key = (str(path.resolve()), _joblib_artifact_digest(path))
     cached = _RL_POLICY_CACHE.get(key)
     if cached is not None:
         return cast(tuple[Any, list[str], str], cached)

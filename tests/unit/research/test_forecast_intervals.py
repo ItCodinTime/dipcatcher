@@ -48,6 +48,49 @@ def test_rl_artifact_identity_is_preserved(tmp_path: Path, filename: str, expect
     assert loaded[2] == expected
 
 
+def test_rl_artifact_mtime_preserving_rewrite_reloads(tmp_path: Path) -> None:
+    """RL policy cache identity is artifact bytes, not mtime.
+
+    An in-place rewrite that preserves st_mtime (os.utime, same-size swap)
+    must not keep serving the stale policy — ranker/GARCH loaders already
+    key on content digest; the RL loader now matches them.
+    """
+    import joblib
+
+    from quant_fund.models.rl import LinUCBRanker
+    from quant_fund.pipeline import forecast as forecast_module
+
+    root = tmp_path / "metadata"
+    root.mkdir()
+    artifact = root / "rl_linucb.joblib"
+    joblib.dump(
+        {"policy": LinUCBRanker(2, alpha=1.0), "features": ["ret_1"], "policy_name": "linucb"},
+        artifact,
+    )
+    fixed_mtime = artifact.stat().st_mtime
+    cfg = AppConfig()
+    cfg.data.root = tmp_path
+    forecast_module._RL_POLICY_CACHE.clear()
+
+    first = _load_rl_cached(cfg)
+    assert first is not None
+    assert first[0].n_features == 2
+    assert first[0].alpha == 1.0
+
+    joblib.dump(
+        {"policy": LinUCBRanker(2, alpha=3.5), "features": ["ret_1"], "policy_name": "linucb"},
+        artifact,
+    )
+    import os
+
+    os.utime(artifact, (fixed_mtime, fixed_mtime))
+    assert artifact.stat().st_mtime == fixed_mtime
+
+    second = _load_rl_cached(cfg)
+    assert second is not None
+    assert second[0].alpha == 3.5
+
+
 def test_rl_artifact_checksum_mismatch_fails_closed(tmp_path: Path) -> None:
     from quant_fund.models.base import save_joblib_artifact
     from quant_fund.models.rl import LinUCBRanker

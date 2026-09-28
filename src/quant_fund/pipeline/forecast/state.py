@@ -24,7 +24,7 @@ log = get_logger()
 INTERVAL_ALPHA = 0.10
 # Process-local caches for causal panel / multi-asof hot paths
 _RANKER_CACHE: dict[tuple[str, str], object] = {}
-_RL_POLICY_CACHE: dict[tuple[str, float], object] = {}
+_RL_POLICY_CACHE: dict[tuple[str, str], object] = {}
 _GARCH_SPEC_CACHE: dict[tuple[str, str], GARCHVol] = {}
 _GARCH_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()
 _GARCH_NAME_ASOF_CACHE: OrderedDict[tuple[object, ...], object] = OrderedDict()

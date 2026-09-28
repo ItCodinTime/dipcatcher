@@ -170,6 +170,7 @@ nav:
       - P6.1 money audit: AUDIT_P61_MONEY.md
       - P6.3 data audit: AUDIT_P63_DATA.md
       - P6.4 dist/vol audit: AUDIT_P64_DIST.md
+      - P6.4B forecast-layer audit: AUDIT_P64B_FORECAST.md
       - P6.5 micro audit: AUDIT_P65_MICRO.md
       - P6.6 infra audit: AUDIT_P66_INFRA.md
       - Forward shadow record: FORWARD_SHADOW_RECORD.md
