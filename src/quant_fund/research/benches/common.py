@@ -22,21 +22,68 @@ from quant_fund.models.distribution import (
 )
 from quant_fund.models.ranking import PUBLIC_FEATURES, available_features
 from quant_fund.pipeline.dataset import design_matrix
+from quant_fund.pipeline.train import _label_horizon
+from quant_fund.validation.purging import purge_mask
 
 
-def _holdout(n: int, frac: float = 0.3) -> tuple[slice, slice]:
+def _holdout(
+    dates: NDArray[Any], frac: float = 0.3, *, horizon: int = 1
+) -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
+    """Chronological (train, eval) row masks cut at a unique-date boundary.
+
+    A positional row slice can split one date across train/eval, and a bare
+    boundary lets the last ``horizon`` train dates carry labels that realize
+    inside the eval window — the leak the fold path purges. Cut on unique
+    dates via :func:`purge_mask`; an emptied train side comes back as an
+    all-False mask and callers must fail closed (skip the lane).
+    """
+    keys = np.asarray(dates)
+    uniq = np.unique(keys)
+    n = uniq.size
+    if n < 2:
+        return np.zeros(keys.shape[0], dtype=bool), np.zeros(keys.shape[0], dtype=bool)
     cut = max(int(n * (1.0 - frac)), n // 2)
-    return slice(0, cut), slice(cut, n)
+    cut = min(max(cut, 1), n - 1)
+    eval_dates = list(uniq[cut:])
+    safe = purge_mask(list(uniq), eval_dates[0], eval_dates[-1], max(int(horizon), 0))
+    train_dates = uniq[:cut][np.asarray(safe[:cut], dtype=bool)]
+    return np.isin(keys, train_dates), np.isin(keys, eval_dates)
 
 
-def _triple_split(n: int) -> tuple[slice, slice, slice]:
-    """Chronological train / calibration / test. Calibration is never test."""
+def _triple_split(
+    dates: NDArray[Any], *, horizon: int = 1
+) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_]]:
+    """Chronological train / calibration / test masks, purged at both edges.
+
+    Train is purged against the calibration window and calibration against
+    the test window — a calibration row whose label reaches test leaks the
+    test outcome into the fitted scaler. Emptied sides are empty masks;
+    callers fail closed.
+    """
+    keys = np.asarray(dates)
+    uniq = np.unique(keys)
+    n = uniq.size
+    empty = np.zeros(keys.shape[0], dtype=bool)
+    if n < 3:
+        return empty, empty, empty
     if n < 30:
         a, b = max(n // 3, 1), max(2 * n // 3, 2)
-        return slice(0, a), slice(a, b), slice(b, n)
-    a = max(int(0.5 * n), 8)
-    b = max(int(0.7 * n), a + 5)
-    return slice(0, a), slice(a, b), slice(b, n)
+    else:
+        a = max(int(0.5 * n), 8)
+        b = max(int(0.7 * n), a + 5)
+    b = min(max(b, a + 1), n - 1)
+    h = max(int(horizon), 0)
+    cal_dates = uniq[a:b]
+    test_dates = uniq[b:]
+    tr_safe = purge_mask(list(uniq), cal_dates[0], cal_dates[-1], h)
+    train_dates = uniq[:a][np.asarray(tr_safe[:a], dtype=bool)]
+    cal_safe = purge_mask(list(uniq), test_dates[0], test_dates[-1], h)
+    kept_cal = cal_dates[np.asarray(cal_safe[a:b], dtype=bool)]
+    return (
+        np.isin(keys, train_dates),
+        np.isin(keys, kept_cal),
+        np.isin(keys, test_dates),
+    )
 
 
 def _aligned_col(
@@ -148,9 +195,9 @@ def _vol_or_width(
     q_tr: NDArray[np.float64],
     q_cal: NDArray[np.float64],
     q_te: NDArray[np.float64],
-    tr: slice,
-    cal: slice,
-    te: slice,
+    tr: NDArray[np.bool_],
+    cal: NDArray[np.bool_],
+    te: NDArray[np.bool_],
     n: int,
 ) -> tuple[NDArray[np.float64], str]:
     """PIT-safe scale covariate: aligned ``vol_20`` when present.
@@ -180,7 +227,9 @@ def _gaussian_interval_split(
     if x.shape[0] < 40:
         return None
     taus = [alpha / 2.0, 1.0 - alpha / 2.0]
-    tr, cal, te = _triple_split(x.shape[0])
+    tr, cal, te = _triple_split(dates, horizon=_label_horizon(label))
+    if not tr.any() or not cal.any() or not te.any():
+        return None
     gauss = GaussianDistribution(taus).fit(x[tr], y[tr])
     q_raw_tr = gauss.predict(x[tr])
     q_raw_cal = gauss.predict(x[cal])

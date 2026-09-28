@@ -42,6 +42,7 @@ from quant_fund.models.quantile_bandit import QuantileThompson
 from quant_fund.models.regime import GaussianHMMRegime
 from quant_fund.models.weighted_conformal import WeightedSplitCQR
 from quant_fund.pipeline.dataset import design_matrix
+from quant_fund.pipeline.train import _label_horizon
 from quant_fund.portfolio.interval_risk import (
     bench_interval_caps,
     cap_from_interval,
@@ -112,7 +113,7 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     else:
         cqr_rate, cqr_lr, cqr_kp = float("nan"), float("nan"), float("nan")
     qr_m: dict[str, float] | None = None
-    if 80 <= int(tr.stop - tr.start) <= 4000:
+    if 80 <= int(tr.sum()) <= 4000:
         try:
             qr = LinearQuantileDistribution(taus).fit(x[tr], y[tr])
             qqc = qr.predict(x[cal])
@@ -182,7 +183,7 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
             rx = rsub.select(rcols).to_numpy().astype(float)
             rdates = rsub["event_time"].to_numpy()
             if rx.shape[0] >= 40:
-                rtr, _ = _holdout(rx.shape[0], 0.3)
+                rtr, _ = _holdout(rdates, 0.3, horizon=_label_horizon(label))
                 hmm = GaussianHMMRegime(
                     min(int(config.train.n_hmm_states), 3), config.train.random_seed
                 ).fit(rx[rtr])
@@ -232,9 +233,11 @@ def bench_conformal(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if dd_lab is not None:
         xd, yd, d_dates, _, d_ids = design_matrix(frame, dd_lab)
         if xd.shape[0] >= 40:
-            dtr, dcal, dte = _triple_split(xd.shape[0])
+            dtr, dcal, dte = _triple_split(d_dates, horizon=_label_horizon(dd_lab))
             vol_dd = _aligned_col(frame, d_dates, d_ids, "vol_20")
-            if vol_dd is not None and np.isfinite(vol_dd).any():
+            if not (dtr.any() and dcal.any() and dte.any()):
+                pass  # purged empty — drawdown lane skipped
+            elif vol_dd is not None and np.isfinite(vol_dd).any():
                 sc_dd = _scaled_fill(vol_dd)
                 dd_name, dd_model = select_scaled_wrappee(
                     taus,
@@ -517,13 +520,13 @@ def _bench_cv_plus_panel(
     pred[cal] = 0.5 * (q_cal[:, 0] + q_cal[:, 1])
     pred[te] = 0.5 * (q_te[:, 0] + q_te[:, 1])
     # Fit on chronological prefix through end of calibration (never test).
-    fit_slice = slice(0, cal.stop)
-    d_fit = dates[fit_slice]
+    fit_mask = split["tr"] | cal
+    d_fit = dates[fit_mask]
     # CV+ needs unique dates >= n_folds
-    if len(np.unique(d_fit)) < n_folds or int(te.stop - te.start) < 8:
+    if len(np.unique(d_fit)) < n_folds or int(te.sum()) < 8:
         return {}
     model = CVPlus(alpha=alpha, n_folds=n_folds, aggregation=aggregation).fit(
-        y[fit_slice], pred[fit_slice], dates=d_fit
+        y[fit_mask], pred[fit_mask], dates=d_fit
     )
     lo, hi = model.predict_interval(pred[te])
     metrics = set_metrics(y[te], lo, hi)
@@ -862,7 +865,7 @@ def bench_localized_from_panel(frame: pl.DataFrame, config: AppConfig) -> dict[s
     y = split["y"]
     q_cal, q_te = split["q_cal"], split["q_te"]
     cov = np.asarray(split["covariate"], dtype=float)
-    if int(cal.stop - cal.start) < 40 or int(te.stop - te.start) < 20:
+    if int(cal.sum()) < 40 or int(te.sum()) < 20:
         return {}
     row = bench_localized_cqr(
         alpha=float(split["alpha"]),
@@ -901,7 +904,7 @@ def bench_online_crc_from_panel(frame: pl.DataFrame, config: AppConfig) -> dict[
     tr = split["tr"]
     cov = np.asarray(split["covariate"], dtype=float)
     # For train rows, approximate bands from cal wrappee scale at covariate
-    if tr.stop > tr.start:
+    if tr.any():
         # reuse scaled wrappee from split via cal endpoints — use raw mid from q where available
         # Fill missing train with nearest available: use scaled gaussian from covariate
         from quant_fund.models.distribution import ScaledGaussianDistribution
@@ -914,8 +917,12 @@ def bench_online_crc_from_panel(frame: pl.DataFrame, config: AppConfig) -> dict[
     # Map dates to int codes for OnlineCRC
     uniq, inv = np.unique(dates, return_inverse=True)
     date_codes = inv.astype(np.int64)
-    warm = int(cal.stop)  # warm through end of calibration
-    if warm < 20 or y.size - warm < 10:
+    keep = split["tr"] | cal | te
+    losses = losses[keep]
+    base = base[keep]
+    date_codes = date_codes[keep]
+    warm = int((split["tr"] | cal).sum())  # warm through end of calibration
+    if warm < 20 or int(keep.sum()) - warm < 10:
         return {}
     row = bench_online_crc(
         alpha=0.05,
@@ -947,8 +954,8 @@ def bench_conformal_topk_from_panel(
     if x.shape[0] < 80:
         return {}
     # Chronological train for scores; conformal_topk does its own cal/test split on dates
-    tr, _cal, _te = _triple_split(x.shape[0])
-    if int(tr.stop - tr.start) < 30:
+    tr, _cal, _te = _triple_split(dates, horizon=_label_horizon(label))
+    if int(tr.sum()) < 30:
         return {}
     model = RidgeRanker().fit(x[tr], y[tr])
     scores = model.predict(x)

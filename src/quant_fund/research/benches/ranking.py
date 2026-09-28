@@ -493,7 +493,9 @@ def bench_alpha(frame: pl.DataFrame, config: AppConfig, label: str) -> dict[str,
     x, y, dates, used, ids = design_matrix(frame, label, feats)
     if x.size == 0:
         return {}
-    tr, te = _holdout(x.shape[0])
+    tr, te = _holdout(dates, horizon=_label_horizon(label))
+    if not tr.any() or not te.any():
+        return {}
     mean_m = HistoricalMeanAlpha().fit(x[tr], y[tr])
     ridge = RidgeAlpha(config.train.ridge_alpha).fit(x[tr], y[tr])
     p_mean = mean_m.predict(x[te])

@@ -95,7 +95,7 @@ def bench_volatility(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if dates_d.size == 0 or dates_d.size != roll_d.size or dates_d.size != ewma_d.size:
         return {}
     horizon = _label_horizon(label)
-    _, te = _holdout(int(dates_d.size))
+    _, te = _holdout(dates_d, horizon=horizon)
     yy = np.clip(y_d[te], config.train.qlike_floor, None)
     roll_te = np.clip(roll_d[te], config.train.qlike_floor, None)
     ewma_te = np.clip(ewma_d[te], config.train.qlike_floor, None)
@@ -159,7 +159,9 @@ def _distribution_horizon_scores(
     x, y, dates, _feats, ids = design_matrix(frame, label)
     if x.size == 0:
         return None
-    tr, te = _holdout(x.shape[0])
+    tr, te = _holdout(dates, horizon=_label_horizon(label))
+    if not tr.any() or not te.any():
+        return None
     g = GaussianDistribution(taus).fit(x[tr], y[tr])
     e = EmpiricalDistribution(taus).fit(x[tr], y[tr])
     qg, qe = g.predict(x[te]), e.predict(x[te])
@@ -326,7 +328,7 @@ def bench_regime(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     x = sub.select(cols).to_numpy().astype(float)
     if x.shape[0] < 40:
         return {}
-    tr, te = _holdout(x.shape[0], 0.25)
+    tr, te = _holdout(sub["event_time"].to_numpy(), 0.25)
     hmm = GaussianHMMRegime(config.train.n_hmm_states, config.train.random_seed).fit(x[tr])
     thr = VolThresholdRegime().fit(x[tr])
     one = SingleStateRegime().fit(x[tr])
@@ -359,7 +361,9 @@ def bench_tail(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     x, y, dates, _feats, ids = design_matrix(frame, label)
     if x.size == 0:
         return {}
-    tr, te = _holdout(x.shape[0])
+    tr, te = _holdout(dates, horizon=_label_horizon(label))
+    if not tr.any() or not te.any():
+        return {}
     alpha_cov = 0.95
     p_miss = 1.0 - alpha_cov
     hist = HistoricalTail(alpha_cov).fit(x[tr], y[tr])
@@ -460,7 +464,9 @@ def bench_drawdown(frame: pl.DataFrame, config: AppConfig) -> dict[str, Any]:
     if x.size == 0:
         return {}
     y_dd = _aligned_col(frame, dates, ids, dd)
-    tr, te = _holdout(x.shape[0])
+    tr, te = _holdout(dates, horizon=_label_horizon(ev))
+    if not tr.any() or not te.any():
+        return {}
     clf = DrawdownClassifier().fit(x[tr], y_ev[tr])
     p = clf.predict_proba(x[te])
     yy = (y_ev[te] > 0.5).astype(float)
