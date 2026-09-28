@@ -1,4 +1,15 @@
-# Phase-1 code re-seal
+# Phase-1 code re-seal — superseded
+
+**Correction:** the re-seal described below was applied by #169 without
+re-running the studies. Its substituted code and runtime stamps do not
+describe the historical execution. The original sealed artifacts and their
+hash links are restored; see [the provenance correction](PHASE1_PROVENANCE_CORRECTION.md).
+
+The following account is retained as the audit record of that superseded
+change. Its references to the re-sealed artifacts describe #169, not the
+restored current artifacts.
+
+---
 
 The published net-tournament and cost-aware-tournament seals bind
 `code_sha256` to `5c4e0c876f6d5f74e42d1205468a8768752e14e2`. That commit is
