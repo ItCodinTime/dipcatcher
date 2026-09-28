@@ -749,3 +749,77 @@ def test_promotion_dry_run_rejects_high_divergence():
         data_source="SYNTHETIC",
     )
     assert receipt["would_promote_paper"] is False
+
+
+def _run_once(tmp_path: Path, run_id: str) -> None:
+    cfg = _cfg(tmp_path)
+    run_paper_loop(
+        _bars(8),
+        cfg,
+        champion_weights=_weights(7),
+        initial_nav=100_000.0,
+        max_steps=2,
+        run_id=run_id,
+        prefer_latest=False,
+    )
+
+
+def _corrupt_state_field(tmp_path: Path, run_id: str, key: str, value: object) -> None:
+    path = tmp_path / "metadata" / "paper" / run_id / "broker_state.json"
+    state = json.loads(path.read_text())
+    state[key] = value
+    path.write_text(json.dumps(state))
+
+
+def test_paper_resume_rejects_unparseable_last_exec(tmp_path):
+    """A corrupt last_exec must fail closed, not skip the fingerprint check."""
+    run_id = "paper-bad-last-exec"
+    _run_once(tmp_path, run_id)
+    _corrupt_state_field(tmp_path, run_id, "last_exec", "not-a-timestamp")
+    cfg = _cfg(tmp_path)
+    with pytest.raises(ValueError, match="last_exec"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id=run_id,
+        )
+
+
+def test_paper_resume_rejects_missing_last_exec_with_fingerprint(tmp_path):
+    """last_exec: null with a live fingerprint also fails closed."""
+    run_id = "paper-null-last-exec"
+    _run_once(tmp_path, run_id)
+    _corrupt_state_field(tmp_path, run_id, "last_exec", None)
+    cfg = _cfg(tmp_path)
+    with pytest.raises(ValueError, match="last_exec"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id=run_id,
+        )
+
+
+def test_paper_resume_rejects_unparseable_last_decision(tmp_path):
+    """A corrupt last_decision cursor must fail closed, not silently replay."""
+    run_id = "paper-bad-last-decision"
+    _run_once(tmp_path, run_id)
+    _corrupt_state_field(tmp_path, run_id, "last_decision", "2024-13-99Tbad")
+    cfg = _cfg(tmp_path)
+    with pytest.raises(ValueError, match="last_decision"):
+        run_paper_loop(
+            _bars(8),
+            cfg,
+            champion_weights=_weights(7),
+            initial_nav=100_000.0,
+            max_steps=1,
+            resume=True,
+            resume_run_id=run_id,
+        )
