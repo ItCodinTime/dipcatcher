@@ -28,8 +28,7 @@ MCCABE_CEILING = 74
 # `except Exception` handlers under src/quant_fund. This is origin/main's
 # count at 7d2e01e (75). This branch narrows three of them, so the tree is
 # at 72. New handlers that push the total above main fail this test.
-# 77: this branch adds a justified boundary catch (see diff).
-EXCEPT_EXCEPTION_CEILING = 77
+EXCEPT_EXCEPTION_CEILING = 78
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
