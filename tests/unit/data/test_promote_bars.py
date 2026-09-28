@@ -69,6 +69,15 @@ def test_promote_receipt_chains_source_hashes(tmp_path: Path) -> None:
     assert receipt["dest_sha256"] == hashlib.sha256(result["data"].read_bytes()).hexdigest()
 
 
+def test_promote_receipt_seal_verifies(tmp_path: Path) -> None:
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    paths = write_source_frame(_frame(), tmp_path, "yahoo")
+    result = promote_bars(paths["data"], tmp_path / "raw")
+    verdict = verify_receipt_file(result["receipt"])
+    assert verdict["valid"], verdict["errors"]
+
+
 def test_promote_missing_source_fails(tmp_path: Path) -> None:
     with pytest.raises(SourceError, match="not found"):
         promote_bars(tmp_path / "nope.parquet", tmp_path / "dest")

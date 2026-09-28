@@ -21,6 +21,7 @@ import polars as pl
 
 from quant_fund.data.adapters.parquet import validate_bars_frame
 from quant_fund.data.sources.base import SourceError
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 PROMOTE_RECEIPT_SCHEMA = "bar_promotion.v1"
 
@@ -89,22 +90,30 @@ def promote_bars(
     _write_atomic(dest, lambda tmp: frame.write_parquet(tmp))
     digest = hashlib.sha256(dest.read_bytes()).hexdigest()
 
-    receipt = {
-        "schema": PROMOTE_RECEIPT_SCHEMA,
-        "promoted_at": datetime.now(UTC).isoformat(),
-        "source_parquet": str(src),
-        "source_parquet_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
-        "source_receipt_sha256": source_receipt_sha256,
-        "source_label": source_label,
-        "dest": str(dest),
-        "dest_sha256": digest,
-        "rows": frame.height,
-        "security_ids": frame.get_column("security_id").n_unique(),
-        "event_time_range": {
-            "min": str(frame.get_column("event_time").min()),
-            "max": str(frame.get_column("event_time").max()),
-        },
-    }
+    # Seal under the verifier's canonical_json convention (same bytes as
+    # research.receipt_v2.seal_receipt) without a data→research edge.
+    body = json.loads(
+        canonical_json_bytes(
+            {
+                "schema": PROMOTE_RECEIPT_SCHEMA,
+                "promoted_at": datetime.now(UTC).isoformat(),
+                "source_parquet": str(src),
+                "source_parquet_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+                "source_receipt_sha256": source_receipt_sha256,
+                "source_label": source_label,
+                "dest": str(dest),
+                "dest_sha256": digest,
+                "rows": frame.height,
+                "security_ids": frame.get_column("security_id").n_unique(),
+                "event_time_range": {
+                    "min": str(frame.get_column("event_time").min()),
+                    "max": str(frame.get_column("event_time").max()),
+                },
+            }
+        )
+    )
+    body.pop("receipt_sha256", None)
+    receipt = {**body, "receipt_sha256": hash_bytes(canonical_json_bytes(body))}
     receipt_path = dest.with_suffix(".json")
     _write_atomic(
         receipt_path,
