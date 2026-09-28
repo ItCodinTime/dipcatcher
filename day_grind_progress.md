@@ -2048,3 +2048,15 @@ Gates: 82 tests green; ruff check clean; ruff format applied; mypy clean on all 
 
 - Wave 7 (vol/credit/selection canon): 12 modules — models/{egarch,har,dcc,stoch_vol,count,ordered,qar,dfm,fractional,kmv}.py + metrics/{purged_cv,feature_select}.py; 54 unit tests green; ruff/mypy clean. Notable: ordered.py cutpoint sizing bug caught by prob-sum invariant; dfm stationary-init uses solve_discrete_lyapunov.
 
+
+
+## Canon wave 12 (6 modules, 27 tests) — DONE
+
+- models/bai_perron.py — Bai-Perron (1998/2003) sup-Wald break tests, exact DP m-partition, sequential l→l+1 detection, segment refit + BIC
+- models/ucm.py — Harvey (1989) level+slope+stochastic-cycle structural model: Kalman MLE, RTS-smoothed components, damped forecast
+- models/favar.py — Bernanke-Boivin-Eliasz (2005) two-step FAVAR: PCA factors + VAR(p), OIRF/GIRF, generalized FEVD, recursion forecast
+- models/dml.py — Chernozhukov et al. (2018) DML: PLR and IRM (ATE) with cross-fitted ridge nuisances, influence-function SEs
+- models/ms_var.py — Hamilton (1989)/Kim (1994) MS-VAR(1) EM: Hamilton filter + Kim smoother, weighted M-step, transition counts, belief-propagation forecast
+- models/vine_copula.py — Bedford-Cooke C-vine with Gaussian pairs: tau-inversion fit, h-recursion loglik, inverse-h simulation
+
+Gates: 27 tests green; ruff check + format clean; mypy clean on all 7 files.
