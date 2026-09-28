@@ -18,14 +18,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import stats
 
+from quant_fund.utils.series import finite_series
+
 Array = NDArray[np.float64]
 
 
 def _v(x: Array, n: int = 20) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    if v.size < n or not np.all(np.isfinite(v)):
-        raise ValueError(f"series must be finite with length >= {n}")
-    return v
+    return finite_series(x, n)
 
 
 def market_model_fit(est_returns: Array, est_market: Array) -> dict[str, float]:
@@ -118,7 +117,7 @@ def corrado_rank_test(ar_matrix: Array) -> dict[str, float]:
     }
 
 
-def bmp_test(ar_matrix: Array, sar_matrix: Array | None = None) -> dict[str, float]:
+def bmp_test(ar_matrix: Array) -> dict[str, float]:
     """Boehmer–Musumeci–Poulsen (1991) standardized cross-sectional test.
 
     Robust to event-induced volatility: standardizes CARs by the

@@ -1,12 +1,19 @@
 """Fleet evaluation of distribution challengers on seeded SYNTHETIC shards.
 
 Each shard generator draws a labeled synthetic return series with a planted
-distributional property (multimodality, heavy tails, skew, regime-switching or
-GARCH vol clustering). ``run_distribution_fleet`` fits every head on the
-leading slice of every shard, predicts the trailing slice, and scores with
-proper scores only (pinball, CRPS, PIT-KS, interval coverage) — never headline
-P&L metrics. ``write_fleet_receipt`` persists the sealed JSON evidence under
-``receipts/``. All output is SYNTHETIC correctness evidence, not market data.
+distributional property (multimodality, heavy tails, skew, regime-switching,
+volatility breaks, GJR-GARCH leverage asymmetry, or a causal lag-1 feature
+frame). ``run_distribution_fleet`` fits every head on the leading slice of
+every shard, predicts the trailing slice, and scores with proper scores only
+(pinball, CRPS, PIT-KS, interval coverage) — never headline P&L metrics.
+``write_fleet_receipt`` persists the sealed JSON evidence under ``receipts/``.
+
+Conditional/series heads enter through fleet adapters: ``_QarOneStepHead``
+scores QAR(1) on its native one-step grid (each eval row forecast from the
+*observed* lag-1 value — frozen coefficients, no refit, no lookahead), and
+``_HStepOneStepHead`` slices the ``h=1`` block of the multi-horizon head so
+only its honestly one-step forecasts are scored. All output is SYNTHETIC
+correctness evidence, not market data.
 """
 
 from __future__ import annotations
@@ -30,7 +37,9 @@ from quant_fund.metrics.scoring import (
     crps_from_quantiles,
     mean_pinball,
     pit_values,
+    rearrange_quantiles,
 )
+from quant_fund.models.conformal_dist import ConformalTDistribution
 from quant_fund.models.distribution import (
     EmpiricalDistribution,
     GaussianDistribution,
@@ -39,8 +48,14 @@ from quant_fund.models.distribution import (
     SkewTDistribution,
     StackedDistribution,
 )
+from quant_fund.models.fhs import FhsSkewDistribution
+from quant_fund.models.hstep import HStepScaledDistribution
+from quant_fund.models.lgbm_q2 import LGBMQ2Distribution
+from quant_fund.models.qar import QARDistribution
+from quant_fund.models.regime_dist import RegimeDistribution
 from quant_fund.models.skew_t import skew_t_ppf
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+from quant_fund.research.receipt_v2 import build_receipt_v2, seal_receipt
 from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 from quant_fund.utils.reproducibility import git_revision
 
@@ -53,7 +68,11 @@ COVERAGE_LEVELS: tuple[float, ...] = (0.8, 0.9)
 
 @dataclass(frozen=True)
 class SyntheticShard:
-    """One seeded SYNTHETIC return shard: inert design matrix + target series."""
+    """One seeded SYNTHETIC return shard: design matrix + target series.
+
+    Most shards carry the inert ``_dummy_x`` (unconditional heads ignore it);
+    shards like ``ar1_lagged_x`` instead carry a causal feature frame.
+    """
 
     name: str
     x: Array
@@ -82,6 +101,7 @@ def iid_gaussian(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": False,
         "mu": 0.0,
         "sigma": 0.02,
     }
@@ -95,6 +115,7 @@ def bimodal_mixture(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": False,
         "weight_lo": 0.65,
         "mu": (-0.025, 0.03),
         "sigma": (0.012, 0.016),
@@ -113,6 +134,7 @@ def heavy_tail(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": False,
         "df": 3.0,
         "scale": 0.01,
     }
@@ -126,6 +148,7 @@ def left_skew(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": False,
         "nu": 6.0,
         "lam": -0.6,
         "mu": 0.0,
@@ -146,6 +169,7 @@ def regime_switch(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": True,
         "rho": 0.1,
         "sigma": (0.008, 0.035),
         "p_leave": (0.04, 0.08),
@@ -175,6 +199,7 @@ def garch_cluster(n: int, seed: int) -> SyntheticShard:
     config: dict[str, Any] = {
         "data_label": "SYNTHETIC",
         "seed": int(seed),
+        "serial_dependence": True,
         "omega": 4e-6,
         "alpha": 0.05,
         "gamma": 0.08,
@@ -203,6 +228,123 @@ def garch_cluster(n: int, seed: int) -> SyntheticShard:
     return SyntheticShard("garch_cluster", _dummy_x(n), np.asarray(eps[burn:], dtype=float), config)
 
 
+def vol_break(n: int, seed: int) -> SyntheticShard:
+    """Single structural volatility break, low -> high sigma (SYNTHETIC).
+
+    The break lands inside the leading fit window so both vol states are
+    learnable, while the trailing slice is entirely high-vol: unconditional
+    heads must over-mix the low-vol history, and regime-aware heads earn their
+    score only if the filtered state tracks the break. Planted break for the
+    ``regime`` cell.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "serial_dependence": True,
+        "mu": 0.0,
+        "sigma": (0.008, 0.04),
+        "break_frac": 0.55,
+    }
+    n = _require_n(n)
+    frac = float(config["break_frac"])
+    if not 0.0 < frac < 1.0:
+        raise ValueError("break_frac must lie in (0, 1)")
+    cut = min(max(int(np.floor(frac * n)), 1), n - 1)
+    sig_lo, sig_hi = config["sigma"]
+    sigma = np.full(n, float(sig_lo))
+    sigma[cut:] = float(sig_hi)
+    y = rng.normal(float(config["mu"]), sigma)
+    config["n_post_break"] = int(n - cut)
+    return SyntheticShard("vol_break", _dummy_x(n), np.asarray(y, dtype=float), config)
+
+
+def gjr_leverage(n: int, seed: int) -> SyntheticShard:
+    """GJR-GARCH(1,1) with strong leverage + skew-t innovations (SYNTHETIC).
+
+    Strong GJR gamma (negative shocks inflate next-step variance) over Hansen
+    skew-t innovations (lam < 0) — the asymmetry ``fhs_skew``'s skew-t residual
+    law is built to capture, unlike the symmetric-normal ``garch_cluster``.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "serial_dependence": True,
+        "omega": 4e-6,
+        "alpha": 0.03,
+        "gamma": 0.18,
+        "beta": 0.86,
+        "nu": 8.0,
+        "lam": -0.5,
+        "burn": 128,
+    }
+    n = _require_n(n)
+    omega = float(config["omega"])
+    alpha = float(config["alpha"])
+    gamma = float(config["gamma"])
+    beta = float(config["beta"])
+    persistence = alpha + gamma / 2.0 + beta
+    if not 0.0 < persistence < 1.0:
+        raise ValueError("GJR-GARCH persistence must lie in (0, 1)")
+    burn = int(config["burn"])
+    total = n + burn
+    u = np.clip(rng.uniform(0.0, 1.0, total), 1e-9, 1.0 - 1e-9)
+    nu = float(config["nu"])
+    lam = float(config["lam"])
+    z = np.asarray([skew_t_ppf(float(uu), nu, lam, 0.0, 1.0) for uu in u], dtype=np.float64)
+    z_std = float(z.std(ddof=1))
+    if not np.isfinite(z_std) or z_std <= 0.0:
+        raise ValueError("skew-t innovation draw is degenerate")
+    z = (z - float(z.mean())) / z_std
+    eps = np.empty(total, dtype=float)
+    var = np.empty(total, dtype=float)
+    var[0] = omega / (1.0 - persistence)
+    eps[0] = np.sqrt(var[0]) * z[0]
+    for t in range(1, total):
+        var[t] = omega + (alpha + gamma * (eps[t - 1] < 0.0)) * eps[t - 1] ** 2 + beta * var[t - 1]
+        eps[t] = np.sqrt(var[t]) * z[t]
+    config["persistence"] = float(persistence)
+    return SyntheticShard("gjr_leverage", _dummy_x(n), np.asarray(eps[burn:], dtype=float), config)
+
+
+def ar1_lagged_x(n: int, seed: int) -> SyntheticShard:
+    """AR(1) shard with a causal lag-1 feature frame (SYNTHETIC).
+
+    ``y_t = rho * y_{t-1} + sigma * eps_t``; ``x`` carries ``[y_{t-1},
+    |y_{t-1}|]`` — features known at the previous origin, so row ``t``'s
+    features never contain its own target. Exercises ``lgbm_q2`` on a real
+    signal and ``qar`` on a process whose conditional quantile map is linear
+    in the lag by construction.
+    """
+    rng = np.random.default_rng(seed)
+    config: dict[str, Any] = {
+        "data_label": "SYNTHETIC",
+        "seed": int(seed),
+        "serial_dependence": True,
+        "rho": 0.35,
+        "sigma": 0.02,
+        "burn": 64,
+        "x_features": ["y_lag1", "abs_y_lag1"],
+    }
+    n = _require_n(n)
+    rho = float(config["rho"])
+    if not -1.0 < rho < 1.0:
+        raise ValueError("rho must lie in (-1, 1)")
+    sigma = float(config["sigma"])
+    burn = int(config["burn"])
+    total = n + burn
+    eps = rng.normal(0.0, sigma, total)
+    y_full = np.empty(total, dtype=float)
+    y_full[0] = eps[0]
+    for t in range(1, total):
+        y_full[t] = rho * y_full[t - 1] + eps[t]
+    y = np.asarray(y_full[burn:], dtype=float)
+    lag = y_full[burn - 1 : -1]
+    x = np.column_stack([lag, np.abs(lag)]).astype(np.float64)
+    return SyntheticShard("ar1_lagged_x", x, y, config)
+
+
 SHARD_GENERATORS: dict[str, ShardGenerator] = {
     "iid_gaussian": iid_gaussian,
     "bimodal_mixture": bimodal_mixture,
@@ -210,11 +352,91 @@ SHARD_GENERATORS: dict[str, ShardGenerator] = {
     "left_skew": left_skew,
     "regime_switch": regime_switch,
     "garch_cluster": garch_cluster,
+    "vol_break": vol_break,
+    "gjr_leverage": gjr_leverage,
+    "ar1_lagged_x": ar1_lagged_x,
 }
 
+
+class _QarOneStepHead:
+    """Fleet adapter scoring ``QARDistribution`` on its native one-step grid.
+
+    The head's ``predict`` emits exactly one row — the conditional quantile
+    map ``a_tau + b_tau * y_{t-1}`` at the last fitted observation. For the
+    trailing slice, eval row ``i`` is forecast with conditioning lag
+    ``y[n_train + i - 1]`` (the observed previous value): the coefficient map
+    stays frozen from the fit window, so this is a genuine one-step-ahead
+    walk-forward score with no refit and no lookahead. The fleet passes the
+    lag-1 column of ``y`` as the predict matrix (see ``fleet_lagged_predict``
+    in ``_score_row``).
+    """
+
+    fleet_lagged_predict = True
+
+    def __init__(self, taus: Sequence[float]) -> None:
+        self.taus = [float(t) for t in taus]
+        self._inner = QARDistribution(list(self.taus))
+
+    def fit(self, x: Array, y: Array, **kwargs: Any) -> _QarOneStepHead:
+        self._inner.fit(x, y)
+        return self
+
+    def predict(self, x: Array) -> Array:
+        if self._inner.coef_ is None:
+            raise RuntimeError("distribution model has not been fitted")
+        lag = np.asarray(x, dtype=float).reshape(-1)
+        if lag.size == 0 or not np.isfinite(lag).all():
+            raise ValueError("lagged predictor column must be nonempty and finite")
+        coef = self._inner.coef_
+        q = coef[:, 0][None, :] + coef[:, 1][None, :] * lag[:, None]
+        return np.asarray(rearrange_quantiles(q), dtype=np.float64)
+
+    def metadata(self) -> Any:
+        return self._inner.metadata()
+
+
+class _HStepOneStepHead:
+    """Scores one ``h=1`` construction block of ``HStepScaledDistribution``.
+
+    The head's native ``predict`` emits ``2 * len(taus) * n_horizons`` columns
+    (per-horizon ``[student_t | empirical]`` blocks). The fleet fits the
+    default multi-horizon layout and scores only the ``h=1`` block — the
+    one-step forecasts the trailing slice can honestly verify. The longer-
+    horizon blocks are still emitted by the fit but are not scored here.
+    """
+
+    def __init__(self, taus: Sequence[float], block: str) -> None:
+        if block not in {"student_t", "empirical"}:
+            raise ValueError("block must be 'student_t' or 'empirical'")
+        self.taus = [float(t) for t in taus]
+        self.block = block
+        self._inner = HStepScaledDistribution(list(self.taus))
+
+    def fit(self, x: Array, y: Array, **kwargs: Any) -> _HStepOneStepHead:
+        self._inner.fit(x, y)
+        return self
+
+    def predict(self, x: Array) -> Array:
+        n_taus = len(self.taus)
+        full = np.asarray(self._inner.predict(x), dtype=float)
+        h1 = self._inner.horizons.index(1)
+        lo = (2 * h1 + (0 if self.block == "student_t" else 1)) * n_taus
+        return np.asarray(full[:, lo : lo + n_taus], dtype=np.float64)
+
+    def metadata(self) -> Any:
+        meta = self._inner.metadata()
+        meta.extra = {**dict(meta.extra or {}), "fleet_block": self.block, "fleet_h": 1}
+        return meta
+
+
 # Head-name registry for the `fleet` CLI --models flag. Constructors take the
-# scoring tau grid and a seed; only unconditional heads from
-# models/distribution.py are registered (no cross-PR head dependencies).
+# scoring tau grid and a seed. Covers the unconditional heads from
+# models/distribution.py plus the landed conditional/series heads via the
+# fleet adapters above: qar (one-step lagged scoring), hstep as its two h=1
+# construction slices, the series/feature heads regime / fhs_skew /
+# lgbm_q2 / conf_t directly, and the torch-optional neural heads nbeats /
+# nhits (imported lazily inside the factory so this module never requires
+# the ``nn`` extra — no cross-PR head dependencies).
 FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "empirical": lambda taus, seed: EmpiricalDistribution(list(taus)),
     "gaussian": lambda taus, seed: GaussianDistribution(list(taus)),
@@ -222,7 +444,28 @@ FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "gmm": lambda taus, seed: GMMDistribution(list(taus), seed=int(seed)),
     "isotonic": lambda taus, seed: IsotonicPitDistribution(list(taus)),
     "stack": lambda taus, seed: StackedDistribution(list(taus), seed=int(seed)),
+    "qar": lambda taus, seed: _QarOneStepHead(taus),
+    "regime": lambda taus, seed: RegimeDistribution(list(taus), seed=int(seed)),
+    "fhs_skew": lambda taus, seed: FhsSkewDistribution(list(taus)),
+    "lgbm_q2": lambda taus, seed: LGBMQ2Distribution(list(taus), seed=int(seed)),
+    "conf_t": lambda taus, seed: ConformalTDistribution(list(taus)),
+    "hstep_t": lambda taus, seed: _HStepOneStepHead(taus, "student_t"),
+    "hstep_emp": lambda taus, seed: _HStepOneStepHead(taus, "empirical"),
+    "nbeats": lambda taus, seed: _nbeats(taus, seed),
+    "nhits": lambda taus, seed: _nhits(taus, seed),
 }
+
+
+def _nbeats(taus: Sequence[float], seed: int) -> Any:
+    from quant_fund.models.nbeats import NBeatsDistribution
+
+    return NBeatsDistribution(list(taus), seed=int(seed))
+
+
+def _nhits(taus: Sequence[float], seed: int) -> Any:
+    from quant_fund.models.nbeats import NHiTsDistribution
+
+    return NHiTsDistribution(list(taus), seed=int(seed))
 
 
 def resolve_shard_generators(names: Iterable[str] | None = None) -> dict[str, ShardGenerator]:
@@ -313,7 +556,16 @@ def _score_row(
         model.fit(shard.x[:n_train], shard.y[:n_train])
         meta = model.metadata()
         row["family"] = str(meta.family)
-        q = np.asarray(model.predict(shard.x[n_train : n_train + n_eval]), dtype=float)
+        row["model_version"] = str(getattr(meta, "version", "unknown") or "unknown")
+        row["model_head"] = str(getattr(meta, "name", "") or "")
+        if getattr(model, "fleet_lagged_predict", False):
+            # One-step series heads consume the observed lag-1 return as the
+            # predict matrix: row i's features are y[n_train+i-1], already
+            # observed at that forecast origin — no lookahead.
+            lag_x = shard.y[n_train - 1 : n_train + n_eval - 1].reshape(-1, 1)
+            q = np.asarray(model.predict(lag_x), dtype=float)
+        else:
+            q = np.asarray(model.predict(shard.x[n_train : n_train + n_eval]), dtype=float)
         if q.ndim != 2 or q.shape[0] != n_eval or q.shape[1] != taus.size:
             raise ValueError(f"predict returned shape {q.shape}; expected ({n_eval}, {taus.size})")
         if not np.isfinite(q).all():
@@ -324,9 +576,10 @@ def _score_row(
         row["crps"] = crps_from_quantiles(y_eval, q, taus)
         ks, ks_p = pit_ks(pit_values(y_eval, q, taus))
         row["pit_ks"] = ks
-        # The usual KS p-value assumes independent PIT draws. These two
-        # generators deliberately include serial dependence.
-        row["pit_ks_p"] = None if shard.name in {"regime_switch", "garch_cluster"} else ks_p
+        # The usual KS p-value assumes independent PIT draws. Shards declare
+        # serial dependence in their generator config; for those, suppress the
+        # p-value (the KS statistic itself stays reported).
+        row["pit_ks_p"] = None if shard.config.get("serial_dependence") else ks_p
         for level, pair in coverage_index.items():
             if pair is not None:
                 row[_coverage_key(level)] = coverage(y_eval, q[:, pair[0]], q[:, pair[1]])
@@ -423,6 +676,30 @@ def run_distribution_fleet(
                 )
             )
 
+    model_versions: dict[str, dict[str, str]] = {}
+    for row in rows:
+        version = row.pop("model_version", None)
+        head = row.pop("model_head", None)
+        model_versions.setdefault(
+            str(row["model"]),
+            {
+                "head": str(head) if head else str(row["model"]),
+                "version": str(version) if version else "unknown",
+            },
+        )
+    for model_name, blob in model_versions.items():
+        if blob["version"] == "unknown":
+            try:
+                meta = factories[model_name]().metadata()
+                head = getattr(meta, "name", None)
+                version = getattr(meta, "version", None)
+                if head:
+                    blob["head"] = str(head)
+                if version:
+                    blob["version"] = str(version)
+            except Exception:
+                pass
+
     columns = [
         "shard",
         "model",
@@ -458,6 +735,7 @@ def run_distribution_fleet(
                     for name, meta in shard_meta.items()
                 },
                 "models": sorted(str(k) for k in factories),
+                "model_versions": model_versions,
                 "taus": [float(t) for t in tau_arr],
                 "n_train": n_train,
                 "n_eval": n_eval,
@@ -477,6 +755,7 @@ def run_distribution_fleet(
         "n_eval": n_eval,
         "taus": [float(t) for t in tau_arr],
         "models": sorted(str(k) for k in factories),
+        "model_versions": model_versions,
         "shards": shard_meta,
         "inputs_sha256": inputs_sha256,
         "n_rows": len(rows),
@@ -521,29 +800,126 @@ def _atomic_write_text(path: Path, content: str) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
+def fleet_v1_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Fail-closed contract for a ``fleet_eval.v1`` payload (writer + verifier)."""
+    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
+    errors: list[str] = []
+    if receipt.get("schema") != FLEET_EVAL_SCHEMA:
+        errors.append("schema_not_fleet_eval_v1")
+    if receipt.get("data_label") != "SYNTHETIC":
+        errors.append("data_label_not_synthetic")
+    if receipt.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim_not_false")
+    if not isinstance(receipt.get("results"), list) or not receipt["results"]:
+        errors.append("results_missing_or_empty")
+    if not family_blob_forbidden_metrics_absent(research_blob):
+        errors.append("forbidden_metric_keys")
+    return errors
+
+
+def fleet_dataset_identity(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """The dataset identity bound by a v2 ``dataset_hash``: shard content hashes."""
+    shards = receipt.get("shards")
+    if not isinstance(shards, Mapping):
+        raise ValueError("fleet receipt has no shards block")
+    dataset: dict[str, Any] = {}
+    for name, meta in shards.items():
+        if not isinstance(meta, Mapping):
+            raise ValueError(f"fleet shard {name!r} metadata is not an object")
+        dataset[str(name)] = {
+            "x_sha256": meta.get("x_sha256"),
+            "y_sha256": meta.get("y_sha256"),
+        }
+    return dataset
+
+
+def fleet_params(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """The run parameters bound by a v2 ``params_hash``."""
+    shards = receipt.get("shards")
+    return {
+        "models": receipt.get("models"),
+        "taus": receipt.get("taus"),
+        "n_train": receipt.get("n_train"),
+        "n_eval": receipt.get("n_eval"),
+        "seed": receipt.get("seed"),
+        "shards": sorted(str(name) for name in shards) if isinstance(shards, Mapping) else None,
+    }
+
+
+def fleet_v1_verdict(receipt: Mapping[str, Any]) -> str:
+    """pass iff every fleet row scored without error; a recorded error is a fail."""
+    n_error_rows = receipt.get("n_error_rows")
+    return "pass" if n_error_rows == 0 else "fail"
+
+
+def fleet_receipt_v2(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """Wrap a ``fleet_eval.v1`` payload in the unified ``receipt.v2`` envelope.
+
+    The v1 payload is embedded verbatim under ``payload``; the envelope binds
+    the shard data digests, run params, this module's source hash, and the
+    loaded numeric stack. Validates the v1 contract first — a malformed v1
+    receipt is never wrapped.
+    """
+    if fleet_v1_contract_errors(receipt):
+        raise ValueError("fleet receipt violates its synthetic research contract")
+    return build_receipt_v2(
+        kind=str(receipt["kind"]),
+        data_label=str(receipt["data_label"]),
+        dataset=fleet_dataset_identity(receipt),
+        params=fleet_params(receipt),
+        code_files=(Path(__file__),),
+        verdict=fleet_v1_verdict(receipt),
+        payload=dict(receipt),
+        generated_at=str(receipt["generated_at"]),
+        revision=str(receipt["git_revision"]),
+    )
+
+
+def fleet_v2_consistency_errors(envelope: Mapping[str, Any]) -> list[str]:
+    """Re-derive a fleet receipt.v2 envelope's bound digests from its payload."""
+    errors: list[str] = []
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    contract_errors = fleet_v1_contract_errors(payload)
+    errors.extend(f"payload_{name}" for name in contract_errors)
+    if contract_errors:
+        return errors
+    try:
+        dataset = fleet_dataset_identity(payload)
+    except ValueError as exc:
+        return [*errors, f"payload_{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(fleet_params(payload))) != envelope.get("params_hash"):
+        errors.append("params_hash_mismatch")
+    if fleet_v1_verdict(payload) != envelope.get("verdict"):
+        errors.append("verdict_mismatch")
+    return errors
+
+
 def write_fleet_receipt(
     receipt: Mapping[str, Any],
     receipts_dir: Path | str = Path("receipts"),
+    *,
+    receipt_version: int = 1,
 ) -> Path:
     """Seal a fleet receipt and write ``receipts/fleet_eval_<hash>.json``.
 
     The filename hash is the sha256 of the canonical receipt payload; the same
     digest is embedded as ``receipt_sha256`` (mirroring the real_benchmark
-    seal convention). The write is atomic.
+    seal convention). The write is atomic. ``receipt_version=2`` wraps the v1
+    payload in the unified ``receipt.v2`` envelope before sealing.
     """
-    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
-    if (
-        receipt.get("schema") != FLEET_EVAL_SCHEMA
-        or receipt.get("data_label") != "SYNTHETIC"
-        or receipt.get("live_pnl_claim") is not False
-        or not isinstance(receipt.get("results"), list)
-        or not receipt["results"]
-        or not family_blob_forbidden_metrics_absent(research_blob)
-    ):
-        raise ValueError("fleet receipt violates its synthetic research contract")
-    canonical = json.loads(canonical_json_bytes(dict(receipt)))
-    digest = hash_bytes(canonical_json_bytes(canonical))
-    payload = {**canonical, "receipt_sha256": digest}
-    path = Path(receipts_dir) / f"fleet_eval_{digest[:16]}.json"
+    if receipt_version == 1:
+        if fleet_v1_contract_errors(receipt):
+            raise ValueError("fleet receipt violates its synthetic research contract")
+        body: Mapping[str, Any] = receipt
+    elif receipt_version == 2:
+        body = fleet_receipt_v2(receipt)
+    else:
+        raise ValueError(f"receipt_version must be 1 or 2, got {receipt_version!r}")
+    payload = seal_receipt(body)
+    path = Path(receipts_dir) / f"fleet_eval_{payload['receipt_sha256'][:16]}.json"
     _atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
     return path

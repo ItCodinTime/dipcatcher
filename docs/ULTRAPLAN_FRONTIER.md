@@ -98,13 +98,25 @@ Each new challenger: causal-only, deterministic seed, honest-NaN on failure,
 added to `BASELINES`/`dip_challengers`, unit-tested against known cases, then
 a `v5_*` fleet column on existing shards' protocol.
 
-Swarm harnesses landed: `research/fleet_eval.py` + `dipcatcher fleet` (six
+Swarm harnesses landed: `research/fleet_eval.py` + `dipcatcher fleet` (nine
 seeded SYNTHETIC shards — iid_gaussian/bimodal_mixture/heavy_tail/left_skew/
-regime_switch/garch_cluster — scoring every registered head with proper
-scores only into sealed receipts), and `research/identity_sweep.py` +
-`dipcatcher verify-identities` (38 curated estimator identities proven over
-seeded SyntheticBundle draws with hash-sealed receipts, exits non-zero on
-any violation).
+regime_switch/garch_cluster + vol_break/gjr_leverage/ar1_lagged_x — scoring
+every registered head with proper scores only into sealed receipts), and
+`research/identity_sweep.py` + `dipcatcher verify-identities` (38 curated
+estimator identities proven over seeded SyntheticBundle draws with
+hash-sealed receipts, exits non-zero on any violation).
+
+Fleet coverage is now the full landed head slate — all 13 registry entries
+(unconditional + conditional/series via fleet adapters) scored on all 9
+shards, sealed in `receipts/fleet_eval_5ddf15b0dc7d3ca1.json` (117 rows,
+0 errors; proper scores only — pinball/CRPS/PIT-KS/coverage; head versions +
+per-shard seeds embedded). This closes every "Fleet cell still open" note
+below. Adapter details: `qar` is scored on its native one-step grid (eval row
+`i` forecasts from the observed lag `y[n_train+i-1]` — frozen coefficients,
+no refit, no lookahead); `hstep` enters as `hstep_t`/`hstep_emp`, the two
+`h=1` construction blocks of `HStepScaledDistribution` — honestly scorable
+on the 1-step trailing slice; the longer-horizon blocks stay outside the
+fleet contract.
 
 - [ ] P1.1 `dip_gmm_k` — Gaussian-mixture density head (K∈{2,3,4}, EM on
       trailing returns, BIC or fixed-K; the "heads not backbones" result
@@ -112,18 +124,23 @@ any violation).
       (Grimit et al. 2006 identity) — no sampling noise.
       Head wired: `train distribution --model gmm` (`GMMDistribution`,
       BIC over K∈{2,3,4} or fixed) + `gaussian_mixture_crps_1d` in
-      `models/mixture.py`. Fleet cell still open.
+      `models/mixture.py`. Fleet cell closed: `gmm` scored on all 9 shards
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.2 `dip_skt` — Hansen/Fernández–Steel skew-t MLE (captures asymmetry
       that symmetric-t misses on crypto).
       Head wired: `train distribution --model skew_t` (`SkewTDistribution`
-      wraps `models/skew_t.py` MLE + ppf). Fleet cell still open.
+      wraps `models/skew_t.py` MLE + ppf). Fleet cell closed: `skew_t` scored
+      on all 9 shards (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.3 `dip_qar` — quantile autoregression (Koenker–Xiao) direct per-τ
       fit; monotone-quantile enforced.
       Head landed: `QARDistribution` in `models/qar.py` — single-series,
       one-step-ahead head (`predict` accepts exactly 1 row; `fit` requires
       an all-finite series). Deliberately NOT in the `train_distribution`
       panel catalog — the panel interface has no honest row-order contract;
-      usable via direct construction. Fleet cell still open.
+      usable via direct construction. Fleet cell closed: `qar` scored on
+      all 9 shards via the `_QarOneStepHead` adapter — per-row forecasts
+      conditioned on the *observed* lag-1 return, frozen coefficients, no
+      refit (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.4 `dip_conf_t` — conformalized Student-t: parametric base +
       weighted-online-conformal recalibration of residuals →
       distribution-free coverage correction (bridges our conformal stack
@@ -131,41 +148,52 @@ any violation).
       Head wired: `train distribution --model conf_t`
       (`ConformalTDistribution` — Hansen skew-t MLE on leading 2/3, CQR
       additive shift per τ on trailing slice, `ceil((n+1)·τ)` order
-      statistic). Fleet cell still open.
+      statistic). Fleet cell closed: `conf_t` scored on all 9 shards
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.5 `dip_regime` — 2-state vol-regime mixture (existing `regime.py`
       HMM or Markov-switching): per-state empirical, state-prob mixed.
       Head wired: `train distribution --model regime`
       (`RegimeDistribution` — filtered `GaussianHMMRegime` posteriors on
       |y|, last-obs weights mixing per-state empirical CDFs via generalized
       inverse; VolThreshold + single-state fallbacks disclosed in
-      metadata). Fleet cell still open.
+      metadata). Fleet cell closed: `regime` scored on all 9 shards incl.
+      the planted-break `vol_break` shard (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.6 `dip_fhs_skew` — FHS variant on skew-filtered residuals + GJR
       asymmetry already present; quantile-level tail check.
       Head wired: `train distribution --model fhs_skew`
       (`FhsSkewDistribution` — fixed-coefficient GJR(1,1) σ-path with
       moment-matched ω, skew-t MLE on standardized residuals, one-step
       σ forecast; `train_distribution` enforces a single strictly-ordered
-      series). Fleet cell still open.
+      series). Fleet cell closed: `fhs_skew` scored on all 9 shards incl.
+      `gjr_leverage` (strong γ + skew-t innovations; receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.7 `dip_isotonic` — isotonic-recalibrated empirical (PIT-based
       recalibration on trailing window; cheap calibration challenger).
       Head wired: `train distribution --model isotonic`
       (`IsotonicPitDistribution` — PIT-quantile map recalibrating a
       Gaussian base; empirical-base variant is vacuous, so the calibrated
-      parametric base carries the challenger role). Fleet cell still open.
+      parametric base carries the challenger role). Fleet cell closed:
+      `isotonic` scored on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.8 `dip_lgbm_q2` — LightGBM quantiles v2: richer causal feature set
       (realized-vol term structure, OHLC range, amount), Dask-free, ≤30
       features; keep warmup disclosure.
       Head wired: `train distribution --model lgbm_q2`
       (`LGBMQ2Distribution` — per-τ `LGBMRegressor(objective="quantile")`
       on the full causal PIT design, rearranged monotone; warmup disclosed
-      in metadata). Fleet cell still open.
+      in metadata). Fleet cell closed: `lgbm_q2` scored on all 9 shards; the
+      `ar1_lagged_x` shard supplies a real causal feature frame
+      (`[y_{t-1}, |y_{t-1}|]`), the rest exercise the inert-x path
+      (receipt `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.9 Blend-search policy: `dip_blend` is empirical+parametric concat;
       add `dip_stack` — weights fit by *trailing-window* CRPS minimization
       (causal stacking, no lookahead).
       Head wired: `train distribution --model stack` (`StackedDistribution` —
       per-τ convex weights via SLSQP pinball minimization on the trailing
       slice; empirical + Gaussian + skew-t bases; rearranged monotone).
-      Fleet cell still open.
+      Fleet cell closed: `stack` scored on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`).
 - [ ] P1.10 h-step challengers for Phase D: vol-scaled h-bar distributions
       (σ√h + EWMA term-structure + Student-t tails; empirical h-day
       overlapping bootstrap) — honest constructions only.
@@ -175,7 +203,12 @@ any violation).
       strictly chronological series and remains outside the generic
       `train distribution` catalog: that one-step evaluator expects
       `len(taus)` columns, while this head emits separate horizon
-      blocks that need horizon-aligned targets. Fleet cell still open.
+      blocks that need horizon-aligned targets. Fleet cell closed for the
+      1-step slice: `hstep_t`/`hstep_emp` adapters slice the `h=1`
+      `student_t`/`empirical` blocks — the only horizon honestly scorable
+      on the fleet's 1-step trailing slice — on all 9 shards (receipt
+      `fleet_eval_5ddf15b0dc7d3ca1`). Multi-horizon fleet scoring remains
+      open pending horizon-aligned targets.
 
 ### P2 — New published targets (make the claim harder to dismiss)
 
@@ -195,6 +228,15 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P2.7 Classical neural baselines: N-BEATS / N-HiTS / DLinear via a small
       harness (Darts or direct) — closes the "only foundation models"
       objection.
+      Heads landed: `NBeatsDistribution` / `NHiTsDistribution` in
+      `models/nbeats.py` — direct deterministic CPU torch implementations
+      (no Darts), doubly-residual N-BEATS blocks and multi-rate N-HiTS
+      pooling, pinball loss on the scoring tau grid, seeded + single-thread.
+      Wired into `FLEET_HEAD_REGISTRY` (`fleet --models nbeats,nhits`);
+      predict emits the last-window one-step quantile vector tiled per row,
+      warmup (`lookback`) disclosed in metadata. DLinear already exists as
+      `models/dlinear.py` (sota_protocol path baseline). Fleet cell still
+      open.
 - [ ] P2.8 Patch-Transformer reference line per arXiv:2602.06909 finding
       (generic transformer ~SOTA when pretrained at scale) — likely
       infeasible to pretrain; document as bounded.
@@ -208,21 +250,40 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P3.3 Second domain: Stooq US equity dailies (remote `data/file_us`
       tapes) OR Binance non-USDT quotes — requires same bar-integrity
       hashing + availability-time discipline.
-- [ ] P3.4 Cross-sectional lane: rank-IC eval vs targets on the panel
+- [x] P3.4 Cross-sectional lane: rank-IC eval vs targets on the panel
       (existing ranking bench + northset) — a different claim axis.
+      Harness landed: `research/cross_sectional.py` + `dipcatcher rankic` —
+      5 seeded planted-signal panels (linear, rank-preserving cubic,
+      pure-noise null, mid-sample regime flip, weak edge) x 5 challenger
+      transforms (identity / noisy / lagged / shuffled / inverted), Spearman
+      rank-IC per date + Newey-West mean-IC t-stat per horizon (1/5/20),
+      sealed receipt `receipts/rankic_eval_*.json`. Property tests:
+      asset-permutation invariance, inversion sign-flip, ~nominal null
+      rejection on the shuffled challenger.
 - [ ] P3.5 Volatility-forecast cell: QLIKE on next-bar/h-step realized vol —
       `dip_garch_t` already near-top CRPS; formal vol bench vs published
       vol baselines (HAR, realized-GARCH).
+      Harness landed: `research/vol_bench.py` + `dipcatcher vol-bench`
+      (seeded SYNTHETIC shards — garch_vol / rough_vol / break_vol — scoring
+      HAR-RV, realized-GARCH, dip_garch_t and RV baselines with QLIKE/MSE on
+      cumulative h-step realized variance, NW loss diffs vs `har`, sealed
+      receipts). Real-data vol cells still open.
 
 ### P4 — Industry-grade bar (the open one)
 
 - [ ] P4.1 Profile `run_backtest` on the 11-asset workload (cProfile +
       allocation trace); classify remaining 5.4× gap: interpreter loop vs
       per-order gate cost vs polars overhead.
-- [ ] P4.2 Implement `run_backtest_fast` vectorized replay path for the
+- [x] P4.2 Implement `run_backtest_fast` vectorized replay path for the
       *matched-workload class* (fixed rules: target-percent orders, next-open,
       no limits/stops) behind an explicit flag; must produce bit-identical
       NAV/fees on the conformance suite before use in any receipt.
+      Landed: `backtest/fast_replay.py` (numba kernel + interpreted
+      fallback), explicit `run_backtest(..., fast=True|False|None)` flag with
+      fail-closed refusal of unsupported workload classes, byte-identical
+      property suite `tests/property/test_fast_replay_byte_identity.py`,
+      scope/gap analysis `docs/FAST_REPLAY_P42.md`, receipt
+      `receipts/fast_replay_p42_conformance_20260927.json`.
 - [ ] P4.3 If fast path can't reach ≤1× honestly, write the argument:
       per-order risk gates + fail-closed semantics are the product; vectorbt
       is a vectorized reducer without them; show latency decomposition
@@ -242,8 +303,10 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
 - [ ] P5.1 Multi-sleeve dev study: carry + time-series momentum + x-sectional
       reversal (Kakushadze-style BTC-factor residual mean-reversion);
       sleeve-level risk-parity / vol-target overlay.
-- [ ] P5.2 Vol-targeting overlay on carry book (target σ, realized-vol
-      scaling, cap); dev only.
+- [x] P5.2 Vol-targeting overlay (`research/capacity_overlay.py::
+      vol_target_scales`): delay-1 trailing/EWMA σ estimate -> clip(
+      target/σ, 0, max_leverage); warmup neutral, unmeasurable vol
+      flattens. Dev-only evidence via `dipcatcher capacity --dev`.
 - [ ] P5.3 Quarterly-futures cash-and-carry lane: collect Binance delivery
       futures (`collect_perp_universe.py` extension); settlement-anchored
       basis capture — the one structural edge with positive published OOS.
@@ -252,8 +315,11 @@ Dev-window tuning only; the holdout stays locked. Negative results recorded.
       hysteresis parameter robustness surface (not retuned on holdout).
 - [ ] P5.5 Cross-venue funding/basis: gated on second-venue data
       availability; otherwise documented out-of-scope.
-- [ ] P5.6 Capacity analysis: participation-capped fills × ADV → report max
-      deployable AUM per sleeve (a real hedge-fund bar item).
+- [x] P5.6 Capacity analysis (`research/capacity_overlay.py::
+      run_capacity_bench` + `dipcatcher capacity --dev`): 4 seeded
+      SYNTHETIC books × AUM grid -> feasible-date share, days-to-trade,
+      sqrt-impact bps under participation cap; sealed
+      `capacity_overlay_eval` receipt (dev-only, SYNTHETIC).
 
 ### P6 — Full code audit ("every file can be made better" — verify or fix)
 
@@ -304,10 +370,21 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
 - [ ] P7.2 Receipt v2 schema: unified `receipt.json` fields across eval,
       incumbent, carry, paper lanes (dataset hash, code hash, params,
       environment, `live_pnl_claim`, verdict).
+      Partially landed: `research/receipt_v2.py` defines the unified
+      `receipt.v2` envelope (pydantic model + published
+      `receipt_v2.schema.json`), `dipcatcher verify-receipt` validates v1/v2
+      structure + seal/digest consistency, and `fleet_eval` writes v2 behind
+      `--receipt-version 2` (default stays v1). Incumbent/carry/paper lanes
+      still emit v1 — migrate them onto `build_receipt_v2` next.
 - [ ] P7.3 Experiment registry hardening: mlflow.db exists locally — wire
       fleet runs into it or document why not.
 - [ ] P7.4 Determinism sweep: BLAS threading notes already documented; add
       per-receipt `numpy`/`scipy`/`blas` fingerprint block.
+      Partially landed: every `receipt.v2` envelope carries an `environment`
+      block (python/numpy/polars/scipy versions, BLAS/LAPACK build from
+      `np.__config__.CONFIG`, loaded BLAS threadpools via threadpoolctl) with
+      a `fingerprint_sha256` digest over the block. Still open: adopt v2 in
+      the remaining lanes and sweep fingerprints across machines.
 - [ ] P7.5 Remote-fleet ops: consolidate `spawn_*.ps1` into one parametrized
       launcher + watchdog (auto-respawn dead shards, heartbeat file).
 - [ ] P7.6 `AGENTS.md` refresh: remote conventions (powershell-only, WMI

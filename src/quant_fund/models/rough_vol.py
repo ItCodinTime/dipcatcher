@@ -18,14 +18,13 @@ import math
 import numpy as np
 from numpy.typing import NDArray
 
+from quant_fund.utils.series import finite_series
+
 Array = NDArray[np.float64]
 
 
 def _v(x: Array, n: int = 100) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    if v.size < n or not np.all(np.isfinite(v)):
-        raise ValueError(f"series must be finite with length >= {n}")
-    return v
+    return finite_series(x, n)
 
 
 def logvol_hurst(
@@ -77,10 +76,10 @@ def variance_curve_fit(log_vol: Array, lags: Array | None = None) -> dict[str, A
     if good.sum() < 5:
         raise ValueError("degenerate variance curve")
     lg = np.log(lv[good])
-    lv = np.log(var_d[good])
+    ly = np.log(var_d[good])
     # log var = log(2 nu^2) + 2H log D.
     A = np.column_stack([np.ones(good.sum()), 2.0 * lg])
-    beta, *_ = np.linalg.lstsq(A, lv, rcond=None)
+    beta, *_ = np.linalg.lstsq(A, ly, rcond=None)
     H = float(beta[1])
     nu = math.sqrt(max(math.exp(beta[0]) / 2.0, 1e-20))
     return {

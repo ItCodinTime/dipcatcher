@@ -9,6 +9,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+# Lowercase hex digest length of SHA-256. Receipt code compares against this,
+# not a bare 64, so the digest width cannot drift between checkers.
+SHA256_HEX_LENGTH = 64
+
 
 def hash_bytes(data: bytes) -> str:
     """SHA-256 hex digest.

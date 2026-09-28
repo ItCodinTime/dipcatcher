@@ -24,15 +24,18 @@ from quant_fund.research.catalog import (
 from quant_fund.research.fleet_eval import (
     SHARD_GENERATORS,
     SyntheticShard,
+    ar1_lagged_x,
     bimodal_mixture,
     fleet_head_factories,
     garch_cluster,
+    gjr_leverage,
     heavy_tail,
     iid_gaussian,
     left_skew,
     regime_switch,
     resolve_shard_generators,
     run_distribution_fleet,
+    vol_break,
     write_fleet_receipt,
 )
 from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
@@ -99,6 +102,44 @@ def test_garch_cluster_planted_vol_clustering() -> None:
     _assert_shard_sane(shard, 4000)
     assert _lag1_sq_autocorr(shard.y) > 0.05
     assert 0.0 < shard.config["persistence"] < 1.0
+
+
+def test_vol_break_planted_regime_shift() -> None:
+    shard = vol_break(4000, 7)
+    assert shard.x.shape == (4000, 1)
+    assert shard.y.shape == (4000,)
+    assert shard.config["data_label"] == "SYNTHETIC"
+    n_post = int(shard.config["n_post_break"])
+    pre, post = shard.y[:-n_post], shard.y[-n_post:]
+    lo, hi = shard.config["sigma"]
+    # Planted break: post-break vol is ~5x pre-break.
+    assert float(post.std(ddof=1)) > 3.0 * float(pre.std(ddof=1))
+    assert abs(float(pre.std(ddof=1)) - lo) / lo < 0.2
+    assert abs(float(post.std(ddof=1)) - hi) / hi < 0.2
+    assert shard.config["serial_dependence"] is True
+
+
+def test_gjr_leverage_planted_asymmetry() -> None:
+    shard = gjr_leverage(4000, 8)
+    _assert_shard_sane(shard, 4000)
+    # Negative-skew innovations + GJR gamma -> left-skewed, clustered returns.
+    assert sps.skew(shard.y) < -0.2
+    assert _lag1_sq_autocorr(shard.y) > 0.03
+    assert 0.0 < shard.config["persistence"] < 1.0
+    assert shard.config["serial_dependence"] is True
+
+
+def test_ar1_lagged_x_causal_features() -> None:
+    shard = ar1_lagged_x(2000, 9)
+    assert shard.x.shape == (2000, 2)
+    assert shard.y.shape == (2000,)
+    assert np.isfinite(shard.x).all() and np.isfinite(shard.y).all()
+    # x[:, 0] is the previous row's return — causal at each origin.
+    assert np.allclose(shard.x[1:, 0], shard.y[:-1])
+    rho = float(shard.config["rho"])
+    y, x = shard.y[1:], shard.x[1:, 0]
+    assert abs(float(np.corrcoef(x, y)[0, 1]) - rho) < 0.1
+    assert shard.config["serial_dependence"] is True
 
 
 def test_shards_deterministic_under_seed() -> None:
@@ -352,8 +393,72 @@ def test_no_forbidden_metric_keys(tmp_path: Any) -> None:
 
 def test_fleet_registry_covers_default_heads() -> None:
     factories = fleet_head_factories(TAUS, 0)
-    assert set(factories) == {"empirical", "gaussian", "skew_t", "gmm", "isotonic", "stack"}
+    assert set(factories) == {
+        "empirical",
+        "gaussian",
+        "skew_t",
+        "gmm",
+        "isotonic",
+        "stack",
+        "qar",
+        "regime",
+        "fhs_skew",
+        "lgbm_q2",
+        "conf_t",
+        "hstep_t",
+        "hstep_emp",
+        "nbeats",
+        "nhits",
+    }
     for factory in factories.values():
         assert factory().metadata().family == "distribution"
     with pytest.raises(ValueError, match="unknown fleet head"):
         fleet_head_factories(TAUS, 0, ["nope"])
+
+
+def test_fleet_scores_conditional_heads() -> None:
+    """The landed conditional/series heads all score on their shards."""
+    heads = ["qar", "regime", "fhs_skew", "lgbm_q2", "conf_t", "hstep_t", "hstep_emp"]
+    frame, receipt = run_distribution_fleet(
+        fleet_head_factories(TAUS, 0, heads),
+        shards=["regime_switch", "vol_break", "gjr_leverage", "ar1_lagged_x"],
+        n_train=256,
+        n_eval=128,
+        seed=3,
+        taus=TAUS,
+    )
+    assert frame.height == len(heads) * 4
+    assert (frame["status"] == "ok").all(), frame.filter(status="error")
+    for col in ("crps", "pit_ks", "coverage_80", "coverage_90"):
+        assert frame[col].drop_nulls().is_finite().all()
+    # Serially-dependent shards keep the KS statistic but suppress the
+    # iid-assumption p-value.
+    assert frame["pit_ks_p"].null_count() == frame.height
+    assert receipt["model_versions"]["qar"]["version"] == "v1"
+    assert receipt["model_versions"]["hstep_t"]["head"] == "hstep"
+
+
+def test_qar_uses_observed_lag_not_lookahead() -> None:
+    """On ar1_lagged_x, QAR's conditional map must beat the unconditional grid."""
+    frame, _ = run_distribution_fleet(
+        fleet_head_factories(TAUS, 0, ["qar", "empirical"]),
+        shards=["ar1_lagged_x"],
+        n_train=256,
+        n_eval=128,
+        seed=5,
+        taus=TAUS,
+    )
+    assert (frame["status"] == "ok").all()
+    scores = {row["model"]: row["crps"] for row in frame.iter_rows(named=True)}
+    # rho=0.35 AR(1): conditioning on the observed lag must tighten the
+    # 1-step distribution relative to the unconditional empirical head.
+    assert scores["qar"] < scores["empirical"]
+
+
+def test_receipt_embeds_head_versions() -> None:
+    _, receipt = run_distribution_fleet(
+        _two_head_factories(), shards=["iid_gaussian"], n_train=128, n_eval=64, seed=0
+    )
+    versions = receipt["model_versions"]
+    assert set(versions) == {"empirical", "gaussian"}
+    assert versions["empirical"] == {"head": "empirical", "version": "v1"}

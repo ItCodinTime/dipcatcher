@@ -25,15 +25,13 @@ from collections import Counter
 import numpy as np
 from numpy.typing import NDArray
 
+from quant_fund.utils.series import finite_observations
+
 Array = NDArray[np.float64]
 
 
 def _as_vector(x: Array, name: str = "x", *, min_obs: int = 8) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    v = v[np.isfinite(v)]
-    if v.size < min_obs:
-        raise ValueError(f"{name} must contain at least {min_obs} finite observations")
-    return v
+    return finite_observations(x, name, min_obs=min_obs)
 
 
 def _entropy_from_probs(p: Array) -> float:

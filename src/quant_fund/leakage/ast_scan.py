@@ -291,6 +291,21 @@ def _fit_consumes_fold_param(node: ast.Call, func: ast.FunctionDef | ast.AsyncFu
     return bool(names & params)
 
 
+def _is_scipy_stats_distribution(receiver: ast.AST) -> bool:
+    """True for ``stats.norm`` / ``scipy.stats.lognorm`` (distribution MLE, not a scaler)."""
+    if not isinstance(receiver, ast.Attribute):
+        return False
+    base = receiver.value
+    if isinstance(base, ast.Name) and base.id == "stats":
+        return True
+    return (
+        isinstance(base, ast.Attribute)
+        and base.attr == "stats"
+        and isinstance(base.value, ast.Name)
+        and base.value.id == "scipy"
+    )
+
+
 def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
     out: list[_Finding] = []
     parents = _build_parent_map(tree)
@@ -308,6 +323,11 @@ def _check_lh003(tree: ast.AST, path_str: str) -> list[_Finding]:
         elif isinstance(receiver, ast.Attribute):
             recv_name = receiver.attr
         if not _SCALER_NAME_RE.search(recv_name):
+            continue
+        # ``norm`` in the scaler pattern also matches scipy.stats.norm.fit.
+        if _is_scipy_stats_distribution(receiver) and not re.search(
+            r"scal|rank_gauss|preproc", recv_name, re.IGNORECASE
+        ):
             continue
         fors, funcs = _enclosing_scopes(node, parents)
         in_fold_loop = any(

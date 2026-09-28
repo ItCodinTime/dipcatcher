@@ -18,14 +18,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import interpolate, signal
 
+from quant_fund.utils.series import finite_series
+
 Array = NDArray[np.float64]
 
 
 def _v(x: Array, n: int = 8) -> Array:
-    v = np.asarray(x, dtype=float).reshape(-1)
-    if v.size < n or not np.all(np.isfinite(v)):
-        raise ValueError(f"series must be finite with length >= {n}")
-    return v
+    return finite_series(x, n)
 
 
 def ssa_decompose(y: Array, window: int = 40) -> dict[str, Array]:

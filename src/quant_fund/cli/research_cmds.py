@@ -273,6 +273,11 @@ def fleet(
         None, help="Base seed (default: train.random_seed from config)."
     ),
     out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = fleet_eval.v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """Run the SYNTHETIC distribution-challenger fleet and write a receipt.
 
@@ -305,15 +310,216 @@ def fleet(
         seed=base_seed,
         taus=cfg.quantiles.levels,
     )
-    path = write_fleet_receipt(receipt, out_dir)
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_fleet_receipt(receipt, out_dir, receipt_version=receipt_version)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
 
 
+@app.command("verify-receipt")
+def verify_receipt_cmd(
+    path: Path = typer.Argument(..., help="Receipt JSON file to verify."),
+) -> None:
+    """Verify a sealed receipt: structure plus hash consistency.
+
+    ``receipt.v2`` envelopes are validated against the pydantic schema and
+    their sealed digest, environment fingerprint, code-map digest, and (for
+    known kinds) dataset/params digests are re-derived. Older v1 receipts get
+    a ``receipt_sha256`` seal check (canonical or strict JSON convention);
+    ``fleet_eval.v1`` payloads get their writer's contract too. Exits non-zero
+    on any violation — fail-closed.
+    """
+    import json
+
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    result = verify_receipt_file(path)
+    typer.echo(json.dumps(result, indent=2))
+    raise typer.Exit(code=0 if result["valid"] else 1)
+
+
+@app.command("vol-bench")
+def vol_bench(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None,
+        help="Comma-separated vol model names (default: rv_roll, rv_ewma, har, "
+        "realized_garch, dip_garch_t).",
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all SYNTHETIC vol shards)."
+    ),
+    horizons: str = typer.Option(
+        "1,5", "--horizons", help="Comma-separated forecast horizons in bars."
+    ),
+    min_history: int = typer.Option(300, help="Leading fit bars per origin."),
+    n_origins: int = typer.Option(24, help="Scored origins per shard/horizon (>=10)."),
+    stride: int | None = typer.Option(None, help="Origin spacing in bars (default: max horizon)."),
+    n_bars: int | None = typer.Option(
+        None, help="Shard length (default: minimal for the origin schedule)."
+    ),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Run the SYNTHETIC volatility bench and write a sealed receipt.
+
+    QLIKE + MSE on next-bar/h-step cumulative realized variance for HAR,
+    realized-GARCH, dip_garch_t and RV baselines over seeded synthetic vol
+    shards (GARCH clustering, rough vol, structural breaks). Proper scores
+    only — correctness evidence, never market or live-P&L claims.
+    """
+    from quant_fund.research.vol_bench import (
+        resolve_vol_models,
+        resolve_vol_shard_generators,
+        run_vol_bench,
+        write_vol_bench_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        horizon_set = tuple(int(h.strip()) for h in horizons.split(",") if h.strip())
+        forecasters = resolve_vol_models(None if models is None else models.split(","))
+        resolved_shards = resolve_vol_shard_generators(
+            None if shards is None else shards.split(",")
+        )
+        frame, receipt = run_vol_bench(
+            forecasters,
+            resolved_shards,
+            horizons=horizon_set,
+            min_history=int(min_history),
+            n_origins=int(n_origins),
+            stride=None if stride is None else int(stride),
+            n_bars=None if n_bars is None else int(n_bars),
+            seed=int(base_seed),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_vol_bench_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(frame)
+    typer.echo(f"receipt={path}")
+
+
+@app.command()
+def rankic(
+    panels: str | None = typer.Option(
+        None, help="Comma-separated panel names (default: all synthetic panels)."
+    ),
+    challengers: str | None = typer.Option(
+        None, help="Comma-separated challenger names (default: all transforms)."
+    ),
+    n_assets: int = typer.Option(32, help="Assets per date."),
+    n_dates: int = typer.Option(96, help="Panel length in dates."),
+    horizons: str = typer.Option("1,5,20", help="Comma-separated forward horizons."),
+    seed: int = typer.Option(11, help="Base seed for the synthetic panels."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Cross-sectional rank-IC bench on SYNTHETIC planted-signal panels (P3.4).
+
+    Per-date Spearman rank-IC between each challenger transform and h-step
+    forward returns, summarized with a Newey-West mean-IC t-stat. Proper-score
+    framing only — never a P&L or live-trading claim.
+    """
+    from quant_fund.research.cross_sectional import (
+        format_rankic_table,
+        resolve_panels,
+        run_cross_sectional_bench,
+        write_rankic_receipt,
+    )
+
+    def _names(raw: str | None) -> list[str] | None:
+        if raw is None:
+            return None
+        return [piece.strip() for piece in raw.split(",") if piece.strip()]
+
+    try:
+        resolved = resolve_panels(_names(panels))
+        horizon_tuple = tuple(int(piece.strip()) for piece in horizons.split(",") if piece.strip())
+        if not horizon_tuple:
+            raise typer.BadParameter("--horizons must be nonempty")
+        frame, receipt = run_cross_sectional_bench(
+            resolved,
+            challengers=_names(challengers),
+            horizons=horizon_tuple,
+            n_assets=n_assets,
+            n_dates=n_dates,
+            seed=seed,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_rankic_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo("SYNTHETIC")
+    typer.echo(format_rankic_table(frame))
+    typer.echo(f"receipt={path}")
+
+
+@app.command()
+def capacity(
+    books: str | None = typer.Option(
+        None, help="Comma-separated synthetic book names (default: all)."
+    ),
+    n_dates: int = typer.Option(126, help="Dates per synthetic book."),
+    n_names: int = typer.Option(32, help="Names per synthetic book."),
+    seed: int = typer.Option(11, help="Base seed."),
+    aum_grid: str = typer.Option(
+        "1e6,1e7,5e7,1e8,5e8,1e9", help="Comma-separated AUM levels in dollars."
+    ),
+    participation_cap: float = typer.Option(
+        0.10, help="Max share of dollar ADV a rebalance may consume per name-day."
+    ),
+    impact_coeff: float = typer.Option(0.1, help="Square-root impact coefficient."),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """P5.6 participation-capacity bench on SYNTHETIC books (dev-only).
+
+    Feasibility fractions, days-to-trade, and sqrt-impact cost in bps per
+    book x AUM cell. Sealed `capacity_overlay_eval` receipt. Size bounds
+    only — never a market or live-P&L claim.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "capacity is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.capacity_overlay import (
+        format_capacity_table,
+        resolve_books,
+        run_capacity_bench,
+        write_capacity_receipt,
+    )
+
+    try:
+        grid = tuple(float(x) for x in aum_grid.split(","))
+        resolved = resolve_books(None if books is None else books.split(","))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    book_objs = [gen(n_dates, n_names, seed + i) for i, gen in enumerate(resolved.values())]
+    frame, receipt = run_capacity_bench(
+        book_objs,
+        seed=seed,
+        aum_grid=grid,
+        participation_cap=participation_cap,
+        impact_coeff=impact_coeff,
+    )
+    path = write_capacity_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_capacity_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 __all__ = [
+    "capacity",
     "execution_sensitivity_cmd",
     "fleet",
+    "rankic",
     "research",
     "verify_identities",
+    "verify_receipt_cmd",
+    "vol_bench",
 ]

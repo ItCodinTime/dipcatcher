@@ -199,6 +199,7 @@ def run_backtest(
     *,
     initial_nav: float = 1_000_000.0,
     risk_overlay: BookRiskOverlay | None = None,
+    fast: bool | None = None,
 ) -> BacktestResult:
     """`weights` columns: event_time, security_id, target_weight.
 
@@ -207,21 +208,35 @@ def run_backtest(
     row. The optional ``risk_overlay`` may scale or flatten those carried
     weights using prior-close NAV only. Names that do not mark today are
     targeted to 0 so the book can exit while a last print still exists.
+
+    ``fast`` pins the engine. ``None`` (default) auto-dispatches to the
+    vectorized ``run_backtest_fast`` replay only when it is semantically
+    complete for the workload. ``fast=True`` is the explicit contract: the
+    vectorized path runs or the call fails closed with ``ValueError`` —
+    an unsupported workload never silently degrades to the event loop.
+    ``fast=False`` pins the reference event loop for audit runs.
     """
-    if _fast_replay_panel_supported(bars, weights) and _fast_replay_is_complete(
-        config, risk_overlay
-    ):
+    if fast is not False:
         from quant_fund.backtest.fast_replay import run_backtest_fast
 
-        result = run_backtest_fast(
-            bars,
-            weights,
-            config,
-            initial_nav=initial_nav,
-        )
-        result.metrics["garch_risk_overlay_dates"] = 0
-        result.metrics["realized_garch_risk_overlay_dates"] = 0
-        return result
+        # fast=True skips the completeness probes: run_backtest_fast carries
+        # the same checks and fails closed with ValueError when the workload
+        # is outside the class it reproduces bit-identically — it never
+        # degrades silently to the event loop on an explicit request.
+        if fast is True or (
+            _fast_replay_panel_supported(bars, weights)
+            and _fast_replay_is_complete(config, risk_overlay)
+        ):
+            result = run_backtest_fast(
+                bars,
+                weights,
+                config,
+                initial_nav=initial_nav,
+                risk_overlay=risk_overlay,
+            )
+            result.metrics["garch_risk_overlay_dates"] = 0
+            result.metrics["realized_garch_risk_overlay_dates"] = 0
+            return result
     return _run_backtest_event_loop(
         bars,
         weights,
@@ -319,6 +334,10 @@ def _run_backtest_event_loop(
         for sid in close_mark:
             if sid not in marked_today:
                 next_mark_ages[sid] = next_mark_ages.get(sid, 0) + 1
+        # Marks knowable at execution time: before this bar's close prints.
+        # Non-executing names must be valued at the pre-update mark; marking
+        # them at exec_dt's own close leaks future prices into sizing.
+        pre_exec_marks = last_marks
         last_marks = dict(close_mark)
         mark_ages = next_mark_ages
         stale_held = {
@@ -357,10 +376,11 @@ def _run_backtest_event_loop(
             if known_adv is not None:
                 advs[sid] = known_adv
             vols[sid] = _valid_price(row["vol_20"]) or 0.02
-        # Value held names without an execution bar at the last close rather
-        # than at 0.0: a missing open must not understate NAV / exposures and
-        # silently let the risk gate admit orders.
-        nav_prices = {**last_marks, **exec_mark}
+        # Value held names without an execution print at the last mark known
+        # before this bar's close rather than at 0.0: a missing open must not
+        # understate NAV / exposures and silently let the risk gate admit
+        # orders, but the same bar's close would be look-ahead.
+        nav_prices = {**pre_exec_marks, **exec_mark}
         nav = book.nav(nav_prices)
         if nav <= 0:
             break

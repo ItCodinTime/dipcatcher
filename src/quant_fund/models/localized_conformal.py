@@ -177,9 +177,12 @@ class LocalizedCQR(JoblibMixin):
             return 0.0
         if not np.isfinite(x):
             return float(self.global_qhat)
-        w = clip_weights(rbf_weights(self.x_cal_, x, self.bandwidth_), self.weight_clip)
-        if effective_sample_size(w) < self.min_ess:
+        w_raw = rbf_weights(self.x_cal_, x, self.bandwidth_)
+        # ESS gate on the unclipped weights: clip_weights floors zeros at
+        # WEIGHT_CLIP[0], which would count dropped cal rows toward n_eff.
+        if effective_sample_size(w_raw) < self.min_ess:
             return float(self.global_qhat)
+        w = clip_weights(w_raw, self.weight_clip)
         return localized_conformal_quantile(self.scores_, w, self.alpha)
 
     def _qhat_rows(self, x_query: Array) -> Array:
@@ -241,8 +244,8 @@ def bench_localized_cqr(
     if any(a is not None for a in panel_args):
         if any(a is None for a in panel_args):
             raise ValueError("pass all panel cal/test arrays or none")
-        y_c, lo_c, hi_c, x_c = y_cal, lo_cal, hi_cal, x_cal  # type: ignore[assignment]
-        y_t, lo_t, hi_t, x_t = y_test, lo_test, hi_test, x_test  # type: ignore[assignment]
+        y_c, lo_c, hi_c, x_c = y_cal, lo_cal, hi_cal, x_cal
+        y_t, lo_t, hi_t, x_t = y_test, lo_test, hi_test, x_test
         dgp_label = dgp or "panel"
     else:
         y_c, lo_c, hi_c, x_c, y_t, lo_t, hi_t, x_t = _synthetic_het_vol(n_cal, n_test, seed)

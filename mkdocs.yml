@@ -136,6 +136,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
+      - Receipt v2: RECEIPT_V2.md
       - Robustness certification: ROBUSTNESS.md
       - Validation: VALIDATION.md
       - Formal verification: FORMAL_VERIFICATION.md
@@ -165,6 +166,11 @@ nav:
       - Prospective journal: PROSPECTIVE_SOTA.md
       - SOTA canon roadmap: SOTA_CANON_ROADMAP_2026_09.md
       - Statistical-core audit: AUDIT_P62_STATS.md
+      - P6.1 money audit: AUDIT_P61_MONEY.md
+      - P6.3 data audit: AUDIT_P63_DATA.md
+      - P6.4 dist/vol audit: AUDIT_P64_DIST.md
+      - P6.5 micro audit: AUDIT_P65_MICRO.md
+      - P6.6 infra audit: AUDIT_P66_INFRA.md
       - Forward shadow record: FORWARD_SHADOW_RECORD.md
       - Ranker probability experiment: RANKER_PROBABILITY_EXPERIMENT.md
       - Performance: PERF.md
@@ -174,6 +180,10 @@ nav:
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
       - Scenario Monte Carlo: MC_ENGINE.md
+      - Fast replay conformance: FAST_REPLAY_P42.md
+      - Explainability: EXPLAINABILITY.md
+      - Reality pre-registration: REALITY_PREREGISTRATION.md
+      - Reality trial 2026: REALITY_TRIAL_2026.md
   - Operations:
       - Platform matrix: PLATFORM_MATRIX.md
       - Runbook: OPERATIONS_RUNBOOK.md

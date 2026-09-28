@@ -240,6 +240,7 @@ def run_backtest(
     *,
     initial_nav: float = 1_000_000.0,
     risk_overlay: BookRiskOverlay | None = None,
+    fast: bool | None = None,
 ) -> BacktestRun:
     """Replay target weights against daily bars.
 
@@ -247,6 +248,10 @@ def run_backtest(
     ``target_weight``. A target computed from the close at ``t`` fills at
     the next open unless the config selects the close auction. The result
     is a research simulation.
+
+    ``fast=True`` pins the vectorized replay and fails closed
+    (``ValueError``) on workloads outside its bit-identical class;
+    ``fast=False`` pins the reference event loop; ``None`` auto-selects.
     """
     result = _run_backtest(
         bars,
@@ -254,6 +259,7 @@ def run_backtest(
         config,
         initial_nav=initial_nav,
         risk_overlay=risk_overlay,
+        fast=fast,
     )
     return BacktestRun(
         equity=result.equity,

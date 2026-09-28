@@ -1,0 +1,166 @@
+{
+  "schema": "dipcatcher.reality_preregistration.v1",
+  "study_id": "reality-us-liquid-daily-2026-09-27",
+  "status": "frozen_before_results",
+  "claim": "research_diagnostic_only",
+  "live_pnl_claim": false,
+  "why_these_strategies": {
+    "sweep_reclaim": "Existing causal dip sleeve in quant_fund.backtest.sleeves.sweep_reclaim_weights. A prior-extreme sweep that reclaims is the repo's dip-buying / stop-run mean-reversion rule. Parameters below are a grid on that function, not a new signal.",
+    "slow_trend": "Existing causal trend sleeve in quant_fund.backtest.sleeves.slow_trend_weights, the trend book next to the dip sleeve in the same module. Sign of a shifted fast-minus-slow mean, inverse-vol sized, cross-sectionally demeaned.",
+    "equal_weight_long": "One unswept baseline, not a searched signal. Long-only equal weight sized inside the frozen risk-gate net and name caps so the existing gate can hold it. Included so the ledger has three strategy clusters; the reality filter treats fewer than three clusters as insufficient evidence before it will score a pass or a deflation."
+  },
+  "data": {
+    "source": "yahoo",
+    "adapter": "quant_fund.data.adapters.yahoo_eod.fetch_yahoo_chart",
+    "parser": "quant_fund.data.adapters.yahoo_eod.parse_yahoo_chart",
+    "revision_id": "YAHOO_VENDOR_ADJ",
+    "why_not_hf_ohlcv_1m": "The Hugging Face OHLCV-1m month files are full-market tapes of hundreds of megabytes each. A multi-year daily study would download tens of gigabytes to resample a sixteen-name panel. Yahoo v8 daily for the repo's existing US_LIQUID list is public and needs no secret. If this fetch fails, the run stops. Synthetic bars are not a substitute.",
+    "universe_list": "quant_fund.data.adapters.stooq.US_LIQUID",
+    "symbols": [
+      "SPY",
+      "AAPL",
+      "MSFT",
+      "GOOGL",
+      "AMZN",
+      "META",
+      "NVDA",
+      "JPM",
+      "JNJ",
+      "XOM",
+      "UNH",
+      "V",
+      "PG",
+      "HD",
+      "MA",
+      "KO"
+    ],
+    "inclusion_rule": "Keep a US_LIQUID name iff the fetched frame has a New York session date on or before 2014-06-30 and a New York session date on or after 2024-06-28. Do not add tickers. If fewer than 8 names survive, stop.",
+    "fetch_start_utc": "2014-01-02T00:00:00+00:00",
+    "fetch_end_utc": "2025-01-01T00:00:00+00:00",
+    "price_fields": "Adapter quote open/high/low/close. close_total_return is set equal to close because the adapter does not expose a separate dividend-adjusted close. Splits and dividends are whatever that quote series contains. This is not a SIP vintage.",
+    "survivorship": "US_LIQUID is a present-day liquid list. Names that failed are absent. That bias is part of the result and is not corrected after the fact.",
+    "adv": "Trailing 20-session mean of close*volume, shifted one bar. Nulls fall back to the name's earliest finite dollar volume. No future bar enters the mean.",
+    "vol_20": "Trailing 20-session standard deviation of close-to-close simple returns, shifted one bar, minimum 5 samples. Nulls fall back to 0.02, the engine's own missing-vol literal.",
+    "cache_dir": "data/reality_sweep",
+    "commit_prices": false
+  },
+  "calendar": "America/New_York session date of event_time",
+  "splits": {
+    "train": ["2016-01-04", "2020-01-01"],
+    "validation": ["2020-01-02", "2023-01-01"],
+    "holdout": ["2023-01-03", "2025-01-01"]
+  },
+  "split_rule": "Half-open on the New York session date of the equity mark that the return lands on. Train is in-sample diagnostics. Validation is the only selection sample and the series stored in the trial ledger. Holdout is evaluated once, after every trial is recorded, and is not an input to selection, the ledger ratio, or PBO.",
+  "costs": {
+    "config": "configs/backtest.yaml",
+    "inherits": "configs/base.yaml",
+    "commission_bps": 1.0,
+    "half_spread_bps": 5.0,
+    "impact_y": 0.1,
+    "bps_per_turnover": 0.0,
+    "borrow_bps_per_year": 50.0,
+    "financing_bps_per_year": 0.0,
+    "frictionless": false,
+    "participation_limit": 0.1,
+    "fill": "next_open",
+    "initial_nav": 1000000.0
+  },
+  "risk_gate": {
+    "max_order_notional": 1000000.0,
+    "max_gross": 2.0,
+    "max_net": 0.2,
+    "max_name": 0.05,
+    "max_participation": 0.1,
+    "max_predicted_vol": 0.4,
+    "stale_price_bars": 3
+  },
+  "cost_lock": "The runner loads configs/backtest.yaml and refuses to start if costs or risk_gate differ from this file. Thresholds are not loosened to admit orders.",
+  "grid": {
+    "sweep_reclaim": {
+      "function": "quant_fund.backtest.sleeves.sweep_reclaim_weights",
+      "cluster_id": "sweep_reclaim",
+      "family": "discovery",
+      "lookback": [10, 20, 40],
+      "hold_bars": [5, 10, 21],
+      "decay": [0.75, 1.0],
+      "max_name": 0.05,
+      "gross_scale": 1.0
+    },
+    "slow_trend": {
+      "function": "quant_fund.backtest.sleeves.slow_trend_weights",
+      "cluster_id": "slow_trend",
+      "family": "discovery",
+      "fast_bars": [20, 50, 100],
+      "slow_bars": [100, 200],
+      "vol_window": [20, 60],
+      "max_name": 0.05,
+      "gross_scale": 1.0,
+      "constraint": "drop cells with fast_bars >= slow_bars"
+    },
+    "equal_weight_long": {
+      "function": "equal weight of names with a bar that session, long only",
+      "cluster_id": "equal_weight_long",
+      "family": "discovery",
+      "cells": 1,
+      "name_cap": "risk_gate.max_name",
+      "net_cap": "risk_gate.max_net",
+      "rule": "On each session, among names with a bar, set raw = 1/n, clip each name to name_cap, then if the sum exceeds net_cap divide by sum/net_cap. Emit one weight row per name per session."
+    }
+  },
+  "expected_trials": {
+    "sweep_reclaim": 18,
+    "slow_trend": 10,
+    "equal_weight_long": 1,
+    "total": 29
+  },
+  "selection": {
+    "sample": "validation",
+    "score": "per-period mean/std with ddof=1 of net-of-cost simple equity returns",
+    "tie_break": "lexicographic trial_id",
+    "degenerate": "A validation series with fewer than 4 finite points or zero standard deviation is recorded and is not eligible to win. Its ledger ratio is 0, skew is 0, raw fourth-moment ratio is 3."
+  },
+  "ledger": {
+    "every_trial": true,
+    "including_losers": true,
+    "series": "validation net-of-cost simple returns",
+    "ratio": "per-period, not annualized",
+    "periods_per_year": 252,
+    "cluster_rule": "one cluster_id per strategy. Parameter cells of one strategy share a cluster. This is the reality filter's effective-trial rule and is not changed.",
+    "family": "discovery"
+  },
+  "diagnostics": {
+    "bootstrap_ci": {
+      "function": "quant_fund.metrics.inference.bootstrap_sharpe_ci",
+      "n_boot": 2000,
+      "seed": 7,
+      "alpha": 0.05,
+      "periods": 252
+    },
+    "pbo": {
+      "function": "quant_fund.reality.cscv.cscv_pbo",
+      "sample": "train returns followed by validation returns",
+      "holdout_excluded": true,
+      "s_blocks": 16,
+      "length_rule": "keep the trailing window whose length is divisible by 16; require at least 32 points"
+    },
+    "deflated_ratio_gate": "quant_fund.reality.dsr.dsr_from_ledger, which deflates by the number of clusters",
+    "deflated_ratio_raw_count": "quant_fund.metrics.overfitting.deflated_sharpe on the selected trial using n_trials equal to the number of recorded rows and var of the recorded per-period ratios. Reported beside the gate number. The gate threshold is not edited to use this count.",
+    "drawdown": "quant_fund.metrics.returns.max_drawdown",
+    "turnover": "mean of the engine equity turnover column on the window"
+  },
+  "reality_filter": {
+    "thresholds_unchanged": true,
+    "min_trials": 10,
+    "min_effective_trials": 3,
+    "dsr_pass": 0.95,
+    "pbo_deflate": 0.5,
+    "fdr_q": 0.05,
+    "note": "quant reality trial-report scores the exported ledger rows. It does not load return series, so its PBO and SPA fields stay unset. PBO in the receipt is the cscv_pbo number above. A non-pass gate verdict is recorded as-is."
+  },
+  "provenance": {
+    "db": "data/metadata/proofcore.duckdb",
+    "insert": "ProvenanceDB.insert_bundle then ProvenanceDB.insert_trial for every cell",
+    "committed_ledger": "research/reality/trials.jsonl",
+    "committed_csv": "research/reality/trials.csv"
+  }
+}

@@ -159,13 +159,8 @@ def build_tearsheet(
         ]
         sheet["execution"] = {
             "n_fills": int(fills.height),
-            "cost_totals": {
-                c: float(fills[c].sum())
-                for c in cost_cols  # type: ignore[index]
-            },
-            "total_cost": float(
-                sum(fills[c].sum() for c in cost_cols)  # type: ignore[arg-type]
-            ),
+            "cost_totals": {c: float(fills[c].sum()) for c in cost_cols},
+            "total_cost": float(sum(fills[c].sum() for c in cost_cols)),
         }
     if "turnover" in equity.columns:
         sheet.setdefault("execution", {})["mean_turnover"] = float(

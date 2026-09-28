@@ -50,6 +50,8 @@ jobs:
         run: uv run ruff format --check src tests
       - name: Mypy
         run: uv run mypy src/quant_fund
+      - name: Mypy strict allowlist
+        run: uv run python scripts/check_mypy_strict_allowlist.py
       - name: Mypy public API (strict)
         run: uv run mypy --strict --follow-imports=silent src/quant_fund/__init__.py src/quant_fund/public.py
       - name: Static security analysis
@@ -233,6 +235,8 @@ jobs:
         with:
           name: dipcatcher-coverage-3.12-${{ matrix.shard }}
           path: coverage-upload
+          # .coverage is a hidden file; upload-artifact skips those by default.
+          include-hidden-files: true
           if-no-files-found: error
 
   coverage:
