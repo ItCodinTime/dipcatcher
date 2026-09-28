@@ -697,7 +697,9 @@ def run_distribution_fleet(
                     blob["head"] = str(head)
                 if version:
                     blob["version"] = str(version)
-            except (AttributeError, RuntimeError, TypeError, ValueError):
+            except (AttributeError, ImportError, KeyError, RuntimeError, TypeError, ValueError):
+                # Metadata is a label. A missing or unreadable head stays
+                # "unknown"; scoring errors are recorded on the row above.
                 pass
 
     columns = [
