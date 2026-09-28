@@ -31,6 +31,7 @@ from quant_fund.research.net_replay import (
     execute_orders,
 )
 from quant_fund.research.shadow_journal import canonical, digest
+from quant_fund.utils.atomicio import publish_text_once
 
 
 def _now() -> datetime:
@@ -586,8 +587,7 @@ def main() -> None:
         elif args.command == "reconcile":
             result = report(args.run, repair=args.repair, expected_head=args.expected_head)
             if args.output:
-                with args.output.open("x") as handle:
-                    handle.write(json.dumps(result, indent=2, allow_nan=False))
+                publish_text_once(args.output, json.dumps(result, indent=2, allow_nan=False))
             result = {k: v for k, v in result.items() if k not in {"events", "state"}}
         else:
             event = record(args.run, args.command, json.loads(args.input.read_text()))

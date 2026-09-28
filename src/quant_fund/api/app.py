@@ -21,6 +21,7 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.analytics import validate_analytics_export
 from quant_fund.pipeline.doctor import doctor
 from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
+from quant_fund.utils.atomicio import atomic_write_text
 
 app = FastAPI(title=f"{__firm__} Dipcatcher", version=__version__)
 
@@ -275,7 +276,9 @@ def _write_backtest_artifact(
     }
     artifact["artifact_sha256"] = _backtest_artifact_digest(artifact)
     artifact_path = root / f"{backtest_id}.json"
-    artifact_path.write_text(json.dumps(artifact, sort_keys=True, indent=2, default=str) + "\n")
+    atomic_write_text(
+        artifact_path, json.dumps(artifact, sort_keys=True, indent=2, default=str) + "\n"
+    )
     artifact["artifact_path"] = str(artifact_path)
     return artifact
 

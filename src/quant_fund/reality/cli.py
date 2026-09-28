@@ -25,6 +25,7 @@ from pathlib import Path
 import typer
 
 from quant_fund.proofcore.contracts import RealityFilterError, TrialLedgerRow
+from quant_fund.utils.atomicio import atomic_write_text
 
 reality_app = typer.Typer(
     help="Reality filter: deflated-Sharpe / CSCV-PBO / FDR honesty diagnostics over the trial ledger."
@@ -152,7 +153,7 @@ def trial_report(
         raise typer.Exit(code=2) from exc
     text = json.dumps(report.model_dump(mode="json"), sort_keys=True)
     if out is not None:
-        out.write_text(text + "\n", encoding="utf-8")
+        atomic_write_text(out, text + "\n")
     typer.echo(DISCLAIMER, err=True)
     _emit(text)
 

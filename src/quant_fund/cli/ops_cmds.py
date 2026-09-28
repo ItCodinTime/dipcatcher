@@ -9,6 +9,8 @@ from pathlib import Path
 
 import typer
 
+from quant_fund.utils.atomicio import atomic_write_text
+
 from .app import app
 from .support import _cfg
 
@@ -320,7 +322,7 @@ def monitor(
     snap["run_id"] = rid
     text = json.dumps(snap, indent=2, default=str) if json_out else render_markdown(snap)
     if out is not None:
-        out.write_text(text)
+        atomic_write_text(out, text)
         typer.echo(f"wrote {out}")
     else:
         typer.echo(text)

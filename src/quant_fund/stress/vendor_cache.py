@@ -16,6 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from quant_fund.data.sources.base import HttpClient
+from quant_fund.utils.atomicio import atomic_write_text
 
 FRENCH_DAILY_URL = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
 FRENCH_LICENCE = (
@@ -100,5 +101,5 @@ def fetch_french_daily_factors(dest: Path, client: HttpClient | None = None) -> 
     lines = ["date,mkt_rf,smb,hml,rf"]
     for date, row in zip(dates, values, strict=True):
         lines.append(",".join([date, *(f"{float(v):.8f}" for v in row)]))
-    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    atomic_write_text(dest, "\n".join(lines) + "\n")
     return dest

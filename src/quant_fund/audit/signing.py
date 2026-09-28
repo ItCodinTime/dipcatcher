@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quant_fund.audit.errors import AuditError, SignatureUnavailableError
+from quant_fund.utils.atomicio import atomic_write_text
 
 _PUB_LEN = 32
 _SIG_LEN = 64
@@ -101,7 +102,7 @@ class Ed25519Signer:
             os.close(fd)
         os.chmod(target, 0o600)
         pub = target.with_name(target.name + ".pub")
-        pub.write_text(self.public_key_hex + "\n", encoding="ascii")
+        atomic_write_text(pub, self.public_key_hex + "\n")
 
     def sign(self, payload: bytes) -> Signature:
         signature = self._private.sign(payload)
