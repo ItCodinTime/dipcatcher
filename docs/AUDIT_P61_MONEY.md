@@ -84,15 +84,12 @@ Regression KATs live in `tests/unit/backtest/test_p61_money_audit.py`
 
 ## Exposed but out of lane
 
-7. **`backtest/fast_replay.py` has the same exec-NAV leak** —
-   **out-of-lane**. `run_backtest` delegates to `fast_replay` whenever the
-   panel qualifies (datetime dtype match, no duplicates, no risk overlay,
-   no close-auction, no GARCH artifacts), and `fast_replay` updates
-   `last_mark` with the exec bar's close *before* sizing — same class of
-   leak as finding 4, in a file outside this lane.
-   `test_fast_replay_exec_nav_leak_known_residual` is a conditional `xfail`
-   that reproduces the leak through the public `run_backtest` entry point;
-   it starts passing once the fast replay path is fixed.
+7. **`backtest/fast_replay.py` had the same exec-NAV leak** — **FIXED**.
+   Both the numba kernel and the interpreted loop now size off marks
+   knowable before the fill (`pre_mark` / `pre_ever`), matching
+   `nav_prices = {**pre_exec_marks, **exec_mark}` in the event loop.
+   `test_fast_replay_exec_nav_does_not_leak_exec_day_close` pins the
+   causal quantity (delta +2000, not the leaked +4400).
 
 ## Waivers (checked; semantics intentionally looser — documented, not bugs)
 
@@ -139,7 +136,7 @@ Regression KATs live in `tests/unit/backtest/test_p61_money_audit.py`
 | `backtest/sleeves.py` | funding-spike fade z-score, 252 borrow day-count, momentum skip/lookback, backward as-of joins | waived — documented causal approximations (items 9–10) | — |
 | `portfolio/risk_gate.py` | fail-closed on non-finite order/nav/price; nav>0; participation, name, gross, net, predicted-vol, staleness caps; ulp-tolerant limit comparison | correct — verified `check_order` is the backstop for exec prices | — |
 | `portfolio/pnl_attribution.py` | contribution `w_{i,t-1} * r_{i,t}` (causal weight convention); cost = fill costs / NAV; `live_pnl_claim` always false; unmapped → `unmapped` sleeve | correct | — |
-| `backtest/fast_replay.py` (out of lane) | exec-time NAV causal | out-of-lane — same leak as engine.py; exposed by xfail test | — |
+| `backtest/fast_replay.py` | exec-time NAV causal | **fixed** — pre-bar marks for names without an exec print | fast-replay byte identity |
 
 ## Repro notes
 
