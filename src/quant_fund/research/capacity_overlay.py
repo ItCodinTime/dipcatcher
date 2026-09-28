@@ -325,6 +325,11 @@ def capacity_contract_errors(receipt: Mapping[str, object]) -> list[str]:
         errors.append("dev_only_not_true")
     if not family_blob_forbidden_metrics_absent(research_blob):
         errors.append("forbidden_metric_keys")
+    results = receipt.get("results")
+    if isinstance(results, list):
+        n_rows = receipt.get("n_rows")
+        if n_rows is not None and n_rows != len(results):
+            errors.append("n_rows_mismatch")
     return errors
 
 

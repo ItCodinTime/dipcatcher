@@ -438,6 +438,15 @@ def rankic_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
         errors.append("results_missing_or_empty")
     if not family_blob_forbidden_metrics_absent(research_blob):
         errors.append("forbidden_metric_keys")
+    results = receipt.get("results")
+    if isinstance(results, list):
+        if receipt.get("n_rows") is not None and receipt.get("n_rows") != len(results):
+            errors.append("n_rows_mismatch")
+        error_rows = sum(
+            1 for row in results if not isinstance(row, Mapping) or row.get("status") != "ok"
+        )
+        if receipt.get("n_error_rows") is not None and receipt.get("n_error_rows") != error_rows:
+            errors.append("n_error_rows_mismatch")
     return errors
 
 
