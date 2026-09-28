@@ -24,7 +24,8 @@
       "status": "partial"
     },
     "compute": {
-      "status": "pending"
+      "n_modules": 3,
+      "status": "audited"
     },
     "config": {
       "doc": "docs/AUDIT_FRONTIER.md",
@@ -49,10 +50,12 @@
       "status": "pending"
     },
     "formal": {
-      "status": "pending"
+      "n_modules": 4,
+      "status": "audited"
     },
     "fusion": {
-      "status": "pending"
+      "n_modules": 2,
+      "status": "audited"
     },
     "hedge_lab": {
       "doc": "docs/AUDIT_FRONTIER.md",
@@ -104,14 +107,16 @@
       "status": "audited"
     },
     "native": {
-      "status": "pending"
+      "n_modules": 2,
+      "status": "audited"
     },
     "northset": {
       "doc": "docs/AUDIT_FRONTIER.md",
       "status": "partial"
     },
     "observe": {
-      "status": "pending"
+      "n_modules": 9,
+      "status": "audited"
     },
     "paper": {
       "status": "pending"
@@ -156,10 +161,12 @@
       "status": "audited"
     },
     "registry": {
-      "status": "pending"
+      "n_modules": 2,
+      "status": "audited"
     },
     "reporting": {
-      "status": "pending"
+      "n_modules": 4,
+      "status": "audited"
     },
     "research": {
       "doc": "docs/AUDIT_FRONTIER.md",
