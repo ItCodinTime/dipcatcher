@@ -271,9 +271,12 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 
 ### P4 — Industry-grade bar (the open one)
 
-- [ ] P4.1 Profile `run_backtest` on the 11-asset workload (cProfile +
+- [x] P4.1 Profile `run_backtest` on the 11-asset workload (cProfile +
       allocation trace); classify remaining 5.4× gap: interpreter loop vs
       per-order gate cost vs polars overhead.
+      Landed: `docs/PERF_SWEEP.md` — top-20 tables, classification
+      (~80% per-order gate/cost, ~15% loop body, ~5% marshalling), and
+      bit-identical event-loop vectorizations (1.41× event-loop speedup).
 - [x] P4.2 Implement `run_backtest_fast` vectorized replay path for the
       *matched-workload class* (fixed rules: target-percent orders, next-open,
       no limits/stops) behind an explicit flag; must produce bit-identical
@@ -354,8 +357,10 @@ waiver in the audit log. Output: [AUDIT_FRONTIER.md](AUDIT_FRONTIER.md) ledger.
       `predicates`, `session`/`candle`/`kyle`/`northset` honesty checkers,
       `consistency`, `families`); `__init__.py` re-exports all 444 public
       names so `from quant_fund.research.catalog import X` is unchanged.
-- [ ] P6.8 Perf sweep: cProfile top-20 hot paths across engine, features,
+- [x] P6.8 Perf sweep: cProfile top-20 hot paths across engine, features,
       scoring; fix only where semantics bit-identical.
+      Landed: `docs/PERF_SWEEP.md` + `scripts/_perf_identity.py`
+      (byte-identity replay vs frozen pre-change engine, 7 workloads).
 - [ ] P6.9 Test-quality audit: mutation spot-checks on money-path
       conditionals; property tests (hypothesis) for accounting identities;
       coverage gaps in `tests/` map.

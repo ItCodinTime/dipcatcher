@@ -633,7 +633,7 @@ def _try_commit(
         return False
     nav_prices = {**state.last_marks, **state.exec_mark}
     current_w, gross_after, net_after = _projected_exposures(
-        state.book, nav_prices, sid, delta, nav
+        state.book, nav_prices, sid, delta, nav, set(state.book.shares)
     )
     participation = abs(delta) * price / adv
     state.order_seq += 1
@@ -834,7 +834,7 @@ def _rebalance_next_open(
             state.halt_count += 1
             continue
         current_w, gross_after, net_after = _projected_exposures(
-            state.book, nav_prices, sid, float(delta), nav
+            state.book, nav_prices, sid, float(delta), nav, set(state.book.shares)
         )
         participation = abs(delta) * price / adv
         state.order_seq += 1

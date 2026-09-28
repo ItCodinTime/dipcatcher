@@ -57,7 +57,7 @@ class Book:
     shares: dict[str, float] = field(default_factory=dict)
 
     def nav(self, prices: dict[str, float]) -> float:
-        pos = sum(self.shares.get(s, 0.0) * prices.get(s, 0.0) for s in self.shares)
+        pos = sum([shares * prices.get(s, 0.0) for s, shares in self.shares.items()])
         return self.cash + pos
 
 
@@ -71,6 +71,22 @@ def _valid_price(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return price if np.isfinite(price) and price > 0 else None
+
+
+def _valid_price_lists(col: pl.Series) -> tuple[list[Any], list[bool]]:
+    """Elementwise ``_valid_price`` as parallel ``(values, valid)`` lists.
+
+    Float columns take one vectorized mask — ``to_numpy`` delivers nulls as
+    NaN and ``isfinite(arr) & (arr > 0)`` is exactly the scalar float branch —
+    while every other dtype replays ``_valid_price``'s coercion path per
+    element. Either way ``values[i]`` equals ``_valid_price(items[i])``.
+    """
+    if col.dtype in (pl.Float64, pl.Float32):
+        arr = col.to_numpy()
+        ok = np.isfinite(arr) & (arr > 0)
+        return arr.tolist(), ok.tolist()
+    vals = [_valid_price(v) for v in col.to_list()]
+    return vals, [v is not None for v in vals]
 
 
 def _target_weight_map(rows: pl.DataFrame) -> dict[str, float]:
@@ -91,14 +107,19 @@ def _target_weight_map(rows: pl.DataFrame) -> dict[str, float]:
     )
     if duplicates.height:
         raise ValueError("duplicate target weights for event_time/security_id")
+    # Unnamed rows avoid one dict marshal per row; column order is arbitrary.
+    cols = rows.columns
+    i_et, i_sid, i_tw = (
+        cols.index("event_time"),
+        cols.index("security_id"),
+        cols.index("target_weight"),
+    )
     targets: dict[str, float] = {}
-    for row in rows.iter_rows(named=True):
-        weight = float(row["target_weight"])
+    for row in rows.iter_rows():
+        weight = float(row[i_tw])
         if not np.isfinite(weight):
-            raise ValueError(
-                f"target_weight must be finite for {row['security_id']!r} at {row['event_time']!r}"
-            )
-        targets[str(row["security_id"])] = weight
+            raise ValueError(f"target_weight must be finite for {row[i_sid]!r} at {row[i_et]!r}")
+        targets[str(row[i_sid])] = weight
     return targets
 
 
@@ -113,22 +134,31 @@ def _projected_exposures(
     sid: str,
     delta: float,
     nav: float,
+    share_ids: set[str],
 ) -> tuple[float, float, float]:
-    """Return (current_weight, gross_after, net_after) after applying ``delta`` shares."""
+    """Return (current_weight, gross_after, net_after) after applying ``delta`` shares.
+
+    ``share_ids`` is the caller's cached ``set(book.shares)`` — the per-order
+    key set moves one id at a time, so the event loop threads it rather than
+    rebuilding it per order. A mark-only id never contributes (its projected
+    quantity is 0), so scanning ``share_ids | {sid}`` is the same set as
+    scanning ``set(projected) | set(prices)`` post-filter.
+    """
     nav_safe = max(nav, 1e-12)
-    current_shares = book.shares.get(sid, 0.0)
+    shares = book.shares
+    current_shares = shares.get(sid, 0.0)
     current_weight = (current_shares * prices.get(sid, 0.0)) / nav_safe
-    projected: dict[str, float] = dict(book.shares)
-    projected[sid] = current_shares + delta
+    projected_v = current_shares + delta
     # Only nonzero-quantity ids with a valid mark contribute; a +0.0 term
     # never changes a float sum, so restricting to contributors is bit-exact.
     contributors = sorted(
         s
-        for s in set(projected) | set(prices)
-        if projected.get(s, 0.0) != 0.0 and prices.get(s, 0.0) != 0.0
+        for s in share_ids | {sid}
+        if (projected_v if s == sid else shares.get(s, 0.0)) != 0.0 and prices.get(s, 0.0) != 0.0
     )
-    gross = sum(abs(projected[s] * prices[s]) for s in contributors)
-    net = sum(projected[s] * prices[s] for s in contributors)
+    prods = [(projected_v if s == sid else shares[s]) * prices[s] for s in contributors]
+    gross = sum(map(abs, prods))
+    net = sum(prods)
     return current_weight, gross / nav_safe, net / nav_safe
 
 
@@ -270,20 +300,32 @@ def _run_backtest_event_loop(
         "source",
     )
     # Pre-index rows by timestamp once: per-date frame scans inside the loop
-    # are O(rows x dates) and dominate wall time on wide books. Dict lookup
-    # keeps identical iteration order (input row order preserved per date).
-    day_rows_map: dict[datetime, list[dict[str, Any]]] = {}
-    for row in px.iter_rows(named=True):
-        day_rows_map.setdefault(row["event_time"], []).append(row)
+    # are O(rows x dates) and dominate wall time on wide books. Row-index
+    # lists keep identical iteration order (input row order preserved per
+    # date) without paying a dict marshal per row.
+    event_times = px["event_time"].to_list()
+    day_idx_map: dict[datetime, list[int]] = {}
+    for j, et in enumerate(event_times):
+        day_idx_map.setdefault(et, []).append(j)
+    # Whole-column validity decompositions replace three ``_valid_price``
+    # calls per row per scan; values stay plain Python floats.
+    sid_l = px["security_id"].to_list()
+    open_v, open_ok = _valid_price_lists(px["open"])
+    close_v, close_ok = _valid_price_lists(px["close"])
+    ctr_v, ctr_ok = _valid_price_lists(px["close_total_return"])
+    adv_v, adv_ok = _valid_price_lists(px["adv"])
+    vol_v, vol_ok = _valid_price_lists(px["vol_20"])
     # The panel-level validation above already rejects duplicate
     # (event_time, security_id) keys and non-finite weights, so the per-date
     # target map can be built once without changing semantics.
+    w_cols = weights.columns
+    w_et = w_cols.index("event_time")
+    w_sid = w_cols.index("security_id")
+    w_tw = w_cols.index("target_weight")
     weights_by_date: dict[datetime, dict[str, float]] = {}
-    for wrow in weights.iter_rows(named=True):
-        weights_by_date.setdefault(wrow["event_time"], {})[str(wrow["security_id"])] = float(
-            wrow["target_weight"]
-        )
-    dates = sorted(day_rows_map)
+    for wrow in weights.iter_rows():
+        weights_by_date.setdefault(wrow[w_et], {})[str(wrow[w_sid])] = float(wrow[w_tw])
+    dates = sorted(day_idx_map)
     book = Book(cash=initial_nav)
     navs: list[dict[str, Any]] = []
     fill_rows: list[dict[str, Any]] = []
@@ -306,29 +348,41 @@ def _run_backtest_event_loop(
         config.execution.fill is FillConvention.NEXT_OPEN
         and not config.execution.allow_close_auction
     )
+    exec_v, exec_ok = (open_v, open_ok) if use_next_open else (close_v, close_ok)
+    share_ids: set[str] = set(book.shares)
+
+    # The as-of market overlay consults at most two persisted specs under
+    # ``data.root/metadata``. Probing them once up front — the same
+    # dispatch-time property ``_fast_replay_is_complete`` checks — removes
+    # two ``Path.exists`` stats per decision date. A spec artifact that
+    # exists at loop start keeps the per-date as-of evaluation.
+    from quant_fund.pipeline.forecast import (
+        _garch_artifact_path,
+        _realized_garch_artifact_path,
+    )
+
+    overlay_possible = (
+        _garch_artifact_path(config).exists() or _realized_garch_artifact_path(config).exists()
+    )
 
     for i, dt in enumerate(dates[:-1] if use_next_open else dates):
         exec_dt = dates[i + 1] if use_next_open else dt
-        day_rows = day_rows_map.get(exec_dt, [])
         exec_mark: dict[str, float] = {}
         close_mark = dict(last_marks)
         next_mark_ages = dict(mark_ages)
         marked_today: set[str] = set()
         advs: dict[str, float] = {}
         vols: dict[str, float] = {}
-        for row in day_rows:
-            sid = str(row["security_id"])
-            raw_exec = _valid_price(row["open"] if use_next_open else row["close"])
-            if raw_exec is not None:
-                exec_mark[sid] = raw_exec
-            total_return_mark = _valid_price(row["close_total_return"])
-            fallback_mark = _valid_price(row["close"])
-            if total_return_mark is not None:
-                close_mark[sid] = total_return_mark
+        for j in day_idx_map.get(exec_dt, ()):
+            sid = str(sid_l[j])
+            if exec_ok[j]:
+                exec_mark[sid] = exec_v[j]
+            if ctr_ok[j]:
+                close_mark[sid] = ctr_v[j]
                 next_mark_ages[sid] = 0
                 marked_today.add(sid)
-            elif fallback_mark is not None:
-                close_mark[sid] = fallback_mark
+            elif close_ok[j]:
+                close_mark[sid] = close_v[j]
                 next_mark_ages[sid] = 0
                 marked_today.add(sid)
         for sid in close_mark:
@@ -338,7 +392,9 @@ def _run_backtest_event_loop(
         # Non-executing names must be valued at the pre-update mark; marking
         # them at exec_dt's own close leaks future prices into sizing.
         pre_exec_marks = last_marks
-        last_marks = dict(close_mark)
+        # ``close_mark`` is rebuilt from ``last_marks`` at the top of the next
+        # iteration, so handing the dict over directly aliases safely.
+        last_marks = close_mark
         mark_ages = next_mark_ages
         stale_held = {
             sid: mark_ages.get(sid)
@@ -364,18 +420,16 @@ def _run_backtest_event_loop(
         # Decision price = the signal bar's close at ``dt``; it anchors the
         # implementation-shortfall drift of fills executing at ``exec_dt``.
         decision_marks: dict[str, float] = {}
-        for row in day_rows_map.get(dt, []):
-            mark = _valid_price(row["close"])
-            if mark is not None:
-                decision_marks[str(row["security_id"])] = mark
+        for j in day_idx_map.get(dt, ()):
+            sid = str(sid_l[j])
+            if close_ok[j]:
+                decision_marks[sid] = close_v[j]
             # Liquidity and volatility for a next-open order must be known
             # at the signal close. The execution day's final volume/ADV and
             # realized volatility are future data at the moment of the fill.
-            sid = str(row["security_id"])
-            known_adv = _valid_price(row["adv"])
-            if known_adv is not None:
-                advs[sid] = known_adv
-            vols[sid] = _valid_price(row["vol_20"]) or 0.02
+            if adv_ok[j]:
+                advs[sid] = adv_v[j]
+            vols[sid] = vol_v[j] if vol_ok[j] else 0.02
         # Value held names without an execution print at the last mark known
         # before this bar's close rather than at 0.0: a missing open must not
         # understate NAV / exposures and silently let the risk gate admit
@@ -401,9 +455,12 @@ def _run_backtest_event_loop(
         for sid, held_qty in book.shares.items():
             if abs(held_qty) > 1e-12 and sid not in marked_today:
                 target_w[sid] = 0.0
-        ids = set(exec_mark) | set(book.shares) | set(target_w)
+        ids = set(exec_mark) | share_ids | set(target_w)
         traded_turn = 0.0
-        market_vol, overlay_source = market_risk_overlay_asof(config, bars, dt)
+        if overlay_possible:
+            market_vol, overlay_source = market_risk_overlay_asof(config, bars, dt)
+        else:
+            market_vol, overlay_source = None, None
         if overlay_source == MARKET_RISK_OVERLAY_REALIZED_GARCH:
             realized_garch_overlay_dates += 1
         elif overlay_source == MARKET_RISK_OVERLAY_GARCH:
@@ -445,7 +502,7 @@ def _run_backtest_event_loop(
                 halt_count += 1
                 continue
             current_w, gross_after, net_after = _projected_exposures(
-                book, nav_prices, sid, delta, nav
+                book, nav_prices, sid, delta, nav, share_ids
             )
             participation = abs(delta) * price / adv
             order_seq += 1
@@ -481,6 +538,7 @@ def _run_backtest_event_loop(
                 continue
             book.cash -= notional + total_trade_cost
             book.shares[sid] = current + delta
+            share_ids.add(sid)
             # Turnover is based on executed notional, not the requested target
             # change; participation caps can make those materially different.
             traded_turn += abs(notional) / max(nav, 1e-12)
@@ -505,7 +563,7 @@ def _run_backtest_event_loop(
         nav_close = book.nav(close_mark)
         # borrow on shorts
         short_notional = sum(
-            abs(min(book.shares.get(s, 0.0), 0.0)) * close_mark.get(s, 0.0) for s in book.shares
+            [abs(min(sh, 0.0)) * close_mark.get(s, 0.0) for s, sh in book.shares.items()]
         )
         borrow = short_notional * (config.costs.borrow_bps_per_year / 1e4) / 252.0
         if not config.costs.frictionless:
@@ -515,11 +573,9 @@ def _run_backtest_event_loop(
             {
                 "event_time": exec_dt,
                 "nav": nav_close,
-                "gross": sum(
-                    abs(book.shares.get(s, 0.0) * close_mark.get(s, 0.0)) for s in book.shares
-                )
+                "gross": sum([abs(sh * close_mark.get(s, 0.0)) for s, sh in book.shares.items()])
                 / max(nav_close, 1e-12),
-                "net": sum(book.shares.get(s, 0.0) * close_mark.get(s, 0.0) for s in book.shares)
+                "net": sum([sh * close_mark.get(s, 0.0) for s, sh in book.shares.items()])
                 / max(nav_close, 1e-12),
                 "turnover": traded_turn,
             }
