@@ -455,12 +455,32 @@ def verify_receipt_payload(
     return _verify_v1(path, payload)
 
 
+def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    seen: set[str] = set()
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ValueError(f"duplicate_json_key:{key}")
+        seen.add(key)
+        obj[key] = value
+    return obj
+
+
 def verify_receipt_file(path: Path | str) -> ReceiptVerification:
-    """Read a receipt JSON file and verify it. Fails closed on unreadable input."""
+    """Read a receipt JSON file and verify it. Fails closed on unreadable input.
+
+    Duplicate object keys are rejected: ``{"k": 1, "k": 2}`` parses to ``2``
+    in Python but would let a file carry two readable claims while only one
+    is sealed — the bytes must determine a unique payload.
+    """
     file_path = Path(path)
     try:
-        payload: object = json.loads(file_path.read_text())
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        payload: object = json.loads(file_path.read_text(), object_pairs_hook=_no_duplicate_keys)
+    except ValueError as exc:
+        if str(exc).startswith("duplicate_json_key:"):
+            return _result(file_path, {}, None, [str(exc)])
+        return _result(file_path, {}, None, [f"receipt_unreadable:{exc.__class__.__name__}"])
+    except (OSError, UnicodeError) as exc:
         return _result(file_path, {}, None, [f"receipt_unreadable:{exc.__class__.__name__}"])
     return verify_receipt_payload(payload, file_path)
 

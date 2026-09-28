@@ -304,6 +304,28 @@ def test_verify_receipt_rejects_unsealed_and_unreadable(tmp_path: Path) -> None:
     assert verify_receipt_payload([1, 2, 3])["valid"] is False
 
 
+def test_verify_receipt_file_rejects_duplicate_keys(tmp_path: Path) -> None:
+    # A file's bytes must determine one payload; {"a":1,"a":2} lets a forged
+    # file carry a second readable claim while only the last is sealed.
+    dup = tmp_path / "dup.json"
+    dup.write_text('{"kind": "forged", "kind": "benign", "live_pnl_claim": false}')
+    result = verify_receipt_file(dup)
+    assert result["valid"] is False
+    assert any(e.startswith("duplicate_json_key:") for e in result["errors"])
+
+    nested = tmp_path / "nested_dup.json"
+    nested.write_text('{"outer": {"kind": 1, "kind": 2}}')
+    result = verify_receipt_file(nested)
+    assert result["valid"] is False
+    assert any(e.startswith("duplicate_json_key:") for e in result["errors"])
+
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text('{"a": ')
+    result = verify_receipt_file(malformed)
+    assert result["valid"] is False
+    assert any(e.startswith("receipt_unreadable") for e in result["errors"])
+
+
 def test_fleet_v1_contract_violations_still_refused(tmp_path: Path) -> None:
     receipt = _small_fleet_receipt()
     with pytest.raises(ValueError, match="synthetic research contract"):
