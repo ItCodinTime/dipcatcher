@@ -841,6 +841,8 @@ def _rebalance_next_open(
                     book=None,
                     include_spread=True,
                 )
+        if not legacy and below_min_notional(delta, price, spec.min_notional):
+            continue
         try:
             kill.assert_new_orders_allowed()
         except KillSwitchActive:
