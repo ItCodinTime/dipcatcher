@@ -131,7 +131,15 @@ jobs:
         run: |
           set -euo pipefail
           shard_file="$RUNNER_TEMP/matrix-shard.txt"
-          # Repo paths contain no spaces; word-splitting is intentional and
-          # keeps argv well under the Windows 32k command-line limit
+          # Path order, not greedy order. pytest 9.1.1 (latest on PyPI;
+          # fixture-identity fix is still unreleased) drops a nested
+          # conftest's fixtures when a later file argument revisits that
+          # directory after a file from its parent
+          # (pytest-dev/pytest#14635). Sorting keeps each directory
+          # contiguous, so the directory node that registered the fixtures
+          # is the one later files in that directory bind to. Shard
+          # membership is unchanged. Repo paths contain no spaces, and the
+          # expanded argv stays under the Windows 32k command-line limit
           # (~170 files * ~50 chars).
-          uv run pytest -q -m "not network" $(tr '\n' ' ' < "$shard_file")
+          mapfile -t files < <(LC_ALL=C sort "$shard_file")
+          uv run pytest -q -m "not network" "${files[@]}"
