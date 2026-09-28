@@ -680,3 +680,31 @@ def test_ops_snapshot_markdown_and_invalid_nav(tmp_path) -> None:
     assert "kill_switch" in md
     with pytest.raises(ValueError, match="nav"):
         ops_snapshot(nav=float("nan"), cash=0.0, positions={}, marks={}, config=_cfg(tmp_path))
+
+
+def test_aggregate_shortfall_top_names_deterministic_under_ties() -> None:
+    """Equal total_is names must resolve in name order, not hash-partition order."""
+    fills = pl.DataFrame(
+        {
+            # B and A tie at the top (total_is=10 each); C is lower (5).
+            "security_id": ["B", "A", "C"],
+            "quantity": [10.0, 10.0, 5.0],
+            "decision_price": [100.0] * 3,
+            "price": [101.0] * 3,
+            "fee": [0.0] * 3,
+        }
+    )
+    fr = shortfall_frame(fills)
+    first = [row["security_id"] for row in aggregate_shortfall(fr)["top_cost_names"]]
+    # A and B tie on total_is → fixed order A then B (ties break on the key)
+    assert first[:2] == ["A", "B"]
+    assert [row["total_is"] for row in aggregate_shortfall(fr)["top_cost_names"]] == [
+        10.0,
+        10.0,
+        5.0,
+    ]
+    # permuted input must not change the emitted ordering
+    for seed in range(10):
+        shuffled = fr.sample(fraction=1.0, shuffle=True, seed=seed)
+        again = [r["security_id"] for r in aggregate_shortfall(shuffled)["top_cost_names"]]
+        assert again == first

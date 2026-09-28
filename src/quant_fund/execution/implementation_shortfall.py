@@ -184,7 +184,9 @@ def aggregate_shortfall(frame: pl.DataFrame) -> dict[str, Any]:
             pl.col("notional").sum().alias("notional"),
             pl.len().alias("n_fills"),
         )
-        .sort("total_is", descending=True)
+        # total_is ties resolve on the name so top_cost_names is a function of
+        # the data, not of polars' unspecified group output order
+        .sort(["total_is", "security_id"], descending=[True, False])
         .to_dicts()
     )
     favorable = float(frame.filter(pl.col("total_is") < 0)["total_is"].sum() or 0.0)
