@@ -35,7 +35,7 @@ THREAT_NAMES: tuple[str, ...] = (
 
 def as_vector(values: FloatArray, *, name: str) -> FloatArray:
     """Return a finite 1-d float copy."""
-    array = np.asarray(values, dtype=float).reshape(-1)
+    array = np.array(values, dtype=float, copy=True).reshape(-1)
     if array.size == 0 or not np.all(np.isfinite(array)):
         raise ValueError(f"{name} must be a non-empty finite vector")
     return array
