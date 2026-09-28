@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -169,7 +170,61 @@ def _check_sidecars(
         if sha256_hex_bytes(data) != expected[kind]:
             reasons.append(f"sidecar:{kind}_sha256_mismatch")
         contents[kind] = data
+    _check_committed_sidecars(bundle, bundle_dir, contents.get("config"), reasons)
     return contents
+
+
+_COMMITTED_KIND_RE = re.compile(r"[a-z0-9_]+\Z")
+
+
+def _check_committed_sidecars(
+    bundle: ProofBundleV1,
+    bundle_dir: Path,
+    config_bytes: bytes | None,
+    reasons: list[str],
+) -> None:
+    """Check 6b (wave 2, additive): hash-check sidecars committed in config.
+
+    The wave-2 runner commits ``config["sidecars"]["<kind>_sha256"]`` for the
+    trace/env/seeds sidecars (WAVE2.md §2.5); the commitment chain is
+    bundle -> config (check 6) -> these files, mirroring the wave-1 config
+    sidecar pattern (``sidecar:<kind>_sha256_mismatch``). Wave-1 bundles carry
+    no ``sidecars`` map and skip this check entirely. Commitment keys are
+    restricted to ``[a-z0-9_]`` so a hostile bundle cannot turn a commitment
+    into a path traversal outside ``bundle_dir``.
+    """
+    if config_bytes is None:
+        return
+    try:
+        config_doc: Any = json.loads(config_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        reasons.append("sidecar:config_invalid_json")
+        return
+    if not isinstance(config_doc, dict):
+        return
+    commitments = config_doc.get("sidecars")
+    if not isinstance(commitments, dict):
+        return
+    for key in sorted(commitments):
+        kind = key[: -len("_sha256")] if key.endswith("_sha256") else key
+        expected = commitments[key]
+        if not _COMMITTED_KIND_RE.fullmatch(kind) or not isinstance(expected, str):
+            reasons.append(f"sidecar:{kind}:invalid_commitment")
+            continue
+        path = bundle_dir / f"{bundle.bundle_id}.{kind}.json"
+        if path.is_symlink():
+            reasons.append(f"sidecar:{kind}:unsafe_symlink")
+            continue
+        if not path.exists():
+            reasons.append(f"sidecar:{kind}:missing")
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            reasons.append(f"sidecar:{kind}:unreadable:{exc.__class__.__name__}")
+            continue
+        if sha256_hex_bytes(data) != expected:
+            reasons.append(f"sidecar:{kind}_sha256_mismatch")
 
 
 def _check_metrics_recompute(
@@ -225,9 +280,10 @@ def verify_bundle(
     4. signature: HMAC verify (strict) or report scheme='none' as reason
     5. data_manifest: recompute per-read leaf hashes + Merkle root
     6. re-hash signal_log/trade_log/metrics/config sidecar files
+    6b. re-hash wave-2 sidecars committed in config["sidecars"] (trace/env/seeds)
     7. RECOMPUTE metrics from trade log bytes and compare (rtol 1e-9, atol 1e-12)
     8. env_fingerprint comparison -> env_mismatch warning (A3 F5.2, non-fatal)
-    9. replay: fail closed until decision-time vault reads are implemented
+    9. optional replay: bit-exact re-execution via proof.replay (wave 2)
     """
     reasons: list[str] = []
     env_mismatch = False
