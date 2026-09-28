@@ -4,6 +4,8 @@ RULE_REGISTRY is the ONLY source of rule metadata (DESIGN.md §6.1). Rule IDs
 are permanent; new rules append with new IDs. Allowlists are per-rule
 frozensets of path globs; every entry carries a comment citing why the
 existing site is legitimate (or which audit finding / follow-up owns it).
+LH001 also has a function-scoped allowlist: the file stays scanned, and
+only the named function is exempt.
 
 Residual ceiling (ADVERSARIAL §1a, pinned by the documented-negative fixtures
 in tests/leakage_fixtures/adv_*.py): numpy/pandas index arithmetic, dict
@@ -176,6 +178,17 @@ LH001_ALLOWLIST: frozenset[str] = frozenset(
     }
 )
 
+# LH001 function scope. The file stays scanned; a finding is dropped only
+# when its innermost enclosing function is listed. Nested helpers and every
+# other function in the file remain checked.
+# forward_close_return_labels builds y_{t+1} as column fwd_ret_1 on the full
+# bar panel. It is a label, not a feature.
+LH001_FUNCTION_ALLOWLIST: dict[str, frozenset[str]] = {
+    "src/quant_fund/microstructure/candle_book_features.py": frozenset(
+        {"forward_close_return_labels"}
+    ),
+}
+
 # LH003: scaler `.fit` sites that consume caller-sliced train folds (audit §2:
 # "ranker scalers fit inside each train fold"; the fold loop lives in
 # pipeline/train.py, above these classes).
@@ -284,6 +297,12 @@ RULE_ALLOWLISTS: dict[str, frozenset[str]] = {
     "LH004": LH004_ALLOWLIST,
     "LH006": LH006_ALLOWLIST,
     "LH007": LH007_ALLOWLIST,
+}
+
+# rule id -> repo-relative path -> function names. Exact path suffix, not a
+# glob: a same-named function in another file is still scanned.
+FUNCTION_ALLOWLISTS: dict[str, dict[str, frozenset[str]]] = {
+    "LH001": LH001_FUNCTION_ALLOWLIST,
 }
 
 # LH009 / LH010 scope exemptions (these rules are warning-severity at HEAD but
