@@ -173,6 +173,7 @@ nav:
       - ML and RL capabilities: ML_RL_CAPABILITIES.md
       - Frontier audit: AUDIT_FRONTIER.md
       - Scenario Monte Carlo: MC_ENGINE.md
+      - Run comparison: RUN_COMPARE.md
   - Operations:
       - Runbook: OPERATIONS_RUNBOOK.md
       - Audit ledger and observability: AUDIT_OBSERVABILITY.md
