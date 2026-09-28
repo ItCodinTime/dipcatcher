@@ -120,7 +120,8 @@
       "status": "audited"
     },
     "paper": {
-      "status": "pending"
+      "n_modules": 9,
+      "status": "audited"
     },
     "parity": {
       "n_modules": 11,
