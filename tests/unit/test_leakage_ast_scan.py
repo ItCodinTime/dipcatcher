@@ -240,6 +240,49 @@ def test_lh001_detects_direct_subscript_shift(tmp_path: Path) -> None:
     assert "LH001" in _rule_ids(report, "error")
 
 
+def test_lh001_function_allowlist_still_flags_other_leaks_in_file(tmp_path: Path) -> None:
+    """forward_close_return_labels is exempt; a sibling leak in the same file is not."""
+    repo = Path(__file__).resolve().parents[2]
+    rel = Path("src/quant_fund/microstructure/candle_book_features.py")
+    source = (repo / rel).read_text(encoding="utf-8")
+    label_line = next(
+        i for i, line in enumerate(source.splitlines(), start=1) if ".shift(-1)" in line
+    )
+    leaked = source + ("\n\ndef leaked_close_feature(close):\n    return close.shift(-1)\n")
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_text(leaked, encoding="utf-8")
+    report = scan_paths([path], rules={"LH001"})
+    lh001 = [f for f in report.findings if f.rule_id == "LH001"]
+    assert len(lh001) == 1
+    assert lh001[0].line != label_line
+    assert lh001[0].snippet == "return close.shift(-1)"
+
+
+def test_lh001_function_allowlist_does_not_exempt_same_name_elsewhere(tmp_path: Path) -> None:
+    source = "def forward_close_return_labels(close):\n    return close.shift(-1)\n"
+    report = _scan(tmp_path, source, name="other_labels.py")
+    assert "LH001" in _rule_ids(report, "error")
+
+
+def test_lh001_function_allowlist_still_flags_nested_helper(tmp_path: Path) -> None:
+    """A helper nested inside the label function is a different function and stays scanned."""
+    rel = Path("src/quant_fund/microstructure/candle_book_features.py")
+    source = (
+        "def forward_close_return_labels(close):\n"
+        "    def leaked_close_feature(series):\n"
+        "        return series.shift(-1)\n"
+        "    return leaked_close_feature(close)\n"
+    )
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_text(source, encoding="utf-8")
+    report = scan_paths([path], rules={"LH001"})
+    lh001 = [f for f in report.findings if f.rule_id == "LH001"]
+    assert len(lh001) == 1
+    assert lh001[0].snippet == "return series.shift(-1)"
+
+
 @pytest.mark.parametrize("headline", ["Sharpe:2.1", "P&L=$4,200"])
 def test_lh008_detects_compact_headline(tmp_path: Path, headline: str) -> None:
     report = _scan(tmp_path, f"title = {headline!r}\n")

@@ -4,6 +4,8 @@ Implements the LH001..LH014 rule pack (DESIGN.md §6.1 + ADVERSARIAL §1a
 hardening). Detection is purely syntactic and deliberately conservative: a
 rule fires only on the exact pattern its spec row describes, and per-rule
 path allowlists in ``leakage/rules.py`` codify the legitimate sites at HEAD.
+A function-scoped allowlist exempts one named function; the rest of that
+file is still scanned.
 
 Residual ceiling (documented, ADVERSARIAL §1a): numpy/pandas index arithmetic
 (`px[1:] - px[:-1]`), dict lookups at `dates[i+1]`, single numbers far outside
@@ -25,6 +27,7 @@ import tokenize
 from pathlib import Path
 
 from quant_fund.leakage.rules import (
+    FUNCTION_ALLOWLISTS,
     LH008_LITERAL_ALLOWLIST,
     LH009_EXEMPT_GLOBS,
     LH011_LAZY_WHITELIST,
@@ -57,6 +60,69 @@ _FSTRING_NUMSPEC_RE = re.compile(r"\d")
 def _is_allowlisted(rule_id: str, path_str: str) -> bool:
     globs = RULE_ALLOWLISTS.get(rule_id, frozenset())
     return any(fnmatch.fnmatch(path_str, g) or fnmatch.fnmatch(path_str, f"*/{g}") for g in globs)
+
+
+def _function_allowlist_names(rule_id: str, path_str: str) -> frozenset[str]:
+    """Function names exempt for this rule on this path.
+
+    Keys are repo-relative paths. An absolute scan path matches only when it
+    equals the key or ends with ``/`` + key, so the same function name in
+    another file is not exempt.
+    """
+    table = FUNCTION_ALLOWLISTS.get(rule_id)
+    if not table:
+        return frozenset()
+    matched: set[str] = set()
+    for rel, names in table.items():
+        if path_str == rel or path_str.endswith("/" + rel):
+            matched.update(names)
+    return frozenset(matched)
+
+
+def _function_spans(tree: ast.AST) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            end = node.end_lineno if node.end_lineno is not None else node.lineno
+            spans.append((node.lineno, end, node.name))
+    return spans
+
+
+def _innermost_function_name(spans: list[tuple[int, int, str]], line: int) -> str | None:
+    """Name of the tightest function span containing *line*, if any."""
+    best_width: int | None = None
+    best_name: str | None = None
+    for start, end, name in spans:
+        if start <= line <= end:
+            width = end - start
+            if best_width is None or width < best_width:
+                best_width = width
+                best_name = name
+    return best_name
+
+
+def _drop_function_allowlisted(
+    rule_id: str,
+    path_str: str,
+    tree: ast.AST,
+    findings: list[_Finding],
+) -> list[_Finding]:
+    """Drop findings whose innermost enclosing function is allowlisted.
+
+    Module-level findings and findings in any other function, including a
+    nested helper inside an allowlisted function, are kept.
+    """
+    allowed = _function_allowlist_names(rule_id, path_str)
+    if not allowed or not findings:
+        return findings
+    spans = _function_spans(tree)
+    kept: list[_Finding] = []
+    for finding in findings:
+        name = _innermost_function_name(spans, finding.line)
+        if name is not None and name in allowed:
+            continue
+        kept.append(finding)
+    return kept
 
 
 def _exempt_by_globs(path_str: str, globs: frozenset[str]) -> bool:
@@ -905,7 +971,8 @@ def scan_file(path: Path, *, rules: set[str] | None = None) -> list[_Finding]:
             continue
         if _is_allowlisted(rule_id, path_str):
             continue
-        findings.extend(checker(tree, path_str))
+        raw = checker(tree, path_str)
+        findings.extend(_drop_function_allowlisted(rule_id, path_str, tree, raw))
     if "LH013" in enabled and not _is_allowlisted("LH013", path_str):
         findings.extend(_check_lh013(tree, path_str, source))
     if "LH014" in enabled and not _is_allowlisted("LH014", path_str):
