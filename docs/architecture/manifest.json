@@ -1239,6 +1239,10 @@
       "src": "quant_fund.cli.data_cmds"
     },
     {
+      "dst": "quant_fund.config.models",
+      "src": "quant_fund.cli.data_cmds"
+    },
+    {
       "dst": "quant_fund.data.collector",
       "src": "quant_fund.cli.data_cmds"
     },
@@ -8173,7 +8177,7 @@
     },
     {
       "dst": "quant_fund.config",
-      "imports": 3,
+      "imports": 4,
       "src": "quant_fund.cli"
     },
     {

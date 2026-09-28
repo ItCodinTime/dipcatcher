@@ -194,7 +194,7 @@ flowchart LR
   quant_fund_backtest -->|8| quant_fund_schemas
   quant_fund_cli -->|2| quant_fund_audit
   quant_fund_cli -->|3| quant_fund_backtest
-  quant_fund_cli -->|3| quant_fund_config
+  quant_fund_cli -->|4| quant_fund_config
   quant_fund_cli -->|8| quant_fund_data
   quant_fund_cli -->|3| quant_fund_features
   quant_fund_cli -->|1| quant_fund_hmm
