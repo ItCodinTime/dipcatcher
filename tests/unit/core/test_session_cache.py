@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any
@@ -9,11 +10,12 @@ from typing import Any
 import numpy as np
 import pytest
 
+from quant_fund.config import load_config
 from quant_fund.config.models import AppConfig
 from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
 from quant_fund.northset.benches import bench_northset
 from quant_fund.pipeline.dataset import build_gold, ensure_silver
-from tests.support.session_cache import bench_stats, data_stats, reset_for_tests
+from tests.support.session_cache import bench_stats, cache_root, data_stats, reset_for_tests
 
 
 def _nan_equal(left: Any, right: Any) -> bool:
@@ -132,3 +134,48 @@ def test_silver_cache_does_not_replace_existing_bars(tmp_path: Path) -> None:
     got = ensure_silver(cfg)
     assert got["close"][0] == -123.0
     assert pl.read_parquet(bars_path)["close"][0] == -123.0
+
+
+def _manifest_config(root: Path) -> AppConfig:
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = root
+    cfg.data.synthetic_n_assets = 8
+    cfg.data.synthetic_n_days = 80
+    return cfg
+
+
+def test_cached_build_restores_manifest_inside_the_new_root(tmp_path: Path) -> None:
+    """A gold-cache hit must materialize data_manifest.json for the new root."""
+    reset_for_tests()
+    cfg = _manifest_config(tmp_path / "a")
+    build_gold(cfg)
+    assert (tmp_path / "a" / "metadata" / "data_manifest.json").is_file()
+    other = cfg.model_copy(deep=True)
+    other.data.root = tmp_path / "b"
+    build_gold(other)
+    manifest_path = tmp_path / "b" / "metadata" / "data_manifest.json"
+    doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert doc["schema_version"] == 1
+    assert doc["source"] == "synthetic"
+    silver = doc["artifacts"]["silver"]
+    assert len(silver["sha256"]) == 64
+    silver_path = Path(silver["path"]).resolve()
+    assert silver_path.is_relative_to((tmp_path / "b").resolve())
+    assert silver_path.is_file()
+    assert data_stats()["hit"] >= 1
+
+
+def test_cache_lake_without_manifest_is_rebuilt(tmp_path: Path) -> None:
+    """Snapshots from before the manifest was stored must not count as hits."""
+    reset_for_tests()
+    cfg = _manifest_config(tmp_path / "a")
+    build_gold(cfg)
+    removed = 0
+    for manifest in cache_root().rglob("data_manifest.json"):
+        manifest.unlink()
+        removed += 1
+    assert removed >= 1
+    other = cfg.model_copy(deep=True)
+    other.data.root = tmp_path / "b"
+    build_gold(other)
+    assert (tmp_path / "b" / "metadata" / "data_manifest.json").is_file()

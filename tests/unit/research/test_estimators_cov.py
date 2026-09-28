@@ -363,10 +363,12 @@ def test_corwin_schultz_nan_on_too_few_pairs() -> None:
     assert np.isnan(corwin_schultz_spread(bars))
 
 
-def test_corwin_schultz_nan_when_all_pairs_filtered() -> None:
-    """Point bars (high == low) give β = 0 and negative α → spreads < 0 → all dropped."""
+def test_corwin_schultz_clips_negative_pairs_to_zero() -> None:
+    """Point bars (high == low) give β = 0 and negative α. Corwin–Schultz
+    set those pair estimates to zero before averaging, so the mean is 0
+    rather than NaN from dropping every pair."""
     days = [(10.0 + d, 10.0 + d, 10.0 + d, 10.0 + d) for d in range(10)]
-    assert np.isnan(corwin_schultz_spread(_bars({"S0": days})))
+    assert corwin_schultz_spread(_bars({"S0": days})) == 0.0
 
 
 def test_corwin_schultz_finite_on_adequate_bars() -> None:
@@ -631,9 +633,11 @@ def test_session_bipower_jump_matches_closed_form() -> None:
 # --- session_vpin -----------------------------------------------------------
 
 
-def test_session_vpin_missing_or_empty_returns_nan() -> None:
-    """Fail-closed but NaN, not a raise — unlike the raising siblings."""
-    assert np.isnan(session_vpin(_sessions([[(100.0, 101.0, 1.0)]]).drop("volume")))
+def test_session_vpin_missing_columns_raise_and_empty_is_nan() -> None:
+    """Missing columns fail closed, same as the other session estimators.
+    An empty frame with the right columns is an honest NaN."""
+    with pytest.raises(ValueError, match="session missing columns"):
+        session_vpin(_sessions([[(100.0, 101.0, 1.0)]]).drop("volume"))
     empty = pl.DataFrame(
         schema={
             "security_id": pl.Utf8,
@@ -698,10 +702,10 @@ def _vpin_test_book() -> pl.DataFrame:
         {
             "S0": [
                 (10.0, 11.0, 100.0, 100.0),
-                (10.1, 11.0, 200.0, 100.0),  # buy 300 / sell 100 → tox 0.5
-                (10.05, 10.9, 150.0, 300.0),  # buy 100 / sell 200 → tox 1/3
-                (10.2, 11.2, 400.0, 50.0),  # buy 400 / sell 50 → tox 7/9
-                (10.2, 11.3, 100.0, 60.0),  # buy 100 / sell 460 → tox 9/14
+                (10.1, 11.0, 200.0, 100.0),  # bid up, ask unchanged: buy 300 / sell 100 → 0.5
+                (10.05, 10.9, 150.0, 300.0),  # bid down, ask down: buy 0 / sell 500 → 1
+                (10.2, 11.2, 400.0, 50.0),  # bid up, ask up: buy 700 / sell 0 → 1
+                (10.2, 11.3, 100.0, 60.0),  # bid unchanged, ask up: buy 150 / sell 400 → 5/11
             ]
         }
     )
@@ -711,24 +715,24 @@ def test_vpin_proxy_count_window_matches_rolling_toxicity() -> None:
     out = vpin_proxy(_vpin_test_book().sort("event_time"), window=3)
     vpin = out["vpin"].to_list()
     assert vpin[0] is None and vpin[1] is None  # needs 2 non-null tox values
-    tox = [0.5, 1.0 / 3.0, 7.0 / 9.0, 9.0 / 14.0]
+    tox = [0.5, 1.0, 1.0, 5.0 / 11.0]
     assert vpin[2] == pytest.approx(np.mean(tox[0:2]))
     assert vpin[3] == pytest.approx(np.mean(tox[0:3]))
     assert vpin[4] == pytest.approx(np.mean(tox[1:4]))
 
 
 def test_vpin_proxy_bucket_volume_clock_carries_last_value() -> None:
-    """500-vol buckets straddle rows; unfilled rows carry the previous VPIN."""
+    """500-vol buckets on CKS buy/sell legs. t1 stays short of a bucket."""
     out = vpin_proxy(_vpin_test_book().sort("event_time"), bucket_volume=500.0, window=3)
     vpin = out["vpin"].to_list()
-    assert vpin[0] != vpin[0] or vpin[0] is None  # NaN before first bucket
-    assert vpin[1] != vpin[1] or vpin[1] is None  # 400 < 500 accumulated
-    # t2 completes bucket: (buy 300+100, sell 100+200) → |400−300|/700
-    first = pytest.approx(100.0 / 700.0)
-    assert vpin[2] == first
-    assert vpin[3] == first  # 450 < 500 → carry
-    # t4 completes bucket: (buy 400+100, sell 50+460) → |500−510|/1010
-    assert vpin[4] == pytest.approx((100.0 / 700.0 + 10.0 / 1010.0) / 2.0)
+    assert vpin[0] != vpin[0] or vpin[0] is None  # no signed flow yet
+    assert vpin[1] != vpin[1] or vpin[1] is None  # buy 300 + sell 100 = 400 < 500
+    # t2 completes: acc buy 300, sell 600 → |300−600|/900
+    assert vpin[2] == pytest.approx(1.0 / 3.0)
+    # t3 completes a new bucket: buy 700, sell 0
+    assert vpin[3] == pytest.approx((1.0 / 3.0 + 1.0) / 2.0)
+    # t4 completes: buy 150, sell 400 → |150−400|/550; window keeps 3 buckets
+    assert vpin[4] == pytest.approx((1.0 / 3.0 + 1.0 + 5.0 / 11.0) / 3.0)
 
 
 def test_vpin_proxy_bucket_clock_is_per_security() -> None:

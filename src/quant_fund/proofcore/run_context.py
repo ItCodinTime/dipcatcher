@@ -205,17 +205,26 @@ class PropagatingThread(threading.Thread):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # Snapshot the creating thread's contextvars context, then wrap the
+        # target so the worker runs it inside that snapshot. Wrapping keeps
+        # threading.Thread.run responsible for invocation and cleanup —
+        # no access to its private _target/_args/_kwargs fields.
         self._proven_context = contextvars.copy_context()
-        super().__init__(*args, **kwargs)
+        positional_target = len(args) > 1
+        target: Callable[..., Any] | None = (
+            kwargs.get("target") if not positional_target else args[1]
+        )
+        if target is not None:
+            ctx = self._proven_context
 
-    def run(self) -> None:
-        try:
-            if self._target is not None:
-                target, args, kwargs = self._target, self._args, self._kwargs
-                self._proven_context.run(target, *args, **kwargs)
-        finally:
-            # Mirror threading.Thread.run: drop the reference cycle.
-            del self._target, self._args, self._kwargs
+            def wrapped(*a: Any, **k: Any) -> Any:
+                return ctx.run(target, *a, **k)
+
+            if positional_target:
+                args = (args[0], wrapped, *args[2:])
+            else:
+                kwargs["target"] = wrapped
+        super().__init__(*args, **kwargs)
 
 
 def proven_thread(target: Callable[..., Any], *args: Any, **kwargs: Any) -> PropagatingThread:

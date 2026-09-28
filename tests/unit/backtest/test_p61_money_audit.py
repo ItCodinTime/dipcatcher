@@ -359,11 +359,9 @@ def test_carry_exec_equity_does_not_leak_exec_bar_close(tmp_path):
     assert last_fill["quantity"] == pytest.approx(500.0)
 
 
-def test_fast_replay_exec_nav_leak_known_residual(tmp_path):
-    """Exposure: run_backtest_fast (outside this lane) still marks held names
-    without an exec print at the exec bar's close — the same look-ahead fixed
-    in the event loop. Runs the public entrypoint, which delegates to the fast
-    replay on this panel. XFAIL-strict until fast_replay.py is fixed."""
+def test_fast_replay_exec_nav_does_not_leak_exec_day_close(tmp_path):
+    """Held names without an exec print stay on the prior mark. The public
+    entry point delegates this panel to fast replay."""
     from quant_fund.backtest.engine import run_backtest
 
     cfg = _cfg(tmp_path)
@@ -378,5 +376,6 @@ def test_fast_replay_exec_nav_leak_known_residual(tmp_path):
     res = run_backtest(bars, weights, cfg, initial_nav=2e6)
     last_fill = res.fills.row(-1, named=True)
     assert last_fill["security_id"] == "A"
-    if last_fill["quantity"] != pytest.approx(2000.0):
-        pytest.xfail("fast_replay still sizes off the exec bar's close (out-of-lane)")
+    # Causal NAV at the exec open = 2e6 → delta +2000. Leaked B close
+    # of 200 would size delta +4400.
+    assert last_fill["quantity"] == pytest.approx(2000.0)
