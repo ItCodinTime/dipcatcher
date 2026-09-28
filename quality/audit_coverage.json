@@ -38,8 +38,8 @@
       "status": "audited"
     },
     "diffbacktest": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 5,
+      "status": "audited"
     },
     "execution": {
       "doc": "docs/AUDIT_P61_MONEY.md",
