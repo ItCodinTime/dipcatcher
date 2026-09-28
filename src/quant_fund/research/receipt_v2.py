@@ -433,6 +433,9 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
+    from quant_fund.research.script_receipts import script_receipt_contract_errors
+
+    errors.extend(script_receipt_contract_errors(payload.get("schema"), payload))
     return _result(path, payload, convention, errors)
 
 
@@ -445,7 +448,9 @@ def verify_receipt_payload(
     sealed digest, environment fingerprint, code-map digest, and (for known
     kinds) dataset/params digests are re-derived. Older receipts are checked
     for a consistent ``receipt_sha256`` seal under either repo convention;
-    ``fleet_eval.v1`` payloads additionally get their writer's contract.
+    ``fleet_eval.v1`` payloads additionally get their writer's contract, and
+    the committed ``scripts/`` lane schemas get internal-consistency
+    re-derivation via ``script_receipts``.
     """
     path = Path(path)
     if not isinstance(payload, dict):
