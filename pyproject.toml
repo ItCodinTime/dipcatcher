@@ -338,7 +338,9 @@ omit = ["*/__main__.py"]
 # --cov-fail-under so the threshold cannot drift between the two).
 # Ratcheted 2026-09-25: measured 84.93% local (macOS) and 81.51% on CI
 # (Linux) — floor set at 80 with cross-platform headroom. Raise, never lower.
-fail_under = 80
+# 2026-09-28: local measures 85.49%; CI tracks ~3.4pp lower (~82). Floor 81
+# keeps ~1pp CI headroom while closing the drift window.
+fail_under = 81
 show_missing = true
 skip_covered = true
 exclude_also = [
@@ -362,8 +364,11 @@ directory = "htmlcov"
 # coverage-gate`, which reads this table (single source of truth).
 # Ratchet-only thereafter: raise, never lower.
 [tool.proofcore.coverage-floors]
-pit = 90
-proof = 90
-leakage = 85
-reality = 90
-proofcore = 90
+# 2026-09-28 local measurements: pit 93.02, proof 94.57, leakage 96.55,
+# reality 95.27, proofcore 97.04. Floors raised +1 — CI measures lower than
+# local, so floors stay well below either reading.
+pit = 91
+proof = 91
+leakage = 86
+reality = 91
+proofcore = 91
