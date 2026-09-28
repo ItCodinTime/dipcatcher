@@ -380,9 +380,27 @@ def weights_for(cell: Cell, bars: pl.DataFrame, *, name_cap: float, net_cap: flo
     raise ValueError(f"unknown strategy {cell.strategy}")
 
 
-def prepare_bars(frame: pl.DataFrame) -> pl.DataFrame:
-    """Causal dollar-volume and vol columns the engine already knows how to read."""
+def prepare_bars(
+    frame: pl.DataFrame,
+    actions: pl.DataFrame | None = None,
+    *,
+    prices_already_split_adjusted: bool = True,
+) -> pl.DataFrame:
+    """Causal dollar-volume and vol columns the engine already knows how to read.
+
+    ``actions=None`` keeps the quote close as ``close_total_return``. Pass
+    corporate actions to reinvest dividends; see
+    ``quant_fund.research.total_return``.
+    """
     ordered = frame.sort(["security_id", "event_time"])
+    if actions is not None:
+        from quant_fund.research.total_return import apply_research_total_return
+
+        ordered = apply_research_total_return(
+            ordered,
+            actions,
+            prices_already_split_adjusted=prices_already_split_adjusted,
+        )
     enriched = ordered.with_columns(
         (pl.col("close") * pl.col("volume")).alias("_dv"),
         pl.col("close").pct_change().over("security_id").alias("_ret"),
@@ -395,11 +413,12 @@ def prepare_bars(frame: pl.DataFrame) -> pl.DataFrame:
         pl.col("_dv").drop_nulls().first().alias("_adv0")
     )
     enriched = enriched.join(first_dv, on="security_id", how="left")
-    return enriched.with_columns(
+    prepared = enriched.with_columns(
         pl.col("adv").fill_null(pl.col("_adv0")).fill_null(0.0).alias("adv"),
         pl.col("vol_20").fill_null(0.02).alias("vol_20"),
         pl.col("close").alias("close_total_return"),
-    ).select(
+    )
+    columns = [
         "security_id",
         "event_time",
         "open",
@@ -411,7 +430,18 @@ def prepare_bars(frame: pl.DataFrame) -> pl.DataFrame:
         "adv",
         "vol_20",
         "source",
-    )
+    ]
+    for name in (
+        "open_quote",
+        "high_quote",
+        "low_quote",
+        "close_quote",
+        "dividend",
+        "return_basis",
+    ):
+        if name in prepared.columns:
+            columns.append(name)
+    return prepared.select(columns)
 
 
 def fetch_yahoo_panel(spec: dict[str, Any], cache: Path) -> tuple[pl.DataFrame, dict[str, Any]]:

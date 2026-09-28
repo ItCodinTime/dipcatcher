@@ -29,6 +29,37 @@ identity unless a separate corporate-action file is supplied. Universe
 membership is a liquidity filter on this tape, not an index reconstitution.
 This tape can be scored scientifically. It cannot mint a live P&L claim.
 
+Quote OHLC from `parse_yahoo_chart` does not reinvest cash dividends. Research
+backtests that need a total-return mark opt in; the default `prepare_bars`
+path still aliases `close_total_return` to that quote close.
+
+```python
+from quant_fund.data.adapters.yahoo_eod import fetch_yahoo_chart, parse_yahoo_chart
+from quant_fund.research.reality_sweep import prepare_bars
+from quant_fund.research.total_return import YAHOO_CHART_EVENTS, parse_yahoo_corporate_actions
+
+payload = fetch_yahoo_chart(symbol, start=start, end=end, events=YAHOO_CHART_EVENTS)
+bars = parse_yahoo_chart(payload, security_id=symbol, yahoo_symbol=symbol)
+actions = parse_yahoo_corporate_actions(payload, security_id=symbol, yahoo_symbol=symbol)
+panel = prepare_bars(bars, actions)
+```
+
+`prepare_bars(..., actions)` reinvests `cash_dividend` and `special_dividend`
+through `adjust_prices`. Yahoo prints are already split-adjusted, so the
+default `prices_already_split_adjusted=True` records split rows and does not
+apply them again. Set the flag false only for raw prints. Ex-dates use the
+same UTC-date session close as `parse_yahoo_chart`. `available_time` on parsed
+Yahoo events is that session close (the chart payload has no announcement
+vintage). An action whose `available_time` is after `event_time` fails closed.
+
+The research backtest fills at `open` and marks at `close_total_return`, so
+the adjusted panel puts open, high, low, and close on that total-return basis.
+Quote prints stay in `open_quote`, `high_quote`, `low_quote`, and
+`close_quote`. A name bought on the ex-date open does not collect that
+ex-date dividend; a name already held does. Share participation still uses
+quote volume because dollar volume is total-return close times share volume.
+This is research data only. It does not place orders.
+
 ### Hugging Face minute bars (`hf_ohlcv_1m`)
 
 `quant_fund.data.adapters.hf_ohlcv_1m` reads

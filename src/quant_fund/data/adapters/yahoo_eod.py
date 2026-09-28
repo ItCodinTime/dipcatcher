@@ -6,6 +6,10 @@ writer: scientific scoring only, no champion alias, no live claim.
 
 Stooq EOD is preferred when it returns CSV; Yahoo is the fallback when Stooq
 serves a JavaScript proof-of-work wall.
+
+The default chart URL is quote OHLC only. Pass ``events`` to request dividend
+and split rows. Reinvestment for research backtests lives in
+``quant_fund.research.total_return`` and does not run inside this adapter.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import urllib.error
 from datetime import UTC, datetime
 from email.message import Message
 from pathlib import Path
+from urllib.parse import quote
 
 import polars as pl
 
@@ -52,6 +57,19 @@ class _TerminalHTTP(Exception):
         self.status = status
 
 
+def _chart_url(symbol: str, start: datetime, end: datetime, events: str | None) -> str:
+    url = CHART_URL.format(
+        symbol=symbol,
+        start=int(start.timestamp()),
+        end=int(end.timestamp()),
+    )
+    if events is None:
+        return url
+    if not events or any(char.isspace() for char in events):
+        raise ValueError("yahoo events must be a non-empty string without whitespace")
+    return f"{url}&events={quote(events, safe='')}"
+
+
 def fetch_yahoo_chart(
     symbol: str,
     *,
@@ -60,12 +78,14 @@ def fetch_yahoo_chart(
     timeout: float = 30.0,
     retries: int = 3,
     backoff_s: float = 2.0,
+    events: str | None = None,
 ) -> dict[str, object]:
-    url = CHART_URL.format(
-        symbol=symbol,
-        start=int(start.timestamp()),
-        end=int(end.timestamp()),
-    )
+    """Download one Yahoo v8 daily chart.
+
+    ``events=None`` keeps the historical quote URL. Research total-return
+    callers pass ``div,split`` so the payload includes corporate actions.
+    """
+    url = _chart_url(symbol, start, end, events)
 
     def once() -> dict[str, object]:
         try:

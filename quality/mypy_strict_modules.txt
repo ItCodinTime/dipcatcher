@@ -365,6 +365,7 @@ src/quant_fund/research/prospective_sota.py
 src/quant_fund/research/real_benchmark.py
 src/quant_fund/research/sota_evidence.py
 src/quant_fund/research/sota_protocol.py
+src/quant_fund/research/total_return.py
 src/quant_fund/research/verify.py
 src/quant_fund/risk/__init__.py
 src/quant_fund/risk/gates.py
