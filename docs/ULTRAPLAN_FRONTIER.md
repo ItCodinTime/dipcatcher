@@ -222,7 +222,13 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 - [ ] P2.3 `sundial` — THU-MT flow-matching; sample paths → empirical dist.
 - [ ] P2.4 `toto` — Datadog Toto if public weights resolve; else document
       unavailable.
-- [ ] P2.5 `tabpfn_ts` — PriorLabs tabpfn-time-series (CPU-feasible, 11M).
+- [~] P2.5 `tabpfn_ts` — PriorLabs tabpfn-time-series (CPU-feasible, 11M).
+      Adapter landed: `TabpfnTsDistribution` (`models/tabpfn_ts.py`) — lazy
+      fail-closed import, causal-window `predict_from_history`, registered in
+      `FLEET_HEAD_REGISTRY`. Dep evidence: `tabpfn-time-series` transitively
+      pins `toolz<1` (via gluonts) while `exchange-calendars==4.13.2` requires
+      `toolz>=1` — unsatisfiable in uv.lock, so the lane stays fail-closed
+      until upstream loosens. Fleet cell open pending a resolvable dep.
 - [ ] P2.6 `kronos_base` in the v5 fleet (only the v1 3-asset run beat it;
       fleet-scale evidence missing).
 - [ ] P2.7 Classical neural baselines: N-BEATS / N-HiTS / DLinear via a small

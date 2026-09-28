@@ -434,8 +434,8 @@ class _HStepOneStepHead:
 # models/distribution.py plus the landed conditional/series heads via the
 # fleet adapters above: qar (one-step lagged scoring), hstep as its two h=1
 # construction slices, the series/feature heads regime / fhs_skew /
-# lgbm_q2 / conf_t directly, and the torch-optional neural heads nbeats /
-# nhits (imported lazily inside the factory so this module never requires
+# lgbm_q2 / conf_t directly, the torch-optional neural heads nbeats / nhits,
+# and the fail-closed tabpfn_ts adapter (imported lazily inside the factory so this module never requires
 # the ``nn`` extra — no cross-PR head dependencies).
 FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "empirical": lambda taus, seed: EmpiricalDistribution(list(taus)),
@@ -453,6 +453,7 @@ FLEET_HEAD_REGISTRY: dict[str, Callable[[Sequence[float], int], Any]] = {
     "hstep_emp": lambda taus, seed: _HStepOneStepHead(taus, "empirical"),
     "nbeats": lambda taus, seed: _nbeats(taus, seed),
     "nhits": lambda taus, seed: _nhits(taus, seed),
+    "tabpfn_ts": lambda taus, seed: _tabpfn_ts(taus, seed),
 }
 
 
@@ -466,6 +467,12 @@ def _nhits(taus: Sequence[float], seed: int) -> Any:
     from quant_fund.models.nbeats import NHiTsDistribution
 
     return NHiTsDistribution(list(taus), seed=int(seed))
+
+
+def _tabpfn_ts(taus: Sequence[float], seed: int) -> Any:
+    from quant_fund.models.tabpfn_ts import TabpfnTsDistribution
+
+    return TabpfnTsDistribution(list(taus), seed=int(seed))
 
 
 def resolve_shard_generators(names: Iterable[str] | None = None) -> dict[str, ShardGenerator]:
