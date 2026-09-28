@@ -12,11 +12,11 @@ from typer.testing import CliRunner
 from quant_fund.cli.main import app
 from quant_fund.config.models import CostConfig
 from quant_fund.execution.costs import total_cost
+from quant_fund.execution.maker_taker_probe import maker_taker_fee_delta
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.research.cost_surface import (
     DEFAULT_BANDS,
     _churn_targets,
-    _maker_probe,
     _synth_bars,
     run_cost_surface,
     write_cost_surface_receipt,
@@ -75,7 +75,7 @@ def test_hysteresis_surface_monotone() -> None:
 def test_maker_probe_records_fill_rate_and_fee_delta() -> None:
     bars, targets = _book()
     cfg = CostConfig(commission_bps=1.0, maker_commission_bps=0.5)
-    probe = _maker_probe(bars, targets, cfg)
+    probe = maker_taker_fee_delta(bars, targets, cfg)
     assert 0.0 < probe["maker_fill_rate"] <= 1.0
     assert probe["maker_fee_bps_per_filled"] < probe["taker_fee_bps_per_filled"]
     assert probe["maker_fees"] < probe["taker_fees"]
