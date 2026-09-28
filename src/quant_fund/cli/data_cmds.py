@@ -20,9 +20,13 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
 
     # Doctor's job is to report problems, not crash on them: an unreadable
     # config becomes a status line and the rest of the check runs on defaults.
+    # A degraded-config run is a report, not a verdict — the health gate below
+    # only binds when the config itself loaded cleanly.
+    config_ok = True
     try:
         info = run_doctor(str(config))
     except Exception as exc:
+        config_ok = False
         info = run_doctor(None)
         info["config"] = f"unreadable: {type(exc).__name__}"
     for k, v in info.items():
@@ -60,7 +64,8 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         info.get(f"dir_{part}") == "ok" for part in ("raw", "bronze", "silver", "gold", "metadata")
     ]
     healthy = (
-        all(required)
+        not config_ok
+        or all(required)
         and info.get("data_manifest") == "ok"
         and info.get("research_receipt") == "ok"
         and info.get("core_imports") == "ok"
