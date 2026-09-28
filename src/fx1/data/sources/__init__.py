@@ -18,13 +18,13 @@ Every installed finance plugin is a first-class, *honesty-gated* data source:
 from fx1.data.sources.adapters import (
     AgentGwAdapter,
     CaixinAdapter,
-    DataSourceAdapter,
     FinanceFetchAdapter,
     McpAdapter,
     XhcjAdapter,
     build_adapter,
 )
 from fx1.data.sources.base import (
+    DataSourceAdapter,
     FetchRequest,
     FetchResult,
     LatencyClass,

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 
 class Tracker:
@@ -21,7 +22,7 @@ class Tracker:
         self._run = None
         self._fallback = Path(fallback_log) if fallback_log else None
         try:
-            import mlflow  # type: ignore
+            import mlflow
 
             mlflow.set_experiment(experiment)
             self._run = mlflow.start_run(run_name=f"{experiment}-run")
@@ -31,7 +32,7 @@ class Tracker:
         if self._fallback:
             self._fallback.parent.mkdir(parents=True, exist_ok=True)
 
-    def _record(self, kind: str, payload: dict) -> None:
+    def _record(self, kind: str, payload: dict[str, Any]) -> None:
         if self._fallback:
             line = {
                 "utc": datetime.now(UTC).isoformat(),
@@ -41,7 +42,7 @@ class Tracker:
             with self._fallback.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(line) + "\n")
 
-    def log_params(self, params: dict) -> None:
+    def log_params(self, params: dict[str, Any]) -> None:
         if self._mlflow:
             self._mlflow.log_params({k: str(v) for k, v in params.items()})
         self._record("params", {"params": {k: str(v) for k, v in params.items()}})

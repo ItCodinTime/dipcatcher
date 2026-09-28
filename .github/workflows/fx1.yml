@@ -31,7 +31,11 @@ jobs:
       - name: Lint
         run: uv run ruff check src/fx1 tests/fx1
       - name: Types
-        run: uv run mypy src/fx1
+        run: |
+          uv run mypy src/fx1
+          # fx1 is 100% strict-clean (65/65 modules as of 2026-09-28) —
+          # --strict keeps new code strict at birth; no allowlist needed.
+          uv run mypy --strict src/fx1
       - name: Tests
         run: uv run pytest tests/fx1 -q
       # Documented contract (docs/FX1_TRAINING.md): honesty inheritance is

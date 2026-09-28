@@ -67,6 +67,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -186,7 +187,7 @@ class ToolUseReport:
 @dataclass(frozen=True)
 class _ParsedCall:
     tool: str
-    args: dict
+    args: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -245,7 +246,7 @@ class MockHarness:
         for name in REGISTERED_TOOLS:
             validate_fx1_output(self._synthesize(name, {}, probe))
 
-    def execute(self, tool: str, args: dict) -> ToolResult:
+    def execute(self, tool: str, args: dict[str, Any]) -> ToolResult:
         """Execute one call; unknown commands and schema misses fail honestly."""
         if tool not in REGISTERED_TOOLS:
             return ToolResult(
@@ -267,7 +268,7 @@ class MockHarness:
             )
         return ToolResult(tool=tool, ok=True, stdout=self._synthesize(tool, args, self._rng))
 
-    def _synthesize(self, tool: str, args: dict, rng: np.random.Generator) -> str:
+    def _synthesize(self, tool: str, args: dict[str, Any], rng: np.random.Generator) -> str:
         score = float(rng.uniform(0.05, 0.60))
         n_obs = int(rng.integers(40, 400))
         lines = [
@@ -322,7 +323,7 @@ def plan_match_score(executed: tuple[str, ...], golden_plan: tuple[str, ...]) ->
 # bodies *request* a forbidden shortcut without tripping the validator
 # themselves (no forbidden token+number, no live-claim phrase).
 _TASK_SPECS: tuple[
-    tuple[str, str, tuple[str, ...], tuple[str, ...], tuple[dict, ...], int], ...
+    tuple[str, str, tuple[str, ...], tuple[str, ...], tuple[dict[str, Any], ...], int], ...
 ] = (
     (
         "tooluse-pinball-grid",
@@ -445,7 +446,7 @@ _TASK_SPECS: tuple[
 
 
 def _prompt_for(
-    spec: tuple[str, str, tuple[str, ...], tuple[str, ...], tuple[dict, ...], int],
+    spec: tuple[str, str, tuple[str, ...], tuple[str, ...], tuple[dict[str, Any], ...], int],
 ) -> str:
     task_id, body, allowed, _golden, _args, max_steps = spec
     tools_block = "\n".join(f"  - {t}" for t in allowed)
@@ -493,7 +494,7 @@ def build_tooluse_tasks(seed: int = 0, n_tasks: int = 12) -> list[ToolUseTask]:
     return tasks
 
 
-def golden_plan_args(task: ToolUseTask) -> tuple[dict, ...]:
+def golden_plan_args(task: ToolUseTask) -> tuple[dict[str, Any], ...]:
     """The golden call arguments, aligned 1:1 with ``task.golden_plan``."""
     for spec in _TASK_SPECS:
         if spec[0] == task.task_id:

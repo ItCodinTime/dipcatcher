@@ -13,6 +13,7 @@ import json
 import random
 from enum import IntEnum
 from pathlib import Path
+from typing import Any
 
 
 class Level(IntEnum):
@@ -22,7 +23,7 @@ class Level(IntEnum):
     REFUSAL = 3  # negative examples under pressure
 
 
-def classify(example: dict) -> Level:
+def classify(example: dict[str, Any]) -> Level:
     if example.get("negative"):
         return Level.REFUSAL
     messages = example.get("messages", [])
@@ -46,10 +47,10 @@ def build_curriculum(
         if x.strip()
     ]
     rng = random.Random(seed)
-    buckets: dict[Level, list[dict]] = {level: [] for level in Level}
+    buckets: dict[Level, list[dict[str, Any]]] = {level: [] for level in Level}
     for line in lines:
         buckets[classify(line)].append(line)
-    ordered: list[dict] = []
+    ordered: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
     for level in Level:
         bucket = buckets[level]

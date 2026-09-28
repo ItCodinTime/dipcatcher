@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -64,12 +64,12 @@ def score_task(task: EvalTask, response: str) -> EvalResult:
     )
 
 
-class SuiteSummary(dict):
+class SuiteSummary(dict[str, Any]):
     """Typed view over the run summary for mypy-clean consumers."""
 
     @property
-    def results(self) -> list[dict]:
-        return list(self.get("results", []))  # type: ignore[arg-type]
+    def results(self) -> list[dict[str, Any]]:
+        return list(self.get("results", []))
 
 
 def run_suite(model_fn: ModelFn, tasks: list[EvalTask]) -> SuiteSummary:

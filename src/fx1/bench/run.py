@@ -12,6 +12,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from fx1.bench.dip import (
     DipForecast,
@@ -38,7 +39,7 @@ def run_dip_bench(
     threshold: float = 0.10,
     horizons_bars: dict[str, int] | None = None,
     glob_pattern: str = "*_1d.parquet",
-) -> dict:
+) -> dict[str, Any]:
     """Detect dips across every series in *data_dir* and score climatology."""
     import polars as pl
 

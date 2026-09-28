@@ -17,6 +17,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -160,7 +161,7 @@ class CorpusLedger:
             prev = entry.entry_hash
         return True
 
-    def audit_export(self) -> dict:
+    def audit_export(self) -> dict[str, Any]:
         """Public audit view: counts, rules fired, chain head — no raw data."""
         rules: dict[str, int] = {}
         for entry in self._entries:

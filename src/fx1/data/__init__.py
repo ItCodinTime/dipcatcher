@@ -1,5 +1,7 @@
 """fx-1 training corpus construction from dipcatcher artifacts."""
 
+from typing import Any
+
 from fx1.data.corpus import SFTExample, build_corpus, build_full_corpus
 from fx1.data.ledger import CorpusLedger, LedgerEntry
 from fx1.data.ledgers import ledger_corpus, ledger_examples
@@ -30,7 +32,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):  # lazy: keep base import light
+def __getattr__(name: str) -> Any:  # lazy: keep base import light
     if name == "sources":
         from fx1.data import sources
 

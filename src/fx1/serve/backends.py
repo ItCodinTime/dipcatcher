@@ -108,4 +108,4 @@ def get_backend(kind: str, **kwargs: object) -> InferenceBackend:
     backends = {"hosted_k3": HostedK3Backend, "local_fx1": LocalFx1Backend}
     if kind not in backends:
         raise KeyError(f"unknown backend {kind!r}; choose from {sorted(backends)}")
-    return cast(InferenceBackend, backends[kind](**kwargs))  # type: ignore[arg-type]
+    return cast(InferenceBackend, backends[kind](**kwargs))

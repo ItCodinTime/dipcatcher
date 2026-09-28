@@ -12,6 +12,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from fx1.train.config import TrainConfig
 
@@ -48,7 +49,7 @@ def _validate_eval_gate(eval_path: Path) -> None:
         )
 
 
-def build_training_manifest(config: TrainConfig, out_path: str | Path) -> dict:
+def build_training_manifest(config: TrainConfig, out_path: str | Path) -> dict[str, Any]:
     """Validate the run contract and write an immutable manifest."""
     corpus_path = Path(config.corpus_jsonl)
     eval_path = Path(config.eval_results_json)

@@ -220,7 +220,7 @@ def fetch_routed(
             attempts.append(f"{candidate.source}: no API mapping provided")
             continue
         spec = get_spec(candidate.source)
-        result = build_adapter(spec, runner=runner).fetch(  # type: ignore[arg-type]
+        result = build_adapter(spec, runner=runner).fetch(
             FetchRequest(api=api, params=params or {}, as_of=as_of)
         )
         if result.ok:

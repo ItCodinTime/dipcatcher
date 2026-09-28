@@ -13,6 +13,7 @@ import hashlib
 import json
 import random
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +25,7 @@ def _shingles(text: str, n: int = 8) -> set[str]:
     return {" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)}
 
 
-def _text_of(example: dict) -> str:
+def _text_of(example: dict[str, Any]) -> str:
     return "\n".join(str(m.get("content", "")) for m in example.get("messages", []))
 
 
@@ -40,15 +41,15 @@ class QualityReport(BaseModel):
 
 
 def dedup_and_filter(
-    examples: list[dict],
+    examples: list[dict[str, Any]],
     *,
     eval_prompts: list[str],
     containment_threshold: float = 0.6,
     max_len_chars: int = 32_000,
-) -> tuple[list[dict], QualityReport]:
+) -> tuple[list[dict[str, Any]], QualityReport]:
     """Dedup + decontaminate + length-filter. Fail-closed on eval overlap."""
     seen_exact: set[str] = set()
-    kept: list[dict] = []
+    kept: list[dict[str, Any]] = []
     shingle_index: list[set[str]] = []
     eval_shingles: set[str] = set()
     for prompt in eval_prompts:
@@ -110,7 +111,7 @@ def _hash_lines(lines: list[str]) -> str:
 
 
 def frozen_split(
-    examples: list[dict],
+    examples: list[dict[str, Any]],
     out_prefix: str | Path,
     *,
     val_fraction: float = 0.05,

@@ -15,6 +15,7 @@ import json
 from collections.abc import Callable
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -84,7 +85,7 @@ class Pipeline:
         if nxt < len(STAGE_ORDER):
             self.state.stage = STAGE_ORDER[nxt]
 
-    def run_quality_gate(self, eval_prompts: list[str] | None = None) -> dict:
+    def run_quality_gate(self, eval_prompts: list[str] | None = None) -> dict[str, Any]:
         """DATA + QUALITY: load corpus, dedup/decontaminate, frozen split."""
         corpus_path = Path(self.config.corpus_jsonl)
         examples = [
@@ -149,7 +150,7 @@ class Pipeline:
         self.state.metrics["receipt_dirty"] = float(receipt.dirty_worktree)
         return checkpoint
 
-    def run_eval_candidate(self, candidate_fn: ModelFn) -> dict:
+    def run_eval_candidate(self, candidate_fn: ModelFn) -> dict[str, Any]:
         """EVAL_CANDIDATE: statistical comparison against the recorded base."""
         base_summary = json.loads(
             Path(self.state.artifacts["eval_base"]).read_text(encoding="utf-8")
@@ -171,7 +172,7 @@ class Pipeline:
         )
         return comparison.model_dump()
 
-    def _write(self, name: str, payload: dict) -> Path:
+    def _write(self, name: str, payload: dict[str, Any]) -> Path:
         out = self.work_dir / name
         out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return out

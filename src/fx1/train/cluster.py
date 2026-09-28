@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -40,7 +41,7 @@ class ClusterSpec(BaseModel):
     def world_size(self) -> int:
         return self.nodes * self.gpus_per_node
 
-    def to_deepspeed_config(self) -> dict:
+    def to_deepspeed_config(self) -> dict[str, Any]:
         return {
             "zero_optimization": {
                 "stage": self.zero_stage,

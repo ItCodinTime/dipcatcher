@@ -13,13 +13,14 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class ToolCall(BaseModel):
     name: str
-    arguments: dict = Field(default_factory=dict)
+    arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class TraceStep(BaseModel):
