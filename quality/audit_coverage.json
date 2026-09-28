@@ -1,0 +1,238 @@
+{
+  "directories": {
+    "api": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "audit": {
+      "doc": "docs/AUDIT_OBSERVABILITY.md",
+      "n_modules": 11,
+      "status": "audited"
+    },
+    "backtest": {
+      "doc": "docs/AUDIT_P61_MONEY.md",
+      "n_modules": 15,
+      "status": "audited"
+    },
+    "calendars": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 8,
+      "status": "audited"
+    },
+    "cli": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "compute": {
+      "status": "pending"
+    },
+    "config": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 3,
+      "status": "audited"
+    },
+    "data": {
+      "doc": "docs/AUDIT_P63_DATA.md",
+      "n_modules": 33,
+      "status": "audited"
+    },
+    "diffbacktest": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "execution": {
+      "doc": "docs/AUDIT_P61_MONEY.md",
+      "n_modules": 6,
+      "status": "audited"
+    },
+    "features": {
+      "status": "pending"
+    },
+    "formal": {
+      "status": "pending"
+    },
+    "fusion": {
+      "status": "pending"
+    },
+    "hedge_lab": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 15,
+      "status": "audited"
+    },
+    "hmm": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "labels": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 4,
+      "status": "audited"
+    },
+    "leakage": {
+      "status": "pending"
+    },
+    "lightspeed": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 8,
+      "status": "audited"
+    },
+    "market_sim": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "mc_engine": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "metrics": {
+      "doc": "docs/AUDIT_P62_STATS.md",
+      "n_modules": 58,
+      "status": "audited"
+    },
+    "microstructure": {
+      "doc": "docs/AUDIT_P65_MICRO.md",
+      "n_modules": 7,
+      "status": "audited"
+    },
+    "models": {
+      "doc": "docs/AUDIT_P64_DIST.md",
+      "status": "partial"
+    },
+    "monitoring": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 4,
+      "status": "audited"
+    },
+    "native": {
+      "status": "pending"
+    },
+    "northset": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "observe": {
+      "status": "pending"
+    },
+    "paper": {
+      "status": "pending"
+    },
+    "parity": {
+      "status": "pending"
+    },
+    "pipeline": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "pit": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 7,
+      "status": "audited"
+    },
+    "portfolio": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "pretrade": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "proof": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 8,
+      "status": "audited"
+    },
+    "proofcore": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 6,
+      "status": "audited"
+    },
+    "quant_models": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "reality": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 8,
+      "status": "audited"
+    },
+    "registry": {
+      "status": "pending"
+    },
+    "reporting": {
+      "status": "pending"
+    },
+    "research": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "risk": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 5,
+      "status": "audited"
+    },
+    "robustness": {
+      "status": "pending"
+    },
+    "schemas": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "simtest": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "status": "partial"
+    },
+    "stress": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 14,
+      "status": "audited"
+    },
+    "utils": {
+      "doc": "docs/AUDIT_FRONTIER.md",
+      "n_modules": 7,
+      "status": "audited"
+    },
+    "validation": {
+      "doc": "docs/AUDIT_P62_STATS.md",
+      "n_modules": 11,
+      "status": "audited"
+    }
+  },
+  "modules": {
+    "__init__.py": {
+      "reason": "package surface only",
+      "status": "waived"
+    },
+    "backtest/event_sim/__init__.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/clock.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/constraints.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/costs.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/fills.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/sensitivity.py": {
+      "status": "pending"
+    },
+    "backtest/event_sim/simulator.py": {
+      "status": "pending"
+    },
+    "public.py": {
+      "reason": "package surface only",
+      "status": "waived"
+    }
+  },
+  "schema_version": "audit-coverage/v1",
+  "statuses": {
+    "audited": "line-level audit complete for this scope",
+    "partial": "some modules in scope audited; remainder pending",
+    "pending": "audit queued or not yet started",
+    "waived": "audit not applicable \u2014 'reason' required"
+  }
+}
