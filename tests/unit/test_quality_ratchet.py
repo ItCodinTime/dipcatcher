@@ -28,7 +28,11 @@ MCCABE_CEILING = 74
 # `except Exception` handlers under src/quant_fund. This is origin/main's
 # count at 7d2e01e (75). This branch narrows three of them, so the tree is
 # at 72. New handlers that push the total above main fail this test.
-EXCEPT_EXCEPTION_CEILING = 75
+# 76: vol_bench._eval_shard_model wraps a plugin forecaster call whose
+# error contract is "record an error row, never silent" — any library
+# exception (arch/sklearn/lightgbm) must convert, so the boundary catch is
+# load-bearing. Bump only with the same justification.
+EXCEPT_EXCEPTION_CEILING = 76
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
