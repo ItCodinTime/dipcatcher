@@ -301,13 +301,31 @@ class ProvenanceDB:
 
     def chain_head(self) -> str:
         """Current head of the bundle chain: the stored bundle no other bundle
-        points to via ``prev_bundle_hash``. ``GENESIS_HASH`` on an empty DB."""
-        row = self._con.execute(
+        points to via ``prev_bundle_hash``. ``GENESIS_HASH`` on an empty DB.
+
+        Inserts and the UNIQUE(prev_bundle_hash) constraint keep a
+        well-formed ledger a single chain with exactly one unreferenced
+        head. A different head count is only possible by direct DB
+        manipulation — a fork (extra heads) or a cycle/dangling link (no
+        head) — and the ledger must fail loudly rather than arbitrate.
+        """
+        heads: list[tuple[str, ...]] = self._con.execute(
             "SELECT bundle_id FROM proof_bundles "
             "WHERE bundle_id NOT IN (SELECT prev_bundle_hash FROM proof_bundles) "
-            "ORDER BY created_utc DESC, bundle_id DESC LIMIT 1"
-        ).fetchone()
-        return row[0] if row is not None else GENESIS_HASH
+            "ORDER BY created_utc DESC, bundle_id DESC LIMIT 2"
+        ).fetchall()
+        if len(heads) == 1:
+            return heads[0][0]
+        n_bundles_row = self._con.execute("SELECT count(*) FROM proof_bundles").fetchone()
+        n_bundles = 0 if n_bundles_row is None else int(n_bundles_row[0])
+        if n_bundles == 0:
+            return GENESIS_HASH
+        shape = "forked" if heads else "has no head (cycle or dangling link)"
+        raise ProvenanceError(
+            f"bundle chain {shape} — {n_bundles} stored bundles, "
+            f"{len(heads)} unreferenced heads; the provenance ledger "
+            "has been tampered with"
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle

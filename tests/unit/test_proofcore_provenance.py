@@ -186,6 +186,42 @@ def test_chain_head_follows_links(tmp_path) -> None:
         assert db.chain_head() == b3.bundle_id
 
 
+def test_chain_head_fails_closed_on_forked_chain(tmp_path) -> None:
+    """Two unreferenced heads can only arise from direct DB tampering — the
+    UNIQUE(prev_bundle_hash) constraint blocks a forked insert. Simulate the
+    tamper by rewiring a link with UPDATE; chain_head must refuse to pick a
+    winner."""
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        b1 = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        b2 = _bundle(_id(2), prev=b1.bundle_id, created="2026-09-26T00:01:00+00:00")
+        db.insert_bundle(b1, None)
+        db.insert_bundle(b2, None)
+        # Tamper: b2 now points at a dangling predecessor. Both b1 and b2 are
+        # unreferenced — two heads.
+        db._con.execute(
+            "UPDATE proof_bundles SET prev_bundle_hash = ? WHERE bundle_id = ?",
+            [_id(9), b2.bundle_id],
+        )
+        with pytest.raises(ProvenanceError, match="tampered"):
+            db.chain_head()
+
+
+def test_chain_head_fails_closed_on_cycle(tmp_path) -> None:
+    """A bundle whose prev points at a later bundle closes a loop: no bundle
+    is unreferenced, so the table is non-empty but headless — corrupted."""
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        b1 = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        b2 = _bundle(_id(2), prev=b1.bundle_id, created="2026-09-26T00:01:00+00:00")
+        db.insert_bundle(b1, None)
+        db.insert_bundle(b2, None)
+        db._con.execute(
+            "UPDATE proof_bundles SET prev_bundle_hash = ? WHERE bundle_id = ?",
+            [b2.bundle_id, b1.bundle_id],
+        )
+        with pytest.raises(ProvenanceError, match="no head"):
+            db.chain_head()
+
+
 def test_trial_round_trip_and_family_filter(tmp_path) -> None:
     with ProvenanceDB(tmp_path / "prov.duckdb") as db:
         bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
