@@ -129,7 +129,8 @@
       "status": "audited"
     },
     "pipeline": {
-      "status": "partial"
+      "n_modules": 21,
+      "status": "audited"
     },
     "pit": {
       "doc": "docs/AUDIT_FRONTIER.md",
