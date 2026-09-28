@@ -268,6 +268,15 @@ Each: pinned artifact + sha256, zero-shot, native output honored
       HAR-RV, realized-GARCH, dip_garch_t and RV baselines with QLIKE/MSE on
       cumulative h-step realized variance, NW loss diffs vs `har`, sealed
       receipts). Real-data vol cells still open.
+- [x] P3.6 Fleet significance lane: `dipcatcher fleet-significance` —
+      `research/fleet_significance.py` scores every head's *per-row* proper
+      loss (mean pinball or unreduced Gneiting–Raftery CRPS) on each
+      SYNTHETIC shard, then runs a pairwise Diebold–Mariano matrix
+      (Andrews–Monahan prewhitened HAC) plus a Hansen–Lunde–Nason model
+      confidence set (stationary bootstrap, range statistic) per shard and
+      on a pooled lane standardized by per-shard cross-head std. Answers
+      "which heads are actually distinguishable", not just ranked — error
+      heads recorded and excluded; sealed receipt.v2.
 
 ### P4 — Industry-grade bar (the open one)
 

@@ -318,6 +318,60 @@ def fleet(
     typer.echo(f"receipt={path}")
 
 
+@app.command("fleet-significance")
+def fleet_significance(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None, help="Comma-separated head names (default: full fleet registry)."
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all synthetic shards)."
+    ),
+    n_train: int = typer.Option(192, help="Leading fit rows per shard."),
+    n_eval: int = typer.Option(96, help="Trailing scored rows per shard."),
+    loss: str = typer.Option("pinball", help="Per-row loss: 'pinball' or 'crps'."),
+    n_boot: int = typer.Option(2000, help="Stationary-bootstrap replicates for the MCS."),
+    alpha: float = typer.Option(0.10, help="MCS significance level."),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+) -> None:
+    """Test predictive-ability significance across the fleet on SYNTHETIC shards.
+
+    Pairwise Diebold–Mariano matrix (Andrews–Monahan prewhitened) plus a
+    Hansen–Lunde–Nason model confidence set on per-row proper-score losses —
+    which heads are actually distinguishable, not just ranked. Writes a sealed
+    receipt.v2 envelope.
+    """
+    from quant_fund.research.fleet_significance import (
+        format_fleet_significance_table,
+        run_fleet_significance_eval,
+        write_fleet_significance_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    try:
+        frame, receipt = run_fleet_significance_eval(
+            None if models is None else models.split(","),
+            None if shards is None else shards.split(","),
+            seed=base_seed,
+            taus=cfg.quantiles.levels,
+            n_train=n_train,
+            n_eval=n_eval,
+            loss=loss,
+            n_boot=n_boot,
+            alpha=alpha,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_fleet_significance_receipt(receipt, out_dir)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_fleet_significance_table(frame))
+    typer.echo(f"receipt={path}")
+
+
 @app.command("verify-receipt")
 def verify_receipt_cmd(
     path: Path = typer.Argument(..., help="Receipt JSON file to verify."),
@@ -517,6 +571,7 @@ __all__ = [
     "capacity",
     "execution_sensitivity_cmd",
     "fleet",
+    "fleet_significance",
     "rankic",
     "research",
     "verify_identities",
