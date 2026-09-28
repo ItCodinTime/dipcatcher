@@ -202,3 +202,66 @@ def test_metrics_http_serves_text(monkeypatch: pytest.MonkeyPatch) -> None:
         connection.close()
     finally:
         stop_metrics_server()
+
+
+def test_export_protocol_failure_never_reaches_the_caller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A collector answering with a malformed response is a transport failure."""
+    import http.client
+
+    _enable(monkeypatch)
+    monkeypatch.setenv("DIPCATCHER_OTEL_ENDPOINT", "http://127.0.0.1:4318/v1/traces")
+
+    class GarbageConnection:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def request(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def getresponse(self) -> object:
+            raise http.client.BadStatusLine("not http")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(http.client, "HTTPConnection", GarbageConnection)
+
+    def work() -> int:
+        with span("decision"):
+            return 7
+
+    assert work() == 7
+
+    def explode() -> None:
+        with span("decision"):
+            raise RuntimeError("x")
+
+    with pytest.raises(RuntimeError, match="x"):
+        explode()
+    assert 'dipcatcher_errors_total{stage="otel_export"}' in render_prometheus()
+
+
+def test_redaction_covers_hyphenated_and_unseparated_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _enable(monkeypatch)
+    sink: list[dict[str, object]] = []
+    set_log_sink(sink)
+    try:
+        log_event(
+            "stage",
+            **{"x-api-key": "s1"},
+            apikey="s2",
+            privatekey="s3",
+            session_secret="s4",
+            auth_token="s5",
+            key_id="visible",
+        )
+        record = sink[0]
+        for field in ("x-api-key", "apikey", "privatekey", "session_secret", "auth_token"):
+            assert record[field] == "[redacted]", field
+        assert record["key_id"] == "visible"
+    finally:
+        set_log_sink(None)

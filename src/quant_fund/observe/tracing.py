@@ -123,7 +123,9 @@ def _export(current: Span) -> None:
         )
         response = connection.getresponse()
         response.read()
-    except OSError:
+    except (OSError, http.client.HTTPException):
+        # A collector speaking garbage back is still a transport failure:
+        # record it and never raise into the instrumented code path.
         record_error("otel_export")
     finally:
         if connection is not None:

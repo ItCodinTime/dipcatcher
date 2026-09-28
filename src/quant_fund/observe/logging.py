@@ -55,7 +55,18 @@ def log_event(event: str, **fields: Any) -> None:
 
 
 def _secret_field(key: str) -> bool:
-    lowered = key.lower()
-    if "password" in lowered or lowered in {"key", "token", "secret", "authorization"}:
+    lowered = key.lower().replace("-", "_")
+    if "password" in lowered or lowered in {
+        "key",
+        "token",
+        "secret",
+        "authorization",
+        "apikey",
+        "api_key",
+        "private_key",
+        "privatekey",
+        "session_key",
+        "access_token",
+    }:
         return True
     return lowered.endswith(("_key", "_token", "_secret"))
