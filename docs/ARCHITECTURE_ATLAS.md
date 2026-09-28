@@ -268,6 +268,7 @@ flowchart LR
   quant_fund_metrics -->|1| quant_fund_portfolio
   quant_fund_metrics -->|13| quant_fund_utils
   quant_fund_metrics -->|1| quant_fund_validation
+  quant_fund_microstructure -->|1| quant_fund_labels
   quant_fund_microstructure -->|1| quant_fund_metrics
   quant_fund_microstructure -->|3| quant_fund_northset
   quant_fund_microstructure -->|3| quant_fund_schemas
@@ -601,7 +602,7 @@ sequenceDiagram
 | `quant_fund.fusion` | 2 |
 | `quant_fund.hedge_lab` | 15 |
 | `quant_fund.hmm` | 4 |
-| `quant_fund.labels` | 3 |
+| `quant_fund.labels` | 4 |
 | `quant_fund.leakage` | 7 |
 | `quant_fund.lightspeed` | 8 |
 | `quant_fund.market_sim` | 13 |
@@ -635,9 +636,9 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **732**
+- Modules scanned: **733**
 - Packages: **65**
-- Cross-package import edges: **247**
+- Cross-package import edges: **248**
 
 <!-- END GENERATED: coverage -->
 

@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 732,
+  "module_count": 733,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -2459,6 +2459,10 @@
       "src": "quant_fund.labels"
     },
     {
+      "dst": "quant_fund.labels.forward",
+      "src": "quant_fund.labels"
+    },
+    {
       "dst": "quant_fund.utils.series",
       "src": "quant_fund.labels.barriers"
     },
@@ -3021,6 +3025,10 @@
     {
       "dst": "quant_fund.schemas.order_book",
       "src": "quant_fund.microstructure.book_panel"
+    },
+    {
+      "dst": "quant_fund.labels.forward",
+      "src": "quant_fund.microstructure.candle_book_features"
     },
     {
       "dst": "quant_fund.microstructure.book_panel",
@@ -7293,6 +7301,7 @@
     "quant_fund.labels",
     "quant_fund.labels.barriers",
     "quant_fund.labels.engine",
+    "quant_fund.labels.forward",
     "quant_fund.leakage",
     "quant_fund.leakage.ast_scan",
     "quant_fund.leakage.cli",
@@ -8484,7 +8493,7 @@
     },
     {
       "dst": "quant_fund.labels",
-      "imports": 1,
+      "imports": 2,
       "src": "quant_fund.labels"
     },
     {
@@ -8611,6 +8620,11 @@
       "dst": "quant_fund.validation",
       "imports": 1,
       "src": "quant_fund.metrics"
+    },
+    {
+      "dst": "quant_fund.labels",
+      "imports": 1,
+      "src": "quant_fund.microstructure"
     },
     {
       "dst": "quant_fund.metrics",
