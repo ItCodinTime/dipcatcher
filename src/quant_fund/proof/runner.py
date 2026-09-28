@@ -14,13 +14,15 @@ fallible computation completes before the atomic commit phase.
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 import platform
 import shutil
 import statistics
-import subprocess
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -106,34 +108,29 @@ def run_backtest_proven(
 
 
 def _env_fingerprint() -> str:
-    """Narrowed env gate string (WAVE2.md §2.2): platform|python|quant_fund."""
-    return f"{platform.platform()}|{platform.python_version()}|quant_fund-dev"
+    """Contracts §2.2 env gate string, via the single canonical helper.
+
+    Integration reconciliation (wave-2 A1a): delegates to
+    ``proofcore.ci.env_fingerprint`` — ``platform|python tag|quant_fund
+    version`` with the REAL package version, not a hardcoded literal — so the
+    runner mints exactly what ``proof.replay`` re-derives at the env gate.
+    """
+    from quant_fund.proofcore import ci
+
+    return ci.env_fingerprint()
 
 
 def _code_fingerprint() -> str:
-    """Git revision of the working tree, else ``"nogit"``.
+    """Git revision in a worktree, else the §7.2 src-tree hash fallback.
 
-    Integration follow-up (W8 §7.2): when not in a git worktree the fallback
-    becomes a sha256 over the src tree; flagged for the integration wave.
+    Integration reconciliation: delegates to ``proofcore.ci.code_fingerprint``
+    (W8) so runner and replay compute the SAME fingerprint inside and outside
+    git worktrees (previously the runner hardcoded a ``"nogit"`` fallback,
+    which would have made every nogit-machine replay fail the env gate).
     """
-    git = shutil.which("git")
-    if git is None:
-        return "nogit"
-    try:
-        proc = subprocess.run(
-            [git, "rev-parse", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=Path(__file__).resolve().parent,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "nogit"
-    revision = proc.stdout.strip()
-    if proc.returncode != 0 or not revision:
-        return "nogit"
-    return revision
+    from quant_fund.proofcore import ci
+
+    return ci.code_fingerprint()
 
 
 def _require_finite(value: float, *, what: str) -> float:
@@ -332,6 +329,50 @@ def _commit_staging(staging: Path, bundle_dir: Path, chain_prefix_lines: int) ->
             os.fsync(handle.fileno())
 
 
+_LOG = logging.getLogger(__name__)
+_GUARD_UNAVAILABLE_LOGGED = False
+
+
+def _log_guard_unavailable_once() -> None:
+    """Wave-2 integration: the IO guard is defense-in-depth, not the primary
+    gate (the watchdog + declared-surface checks are). If it cannot be
+    imported the runner still works, with one warning per process."""
+    global _GUARD_UNAVAILABLE_LOGGED
+    if not _GUARD_UNAVAILABLE_LOGGED:
+        _LOG.warning(
+            "quant_fund.leakage.guard is unavailable; run_proven continues "
+            "without raw-IO interposition (defense-in-depth layer disabled)"
+        )
+        _GUARD_UNAVAILABLE_LOGGED = True
+
+
+@contextmanager
+def _enforce_io_guard(vault: ProvenVault, staging: Path) -> Iterator[None]:
+    """Install the W8 IO guard in enforce mode for the whole run (WAVE2 §6).
+
+    Any raw ``pl.read_parquet`` / ``pd.read_parquet`` / read-mode ``open()``
+    inside a decision window that is neither under the vault root (the
+    vault's own hash-verified internals) nor under the runner's staging dir
+    raises ``LeakageError``. Optional at import time: if the guard module is
+    not importable, the runner still works (defense-in-depth, logged once).
+    """
+    try:
+        from quant_fund.leakage.guard import install_io_guard
+    except ImportError:
+        _log_guard_unavailable_once()
+        yield
+        return
+    allowlist: list[str | Path] = [staging]
+    vault_root = getattr(vault, "root", None)
+    if vault_root is not None:
+        # The vault's own reads (manifest re-hash, dataset meta) go through
+        # open() under the vault root and are content-verified by the
+        # manifest; raw reads of vault parts hit the SAME verified bytes.
+        allowlist.append(Path(vault_root))
+    with install_io_guard("enforce", allowlist=tuple(allowlist)):
+        yield
+
+
 def run_proven(
     spec: RunSpec,
     *,
@@ -343,11 +384,45 @@ def run_proven(
 
     Fail-closed (§4.4): any contract violation raises (ProofError,
     LeakageError, VaultError) BEFORE the commit phase, so a failed run never
-    leaves a bundle or sidecar behind in ``bundle_dir``.
+    leaves a bundle or sidecar behind in ``bundle_dir``. The whole run —
+    decision windows and the commit phase — executes under the wave-2 IO
+    guard in enforce mode (§6) when the guard is importable.
     """
     _make_estimator(spec)  # fail closed on undeclared estimator before any IO
     label_dataset, label_column, horizon = _label_decl(spec)
     scheduler = Scheduler(spec)
+    bundle_dir = Path(bundle_dir)
+    bundle_dir.parent.mkdir(parents=True, exist_ok=True)
+    # Mint-staging sibling, created up front so the IO guard can allowlist
+    # it; removed on ANY failure (no partial bundles, §4.4).
+    staging = Path(tempfile.mkdtemp(prefix=".run_proven.", dir=bundle_dir.parent))
+    try:
+        with _enforce_io_guard(vault, staging):
+            return _execute_and_commit(
+                spec,
+                vault=vault,
+                bundle_dir=bundle_dir,
+                signing_key=signing_key,
+                staging=staging,
+                scheduler=scheduler,
+                label=(label_dataset, label_column, horizon),
+            )
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def _execute_and_commit(
+    spec: RunSpec,
+    *,
+    vault: ProvenVault,
+    bundle_dir: Path,
+    signing_key: bytes | None,
+    staging: Path,
+    scheduler: Scheduler,
+    label: tuple[str, str, int],
+) -> tuple[bool, str]:
+    """Window loop + atomic commit of ``run_proven`` (guard already active)."""
+    label_dataset, label_column, horizon = label
     recorder = InMemoryRecorder()
     from quant_fund.leakage.watchdog import LeakageWatchdog
 
@@ -437,6 +512,10 @@ def run_proven(
 
     # ---- post-loop: all remaining fallible computation happens BEFORE any
     # ---- byte lands in bundle_dir (no partial bundles, §4.4).
+    # Canonical spec hash (integration reconciliation, ONE form on both
+    # sides): sha256 of the RunSpec's canonical json dump with NO extra
+    # rounding — canonical_json_bytes already handles non-finite floats, and
+    # replay re-derives exactly this from the config sidecar.
     spec_sha256 = sha256_hex_json(spec.model_dump(mode="json"))
     trace = DecisionTrace(
         rows=tuple(rows),
@@ -507,33 +586,29 @@ def run_proven(
         },
     }
 
-    # Mint in a staging sibling; commit atomically only on full success.
-    bundle_dir = Path(bundle_dir)
-    bundle_dir.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=".run_proven.", dir=bundle_dir.parent))
-    try:
-        existing_chain = bundle_dir / "bundles.jsonl"
-        chain_prefix_lines = 0
-        if existing_chain.exists():
-            chain_bytes = existing_chain.read_bytes()
-            chain_prefix_lines = len(chain_bytes.splitlines())
-            (staging / "bundles.jsonl").write_bytes(chain_bytes)
-        signer: Signer | None = HmacSha256Signer(signing_key) if signing_key else None
-        bundle = build_bundle(
-            run_kind="backtest",
-            data_manifest=recorder.manifest_summary(),
-            config_dump=config_dump,
-            seed=spec.seed,
-            signal_log=signal_log,
-            trade_log=trade_log,
-            engine_metrics=engine_metrics,
-            bundle_dir=staging,
-            signer=signer,
-        )
-        _atomic_write(staging / f"{bundle.bundle_id}.trace.json", trace_bytes)
-        _atomic_write(staging / f"{bundle.bundle_id}.env.json", env_bytes)
-        _atomic_write(staging / f"{bundle.bundle_id}.seeds.json", seeds_bytes)
-        _commit_staging(staging, bundle_dir, chain_prefix_lines)
-    finally:
-        shutil.rmtree(staging, ignore_errors=True)
+    # Mint in the staging sibling (created by run_proven, allowlisted in the
+    # IO guard); commit atomically only on full success.
+    existing_chain = bundle_dir / "bundles.jsonl"
+    chain_prefix_lines = 0
+    if existing_chain.exists():
+        chain_bytes = existing_chain.read_bytes()
+        chain_prefix_lines = len(chain_bytes.splitlines())
+        (staging / "bundles.jsonl").write_bytes(chain_bytes)
+    signer: Signer | None = HmacSha256Signer(signing_key) if signing_key else None
+    bundle = build_bundle(
+        run_kind="backtest",
+        data_manifest=recorder.manifest_summary(),
+        config_dump=config_dump,
+        seed=spec.seed,
+        signal_log=signal_log,
+        trade_log=trade_log,
+        engine_metrics=engine_metrics,
+        bundle_dir=staging,
+        signer=signer,
+        round_config=False,  # spec_sha256 must commit to the UNROUNDED spec
+    )
+    _atomic_write(staging / f"{bundle.bundle_id}.trace.json", trace_bytes)
+    _atomic_write(staging / f"{bundle.bundle_id}.env.json", env_bytes)
+    _atomic_write(staging / f"{bundle.bundle_id}.seeds.json", seeds_bytes)
+    _commit_staging(staging, bundle_dir, chain_prefix_lines)
     return (True, bundle.bundle_id)
