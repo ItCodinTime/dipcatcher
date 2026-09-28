@@ -9,7 +9,6 @@ from typing import Any
 import yaml
 
 from quant_fund.config.models import AppConfig
-from quant_fund.utils.atomicio import atomic_write_text
 
 
 def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
@@ -57,5 +56,7 @@ def load_config(
 
 
 def dump_resolved(config: AppConfig, dest: Path) -> None:
+    from quant_fund.utils.atomicio import atomic_write_text
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_text(dest, json.dumps(config.dump(), indent=2, sort_keys=True))

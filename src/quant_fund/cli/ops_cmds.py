@@ -9,8 +9,6 @@ from pathlib import Path
 
 import typer
 
-from quant_fund.utils.atomicio import atomic_write_text
-
 from .app import app
 from .support import _cfg
 
@@ -319,6 +317,8 @@ def monitor(
         peak_nav=peak,
         recon_mismatches=recon_mismatches,
     )
+    from quant_fund.utils.atomicio import atomic_write_text
+
     snap["run_id"] = rid
     text = json.dumps(snap, indent=2, default=str) if json_out else render_markdown(snap)
     if out is not None:

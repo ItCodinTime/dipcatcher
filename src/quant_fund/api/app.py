@@ -21,7 +21,7 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.analytics import validate_analytics_export
 from quant_fund.pipeline.doctor import doctor
 from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
-from quant_fund.utils.atomicio import atomic_write_text
+from quant_fund.utils.atomicio import atomic_write_parquet, atomic_write_text
 
 app = FastAPI(title=f"{__firm__} Dipcatcher", version=__version__)
 
@@ -257,8 +257,8 @@ def _write_backtest_artifact(
     root.mkdir(parents=True, exist_ok=True)
     fills_path = root / f"{backtest_id}.fills.parquet"
     equity_path = root / f"{backtest_id}.equity.parquet"
-    result.fills.write_parquet(fills_path)
-    result.equity.write_parquet(equity_path)
+    atomic_write_parquet(result.fills, fills_path)
+    atomic_write_parquet(result.equity, equity_path)
     artifact = {
         "id": backtest_id,
         "status": "COMPLETE",

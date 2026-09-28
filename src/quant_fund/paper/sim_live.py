@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -147,7 +149,16 @@ def _quantile_panel_cached(
         closes, spec, taus, window=window, min_history=min_history
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(cache_path, panel=panel, stats_json=np.array(json.dumps(stats)))
+    fd, tmp_name = tempfile.mkstemp(dir=cache_dir, prefix=f".{cache_path.name}.", suffix=".tmp.npz")
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    try:
+        np.savez_compressed(tmp_path, panel=panel, stats_json=np.array(json.dumps(stats)))
+        with tmp_path.open("rb") as handle:
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, cache_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
     return panel, stats, digest
 
 

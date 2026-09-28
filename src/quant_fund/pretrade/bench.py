@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 from quant_fund.pretrade.codes import KIND_ORDER, reason_names
 from quant_fund.pretrade.config import LimitConfig, PretradeConfig, SessionConfig
 from quant_fund.pretrade.engine import OrderView, PretradeEngine
+from quant_fund.utils.atomicio import atomic_write_text
 
 P50_LIMIT_NS = 5_000
 P99_LIMIT_NS = 20_000
@@ -278,9 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     text = json.dumps(report, indent=2, sort_keys=True)
     print(text)
     if args.json_out:
-        with open(args.json_out, "w", encoding="utf-8") as handle:
-            handle.write(text)
-            handle.write("\n")
+        atomic_write_text(args.json_out, text + "\n")
     if args.gate and not report["gate_pass"]:
         print(
             "pretrade latency gate failed: "

@@ -7,6 +7,8 @@ in chunk-id order. Completion order is not an input to the merge.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -105,27 +107,36 @@ class ChunkSummary:
             "es_chunk": [float(v) for v in self.es_chunk.tolist()],
         }
         # NumPy appends ``.npz`` unless the name already ends with it.
-        tmp = path.with_name(path.stem + ".tmp.npz")
-        np.savez_compressed(
-            tmp,
-            meta=np.asarray(json.dumps(meta, sort_keys=True)),
-            loss=_or_empty(self.loss),
-            max_drawdown=_or_empty(self.max_drawdown),
-            ruined=_or_empty_uint8(self.ruined),
-            no_drawdown=_or_empty_uint8(self.no_drawdown),
-            recovered=_or_empty_uint8(self.recovered),
-            recovery_steps=_or_empty_int(self.recovery_steps),
-            control=_or_empty(self.control),
-            weight=_or_empty(self.weight),
-            td_loss_mean=self.td_loss_mean,
-            td_loss_weight=self.td_loss_weight,
-            td_dd_mean=self.td_dd_mean,
-            td_dd_weight=self.td_dd_weight,
-            td_recovery_mean=self.td_recovery_mean,
-            td_recovery_weight=self.td_recovery_weight,
-            exceedances=self.exceedances,
-        )
-        tmp.replace(path)
+        # Unique scratch name: a fixed .tmp lets concurrent writers interleave
+        # torn bytes into the canonical path.
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.stem}.", suffix=".tmp.npz")
+        os.close(fd)
+        tmp = Path(tmp_name)
+        try:
+            np.savez_compressed(
+                tmp,
+                meta=np.asarray(json.dumps(meta, sort_keys=True)),
+                loss=_or_empty(self.loss),
+                max_drawdown=_or_empty(self.max_drawdown),
+                ruined=_or_empty_uint8(self.ruined),
+                no_drawdown=_or_empty_uint8(self.no_drawdown),
+                recovered=_or_empty_uint8(self.recovered),
+                recovery_steps=_or_empty_int(self.recovery_steps),
+                control=_or_empty(self.control),
+                weight=_or_empty(self.weight),
+                td_loss_mean=self.td_loss_mean,
+                td_loss_weight=self.td_loss_weight,
+                td_dd_mean=self.td_dd_mean,
+                td_dd_weight=self.td_dd_weight,
+                td_recovery_mean=self.td_recovery_mean,
+                td_recovery_weight=self.td_recovery_weight,
+                exceedances=self.exceedances,
+            )
+            with tmp.open("rb") as handle:
+                os.fsync(handle.fileno())
+            os.replace(tmp, path)
+        finally:
+            tmp.unlink(missing_ok=True)
 
     @staticmethod
     def load(path: Path) -> ChunkSummary:

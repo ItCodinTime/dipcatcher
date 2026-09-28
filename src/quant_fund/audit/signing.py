@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quant_fund.audit.errors import AuditError, SignatureUnavailableError
-from quant_fund.utils.atomicio import atomic_write_text
 
 _PUB_LEN = 32
 _SIG_LEN = 64
@@ -86,6 +85,8 @@ class Ed25519Signer:
     def write(self, path: Path) -> None:
         """Store the raw private key as hex, mode 0600, plus a sibling ``.pub``."""
         from cryptography.hazmat.primitives import serialization
+
+        from quant_fund.utils.atomicio import atomic_write_text
 
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)

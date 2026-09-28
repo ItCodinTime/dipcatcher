@@ -244,6 +244,7 @@ def kyle_ofi(
         fuse_bars_l2_kyle_frame,
         kyle_lambda_date_series_frame,
     )
+    from quant_fund.utils.atomicio import atomic_write_parquet
 
     cfg = _cfg(config)
     book_df = None
@@ -315,8 +316,7 @@ def kyle_ofi(
         )
         ofi_s = kyle_lambda_date_series_frame(fused, flow="ofi", target="delta_mid", min_names=3)
         out_df = pl.concat([depth_s, ofi_s]).sort(["flow", "event_time"])
-        dump_lambda_series.parent.mkdir(parents=True, exist_ok=True)
-        out_df.write_parquet(dump_lambda_series)
+        atomic_write_parquet(out_df, dump_lambda_series)
         typer.echo(
             f"dumped_lambda_series={dump_lambda_series} rows={out_df.height} "
             f"research_only=True claim=research_diagnostic_only"
