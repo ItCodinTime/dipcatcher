@@ -133,6 +133,25 @@ jobs:
             echo "::notice title=reality-filter::$(grep -m1 '^REALITY_FILTER_SKIP:' "${RUNNER_TEMP:-/tmp}/reality-gate.log")"
           fi
 
+  # §12 A3 #4 committed-receipt audit: every receipts/*.json re-verifies
+  # under its schema-appropriate verifier (sealed/v2 -> verify-receipt,
+  # older research-catalog -> verify-research). Green only once
+  # legacy-unsealed/ holds the unverifiable pre-seal artifacts.
+  receipts-reverify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync
+        run: uv sync --frozen --all-groups
+      - name: Re-verify committed receipts
+        run: make receipts-reverify
+
   # §9.3/§12 coverage floors (A3 #2): per-package gates ADDITIVE to the
   # existing global 80% floor in ci.yml (which is not touched): pit 90,
   # proof 90, leakage 85, reality 90, proofcore 90 — read from
