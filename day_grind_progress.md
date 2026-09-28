@@ -2048,3 +2048,6 @@ Gates: 82 tests green; ruff check clean; ruff format applied; mypy clean on all 
 
 - Wave 7 (vol/credit/selection canon): 12 modules — models/{egarch,har,dcc,stoch_vol,count,ordered,qar,dfm,fractional,kmv}.py + metrics/{purged_cv,feature_select}.py; 54 unit tests green; ruff/mypy clean. Notable: ordered.py cutpoint sizing bug caught by prob-sum invariant; dfm stationary-init uses solve_discrete_lyapunov.
 
+
+
+- Wave 11 (regression/nonlinear canon): 6 modules — models/{bvar,msgarch,qvar,predictive_regression,port_sorts,smooth_transition}.py; 30 unit tests green; ruff/mypy clean. Minnesota-prior BVAR (BGR per-coefficient dummies, IRF/FEVD/forecast), Markov-switching GARCH (collapsed filter + quasi-MLE + sim), quantile VAR (smoothed pinball BFGS + qIRF), Stambaugh/Bonferroni/Newey-West predictive regression, NYSE-breakpoint portfolio sorts (EW/VW + bivariate), LSTAR/ESTAR NLS + LST linearity F-test.
