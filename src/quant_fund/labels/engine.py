@@ -36,6 +36,17 @@ def build_labels(
     # missing/asynchronous security row change which benchmark observation is
     # considered ``t+h``.
     mkt = df.filter(pl.col("security_id") == mkt_id).select("event_time", PX).sort("event_time")
+    if mkt.is_empty():
+        raise PointInTimeError(
+            f"benchmark_id={mkt_id!r} has no rows in the bar frame; "
+            "future_excess_return_* labels would be all-null"
+        )
+    min_h = min(int(h) for h in config.horizons.bars)
+    if mkt.height <= min_h:
+        raise PointInTimeError(
+            f"benchmark_id={mkt_id!r} has {mkt.height} bar(s); needs more than "
+            f"the min horizon ({min_h}) for any future_excess_return_* to exist"
+        )
     for h, name in zip(config.horizons.bars, config.horizons.names, strict=True):
         fut = pl.col(PX).shift(-h).over("security_id")
         label_end = pl.col("event_time").shift(-h).over("security_id")
