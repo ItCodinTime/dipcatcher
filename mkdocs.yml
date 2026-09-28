@@ -134,6 +134,7 @@ nav:
   - Evidence: evidence/index.md
   - Concepts:
       - Architecture: ARCHITECTURE.md
+      - Architecture guards: ARCHITECTURE_GUARDS.md
       - Data contracts: DATA_CONTRACTS.md
       - Receipt verification: RECEIPT_VERIFICATION.md
       - Robustness certification: ROBUSTNESS.md

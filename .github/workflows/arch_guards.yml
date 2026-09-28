@@ -1,0 +1,35 @@
+# Architecture boundary guards (docs/ARCHITECTURE_GUARDS.md) — additive workflow.
+# Nothing here weakens ci.yml: the checker is stdlib-only so this job needs no
+# dependency sync and fails fast on import-boundary violations.
+name: arch-guards
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  import-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: "3.12"
+      - name: Import boundary check
+        # stdlib-only script; --no-project avoids syncing the workspace env.
+        run: uv run --no-project python scripts/check_import_boundaries.py
+      - name: Checker unit tests
+        run: uv run --no-project python -m unittest tests.unit.arch.test_import_boundaries

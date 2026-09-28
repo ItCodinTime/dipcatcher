@@ -1,0 +1,276 @@
+# Architecture boundaries for src/quant_fund (+ fx1 coupling rules).
+# Enforced by scripts/check_import_boundaries.py — see docs/ARCHITECTURE_GUARDS.md.
+#
+# Layers are ordered bottom → top: a layer may import itself and anything
+# below it. Function-level (lazy) imports are exempt from the order check —
+# they are this codebase's mechanism for breaking cycles — but are still
+# checked by [[deny]] rules. The bare package root `quant_fund`
+# (__init__.py / public.py facade) is exempt from ordering: it re-exports the
+# stable public surface and is deliberately imported by everything for
+# `__version__` / `__firm__`.
+#
+# A package under quant_fund that no layer claims is itself a violation
+# (rule "unclassified-package") — keep this list complete when adding a
+# top-level package.
+
+[[layers]]
+name = "foundation"
+packages = [
+    "schemas",      # typed data contracts — imports nothing inside quant_fund
+    "config",       # app config loader/models
+    "utils",        # hashing, small helpers
+    "registry",     # registries built on config/utils
+    "compute",      # cache/compute primitives
+    "proofcore",    # contract types — stdlib+pydantic only (deny rule below)
+    "hmm",          # regime models, no intra-repo deps
+    "observe",      # observability sinks, no intra-repo deps
+    "calendars",    # trading calendars/sessions, no intra-repo deps
+]
+
+[[layers]]
+name = "market_data"
+packages = [
+    "data",           # ingest/lake/sources
+    "pit",            # point-in-time vault (uses proofcore contracts)
+    "labels",         # label construction over data
+    "features",       # feature engine over data
+    "fusion",         # feature fusion
+    # metrics belongs to the analytics cluster conceptually but sits at this
+    # rank: microstructure/northset already consume metrics.*, and the only
+    # upward edges it creates (metrics -> models/portfolio) are baselined.
+    "microstructure", # LOB/OFI estimators (coupled with northset below)
+    "northset",       # northstar estimators/identities over microstructure+metrics
+    "metrics",        # shared scoring vocabulary; imported by nearly every layer
+]
+
+[[layers]]
+name = "analytics"
+packages = [
+    "models",       # model families (imports metrics heavily)
+    "portfolio",    # allocation/optimization (coupled with metrics+models)
+    "quant_models", # quant model zoo
+    "risk",         # risk overlays/gates over models+metrics
+    "monitoring",   # drift monitoring over models
+    "diffbacktest", # differentiable backtest primitives
+    "mc_engine",    # Monte Carlo engines over metrics
+    "lightspeed",   # fast strategy specs/ranker over models
+    "native",       # rust/native reference wrappers over lightspeed+metrics
+    "reporting",    # reports over metrics
+    "validation",   # walk-forward/purging/CPCV splitters used by pipeline.train
+]
+
+[[layers]]
+name = "execution"
+packages = [
+    "execution",  # simulated broker + cost models (almgren_chriss etc.)
+    "pretrade",   # pre-trade risk over execution
+    "parity",     # backtest/live parity over execution
+    "formal",     # formal trace checks over execution
+]
+
+[[layers]]
+name = "orchestration"
+packages = [
+    "pipeline",  # dataset/train/forecast orchestration consumed by research
+]
+
+[[layers]]
+name = "research"
+packages = [
+    "research",    # catalog/benches/agent/verify — consumes pipeline+analytics
+    "robustness",  # adversarial certification (paired with research)
+    "leakage",     # leakage scanner/guardrails over proofcore
+    "audit",       # hash-chained audit ledger over research receipts
+    "stress",      # stress harness over research+data
+    "proof",       # proof bundles over proofcore
+    "reality",     # reality checks (SPA/CSCV/DSR) over proofcore+metrics
+]
+
+[[layers]]
+name = "simulation"
+packages = [
+    "backtest",    # event engine driving pipeline forecasts + execution
+    "hedge_lab",   # hedge-lab books racing lightspeed/pipeline/research
+    "market_sim",  # market simulator over backtest
+    "paper",       # paper-trading loop (order-path; deny rule below)
+]
+
+[[layers]]
+name = "interface"
+packages = [
+    "api",     # HTTP service surface
+    "cli",     # dipcatcher CLI — nothing may import it (deny rule below)
+    "simtest", # end-to-end simulated sessions over backtest+paper
+]
+
+# --------------------------------------------------------------------------- #
+# Hard "never import" rules — evaluated on EVERY import site, including
+# function-level and TYPE_CHECKING imports.
+# --------------------------------------------------------------------------- #
+
+# Mirrors tests/unit/test_architecture.py: the CLI is the entry point; the
+# library (and fx1) must never import it — even lazily.
+[[deny]]
+name = "library-no-cli-imports"
+importer = "**"
+forbidden = ["quant_fund.cli.**"]
+except_importers = ["quant_fund.cli.**"]
+note = "the library must not depend on the CLI entry points"
+
+# Mirrors tests/unit/test_architecture.py (BROKER_MODULES/PAPER_PREFIX) and
+# the repo hard rule: research/core code must not touch the order path.
+# Only the listed importers may reach the paper loop or the simulated broker;
+# research specifically may still use execution.* cost/impact models.
+[[deny]]
+name = "order-path-boundary"
+importer = "**"
+forbidden = ["quant_fund.paper.**", "quant_fund.execution.simulated_broker"]
+except_importers = [
+    "quant_fund.cli",
+    "quant_fund.cli.**",
+    "quant_fund.paper.**",
+    "quant_fund.execution.**",
+    "quant_fund.simtest.**",
+    "quant_fund.pretrade.**",
+    "quant_fund.formal.**",
+    # parity drives the simulated broker to measure backtest/live divergence —
+    # same simulation-boundary role as simtest/pretrade/formal. NOTE:
+    # tests/unit/test_architecture.py's BROKER_ALLOWED_PREFIXES predates the
+    # parity package and fails on main for exactly this edge (pre-existing
+    # baseline failure — owner: parity track).
+    "quant_fund.parity.**",
+]
+note = "order-path modules (paper loop, simulated broker) are reachable only from cli/paper/execution/simtest/pretrade/formal"
+
+# Research stays pure: it must never reach serving, monitoring, observability
+# or pre-trade plumbing even through lazy imports. (cli/paper/simulated_broker
+# are covered by the two rules above.)
+[[deny]]
+name = "research-purity"
+importer = "quant_fund.research.**"
+forbidden = [
+    "quant_fund.api.**",
+    "quant_fund.monitoring.**",
+    "quant_fund.observe.**",
+    "quant_fund.pretrade.**",
+]
+note = "research code must not import live-facing plumbing (repo hard rule)"
+
+# The harness must not import the fx1 product package. Exception: the package
+# root reads fx1.__version__ because hatch derives the single distribution
+# version from it ([tool.hatch.version]) — that seam is intentional.
+[[deny]]
+name = "harness-no-fx1-imports"
+importer = "quant_fund.**"
+except_importers = ["quant_fund"]  # src/quant_fund/__init__.py version seam only
+forbidden = ["fx1.**"]
+note = "one-way dependency: fx1 may consume harness services, never the reverse"
+
+# proofcore/contracts.py documents: "IMPORTS ONLY stdlib + pydantic — never
+# import quant_fund here". Keep the contract kernel standalone.
+[[deny]]
+name = "proofcore-standalone"
+importer = "quant_fund.proofcore.**"
+forbidden = ["quant_fund.**"]
+allowed = ["quant_fund.proofcore.**"]
+note = "proofcore must stay importable without the rest of the harness"
+
+# --------------------------------------------------------------------------- #
+# Whitelists
+# --------------------------------------------------------------------------- #
+
+# fx1 (the product) may only consume these harness leaf services. Any new
+# coupling to pipeline/research/cli/api/paper/... fails CI.
+[[allow_only]]
+name = "fx1-harness-surface"
+importer = "fx1.**"
+target_root = "quant_fund"
+allowed = [
+    "quant_fund.config.**",
+    "quant_fund.data.**",
+    "quant_fund.metrics.**",
+    "quant_fund.schemas.**",
+    "quant_fund.utils.**",
+    "quant_fund.validation.**",
+]
+note = "fx1 is kept isolated: only leaf services of the harness are fair game"
+
+# --------------------------------------------------------------------------- #
+# Baseline — pre-existing violations, itemized so CI stays green while the
+# debt is fixed. Each entry suppresses ONLY matching violations; when a fix
+# lands, delete the entry (a stale entry fails the check on purpose).
+# Do NOT add new entries for new code — fix the import instead.
+# --------------------------------------------------------------------------- #
+
+# models/robinhood_plus is a benchmark harness living under models/ that
+# drives pipeline train/dataset and the research catalog — an upward edge.
+# Owner: models/pipeline maintainers; proper fix is relocating the harness.
+[[baseline]]
+file = "src/quant_fund/models/robinhood_plus/compare.py"
+module = "quant_fund.pipeline.dataset"
+rule = "layer-order"
+note = "robinhood_plus compare harness drives pipeline.dataset from models/"
+
+[[baseline]]
+file = "src/quant_fund/models/robinhood_plus/compare.py"
+module = "quant_fund.pipeline.forecast"
+rule = "layer-order"
+note = "robinhood_plus compare harness drives pipeline.forecast from models/"
+
+[[baseline]]
+file = "src/quant_fund/models/robinhood_plus/compare.py"
+module = "quant_fund.research.catalog"
+rule = "layer-order"
+note = "robinhood_plus compare reads the research catalog from models/"
+
+[[baseline]]
+file = "src/quant_fund/models/robinhood_plus/bench.py"
+module = "quant_fund.research.catalog"
+rule = "layer-order"
+note = "robinhood_plus bench reads the research catalog from models/"
+
+# northset/benches.py reaches up into the research catalog.
+[[baseline]]
+file = "src/quant_fund/northset/benches.py"
+module = "quant_fund.research.catalog"
+rule = "layer-order"
+note = "northset bench adapters read the research catalog"
+
+# pipeline/doctor.py diagnoses research receipts — an upward edge from the
+# orchestration layer into research.
+[[baseline]]
+file = "src/quant_fund/pipeline/doctor.py"
+module = "quant_fund.research.catalog"
+rule = "layer-order"
+note = "pipeline doctor inspects the research catalog"
+
+[[baseline]]
+file = "src/quant_fund/pipeline/doctor.py"
+module = "quant_fund.research.verify"
+rule = "layer-order"
+note = "pipeline doctor invokes research verification"
+
+# metrics is the shared scoring vocabulary (market_data rank) that almost
+# every layer consumes; these two module-level imports reach back up into the
+# analytics cluster. Owner: metrics maintainers.
+[[baseline]]
+file = "src/quant_fund/metrics/cross_section.py"
+module = "quant_fund.models.asset_pricing"
+rule = "layer-order"
+note = "cross-sectional metrics import the asset-pricing model"
+
+[[baseline]]
+file = "src/quant_fund/metrics/analytics.py"
+module = "quant_fund.portfolio.attribution"
+rule = "layer-order"
+note = "portfolio analytics import the attribution engine"
+
+# validation/gates.py gates research artifacts — the only upward edge of an
+# otherwise low-level validation package (walk_forward/purging/cpcv are used
+# by pipeline.train). Owner: validation/research maintainers; fix is moving
+# the gate next to research.verify.
+[[baseline]]
+file = "src/quant_fund/validation/gates.py"
+module = "quant_fund.research.verify"
+rule = "layer-order"
+note = "validation gates reach up into research.verify"
