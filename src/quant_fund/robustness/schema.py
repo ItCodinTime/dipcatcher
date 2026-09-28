@@ -20,6 +20,7 @@ from typing import Any
 
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
 from quant_fund.robustness.threats import THREAT_NAMES
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 ROBUSTNESS_EXTENSION_SCHEMA_VERSION = 1
 
@@ -146,10 +147,11 @@ def write_stamped_notebook(
     """Stamp and write a new notebook. Will not write under ``receipts/``."""
     assert_stamp_target_allowed(path)
     stamped = stamp_robustness(notebook, scorecards)
+    sealed = {**stamped, "receipt_sha256": hash_bytes(canonical_json_bytes(stamped))}
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(
-        json.dumps(stamped, indent=2, sort_keys=True) + "\n",
+        json.dumps(sealed, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return stamped

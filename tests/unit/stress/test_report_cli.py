@@ -196,7 +196,11 @@ def test_cli_writes_markdown_and_html(tmp_path: Path) -> None:
     assert "live_trading=False" in result.stdout
     text = out.read_text(encoding="utf-8")
     assert "crash_1987" in text
-    assert out.with_suffix(".json").is_file()
+    sidecar = out.with_suffix(".json")
+    assert sidecar.is_file()
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    assert verify_receipt_file(sidecar)["valid"] is True
     html_path = tmp_path / "report.html"
     html_result = runner.invoke(
         app,

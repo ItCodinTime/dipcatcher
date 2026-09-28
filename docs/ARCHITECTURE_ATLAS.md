@@ -215,7 +215,7 @@ flowchart LR
   quant_fund_cli -->|11| quant_fund_research
   quant_fund_cli -->|1| quant_fund_schemas
   quant_fund_cli -->|1| quant_fund_stress
-  quant_fund_cli -->|3| quant_fund_utils
+  quant_fund_cli -->|4| quant_fund_utils
   quant_fund_cli -->|1| quant_fund_validation
   quant_fund_config -->|1| quant_fund_models
   quant_fund_data -->|4| quant_fund_config
@@ -264,6 +264,7 @@ flowchart LR
   quant_fund_market_sim -->|3| quant_fund_metrics
   quant_fund_market_sim -->|1| quant_fund_research
   quant_fund_mc_engine -->|1| quant_fund_metrics
+  quant_fund_mc_engine -->|1| quant_fund_utils
   quant_fund_metrics -->|1| quant_fund_models
   quant_fund_metrics -->|1| quant_fund_portfolio
   quant_fund_metrics -->|13| quant_fund_utils
@@ -304,6 +305,7 @@ flowchart LR
   quant_fund_parity -->|4| quant_fund_config
   quant_fund_parity -->|2| quant_fund_execution
   quant_fund_parity -->|1| quant_fund_schemas
+  quant_fund_parity -->|1| quant_fund_utils
   quant_fund_pipeline -->|1| quant_fund
   quant_fund_pipeline -->|17| quant_fund_config
   quant_fund_pipeline -->|8| quant_fund_data
@@ -369,6 +371,7 @@ flowchart LR
   quant_fund_risk -->|2| quant_fund_utils
   quant_fund_robustness -->|1| quant_fund_leakage
   quant_fund_robustness -->|1| quant_fund_research
+  quant_fund_robustness -->|1| quant_fund_utils
   quant_fund_simtest -->|1| quant_fund_backtest
   quant_fund_simtest -->|2| quant_fund_config
   quant_fund_simtest -->|1| quant_fund_execution
@@ -379,6 +382,7 @@ flowchart LR
   quant_fund_stress -->|7| quant_fund_metrics
   quant_fund_stress -->|2| quant_fund_models
   quant_fund_stress -->|1| quant_fund_research
+  quant_fund_stress -->|1| quant_fund_utils
   quant_fund_utils -->|1| quant_fund_native
   quant_fund_validation -->|2| quant_fund_config
   quant_fund_validation -->|6| quant_fund_metrics
@@ -638,7 +642,7 @@ sequenceDiagram
 
 - Modules scanned: **733**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **252**
 
 <!-- END GENERATED: coverage -->
 

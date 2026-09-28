@@ -45,6 +45,7 @@ from quant_fund.mc_engine.summary import (
 )
 from quant_fund.mc_engine.tails import path_risk_stats
 from quant_fund.mc_engine.variance import draw_standard_normals
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 ProgressCallback = Callable[[dict[str, float | int]], None]
 
@@ -271,6 +272,7 @@ def _chunk_file(directory: Path, chunk_id: int) -> Path:
 
 def _write_manifest(directory: Path, manifest: dict[str, Any]) -> None:
     directory.mkdir(parents=True, exist_ok=True)
+    manifest = {**manifest, "receipt_sha256": hash_bytes(canonical_json_bytes(manifest))}
     target = directory / "manifest.json"
     tmp = directory / "manifest.json.tmp"
     tmp.write_text(json.dumps(manifest, sort_keys=True, indent=2), encoding="utf-8")

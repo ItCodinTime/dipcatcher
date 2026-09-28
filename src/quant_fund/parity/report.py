@@ -19,6 +19,7 @@ from quant_fund.parity.replay import ParityRun
 from quant_fund.parity.shortfall import attribute_shortfall
 from quant_fund.parity.strategy import resolve_decide
 from quant_fund.parity.trace import code_path_guard
+from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
 
 def _combined_marks(backtest: ParityRun, shadow: ParityRun) -> dict[str, tuple[float, float]]:
@@ -104,8 +105,9 @@ def _json_default(value: Any) -> Any:
 
 
 def _dump(path: Path, payload: Mapping[str, Any]) -> None:
+    sealed = {**payload, "receipt_sha256": hash_bytes(canonical_json_bytes(payload))}
     path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=_json_default) + "\n",
+        json.dumps(sealed, indent=2, sort_keys=True, default=_json_default) + "\n",
         encoding="utf-8",
     )
 

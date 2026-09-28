@@ -126,6 +126,7 @@ def tearsheet_cmd(
         tearsheet_markdown,
         write_tearsheet_md,
     )
+    from quant_fund.utils.hashing import canonical_json_bytes, hash_bytes
 
     eq = pl.read_parquet(equity)
     sheet = build_tearsheet(
@@ -142,7 +143,8 @@ def tearsheet_cmd(
         typer.echo(f"markdown={out_md}")
     if out_json is not None:
         out_json.parent.mkdir(parents=True, exist_ok=True)
-        out_json.write_text(json.dumps(sheet, indent=2, default=str))
+        sealed = {**sheet, "receipt_sha256": hash_bytes(canonical_json_bytes(sheet))}
+        out_json.write_text(json.dumps(sealed, indent=2, default=str))
         typer.echo(f"json={out_json}")
     if out_md is None and out_json is None:
         typer.echo(tearsheet_markdown(sheet))
