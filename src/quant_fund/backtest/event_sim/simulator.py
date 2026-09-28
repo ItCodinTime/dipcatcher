@@ -1302,9 +1302,12 @@ def _mark_equity(
     )
     borrow = short_notional * (config.costs.borrow_bps_per_year / 1e4) / 252.0
     if not config.costs.frictionless:
-        if not spec.allow_margin:
-            borrow = min(borrow, max(state.book.cash, 0.0))
+        # The engine debits the full borrow charge unconditionally; clamping
+        # it to available cash understates the cost of a short book. Keep the
+        # settlement ledger in lockstep so buying power tracks real cash.
         state.book.cash -= borrow
+        if state.constraints is not None:
+            state.constraints.settled -= borrow
         nav_close -= borrow
         state.min_cash = min(state.min_cash, state.book.cash)
     state.navs.append(
