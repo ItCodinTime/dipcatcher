@@ -75,14 +75,23 @@ def build_labels(
         df = df.with_columns(r1.alias("_r1"))
         fwd_r = [pl.col("_r1").shift(-k).over("security_id") for k in range(1, h + 1)]
         rv_path = pl.concat_list(fwd_r)
+        # Partial forward windows must not pose as complete h-bar aggregates:
+        # list.sum()/min() silently skip nulls, so a tail row would emit a
+        # short-window value under an h-horizon name. Require all h legs —
+        # equivalent to the stamped endpoint existing (label_end_time_{h}).
+        rv_sq = rv_path.list.eval(pl.element() ** 2)
+        rv_complete = rv_sq.list.drop_nulls().list.len() == h
         df = df.with_columns(
-            rv_path.list.eval(pl.element() ** 2)
-            .list.sum()
-            .sqrt()
+            pl.when(rv_complete)
+            .then(rv_sq.list.sum().sqrt())
+            .otherwise(None)
             .alias(f"future_realized_vol_{h}"),
         )
         df = df.with_columns(
-            (pl.col(f"future_realized_vol_{h}") ** 2).alias(f"future_realized_var_{h}"),
+            pl.when(rv_complete)
+            .then(pl.col(f"future_realized_vol_{h}") ** 2)
+            .otherwise(None)
+            .alias(f"future_realized_var_{h}"),
         )
         # Maximum peak-to-trough drawdown over the forward TR-wealth path.
         # Include the origin (wealth=1) so an immediate decline is represented,
@@ -91,7 +100,13 @@ def build_labels(
         if fwd:
             path = pl.concat_list([pl.lit(1.0), *fwd])
             drawdowns = path.list.eval(pl.element() / pl.element().cum_max() - 1.0)
-            df = df.with_columns(drawdowns.list.min().alias(f"future_max_drawdown_{h}"))
+            dd_complete = path.list.drop_nulls().list.len() == h + 1
+            df = df.with_columns(
+                pl.when(dd_complete)
+                .then(drawdowns.list.min())
+                .otherwise(None)
+                .alias(f"future_max_drawdown_{h}")
+            )
             df = df.with_columns(
                 (pl.col(f"future_max_drawdown_{h}") < -0.05)
                 .cast(pl.Float64)
