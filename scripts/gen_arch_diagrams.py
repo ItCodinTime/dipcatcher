@@ -18,11 +18,11 @@ artifact (``.mmd``, ``manifest.json``, or an embedded atlas block) is stale.
 Determinism contract: every emitted collection is sorted, so byte-for-byte
 comparison is stable across runs and platforms.
 
-Curated diagrams (data flow, paper loop) are declared in this file but every
-node carries a ``module::symbol`` anchor that is verified against the parsed
-source — renaming or deleting an anchored symbol fails generation (and
-``--check``), so the pictures cannot silently drift from the code they claim
-to describe.
+Curated diagrams (data flow, paper loop) declare every displayed node as an
+anchor key. Renderers print the symbol stored under that key, and
+``verify_diagram_bindings`` fails when the rendered label does not contain
+it — renaming a label, or retargeting an anchor while leaving the old label,
+fails generation and ``--check``.
 """
 
 from __future__ import annotations
@@ -30,8 +30,10 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import sys
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 FIRST_PARTY_ROOTS = ("quant_fund", "fx1")
@@ -186,6 +188,24 @@ def verify_anchors(root: Path) -> list[str]:
     return errors
 
 
+@dataclass(frozen=True)
+class AnchoredNode:
+    """A displayed diagram node whose label is taken from ``ANCHORS``."""
+
+    node_id: str
+    anchors: tuple[str, ...]
+    detail: str = ""
+
+
+@dataclass(frozen=True)
+class FlowGroup:
+    """One subgraph of the curated data-flow diagram."""
+
+    group_id: str
+    title: str
+    nodes: tuple[AnchoredNode, ...]
+
+
 # Anchors bind curated-diagram nodes to real code. ``*`` = module exists.
 ANCHORS: dict[str, tuple[str, str]] = {
     "cli_main": ("src/quant_fund/cli/_app.py", "app"),
@@ -194,6 +214,7 @@ ANCHORS: dict[str, tuple[str, str]] = {
     "ingest": ("src/quant_fund/data/ingest.py", "ingest"),
     "lake": ("src/quant_fund/data/lake.py", "Lake"),
     "adjust_prices": ("src/quant_fund/data/corporate_actions.py", "adjust_prices"),
+    "listing_actions": ("src/quant_fund/data/corporate_actions.py", "apply_listing_actions"),
     "membership": ("src/quant_fund/data/universe.py", "build_membership_panel"),
     "security_master": ("src/quant_fund/data/security_master.py", "attach_master_attributes"),
     "pit_validate": ("src/quant_fund/data/point_in_time.py", "validate_feature_frame"),
@@ -202,11 +223,14 @@ ANCHORS: dict[str, tuple[str, str]] = {
     "build_labels": ("src/quant_fund/labels/engine.py", "build_labels"),
     "build_gold": ("src/quant_fund/pipeline/dataset.py", "build_gold"),
     "panel": ("src/quant_fund/pipeline/dataset.py", "panel"),
-    "train": ("src/quant_fund/pipeline/train.py", "train_ranking"),
-    "forecast_asof": ("src/quant_fund/pipeline/forecast.py", "forecast_asof"),
-    "optimize_asof": ("src/quant_fund/pipeline/forecast.py", "optimize_asof"),
-    "causal_weights": ("src/quant_fund/pipeline/forecast.py", "build_causal_weight_panel"),
-    "market_overlay": ("src/quant_fund/pipeline/forecast.py", "market_risk_overlay_asof"),
+    "train": ("src/quant_fund/pipeline/train/ranking.py", "train_ranking"),
+    "forecast_asof": ("src/quant_fund/pipeline/forecast/decide.py", "forecast_asof"),
+    "optimize_asof": ("src/quant_fund/pipeline/forecast/decide.py", "optimize_asof"),
+    "causal_weights": ("src/quant_fund/pipeline/forecast/decide.py", "build_causal_weight_panel"),
+    "market_overlay": (
+        "src/quant_fund/pipeline/forecast/covariance.py",
+        "market_risk_overlay_asof",
+    ),
     "market_state": ("src/quant_fund/schemas/forecast.py", "MarketState"),
     "fuse_signals": ("src/quant_fund/fusion/engine.py", "fuse_signals"),
     "optimizer": ("src/quant_fund/portfolio/optimizer.py", "optimize_mean_variance"),
@@ -221,6 +245,7 @@ ANCHORS: dict[str, tuple[str, str]] = {
     "run_backtest": ("src/quant_fund/backtest/engine.py", "run_backtest"),
     "kill_switch": ("src/quant_fund/monitoring/kill_switch.py", "KillSwitch"),
     "paper_loop": ("src/quant_fund/paper/loop.py", "run_paper_loop"),
+    "weight_fn": ("src/quant_fund/paper/loop.py", "WeightFn"),
     "replay_clock": ("src/quant_fund/paper/clock.py", "ReplayClock"),
     "wall_clock": ("src/quant_fund/paper/clock.py", "WallClock"),
     "ledger": ("src/quant_fund/paper/ledger.py", "PaperLedger"),
@@ -235,10 +260,225 @@ ANCHORS: dict[str, tuple[str, str]] = {
     "fx1_corpus": ("src/fx1/data/corpus.py", "*"),
     "fx1_honesty": ("src/fx1/honesty.py", "FORBIDDEN_HEADLINE_TOKENS"),
     "catalog": (
-        "src/quant_fund/research/catalog/constants.py",
+        "src/quant_fund/research/catalog/registry.py",
         "FORBIDDEN_RESEARCH_METRIC_KEYS",
     ),
 }
+
+
+def _format_symbol(symbol: str) -> str:
+    """Render an anchored symbol the way the diagram should display it."""
+    leaf = symbol.rsplit(".", 1)[-1]
+    if leaf[:1].isupper():
+        return symbol
+    return f"{symbol}()"
+
+
+def _symbol_text(key: str) -> str:
+    spec = ANCHORS.get(key)
+    if spec is None:
+        return f"<missing:{key}>"
+    return _format_symbol(spec[1])
+
+
+def _node_label(node: AnchoredNode) -> str:
+    label = " / ".join(_symbol_text(key) for key in node.anchors)
+    if node.detail:
+        label = f"{label}\\n{node.detail}"
+    return label
+
+
+def _participant_alias(node: AnchoredNode) -> str:
+    alias = " / ".join(_symbol_text(key) for key in node.anchors)
+    if node.detail:
+        alias = f"{alias} {node.detail}"
+    return alias
+
+
+def _rendered_label(mermaid: str, node_id: str) -> str | None:
+    """Return the label actually emitted for ``node_id``, if the node is present."""
+    quoted = re.search(rf'(?m)^[ \t]*{re.escape(node_id)}\["([^"]*)"\]', mermaid)
+    if quoted:
+        return quoted.group(1)
+    participant = re.search(
+        rf"(?m)^[ \t]*participant[ \t]+{re.escape(node_id)}[ \t]+as[ \t]+(.+)$",
+        mermaid,
+    )
+    if participant:
+        return participant.group(1).strip()
+    return None
+
+
+def verify_diagram_bindings(root: Path) -> list[str]:
+    """Fail when a displayed node is not rendered from its anchor symbol.
+
+    ``verify_anchors`` alone accepts a diagram that names a different symbol
+    than the one the anchor points at. This check parses the rendered Mermaid
+    and requires each displayed node's label to contain every symbol its
+    anchors name.
+    """
+    errors = verify_anchors(root)
+    rendered = {
+        "data_flow": render_data_flow(),
+        "paper_loop": render_paper_loop(),
+    }
+    bound: list[tuple[str, AnchoredNode]] = [
+        ("data_flow", node) for group in DATA_FLOW_GROUPS for node in group.nodes
+    ]
+    bound.extend(("paper_loop", node) for node in PAPER_LOOP_PARTICIPANTS)
+    for diagram, node in bound:
+        missing = [key for key in node.anchors if key not in ANCHORS]
+        for key in missing:
+            errors.append(f"{diagram}:{node.node_id}: unknown anchor {key}")
+        if missing:
+            continue
+        label = _rendered_label(rendered[diagram], node.node_id)
+        if label is None:
+            errors.append(f"{diagram}:{node.node_id}: rendered node missing")
+            continue
+        for key in node.anchors:
+            symbol = ANCHORS[key][1]
+            if symbol not in label:
+                errors.append(
+                    f"{diagram}:{node.node_id}: label {label!r} does not include "
+                    f"anchored symbol {symbol}"
+                )
+    return errors
+
+
+# Curated data-flow nodes. Labels are rendered from ``ANCHORS``; do not hardcode
+# symbol names in the detail string.
+DATA_FLOW_GROUPS: tuple[FlowGroup, ...] = (
+    FlowGroup(
+        "pit",
+        "point-in-time data",
+        (
+            AnchoredNode(
+                "prov",
+                ("make_provider",),
+                "synthetic | file | hf_ohlcv_1m | public sources",
+            ),
+            AnchoredNode("ingest", ("ingest",), "bronze/silver parquet + data_manifest.json"),
+            AnchoredNode("adj", ("adjust_prices", "listing_actions"), "corporate actions"),
+            AnchoredNode("univ", ("membership",), "PIT universe"),
+        ),
+    ),
+    FlowGroup(
+        "gold",
+        "gold panel",
+        (
+            AnchoredNode("feats", ("build_features", "feature_version"), "stamped on the frame"),
+            AnchoredNode("labs", ("build_labels",), "forward-looking, never features"),
+            AnchoredNode(
+                "gold",
+                ("build_gold", "panel"),
+                "membership re-validated on cached gold",
+            ),
+        ),
+    ),
+    FlowGroup(
+        "model",
+        "forecast stack",
+        (
+            AnchoredNode("train", ("train",), "pipeline/train/ranking.py → joblib artifacts"),
+            AnchoredNode("fcst", ("forecast_asof", "market_state"), "CQR intervals"),
+            AnchoredNode("fuse", ("fuse_signals",), "transparent fusion"),
+        ),
+    ),
+    FlowGroup(
+        "alloc",
+        "allocation + risk",
+        (
+            AnchoredNode("opt", ("optimizer",), "infeasible → diagnostics, no relaxation"),
+            AnchoredNode("gate", ("risk_gate",), "deterministic pre-trade risk gate"),
+            AnchoredNode("cost", ("total_cost",), "commission + spread + impact"),
+        ),
+    ),
+    FlowGroup(
+        "sim",
+        "simulation (no live orders)",
+        (
+            AnchoredNode("bt", ("run_backtest",), "event-driven, next-open fills"),
+            AnchoredNode("pl", ("paper_loop",), "champion + shadow slots"),
+        ),
+    ),
+    FlowGroup(
+        "evid",
+        "evidence",
+        (
+            AnchoredNode("nb", ("run_research",), "sealed notebook + runs/<id>.json"),
+            AnchoredNode("ver", ("verify_research",), "fail-closed recompute"),
+            AnchoredNode("prom", ("validate_candidate",), "receipt-bound promotion gates"),
+        ),
+    ),
+)
+
+DATA_FLOW_CHAINS: tuple[tuple[str, ...], ...] = (
+    ("prov", "ingest", "adj", "univ"),
+    ("univ", "feats", "gold"),
+    ("univ", "labs", "gold"),
+    ("gold", "train", "fcst"),
+    ("fcst", "fuse", "opt", "gate"),
+    ("gate", "bt"),
+    ("gate", "pl"),
+    ("cost", "bt"),
+    ("cost", "pl"),
+    ("bt", "nb"),
+    ("pl", "nb"),
+    ("nb", "ver", "prom"),
+)
+
+PAPER_LOOP_PARTICIPANTS: tuple[AnchoredNode, ...] = (
+    AnchoredNode("CLI", ("cli_paper",), ""),
+    AnchoredNode("Loop", ("paper_loop",), ""),
+    AnchoredNode("Clock", ("replay_clock", "wall_clock"), ""),
+    AnchoredNode("W", ("weight_fn",), "weights panel"),
+    AnchoredNode("CB", ("sim_broker",), "champion"),
+    AnchoredNode("SB", ("sim_broker",), "shadow"),
+    AnchoredNode("KS", ("kill_switch",), ""),
+    AnchoredNode("RG", ("risk_gate",), "risk gate"),
+    AnchoredNode("L", ("ledger",), ""),
+)
+
+PAPER_LOOP_MESSAGES: tuple[str, ...] = (
+    "  CLI->>Loop: run_paper_loop(bars, cfg, champion/shadow weights)",
+    "  opt resume",
+    "    Loop->>L: load_broker_state(run_id)",
+    "    L-->>Loop: prior champion/shadow state + cursors",
+    "    Loop->>Loop: verify resume_fingerprint over bar prefix",
+    "  end",
+    "  Loop->>L: set_meta(data_source, label=PAPER_SIMULATED)",
+    "  Loop->>Clock: ReplayClock(decision_dates)",
+    "  loop each decision date t",
+    "    Loop->>Clock: tick() -> t",
+    "    Loop->>Loop: exec_dt = next bar open (FillConvention.NEXT_OPEN)",
+    "    Loop->>CB: mark(pretrade marks: fresh opens + bounded carry)",
+    "    Loop->>SB: mark(pretrade marks)",
+    "    Loop->>W: champion_fn(t, cfg)",
+    "    W-->>Loop: target weights",
+    "    Loop->>W: shadow_fn(t, cfg) (optional)",
+    "    Loop->>Loop: L1 divergence champion vs shadow",
+    "    Loop->>CB: nav(pretrade_marks); break if <= 0",
+    "    Loop->>Loop: market_risk_overlay_asof(cfg, bars, t)",
+    "    Loop->>CB: target_to_orders(targets, marks)",
+    "    loop each order",
+    "      CB->>KS: assert_new_orders_allowed()",
+    "      KS--xCB: KillSwitchActive when state != ENABLED",
+    "      CB->>RG: check_order(nav, gross, net, participation, vol)",
+    "      RG--xCB: RiskGateRejected on breach (counted)",
+    "      CB->>CB: total_cost() then cash/shares update",
+    "      CB-->>Loop: OrderRecord (fill or reject_reason)",
+    "    end",
+    "    Loop->>L: record_orders(step_recs, exec_dt)",
+    "    Loop->>CB: mark(close marks) + exposures",
+    "    Loop->>L: record_snapshot / record_shadow_equity",
+    "    Loop->>L: flush()",
+    "    Loop->>L: save_broker_state(cursor published LAST)",
+    "  end",
+    "  Loop->>L: promotion_dry_run() -> write_promotion_dry_run",
+    "  Loop->>L: write_analytics_export + validate",
+    "  Loop-->>CLI: PaperLoopResult{research_only, live_pnl_claim: false, paths}",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +501,9 @@ def render_module_deps(modules: list[str], edges: Counter[tuple[str, str]]) -> s
     lines = [GENERATED_HEADER, "flowchart LR"]
     for group, title in (("quant_fund", "quant_fund (harness)"), ("fx1", "fx1 (model project)")):
         members = qf if group == "quant_fund" else fx
-        lines.append(f'  subgraph {group}["{title}"]')
+        # Prefix the cluster id. Mermaid shares a namespace with node ids, and
+        # the root package nodes are already named ``quant_fund`` and ``fx1``.
+        lines.append(f'  subgraph cluster_{group}["{title}"]')
         for pkg in members:
             lines.append(f'    {_mmd_id(pkg)}["{pkg}"]')
         lines.append("  end")
@@ -279,118 +521,25 @@ def render_module_deps(modules: list[str], edges: Counter[tuple[str, str]]) -> s
 
 
 def render_data_flow() -> str:
-    """ingest → features → model → backtest/paper → receipt. Anchored nodes."""
-    return (
-        "\n".join(
-            [
-                GENERATED_HEADER,
-                "flowchart LR",
-                '  subgraph SRC["point-in-time data"]',
-                '    prov["make_provider()\\nsynthetic | file | hf_ohlcv_1m | public sources"]',
-                '    ingest["ingest()\\nbronze/silver parquet + data_manifest.json"]',
-                '    adj["adjust_prices() / apply_listing_actions()\\ncorporate actions"]',
-                '    univ["build_membership_panel()\\nPIT universe"]',
-                "  end",
-                '  subgraph GOLD["gold panel"]',
-                '    feats["build_features()\\nFEATURE_SET_VERSION stamp"]',
-                '    labs["build_labels()\\nforward-looking, never features"]',
-                '    gold["build_gold() / panel()\\nmembership re-validated on cached gold"]',
-                "  end",
-                '  subgraph MODEL["forecast stack"]',
-                '    train["train_* families\\npipeline/train.py → joblib artifacts"]',
-                '    fcst["forecast_asof()\\nMarketState + CQR intervals"]',
-                '    fuse["fuse_signals()\\ntransparent fusion"]',
-                "  end",
-                '  subgraph ALLOC["allocation + risk"]',
-                '    opt["optimize_mean_variance()\\ninfeasible → diagnostics, no relaxation"]',
-                '    gate["check_order()\\ndeterministic pre-trade risk gate"]',
-                '    cost["total_cost()\\ncommission + spread + impact"]',
-                "  end",
-                '  subgraph SIM["simulation (no live orders)"]',
-                '    bt["run_backtest()\\nevent-driven, next-open fills"]',
-                '    pl["run_paper_loop()\\nchampion + shadow slots"]',
-                "  end",
-                '  subgraph EVID["evidence"]',
-                '    nb["run_research()\\nsealed notebook + runs/<id>.json"]',
-                '    ver["verify_research_artifact()\\nfail-closed recompute"]',
-                '    prom["validate_candidate()\\nreceipt-bound promotion gates"]',
-                "  end",
-                "  prov --> ingest --> adj --> univ",
-                "  univ --> feats --> gold",
-                "  univ --> labs --> gold",
-                "  gold --> train --> fcst",
-                "  fcst --> fuse --> opt --> gate",
-                "  gate --> bt",
-                "  gate --> pl",
-                "  cost --> bt",
-                "  cost --> pl",
-                "  bt --> nb",
-                "  pl --> nb",
-                "  nb --> ver --> prom",
-            ]
-        )
-        + "\n"
-    )
+    """ingest → features → model → backtest/paper → receipt. Labels come from anchors."""
+    lines = [GENERATED_HEADER, "flowchart LR"]
+    for group in DATA_FLOW_GROUPS:
+        lines.append(f'  subgraph cluster_{group.group_id}["{group.title}"]')
+        for node in group.nodes:
+            lines.append(f'    {node.node_id}["{_node_label(node)}"]')
+        lines.append("  end")
+    for chain in DATA_FLOW_CHAINS:
+        lines.append("  " + " --> ".join(chain))
+    return "\n".join(lines) + "\n"
 
 
 def render_paper_loop() -> str:
-    """Sequence diagram of ``run_paper_loop`` (champion + shadow slots)."""
-    return (
-        "\n".join(
-            [
-                GENERATED_HEADER,
-                "sequenceDiagram",
-                "  autonumber",
-                "  participant CLI as dipcatcher paper",
-                "  participant Loop as run_paper_loop",
-                "  participant Clock as ReplayClock / WallClock",
-                "    participant W as WeightFn (weights panel)",
-                "    participant CB as SimulatedBroker champion",
-                "    participant SB as SimulatedBroker shadow",
-                "    participant KS as KillSwitch",
-                "    participant RG as check_order (risk gate)",
-                "    participant L as PaperLedger",
-                "  CLI->>Loop: run_paper_loop(bars, cfg, champion/shadow weights)",
-                "  opt resume",
-                "    Loop->>L: load_broker_state(run_id)",
-                "    L-->>Loop: prior champion/shadow state + cursors",
-                "    Loop->>Loop: verify resume_fingerprint over bar prefix",
-                "  end",
-                "  Loop->>L: set_meta(data_source, label=PAPER_SIMULATED)",
-                "  Loop->>Clock: ReplayClock(decision_dates)",
-                "  loop each decision date t",
-                "    Loop->>Clock: tick() -> t",
-                "    Loop->>Loop: exec_dt = next bar open (FillConvention.NEXT_OPEN)",
-                "    Loop->>CB: mark(pretrade marks: fresh opens + bounded carry)",
-                "    Loop->>SB: mark(pretrade marks)",
-                "    Loop->>W: champion_fn(t, cfg)",
-                "    W-->>Loop: target weights",
-                "    Loop->>W: shadow_fn(t, cfg) (optional)",
-                "    Loop->>Loop: L1 divergence champion vs shadow",
-                "    Loop->>CB: nav(pretrade_marks); break if <= 0",
-                "    Loop->>Loop: market_risk_overlay_asof(cfg, bars, t)",
-                "    Loop->>CB: target_to_orders(targets, marks)",
-                "    loop each order",
-                "      CB->>KS: assert_new_orders_allowed()",
-                "      KS--xCB: KillSwitchActive when state != ENABLED",
-                "      CB->>RG: check_order(nav, gross, net, participation, vol)",
-                "      RG--xCB: RiskGateRejected on breach (counted)",
-                "      CB->>CB: total_cost() then cash/shares update",
-                "      CB-->>Loop: OrderRecord (fill or reject_reason)",
-                "    end",
-                "    Loop->>L: record_orders(step_recs, exec_dt)",
-                "    Loop->>CB: mark(close marks) + exposures",
-                "    Loop->>L: record_snapshot / record_shadow_equity",
-                "    Loop->>L: flush()",
-                "    Loop->>L: save_broker_state(cursor published LAST)",
-                "  end",
-                "  Loop->>L: promotion_dry_run() -> write_promotion_dry_run",
-                "  Loop->>L: write_analytics_export + validate",
-                "  Loop-->>CLI: PaperLoopResult{research_only, live_pnl_claim: false, paths}",
-            ]
-        )
-        + "\n"
-    )
+    """Sequence diagram of ``run_paper_loop``. Participant aliases come from anchors."""
+    lines = [GENERATED_HEADER, "sequenceDiagram", "  autonumber"]
+    for node in PAPER_LOOP_PARTICIPANTS:
+        lines.append(f"  participant {node.node_id} as {_participant_alias(node)}")
+    lines.extend(PAPER_LOOP_MESSAGES)
+    return "\n".join(lines) + "\n"
 
 
 def render_coverage(modules: list[str], edges: Counter[tuple[str, str]]) -> str:
@@ -470,9 +619,9 @@ def splice_blocks(text: str, blocks: dict[str, str]) -> str:
 
 
 def write_all(root: Path) -> list[str]:
-    errors = verify_anchors(root)
+    errors = verify_diagram_bindings(root)
     if errors:
-        raise SystemExit("anchor verification failed:\n" + "\n".join(errors))
+        raise SystemExit("diagram binding verification failed:\n" + "\n".join(errors))
     artifacts = generated_artifacts(root)
     written: list[str] = []
     for rel, content in artifacts.items():
@@ -490,9 +639,9 @@ def write_all(root: Path) -> list[str]:
 
 def stale_artifacts(root: Path) -> list[str]:
     """Return sorted repo-relative paths whose committed bytes differ from fresh."""
-    errors = verify_anchors(root)
+    errors = verify_diagram_bindings(root)
     if errors:
-        raise SystemExit("anchor verification failed:\n" + "\n".join(errors))
+        raise SystemExit("diagram binding verification failed:\n" + "\n".join(errors))
     artifacts = generated_artifacts(root)
     stale: list[str] = []
     for rel, content in artifacts.items():
@@ -511,6 +660,72 @@ def stale_artifacts(root: Path) -> list[str]:
     else:
         stale.append(str(ATLAS_DOC))
     return sorted(stale)
+
+
+def is_quant_fund_module(name: str) -> bool:
+    return name == "quant_fund" or name.startswith("quant_fund.")
+
+
+def is_fx1_module(name: str) -> bool:
+    return name == "fx1" or name.startswith("fx1.")
+
+
+def quant_fund_to_fx1_edges(module_edges: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    """Harness → model edges, including imports of ``fx1`` internals.
+
+    A destination of exactly ``fx1`` is not enough: ``fx1.data.corpus`` is
+    still a cross-root edge.
+    """
+    return {
+        (src, dst) for src, dst in module_edges if is_quant_fund_module(src) and is_fx1_module(dst)
+    }
+
+
+def fx1_to_quant_fund_edges(module_edges: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    return {
+        (src, dst) for src, dst in module_edges if is_fx1_module(src) and is_quant_fund_module(dst)
+    }
+
+
+# Measured boundary. ``--check`` does not compare these; the atlas unit test
+# does, so adding or dropping an edge fails CI. ``quant_fund`` may import the
+# ``fx1`` package root (the version re-export) and nothing under ``fx1.*``.
+# ``fx1.forecast`` / ``fx1.eval`` may import only the harness modules below.
+QUANT_FUND_TO_FX1_EDGES: frozenset[tuple[str, str]] = frozenset({("quant_fund", "fx1")})
+FX1_TO_QUANT_FUND_EDGES: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("fx1.eval.calibration_eval", "quant_fund.metrics.calibration_tests"),
+        ("fx1.eval.ts_reasoning", "quant_fund.metrics.scoring"),
+        ("fx1.forecast.artifacts", "quant_fund.utils.hashing"),
+        ("fx1.forecast.dummy", "quant_fund.schemas.errors"),
+        ("fx1.forecast.evaluate", "quant_fund.config.models"),
+        ("fx1.forecast.evaluate", "quant_fund.metrics.direction"),
+        ("fx1.forecast.evaluate", "quant_fund.metrics.returns"),
+        ("fx1.forecast.evaluate", "quant_fund.metrics.scoring"),
+        ("fx1.forecast.evaluate", "quant_fund.validation.walk_forward"),
+        ("fx1.forecast.features", "quant_fund.data.point_in_time"),
+        ("fx1.forecast.features", "quant_fund.schemas.errors"),
+        ("fx1.forecast.runner", "quant_fund.data.adapters.parquet"),
+        ("fx1.forecast.runner", "quant_fund.data.adapters.synthetic"),
+        ("fx1.forecast.runner", "quant_fund.schemas.errors"),
+        ("fx1.forecast.runner", "quant_fund.utils.hashing"),
+        ("fx1.forecast.schema", "quant_fund.schemas.errors"),
+    }
+)
+
+
+def cross_root_errors(module_edges: set[tuple[str, str]]) -> list[str]:
+    """Empty when ``module_edges`` matches the pinned cross-root boundary."""
+    errors: list[str] = []
+    harness_to_model = quant_fund_to_fx1_edges(module_edges)
+    if harness_to_model != QUANT_FUND_TO_FX1_EDGES:
+        rendered = ", ".join(f"{src} -> {dst}" for src, dst in sorted(harness_to_model))
+        errors.append(f"quant_fund→fx1 edges drifted from the version re-export pin: {rendered}")
+    model_to_harness = fx1_to_quant_fund_edges(module_edges)
+    if model_to_harness != FX1_TO_QUANT_FUND_EDGES:
+        rendered = ", ".join(f"{src} -> {dst}" for src, dst in sorted(model_to_harness))
+        errors.append(f"fx1→quant_fund edges drifted from the forecast/eval pin: {rendered}")
+    return errors
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -14,8 +14,8 @@ contributor adding `sharpe_mean` to a family blob, or a tool emitting
 
 Instead the contract is **code that scans artifact structure**:
 
-- `research/catalog/constants.py` `FORBIDDEN_RESEARCH_METRIC_KEYS` =
-  `{sharpe, sortino, calmar, pnl, nav}`.
+- `research/catalog/registry.py` defines `FORBIDDEN_RESEARCH_METRIC_KEYS`
+  = `{sharpe, sortino, calmar, pnl, nav}`. `constants.py` re-exports it.
 - `family_blob_forbidden_metrics_absent` walks every mapping key in a
   family blob, tokenizes on `_`/`-`, and fails closed when any token is
   forbidden. Scorecards in `run_research` record this as the
