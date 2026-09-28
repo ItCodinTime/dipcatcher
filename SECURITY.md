@@ -17,8 +17,10 @@ harness. Security-relevant surfaces:
 Security fixes land on `main`. There is no published GitHub Release or PyPI
 upload yet. A tag matching `v*.*.*` runs `.github/workflows/release.yml`
 (build, CycloneDX SBOM, Sigstore signatures, SLSA provenance). That workflow
-does not upload to PyPI until the owner sets the Trusted Publishing gate
-described in the workflow file.
+is tag-only: it does not publish to PyPI and does not create a GitHub
+Release. Downstream consumers check downloaded artifacts with
+`scripts/verify_release_artifacts.py` (checksums fail closed on tamper);
+Sigstore and `gh attestation verify` cover signatures and SLSA provenance.
 
 ## Hard rules (enforced in code, tested)
 
@@ -86,8 +88,9 @@ hit unexpected personal data and report it.
 - GitHub Actions are pinned to full commit SHAs. Workflow tokens are
   read-only except where a job must upload code-scanning results or mint an
   OIDC identity. A tag push builds, signs, and attests the distributions and
-  uploads them as workflow artifacts.
+  uploads them as workflow artifacts only (no PyPI upload from CI).
 - Checkpoint signatures for a local fx-1 checkout stay on the attestation
   ladder (`fx1 attestation <checkpoint_dir>` before serving). Package
   releases, when a tag is pushed, are signed with Sigstore and carry SLSA
-  build provenance from GitHub artifact attestations.
+  build provenance from GitHub artifact attestations. Verify local copies
+  with `uv run python scripts/verify_release_artifacts.py <dist-dir>`.

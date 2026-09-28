@@ -46,7 +46,8 @@ over daily bars where:
 | `allow_close_auction=True` | close-auction order semantics are not replicated — a different fill-time model |
 | `risk_overlay` (`BookRiskOverlay`) | overlay scales/flattens carried targets mid-loop; not replicated |
 | GARCH / realized-GARCH market-overlay artifact present under `data.root/metadata/` | the per-order `max_predicted_vol` gate *is* replicated, but the `garch_risk_overlay_dates`/`realized_garch_risk_overlay_dates` metrics counters are stamped by the event loop and would silently read 0 — refused rather than approximate metrics. Closable: capture `market_risk_overlay_asof`'s source label per decision date and count it. |
-| empty bars / duplicate bar keys / non-Datetime or mismatched-unit `event_time` | matrices have no faithful reading of these shapes |
+| empty bars / non-Datetime or mismatched-unit `event_time` | matrices have no faithful reading of these shapes |
+| duplicate bar keys | both engines refuse (`ValueError: duplicate bars …`) — last-write-wins would be order-dependent; pinned by the differential fuzzer |
 | limit/stop order types | not in `run_backtest`'s contract at all (the API is target-percent weights only) — nothing to refuse |
 
 ## Byte-identity contract (why it is achievable)
@@ -76,6 +77,10 @@ would silently break identity:
 - `tests/unit/backtest/test_fast_replay.py` — seeded 30-workload fuzz sweep
   plus targeted stale/close-auction/dup/kill/empty/sparse cases and flag
   behavior (`fast=True` refusals, `fast=False` pinning, auto-dispatch).
+- `tests/property/test_differential_engine_fast_replay.py` — Hypothesis
+  differential fuzzer over missing prints, tradinghalts, zero/negative/NaN
+  prices, duplicate bars, splits and dividends; asserts fills / positions /
+  NAV within stated tolerances (`NAV_ATOL=1e-9`).
 - `scripts/_conformance_11a.py` — the real 11-asset incumbent workload
   through both engines (remote diagnostic).
 
