@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -201,7 +202,7 @@ def _var_block(
 
 def _distribution_quantiles(
     values: FloatArray | None,
-    digest_quantile,
+    digest_quantile: Callable[[float], float],
     probabilities: tuple[float, ...],
     *,
     weights: FloatArray | None,

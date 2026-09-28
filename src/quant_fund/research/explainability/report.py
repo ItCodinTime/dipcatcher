@@ -20,6 +20,7 @@ import io
 import json
 import math
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -418,7 +419,7 @@ def _fig_png_b64(fig: Any) -> str:
 
     canvas = FigureCanvasAgg(fig)
     buf = io.BytesIO()
-    canvas.print_png(buf)
+    cast(Callable[[io.BytesIO], None], canvas.print_png)(buf)
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 

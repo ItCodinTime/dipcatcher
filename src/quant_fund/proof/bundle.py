@@ -127,7 +127,7 @@ def env_fingerprint() -> EnvFingerprint:
         python_implementation=platform.python_implementation(),
         platform=platform.platform(),
         machine=platform.machine(),
-        byteorder=sys.byteorder,  # type: ignore[arg-type]
+        byteorder=sys.byteorder,
         packages=packages,
     )
 

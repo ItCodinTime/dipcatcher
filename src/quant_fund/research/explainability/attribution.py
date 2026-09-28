@@ -189,7 +189,7 @@ def shap_attribution(
     an actionable message when ``shap`` is unavailable.
     """
     try:
-        import shap  # type: ignore[import-not-found]
+        import shap
     except ImportError as exc:  # pragma: no cover - exercised only without shap
         raise ImportError(
             "shap backend requested but shap is not installed; "

@@ -122,7 +122,9 @@ def _walk_forward_splits(
     ]
 
 
-def _split_fold(dates, x, y, fold):
+def _split_fold(
+    dates: Any, x: np.ndarray, y: np.ndarray, fold: Fold
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     date_ns = timestamp_ns(dates)
     tr = np.isin(date_ns, timestamp_ns(fold.train_times))
     va = np.isin(date_ns, timestamp_ns(fold.val_times))

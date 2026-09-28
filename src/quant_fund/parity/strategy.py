@@ -87,7 +87,7 @@ def resolve_decide(strategy: Strategy | DecideFn) -> DecideFn:
     if callable(method):
         return cast(DecideFn, method)
     if callable(strategy):
-        return cast(DecideFn, strategy)
+        return strategy
     raise TypeError("strategy must be callable or provide decide()")
 
 

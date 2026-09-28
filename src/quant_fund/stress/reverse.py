@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -153,7 +152,7 @@ def reverse_stress(
     """
     if not callable(loss_fn):
         raise TypeError("loss_fn must be callable")
-    fn = cast(LossFn, loss_fn)
+    fn = loss_fn
     center, matrix = _as_cov(mu, cov)
     if not np.isfinite(radius) or radius <= 0.0:
         raise ValueError("radius must be positive")

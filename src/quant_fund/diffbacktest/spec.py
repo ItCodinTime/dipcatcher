@@ -7,7 +7,7 @@ research-catalog score. See ``docs/DIFFBACKTEST.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 
@@ -281,7 +281,7 @@ def unpack(theta: np.ndarray, names: tuple[str, ...], base: StrategyParams) -> S
         raise ValueError("theta must be finite")
     updates: dict[str, Any] = {name: float(values[i]) for i, name in enumerate(names)}
     # replace() rejects a splatted dict because some fields are ints.
-    return cast(StrategyParams, replace(base, **updates))
+    return replace(base, **updates)
 
 
 def project_box(params: StrategyParams, names: tuple[str, ...]) -> StrategyParams:
@@ -290,7 +290,7 @@ def project_box(params: StrategyParams, names: tuple[str, ...]) -> StrategyParam
     for name in names:
         lo, hi = BOXES[name]
         updates[name] = float(np.clip(float(getattr(params, name)), lo, hi))
-    return cast(StrategyParams, replace(params, **updates))
+    return replace(params, **updates)
 
 
 def harden(params: StrategyParams) -> StrategyParams:

@@ -17,7 +17,8 @@ is the model's warmup and is disclosed in ``metadata().extra``.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -206,7 +207,7 @@ class _QuantileSequenceBase(JoblibMixin):
             pred = net(xb)
             e = tb[:, None] - pred
             loss = torch.mean(torch.maximum(taus_t[None, :] * e, (taus_t[None, :] - 1.0) * e))
-            loss.backward()
+            cast(Callable[[], None], loss.backward)()
             opt.step()
         net.eval()
         self._net = net

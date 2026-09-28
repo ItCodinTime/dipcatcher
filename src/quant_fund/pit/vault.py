@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,7 +72,7 @@ def _now_iso() -> str:
 
 
 @contextmanager
-def _dataset_write_lock(directory: Path):
+def _dataset_write_lock(directory: Path) -> Iterator[None]:
     """Serialize appends across processes; SQLite releases the lock on crash."""
     connection = sqlite3.connect(directory / ".append-lock.sqlite3", timeout=30)
     try:

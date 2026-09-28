@@ -5,6 +5,7 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -446,7 +447,7 @@ def train_robinhood_plus(
 
 
 def train_family(config: AppConfig, family: str, model_name: str | None = None) -> dict[str, Any]:
-    dispatch = {
+    dispatch: dict[str, Callable[[], dict[str, Any]]] = {
         "ranking": lambda: train_ranking(config, model_name or "ridge"),
         "calibration": lambda: train_calibration(config, model_name or "isotonic"),
         "alpha": lambda: train_alpha(config, model_name or "ridge"),

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -166,9 +167,9 @@ def run_carry_backtest(
     book = CarryBook(cash=float(initial_nav))
     pending: dict[str, tuple[float, datetime, int]] = {}
     pending_exec_at: dict[str, int] = {}
-    navs: list[dict] = []
-    fill_rows: list[dict] = []
-    liq_rows: list[dict] = []
+    navs: list[dict[str, Any]] = []
+    fill_rows: list[dict[str, Any]] = []
+    liq_rows: list[dict[str, Any]] = []
     cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
     funding_received = 0.0
     funding_paid = 0.0
@@ -532,7 +533,7 @@ def run_carry_backtest(
             label="CARRY_BACKTEST_SIM",
             data_source="file",
         )
-        metrics: dict[str, float | str | int | bool | dict] = {
+        metrics: dict[str, float | str | int | bool | dict[str, Any]] = {
             "total_return": navs_list[-1] / float(initial_nav) - 1.0,
             "cagr": cagr(rets, periods_per_year=ppy),
             "sharpe": sr["sharpe"],

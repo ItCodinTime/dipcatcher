@@ -15,6 +15,7 @@ Requires the optional ``jax`` extra. The NumPy core does not import this module.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, cast
@@ -60,7 +61,7 @@ def _libs() -> tuple[Any, Any]:
             "JAX backtest needs the optional 'jax' extra (CPU is enough): "
             "uv sync --extra jax. The NumPy core does not need JAX."
         ) from exc
-    jax.config.update("jax_enable_x64", True)
+    cast(Callable[[str, object], None], jax.config.update)("jax_enable_x64", True)
     if not jax.config.jax_enable_x64:
         raise RuntimeError("JAX float64 could not be enabled; parity requires x64")
     return jax, jnp

@@ -347,7 +347,15 @@ def _make_ranker(name: str, config: AppConfig) -> Any:
     return catalog[name]
 
 
-def _fit_ranker(model: Any, name: str, x, y, dates, ids=None, features=None) -> None:
+def _fit_ranker(
+    model: Any,
+    name: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    dates: np.ndarray,
+    ids: np.ndarray | None = None,
+    features: list[str] | None = None,
+) -> None:
     extra = {} if features is None else {"features": features}
     if name in {"lambdarank", "xendcg"}:
         order = np.argsort(dates, kind="mergesort")
@@ -360,7 +368,13 @@ def _fit_ranker(model: Any, name: str, x, y, dates, ids=None, features=None) -> 
         model.fit(x, y, **extra)
 
 
-def _predict_ranker(model: Any, name: str, x, dates, ids=None) -> np.ndarray:
+def _predict_ranker(
+    model: Any,
+    name: str,
+    x: np.ndarray,
+    dates: np.ndarray | None,
+    ids: np.ndarray | None = None,
+) -> np.ndarray:
     if name in ID_PREDICT_RANKERS:
         return np.asarray(model.predict(x, dates=dates, ids=ids), dtype=float)
     if name in DATED_PREDICT_RANKERS:

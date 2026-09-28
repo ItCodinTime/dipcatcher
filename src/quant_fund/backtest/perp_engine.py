@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 import numpy as np
 import polars as pl
@@ -201,9 +201,9 @@ def run_perp_backtest(
     book = PerpBook(cash=float(initial_nav))
     pending: dict[str, tuple[float, datetime, int]] = {}  # sid -> (weight, signal_t, exec_idx)
     pending_exec_at: dict[str, int] = {}
-    navs: list[dict] = []
-    fill_rows: list[dict] = []
-    liq_rows: list[dict] = []
+    navs: list[dict[str, Any]] = []
+    fill_rows: list[dict[str, Any]] = []
+    liq_rows: list[dict[str, Any]] = []
     cost_sum = {"commission": 0.0, "spread": 0.0, "impact": 0.0}
     funding_received = 0.0
     funding_paid = 0.0
@@ -478,7 +478,7 @@ def run_perp_backtest(
             label="PERP_BACKTEST_SIM",
             data_source="SYNTHETIC" if synthetic else "file",
         )
-        metrics: dict[str, float | str | int | bool | dict] = {
+        metrics: dict[str, float | str | int | bool | dict[str, Any]] = {
             "total_return": navs_list[-1] / float(initial_nav) - 1.0,
             "cagr": cagr(rets, periods_per_year=ppy),
             "sharpe": sr["sharpe"],

@@ -80,7 +80,7 @@ def _arch_fit(
         "generalized error",
     ],
     o: int,
-):
+) -> Any:
     """Shared arch fit helper (mirrors scripts/sota_eval_kronos._arch_fit)."""
     from arch import arch_model
 
@@ -157,7 +157,7 @@ def fhs_quantiles(rets: np.ndarray, taus: np.ndarray) -> np.ndarray:
 _EGARCH_SIG_CAP = 1.0  # >100%/bar 1-step sigma is definitionally broken
 
 
-def _egarch_scaled_t(fit) -> tuple[float, float, float]:
+def _egarch_scaled_t(fit: Any) -> tuple[float, float, float]:
     nu = float(fit.params["nu"])
     mu = float(fit.params.get("mu", 0.0)) / 100.0
     sig = float(np.sqrt(fit.forecast(horizon=1).variance.iloc[-1, 0])) / 100.0

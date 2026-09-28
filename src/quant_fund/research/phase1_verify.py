@@ -20,7 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from quant_fund.research import net_tournament, real_benchmark
+from quant_fund.metrics import inference, snooping
+from quant_fund.research import cost_allocation, net_replay, net_tournament, real_benchmark
 from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION
 from quant_fund.utils.hashing import SHA256_HEX_LENGTH
 from quant_fund.utils.reproducibility import git_revision, git_worktree_sha256
@@ -114,10 +115,10 @@ def _committed_code_hashes(revision: str, errors: list[str]) -> dict[str, str]:
     modules = (
         real_benchmark,
         net_tournament,
-        net_tournament.net_replay,
-        net_tournament.cost_allocation,
-        net_tournament.inference,
-        net_tournament.snooping,
+        net_replay,
+        cost_allocation,
+        inference,
+        snooping,
     )
     hashes: dict[str, str] = {}
     for module in modules:

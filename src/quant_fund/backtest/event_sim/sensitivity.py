@@ -166,8 +166,8 @@ def format_sensitivity_table(report: dict[str, object]) -> str:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        sharpe = float(row["sharpe_diagnostic"])  # type: ignore[arg-type]
-        sharpe_delta = float(row["sharpe_delta"])  # type: ignore[arg-type]
+        sharpe = float(row["sharpe_diagnostic"])
+        sharpe_delta = float(row["sharpe_delta"])
         lines.append(
             f"{int(row['signal_to_order_bars']):7d} "
             f"{int(row['order_to_exchange_bars']):7d} "

@@ -7,7 +7,7 @@ or the simulated broker.
 from __future__ import annotations
 
 import warnings
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -26,7 +26,7 @@ def arch_fit(
         "generalized error",
     ],
     o: int,
-):
+) -> Any:
     """Shared arch fit helper (mirrors scripts/sota_eval_kronos._arch_fit)."""
     from arch import arch_model
 

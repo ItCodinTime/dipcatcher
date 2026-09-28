@@ -9,6 +9,7 @@ result is subset-minimal: removing any remaining fault makes the predicate false
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -104,7 +105,7 @@ def schedule_from_seed(seed: int, n_steps: int, *, max_faults: int = 3) -> Fault
 
 def shrink_schedule(
     schedule: FaultSchedule,
-    fails,
+    fails: Callable[[FaultSchedule], bool],
 ) -> FaultSchedule:
     """Subset-minimize ``schedule`` while ``fails(schedule)`` stays true.
 

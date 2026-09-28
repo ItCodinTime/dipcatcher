@@ -17,6 +17,7 @@ is not an input to the weight.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 
@@ -499,7 +500,7 @@ def _equal_weights(prices: Array, params: StrategyParams) -> Array:
     return w
 
 
-_BUILDERS = {
+_BUILDERS: dict[str, Callable[[Array, Array, StrategyParams], Array]] = {
     "tsmom": _tsmom_weights,
     "topk": _topk_weights,
     "antonacci": _antonacci_weights,

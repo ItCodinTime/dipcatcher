@@ -245,7 +245,7 @@ async def _call_async[T, R](
     while True:
         try:
             if inspect.iscoroutinefunction(fn):
-                value = await fn(item)  # type: ignore[misc]
+                value = await fn(item)
             else:
                 value = await asyncio.to_thread(fn, item)
             return cast(R, value)
