@@ -42,7 +42,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `portfolio/` | Optimizer (infeasible diagnostics), allocators (PSD cov), factor betas (trailing ridge), conformal (chrono split), attribution (prev-bar weights) | #332 non-PSD refusal, fingerprint framing |
 | `pretrade/` | Hot risk-gate surface | #287 (child audit doc) |
 | `proof/` | HMAC env-only, merkle canonical dumps | — |
-| `research/` | All 62 modules (child lane, `AUDIT_RESEARCH.md` on #341): receipt writers/verifiers first, then signal→return causality, forced SYNTHETIC stamps, degenerate-input handling | #341 — `oos_rank_scores` no-fold fallback lacked boundary purge (real look-ahead, fixed); `sota_receipt.json` unsealed/non-atomic (fixed); `benches/common.py` purge deferred (documented below) |
+| `research/` | All 62 modules (child lane, `AUDIT_RESEARCH.md` on #341): receipt writers/verifiers first, then signal→return causality, forced SYNTHETIC stamps, degenerate-input handling | #341 — `oos_rank_scores` no-fold fallback lacked boundary purge (real look-ahead, fixed); `sota_receipt.json` unsealed/non-atomic (fixed); `benches/common.py` purge gap fixed on #342 (documented below) |
 | `proofcore/` | Hash-chain export ordering | #279 wall-clock → genesis walk |
 | `quant_models/` | BS/Greeks/GEX/HRP/TSMOM/risk-parity/MC; causal TSMOM, honest receipts | — |
 | `reality/` | Bailey–LdP PSR/DSR/MinTRL, CSCV/PBO ω-logit, SPA, BH-FDR — all verified against papers | — |
@@ -66,7 +66,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 
 | Item | Where |
 |---|---|
-| `benches/common.py` split helpers (`_holdout`/`_triple_split`/`_gaussian_interval_split`) — chronological cuts with no boundary label purge; verdicts stay honest (identical cut across arms) but boundary train labels overlap the holdout | #341's `docs/AUDIT_RESEARCH.md`; follow-up threads the label horizon through ~15 call sites |
+| `benches/common.py` split helpers (`_holdout`/`_triple_split`/`_gaussian_interval_split`) — chronological row cuts with no boundary label purge | found via #341's `docs/AUDIT_RESEARCH.md`; **fixed on #342** — splits now return boolean row masks cut at unique-date boundaries via `purge_mask` on both edges (train↔cal and cal↔test), callers fail closed on emptied sides, OnlineCRC warms only on kept rows |
 
 ## fx1 (the gated product — `quality/audit_coverage_fx1.json`)
 
