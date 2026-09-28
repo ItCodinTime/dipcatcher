@@ -367,3 +367,11 @@ proof = 90
 leakage = 85
 reality = 90
 proofcore = 90
+# Wave-2 per-MODULE floors (WAVE2.md §1.6, amendment I5): every new wave-2
+# module >= 90%, enforced alongside the package floors above. Dotted keys map
+# to single module files in `proofcore.ci coverage-gate`.
+"proofcore.scheduler" = 90
+"proof.runner" = 90
+"proof.estimators" = 90
+"proof.replay" = 90
+"leakage.guard" = 90

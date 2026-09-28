@@ -69,7 +69,7 @@ formal: ## TLC order-lifecycle check + Z3/conformance/stateful tests
 	uv run pytest tests/formal -q
 
 mc-engine-smoke: ## Monte Carlo engine tests (not slow) and a tiny CLI run
-	uv run pytest tests/unit/mc_engine -q -m "not slow"
+	uv run pytest -q tests/unit/mc_engine -q -m "not slow"
 	uv run python -m quant_fund.mc_engine run --paths 1500 --steps 8 --workers 1 \
 		--backend serial --chunk-size 500 --seed 1 --no-progress
 
@@ -135,8 +135,13 @@ PROOFCORE_DB ?= data/metadata/proofcore.duckdb
 DEFAULT_PROOFCORE_DB := data/metadata/proofcore.duckdb
 COMMITTED_TRIAL_LEDGER ?= research/reality/trials.jsonl
 
-proofcore-test: ## PROOFCORE W5 tests: contracts, provenance DB, CI helpers, layering gate
-	uv run pytest tests/unit/test_proofcore_*.py tests/end_to_end/test_proofcore_smoke.py -q
+proofcore-test: ## PROOFCORE tests: W5 contracts/provenance/CI/layering + W6 scheduler/runner/estimators + W7 replay + W8 guard/fixes + wave-2 e2e
+	uv run pytest tests/unit/test_proofcore_*.py tests/end_to_end/test_proofcore_smoke.py \
+		tests/unit/test_scheduler.py tests/unit/test_proven_runner.py \
+		tests/unit/test_estimators.py tests/unit/test_replay_engine.py \
+		tests/unit/test_io_guard.py tests/unit/test_cscv_combo_guard.py \
+		tests/unit/test_fingerprint_fallback.py tests/unit/test_wave2_e2e.py \
+		tests/property/test_replay_determinism.py -q
 
 proofcore-coverage: ## Per-package coverage floors (A3 #2): pit/proof/reality/proofcore 90, leakage 85
 	# Subset run over the PROOFCORE test lanes; the global 80% floor still
