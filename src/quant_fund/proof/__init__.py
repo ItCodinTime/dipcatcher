@@ -1,8 +1,9 @@
 """Proof bundle construction and verification primitives (PROOFCORE W2).
 
-The runner and deterministic replay fail closed until explicit decision-time
-vault reads exist. Heavy dependencies stay behind ``__getattr__`` so importing
-this package remains cheap and acyclic.
+Wave 2 adds the causal proven runner (``run_proven``) and the bit-exact
+replay engine (``replay_bundle``); the wave-1 ``run_backtest_proven`` API
+stays fail-closed by design (WAVE2.md amendment A4). Heavy dependencies stay
+behind ``__getattr__`` so importing this package remains cheap and acyclic.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ __all__ = [
     "recompute_headline_metrics",
     "replay_bundle",
     "run_backtest_proven",
+    "run_proven",
     "verify_bundle",
 ]
 
@@ -42,6 +44,7 @@ _LAZY = {
     "recompute_headline_metrics": ("quant_fund.proof.bundle", "recompute_headline_metrics"),
     "replay_bundle": ("quant_fund.proof.replay", "replay_bundle"),
     "run_backtest_proven": ("quant_fund.proof.runner", "run_backtest_proven"),
+    "run_proven": ("quant_fund.proof.runner", "run_proven"),
     "verify_bundle": ("quant_fund.proof.verify", "verify_bundle"),
 }
 
