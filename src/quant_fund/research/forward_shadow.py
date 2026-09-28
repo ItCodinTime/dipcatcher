@@ -586,8 +586,9 @@ def main() -> None:
         elif args.command == "reconcile":
             result = report(args.run, repair=args.repair, expected_head=args.expected_head)
             if args.output:
-                with args.output.open("x") as handle:
-                    handle.write(json.dumps(result, indent=2, allow_nan=False))
+                from quant_fund.utils.atomicio import atomic_write_text
+
+                atomic_write_text(args.output, json.dumps(result, indent=2, allow_nan=False))
             result = {k: v for k, v in result.items() if k not in {"events", "state"}}
         else:
             event = record(args.run, args.command, json.loads(args.input.read_text()))

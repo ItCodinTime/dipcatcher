@@ -459,6 +459,10 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.cross_sectional import rankic_contract_errors
 
         errors.extend(rankic_contract_errors(payload))
+    elif payload.get("kind") == "ranker_probability_experiment":
+        from quant_fund.research.ranker_probability import ranker_prob_contract_errors
+
+        errors.extend(ranker_prob_contract_errors(payload))
     return _result(path, payload, convention, errors)
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -341,6 +342,79 @@ def evaluate(frame: pl.DataFrame, spec: ExperimentSpec = ExperimentSpec()) -> di
         }
     )
     return report
+
+
+def ranker_prob_contract_errors(report: Mapping[str, Any]) -> list[str]:
+    """Fail-closed contract for a ``ranker_probability_experiment`` report.
+
+    Re-derives every claim that is computable from the sealed payload alone:
+    the untrainable-fold count against the fold list, the honesty flags, and —
+    on measured reports — the ``gate_pass`` verdict itself. A tampered gate
+    must keep all four inputs consistent or the seal check fails anyway.
+    """
+    errors: list[str] = []
+    if report.get("kind") != "ranker_probability_experiment":
+        errors.append("kind_not_ranker_probability_experiment")
+    for flag in ("research_only", "synthetic_is_correctness_only"):
+        if report.get(flag) is not True:
+            errors.append(f"{flag}_not_true")
+    for flag in ("production_promotion", "forward_evidence_accepted"):
+        if report.get(flag) is not False:
+            errors.append(f"{flag}_not_false")
+    status = report.get("status")
+    if status not in {"unmeasured", "measured"}:
+        errors.append("status_invalid")
+    folds = report.get("folds")
+    untrainable: int | None = None
+    if isinstance(folds, list):
+        untrainable = sum(
+            1 for f in folds if not isinstance(f, Mapping) or f.get("status") != "scored"
+        )
+        n_unt = report.get("n_untrainable_folds")
+        if n_unt is not None and n_unt != untrainable:
+            errors.append("n_untrainable_folds_mismatch")
+    elif status == "measured":
+        errors.append("folds_missing")
+    if status == "unmeasured" and report.get("gate_pass") is not False:
+        errors.append("unmeasured_gate_must_be_false")
+    if status == "measured":
+        spec = report.get("spec")
+        losses = report.get("losses")
+        paired = report.get("paired_brier")
+        if (
+            not isinstance(spec, Mapping)
+            or not isinstance(losses, Mapping)
+            or not isinstance(paired, Mapping)
+        ):
+            errors.append("measured_report_missing_blocks")
+        else:
+            controls = ("momentum_platt", "train_base_rate")
+            ranker = losses.get("ranker_platt")
+            n_scored = report.get("n_scored_dates")
+            min_dates = spec.get("min_test_dates")
+            expected = (
+                isinstance(n_scored, int)
+                and isinstance(min_dates, int)
+                and n_scored >= min_dates
+                and (untrainable if untrainable is not None else 1) == 0
+                and all(
+                    isinstance(paired.get(name), Mapping)
+                    and isinstance(paired[name].get("ci_high"), int | float)
+                    and paired[name]["ci_high"] < 0.0
+                    for name in controls
+                )
+                and isinstance(ranker, Mapping)
+                and all(
+                    isinstance(losses.get(name), Mapping)
+                    and isinstance(ranker.get("log_loss"), int | float)
+                    and isinstance(losses[name].get("log_loss"), int | float)
+                    and ranker["log_loss"] <= losses[name]["log_loss"]
+                    for name in controls
+                )
+            )
+            if report.get("gate_pass") is not expected:
+                errors.append("gate_pass_mismatch")
+    return errors
 
 
 def _load_gold(features: Path, labels: Path, spec: ExperimentSpec) -> pl.DataFrame:
