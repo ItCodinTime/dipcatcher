@@ -357,7 +357,7 @@ def run_calibration_eval(
     model: ModelFn,
     seed: int = 0,
     n_bins: int = 10,
-    ece_threshold: float = 0.05,
+    ece_threshold: float = 0.02,
     z_threshold: float = 2.0,
 ) -> CalibrationReport:
     """Measure *model*'s probability calibration against the seeded bank.

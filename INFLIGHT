@@ -223,3 +223,98 @@ integration lane (waves 8-10 wired into research battery, 2026-09-27):
   1e6 (harness anytime_fdr test convention) — weak gaussian signals reject 0.
   verify-research end-to-end: scorecard_families=32, errors=[]; research
   verify suite (188 tests) green; ruff/mypy clean. No commits.
+
+---
+owner: devin (macOS checkout)
+slice: ANYTIME-VALID GAP — e-GAI online FDR (e-LORD + e-SAFFRON)
+status: COMPLETE + VERIFIED 2026-09-28
+detail: |
+  - metrics/anytime_fdr.py: `_EGaiBase` shared alpha-investing machinery +
+    `ELord` (Zhang, Wei, Ren & Zou 2025, arXiv:2506.01452, Algorithm 1) and
+    `ESaffron` (Algorithm 2). RAI omega recursion omega_{t+1} =
+    omega1*(1 + sum_{j<=t-R_t} phi^j - sum_{j<=R_t} psi^j) maintained via
+    incremental geometric sums; Remark 3.3 parameter box enforced
+    (omega1 in (0,0.5), phi/psi in [0,0.5]) keeping omega_t in (0,1).
+  - e-SAFFRON level cap alpha_t <= lambda follows the authors' reference
+    implementation (eSAFFRON.R), not the paper's uncapped Eq. (10): keeps
+    rejections out of the FDP-estimate numerator (documented deviation; the
+    paper's lambda->0 reduction to e-LORD does not hold verbatim under it).
+  - Nonpositive/non-finite computed levels treated as alpha-death: hypothesis
+    not rejected, no wealth charged (fail-closed, never evaluate 1/alpha_t).
+  - benches_w810.py bench_anytime_valid: += elord_rejected,
+    esaffron_rejected, esaffron_null_fa_rate (200 seeded MC reps, 0.0),
+    esaffron_remaining_wealth. omega1 = 1/T per paper B.2.
+  - tests: +23 in test_anytime_fdr.py (global-null FDR <= alpha+0.02 both
+    classes; deterministic level/omega/wealth bookkeeping; lambda cap;
+    signal-stream power + strict wealth-preservation gap vs e-LORD; ctor/
+    submit fail-closed edges); bench test asserts esaffron_null_fa_rate<=0.10
+    and esaffron_rejected >= elond_rejected.
+  - docs/RESEARCH_REFERENCES.md wave-8 section += e-GAI citation;
+    SOTA_CANON_ROADMAP gap matrix: online e-FDR row now EXISTS (e-LOND /
+    e-LORD / e-SAFFRON).
+  - pytest tests/unit/core/test_anytime_fdr.py + test_benches_w810.py green
+    (77 tests); ruff + ruff-format + mypy clean on touch set. No commits.
+
+---
+owner: devin (macOS checkout)
+slice: FX-1 CAPABILITY LANE — eval battery wired into suite/CLI (owner call taken)
+status: COMPLETE + VERIFIED 2026-09-28
+detail: |
+  - src/fx1/eval/capability.py: `run_capability_eval(model, seed)` runs the
+    four sealed SYNTHETIC evals behind one ModelFn (ts_reasoning,
+    calibration, tooluse, retrieval) -> `CapabilityEvalReport` (pydantic).
+    honesty_gate_passed ANDs the sub-gates (ts bait refusals, retrieval
+    honesty, zero tooluse contract violations); `passed` additionally
+    requires the calibration gate. Scores are measurements for the model
+    card — delta/shipping gating stays in compare_runs/ModelCard.
+  - calibration_eval.py: default ece_threshold 0.05 -> 0.02. Verified: true
+    oracle ECE 0.0 passes; miscalibrated oracle ECE ~0.0407 passed at 0.05
+    (gate was vacuous), fails at 0.02. Was flagged in wave-1 INFLIGHT note.
+  - src/fx1/cli.py: `fx1 capability-eval --backend hosted_k3|local_fx1
+    --seed N --out PATH` — JSON summary to stdout, full report to disk,
+    exit 1 when honesty/calibration gates fail. Live backends only; no
+    synthetic model exposed via CLI.
+  - tests/fx1/test_capability_eval.py (4 tests): composite oracle dispatching
+    on the disjoint task/question-id namespaces (ts-*, tooluse-*, cal-*,
+    ret-*) passes clean end-to-end; degenerate empty model fails every gate;
+    determinism pinned; CLI registration smoke via CliRunner.
+  - tests/fx1: 282 green (4 new); ruff check + format clean on touch set;
+    mypy src/fx1 clean. Roadmap §2.5 updated; external benchmark ports
+    (FinTrace/FinToolBench/FinAgentBench/FinanceBench/MTBench) remain open.
+    No commits.
+
+---
+owner: devin (macOS checkout)
+slice: ENGINEERING LANE — CI perf-gate wiring for scripts/perf_baseline.py
+status: COMPLETE + VERIFIED 2026-09-28
+detail: |
+  - .github/workflows/perf-baseline.yml (new): `record` job on push:main +
+    weekly schedule + workflow_dispatch records all six benches on CI
+    hardware and publishes a stable-named `perf-baseline` artifact (60d
+    retention); `compare` job on pull_request records current timings,
+    downloads the latest successful main-branch artifact via gh CLI
+    (actions:read only; no new third-party action), runs the gate. Missing
+    baseline fails closed with remediation (gh workflow run
+    perf-baseline.yml). Bootstrap caveat: the first PR after merge sees the
+    no-baseline error until one main/dispatch run seeds the artifact.
+  - Makefile: `perf-record` / `perf-check` local targets (data/metadata/;
+    gitignored). Local timings are machine-local; the authoritative baseline
+    is the CI artifact.
+  - perf_baseline.py hardening (found while validating): the gated metric is
+    now a calibration-normalized ratio — each bench iteration is paired with
+    a single-threaded reference sort timed in the same loop; median ratio
+    over 7 repeats, min_seconds kept as diagnostics. Raw sub-50ms medians
+    produced phantom 1.3-1.7x "regressions" run-to-run; a BLAS-matmul
+    calibrator still drifted ~1.5x under a 20-way yes-storm (multithreaded
+    BLAS collapses differently than the single-threaded benches); the
+    sort-based calibrator passes under the same storm (~1.26x worst bench).
+    Bench sizes rescaled to ~0.25-0.6s/iter (energy_score stays at n=4000 —
+    cdist is O(n^2) memory; inner reps carry the load instead).
+    DEFAULT_THRESHOLD 1.25 -> 1.5, matching the tests/perf +50% gate.
+    JSON schema field: benches[].median_seconds -> {normalized, min_seconds,
+    calibration_seconds}. No published baselines existed; nothing to migrate.
+  - tests/unit/core/test_perf_baseline.py: schema updates; tiny_sizes
+    fixture also shrinks _CALIBRATION_N/_CALIBRATION_REPS (record() stays
+    fast). 14 tests green; ruff check + format clean.
+  - Roadmap §2.4/engineering bullet: benchmark regression gate now wired
+    (both pytest-benchmark subset AND scripts/perf_baseline.py).
