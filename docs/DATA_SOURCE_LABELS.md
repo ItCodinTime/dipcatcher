@@ -13,6 +13,27 @@ fallback adapter.
 | **public / file** | Features built from the configured non-synthetic adapter (parquet, Stooq session-close tape, etc.). Scores are scientific (proper rules) still, not a live-P&L claim. Session-close `available_time` is not a SIP vintage. |
 | **public sources** | Registered open/public feeds collected explicitly via `dipcatcher collect` (Binance klines, FRED/ALFRED, US Treasury, CFTC COT, FINRA short volume, World Bank, BEA, GDELT, SEC EDGAR, NASDAQ ITCH sample, FI-2010, Hugging Face `hf_ohlcv_1m`) or routed through `data.source` for bar-capable feeds. Point-in-time stamped (`event_time`/`available_time`/`ingested_time`, `source`, `revision_id`) with a per-collection JSON receipt (sha256, rows, provenance). Still research evidence — never a live-P&L claim. Optional-library feeds (`ccxt`, `cryptofeed`, `openbb`) require an explicit payload and are never imported implicitly. `hf_ohlcv_1m` adjustment is undeclared; see [HF_OHLCV_1M.md](HF_OHLCV_1M.md). |
 
+## Collect → promote → ingest (bar-capable sources)
+
+Registered bar feeds (`stooq`, `yahoo`, …) land as normalized PIT frames:
+
+```bash
+dipcatcher collect --config configs/sota_file.yaml --source yahoo \
+  --param names=AAPL:AAPL,MSFT:MSFT --param start=2026-08-01
+
+dipcatcher promote-bars --config configs/sota_file.yaml --source yahoo
+
+dipcatcher ingest --config configs/sota_file.yaml
+```
+
+`promote-bars` publishes the collected frame as `bars.parquet` under the
+directory the parquet provider reads (`<data.root>/raw` by default), enforcing
+the same bars contract the provider enforces at read time, refusing to
+overwrite without `--force`, and writing a `bar_promotion.v1` receipt that
+chains the source parquet + collect receipt sha256s to the published file.
+Universe floors still apply on ingest — a small/demo universe may need
+`universe.min_history_bars` tuned below the default 252.
+
 ## Where the label appears
 
 - Research notebook JSON/Markdown (`data_source`, `synthetic`, disclaimer banner)
