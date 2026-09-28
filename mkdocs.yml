@@ -182,6 +182,7 @@ nav:
       - Scenario Monte Carlo: MC_ENGINE.md
       - Fast replay conformance: FAST_REPLAY_P42.md
       - Explainability: EXPLAINABILITY.md
+      - Allocation pack: ALLOCATION_PACK.md
       - Reality pre-registration: REALITY_PREREGISTRATION.md
       - Reality trial 2026: REALITY_TRIAL_2026.md
   - Operations:
