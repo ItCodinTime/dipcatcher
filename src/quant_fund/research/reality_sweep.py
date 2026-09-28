@@ -1,6 +1,9 @@
 """Pre-registered strategy sweep recorded on the provenance trial ledger.
 
-The grid, costs, and splits live in ``research/reality/preregistration.json``.
+The grid, costs, and splits for the study under evaluation live in the
+pending path ``research/reality/preregistration.json``; decided studies
+archive under ``research/reality/studies/<study_id>/`` (see
+``research/reality/README.md``).
 This module does not add a signal. It runs the frozen cells through the
 existing backtest engine and appends every cell with
 ``ProvenanceDB.insert_trial``.

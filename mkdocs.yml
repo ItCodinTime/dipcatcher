@@ -241,6 +241,7 @@ nav:
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
       - "ADR-036: Risk gates": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
+      - "ADR-038: Reality ledger lifecycle": decisions/038-reality-ledger-lifecycle.md
   - Atlas decisions:
       - Index: adr/README.md
       - "0001: Immutable receipts": adr/0001-immutable-self-sealing-receipts.md

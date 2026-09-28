@@ -51,7 +51,11 @@ database file and no committed `research/reality/trials.jsonl` still skips:
 export can create an empty database, and `make reality-gate` maps that to
 exit 0. When that JSONL export is present, the same target scores it with
 the unchanged filter and does not print the skip. The job fails when a
-recorded ledger's verdict is anything other than `pass`.
+recorded ledger's verdict is anything other than `pass`. The committed
+ledger is the *pending* adjudication input: once a study's verdict is
+rendered and published, its artifacts archive to
+`research/reality/studies/<study_id>/` (see `research/reality/README.md`),
+returning the gate to skip for the next study.
 
 ## Phase 5 — integration & CI gates on (W5)
 
