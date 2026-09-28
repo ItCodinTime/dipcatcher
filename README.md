@@ -210,6 +210,7 @@ The FastAPI service (`dipcatcher api`, default host `127.0.0.1`):
 | `docs/FX1_TRAINING.md` | Compute ladder and ship gate (plan) |
 | `docs/FX1_DATASOURCES.md` | Professional datasource routing and point-in-time rules |
 | `docs/REPO_IMPROVEMENT_PLAN.md` | Evidence-chain sequence |
+| [`docs/research/findings.md`](docs/research/findings.md) | Recorded trial batches: date, trial count, DSR vs bar, PBO, best candidate vs baselines, verdict, and the artifact cited |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1 |
 | `SECURITY.md` | Private vulnerability reports |
 | `CHANGELOG.md` | Keep a Changelog, seeded from recent commits |
