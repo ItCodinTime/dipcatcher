@@ -81,7 +81,7 @@ def parse_stooq_csv(text: str, *, security_id: str, stooq_symbol: str) -> pl.Dat
         if not date_s:
             continue
         try:
-            day = datetime.strptime(date_s, "%Y-%m-%d").date()
+            day = date.fromisoformat(date_s)
         except ValueError:
             continue
         try:

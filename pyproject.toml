@@ -126,7 +126,7 @@ line-length = 100
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "C901"]
+select = ["E", "F", "I", "UP", "B", "SIM", "C901", "DTZ"]
 ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 
 [tool.ruff.lint.mccabe]
@@ -136,7 +136,7 @@ ignore = ["E501", "B008", "UP042", "SIM108", "SIM115"]
 max-complexity = 74
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["B018"]
+"tests/**" = ["B018", "DTZ"]
 
 [tool.mypy]
 python_version = "3.12"
