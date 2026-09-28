@@ -210,6 +210,7 @@ class _State:
     traded_turn: float = 0.0
     garch_overlay_dates: int = 0
     realized_garch_overlay_dates: int = 0
+    overlay_counted_bar: int = -1
     stopped: bool = False
     nav_checked: bool = False
     min_cash: float = 0.0
@@ -740,7 +741,12 @@ def _prepare_targets(
     return target_w
 
 
-def _count_overlay(state: _State, source: str | None) -> None:
+def _count_overlay(state: _State, source: str | None, bar_index: int) -> None:
+    # Overlay dates are per-bar counters, matching the engine's per-iteration
+    # increments; two fills landing on one bar must not double-count.
+    if bar_index == state.overlay_counted_bar:
+        return
+    state.overlay_counted_bar = bar_index
     if source == MARKET_RISK_OVERLAY_REALIZED_GARCH:
         state.realized_garch_overlay_dates += 1
     elif source == MARKET_RISK_OVERLAY_GARCH:
@@ -771,8 +777,7 @@ def _rebalance_next_open(
     target_w = _prepare_targets(state, signal_index, risk_overlay)
     snap = state.snaps[signal_index]
     market_vol, overlay_source = market_risk_overlay_asof(config, bars, signal_time)
-    _count_overlay(state, overlay_source)
-    state.traded_turn = 0.0
+    _count_overlay(state, overlay_source, bar_index)
     ids = set(state.exec_mark) | set(state.book.shares) | set(target_w)
     costs_cfg = config.costs
     legacy = (
@@ -979,8 +984,7 @@ def _rebalance_path(
     target_w = _prepare_targets(state, signal_index, risk_overlay)
     snap = state.snaps[signal_index]
     market_vol, overlay_source = market_risk_overlay_asof(config, bars, signal_time)
-    _count_overlay(state, overlay_source)
-    state.traded_turn = 0.0
+    _count_overlay(state, overlay_source, bar_index)
     for sid, resting in list(state.resting.items()):
         same = abs(float(target_w.get(sid, 0.0)) - resting.target_w) <= 1e-12
         if not same:
