@@ -25,7 +25,7 @@ SRC = ROOT / "src" / "quant_fund"
 VALID_STATUSES = {"audited", "partial", "pending", "waived"}
 
 #: Floor for modules carrying 'audited' status. May only increase.
-AUDITED_FLOOR = 360
+AUDITED_FLOOR = 367
 
 
 def _src_modules() -> list[str]:

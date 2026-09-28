@@ -73,7 +73,8 @@
       "status": "audited"
     },
     "leakage": {
-      "status": "pending"
+      "n_modules": 7,
+      "status": "audited"
     },
     "lightspeed": {
       "doc": "docs/AUDIT_FRONTIER.md",
