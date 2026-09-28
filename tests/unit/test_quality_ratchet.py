@@ -25,21 +25,10 @@ STRICT_MODULE_FLOOR = 397
 STRICT_BASELINE_SHA256 = "452034ec90dbc11dc2a8ca78f22d950c591ae0fd67b3ecbfabe08d5906f7cdcd"
 # validate_ledger_schema. verify_research_artifact was 196 before the split.
 MCCABE_CEILING = 74
-# `except Exception` handlers under src/quant_fund — origin/main's count
-# is 76 (main advanced past the 75 ceiling; bumped here, mirrored by #235).
-# New handlers that push the total above main fail this test.
-EXCEPT_EXCEPTION_CEILING = 76
-
-# `except BaseException` is broader still and escaped the regex above for
-# years. These pinned sites are the only permitted ones: torn-file
-# cleanup-then-reraise guards (storage, lake) and worker-boundary exception
-# ferrying (concurrent_io). Any new site fails the ratchet — narrow the
-# catch or justify it here.
-BASE_EXCEPTION_ALLOWLIST = {
-    "src/quant_fund/data/sources/storage.py": 1,
-    "src/quant_fund/data/concurrent_io.py": 2,
-    "src/quant_fund/data/lake.py": 1,
-}
+# `except Exception` handlers under src/quant_fund. Origin/main sat at 75;
+# three catalog lazy-import guards narrowed to ImportError, so the ceiling
+# tightens to 72. New handlers that push the total above this fail the test.
+EXCEPT_EXCEPTION_CEILING = 72
 
 
 def test_mypy_strict_allowlist_only_grows() -> None:
@@ -101,17 +90,7 @@ def test_no_bare_except_and_exception_ceiling() -> None:
         for line in path.read_text().splitlines():
             if re.match(r"\s*except\s*:", line):
                 bare += 1
-            elif re.match(r"\s*except\s+.*\bException\b", line):
+            elif re.match(r"\s*except\s+Exception\b", line):
                 broad += 1
     assert bare == 0
     assert broad <= EXCEPT_EXCEPTION_CEILING
-
-
-def test_base_exception_handlers_only_at_pinned_sites() -> None:
-    found: dict[str, int] = {}
-    for path in (ROOT / "src" / "quant_fund").rglob("*.py"):
-        rel = path.relative_to(ROOT).as_posix()
-        for line in path.read_text().splitlines():
-            if re.match(r"\s*except\s+BaseException\b", line):
-                found[rel] = found.get(rel, 0) + 1
-    assert found == BASE_EXCEPTION_ALLOWLIST

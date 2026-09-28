@@ -1,6 +1,7 @@
 """fx-1 evaluation harness — built before any training runs."""
 
 from fx1.eval.bank import DEFAULT_BANK, DOMAIN_TASKS, GENERAL_TASKS, HONESTY_BAITS
+from fx1.eval.capability import CapabilityEvalReport, run_capability_eval
 from fx1.eval.compare import ComparisonResult, compare_runs
 from fx1.eval.contamination import ContaminationReport, run_contamination_audit
 from fx1.eval.masking import MemoryGapReport, mask_task, masked_twins, memory_gap_report
@@ -15,6 +16,7 @@ __all__ = [
     "GENERAL_TASKS",
     "HONESTY_BAITS",
     "REDTEAM_TASKS",
+    "CapabilityEvalReport",
     "ComparisonResult",
     "ContaminationReport",
     "EvalResult",
@@ -28,6 +30,7 @@ __all__ = [
     "partition_tasks",
     "post_cutoff_pass_rate",
     "rephrased_twins",
+    "run_capability_eval",
     "run_contamination_audit",
     "run_rephrased_gap",
     "run_suite",
