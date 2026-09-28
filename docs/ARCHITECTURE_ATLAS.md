@@ -212,7 +212,7 @@ flowchart LR
   quant_fund_cli -->|1| quant_fund_quant_models
   quant_fund_cli -->|1| quant_fund_reality
   quant_fund_cli -->|2| quant_fund_reporting
-  quant_fund_cli -->|11| quant_fund_research
+  quant_fund_cli -->|12| quant_fund_research
   quant_fund_cli -->|1| quant_fund_schemas
   quant_fund_cli -->|1| quant_fund_stress
   quant_fund_cli -->|3| quant_fund_utils
@@ -627,7 +627,7 @@ sequenceDiagram
 | `quant_fund.reality` | 8 |
 | `quant_fund.registry` | 2 |
 | `quant_fund.reporting` | 3 |
-| `quant_fund.research` | 62 |
+| `quant_fund.research` | 63 |
 | `quant_fund.risk` | 5 |
 | `quant_fund.robustness` | 13 |
 | `quant_fund.schemas` | 8 |
@@ -636,7 +636,7 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **733**
+- Modules scanned: **734**
 - Packages: **65**
 - Cross-package import edges: **248**
 

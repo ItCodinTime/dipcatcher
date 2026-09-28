@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 734,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -1520,6 +1520,10 @@
     },
     {
       "dst": "quant_fund.research.cross_sectional",
+      "src": "quant_fund.cli.research_cmds"
+    },
+    {
+      "dst": "quant_fund.research.evidence_audit",
       "src": "quant_fund.cli.research_cmds"
     },
     {
@@ -6095,6 +6099,14 @@
       "src": "quant_fund.research.cross_sectional"
     },
     {
+      "dst": "quant_fund.research.fleet_eval",
+      "src": "quant_fund.research.evidence_audit"
+    },
+    {
+      "dst": "quant_fund.research.receipt_v2",
+      "src": "quant_fund.research.evidence_audit"
+    },
+    {
       "dst": "quant_fund.research.explainability.attribution",
       "src": "quant_fund.research.explainability"
     },
@@ -6444,6 +6456,10 @@
     },
     {
       "dst": "quant_fund.research.catalog",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
+      "dst": "quant_fund.research.evidence_audit",
       "src": "quant_fund.research.receipt_v2"
     },
     {
@@ -7732,6 +7748,7 @@
     "quant_fund.research.catalog.sweep",
     "quant_fund.research.cost_allocation",
     "quant_fund.research.cross_sectional",
+    "quant_fund.research.evidence_audit",
     "quant_fund.research.explainability",
     "quant_fund.research.explainability.attribution",
     "quant_fund.research.explainability.drift",
@@ -8263,7 +8280,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 11,
+      "imports": 12,
       "src": "quant_fund.cli"
     },
     {
@@ -9168,7 +9185,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 103,
       "src": "quant_fund.research"
     },
     {
