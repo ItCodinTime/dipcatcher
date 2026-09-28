@@ -426,9 +426,13 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     errors: list[str] = []
     convention, seal_errors = _seal_errors(payload)
     errors.extend(seal_errors)
-    claim = payload.get("live_pnl_claim")
-    if claim is not None and claim is not False:
+    if payload.get("live_pnl_claim") is not None and payload.get("live_pnl_claim") is not False:
         errors.append("live_pnl_claim_not_false")
+    # The honesty scan applies to every sealed receipt, not just receipt.v2 —
+    # a v1 payload naming a forbidden headline metric must not verify clean.
+    scanned = {key: value for key, value in payload.items() if key != "live_pnl_claim"}
+    if not family_blob_forbidden_metrics_absent(scanned):
+        errors.append("forbidden_metric_keys")
     if payload.get("schema") == "fleet_eval.v1":
         from quant_fund.research.fleet_eval import (
             fleet_v1_audit_errors,

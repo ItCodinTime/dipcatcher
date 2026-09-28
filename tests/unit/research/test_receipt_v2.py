@@ -389,3 +389,39 @@ def test_cli_verify_receipt_fails_closed(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["verify-receipt", str(bad)])
     assert result.exit_code == 1
     assert '"valid": false' in result.output
+
+
+def test_verify_v1_sealed_receipt_rejects_forbidden_metric(tmp_path: Path) -> None:
+    """A sealed v1 receipt naming a banned headline metric must not verify."""
+    body = {
+        "kind": "unit_test",
+        "schema_version": 1,
+        "live_pnl_claim": False,
+        "results": {"sharpe": 1.9},
+    }
+    sealed = {
+        **body,
+        "receipt_sha256": hash_bytes(canonical_json_bytes(body)),
+    }
+    path = tmp_path / "v1_forbidden.json"
+    path.write_text(json.dumps(sealed))
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert "forbidden_metric_keys" in result["errors"]
+
+
+def test_verify_v1_sealed_receipt_rejects_live_pnl_claim(tmp_path: Path) -> None:
+    body = {
+        "kind": "unit_test",
+        "schema_version": 1,
+        "live_pnl_claim": True,
+    }
+    sealed = {
+        **body,
+        "receipt_sha256": hash_bytes(canonical_json_bytes(body)),
+    }
+    path = tmp_path / "v1_pnl.json"
+    path.write_text(json.dumps(sealed))
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert "live_pnl_claim_not_false" in result["errors"]
