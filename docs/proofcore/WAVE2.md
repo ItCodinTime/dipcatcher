@@ -341,3 +341,45 @@ README rewrite of the fail-closed lines, CLI mounts for
 - **A3 (§8):** the contracts appends (§2.1–§2.4) are ALREADY on
   `proofcore/wave2-base` — implemented and import-verified by the lead. All
   agents treat `src/quant_fund/proofcore/contracts.py` as READ-ONLY.
+- **A4 (§4):** `run_proven(spec, *, vault, bundle_dir, signing_key=None)` in
+  `proof/runner.py` is the wave-2 entry point. The §4 name
+  `run_backtest_proven` was taken by the wave-1 fail-closed stub with a
+  different signature; zero public-API breakage forbids repurposing it, so
+  the stub STAYS fail-closed and the CLI `quant proof run` calls
+  `run_proven`.
+
+---
+
+## Amendments (integration wave, post-merge)
+
+Reconciliations across the W6/W7/W8 deliveries, landed on
+`proofcore/wave2-base` by the integration agent. Binding as of the
+integration PR.
+
+- **I1 (§2.2):** ONE canonical `env_fingerprint` implementation,
+  `proofcore.ci.env_fingerprint()`, on both sides (contracts §2.2 formula:
+  `platform|python tag|version`; the version is probed via
+  `importlib.metadata.version("fx-1")` because the layering gate forbids
+  proofcore importing the quant_fund root). The runner mints and replay
+  re-derives via this helper. W6's dev literal `...|quant_fund-dev` remains
+  ACCEPTED by the replay env gate as a compat shim that expires in wave 3.
+- **I2 (§2.5/§5):** ONE canonical `spec_sha256` on both sides:
+  `sha256_hex_json(spec.model_dump(mode="json"))` with NO rounding anywhere.
+  `build_bundle` gained an additive `round_config: bool = True` parameter;
+  the wave-2 runner passes `round_config=False` so the config sidecar carries
+  the unrounded spec dump and a >12-significant-digit float param round-trips
+  mint → replay bit-exact (e2e-tested).
+- **I3 (§6):** the IO guard is wired into `run_proven` in enforce mode. The
+  import is lazy and OPTIONAL at import time: an unimportable guard logs one
+  warning per process and the run proceeds under the watchdog and
+  declared-surface checks (defense in depth, documented). The vault root and
+  the runner staging dir are allowlisted (vault-internal manifest-verified
+  reads use `open()` inside decision windows).
+- **I4 (§2.5):** `verify.py` hash-checks the trace/env/seeds sidecars via the
+  config sidecar's `sidecars` commitment map (check 6b, mirroring the wave-1
+  config-check pattern). Commitment kinds are restricted to `[a-z0-9_]+` so a
+  hostile commitment key cannot escape the bundle dir.
+- **I5 (§1.6):** the coverage floors for the new wave-2 modules are
+  per-MODULE, all 90: `proofcore.scheduler`, `proof.runner`,
+  `proof.estimators`, `proof.replay`, `leakage.guard` — declared in pyproject
+  `[tool.proofcore.coverage-floors]`, enforced by `make proofcore-coverage`.
