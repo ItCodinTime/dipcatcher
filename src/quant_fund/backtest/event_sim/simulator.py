@@ -106,12 +106,14 @@ class EventSimSpec:
             raise ValueError("fill_model must be next_open, vwap, or l2_queue")
         if self.signal_to_order_bars < 0 or self.order_to_exchange_bars < 0:
             raise ValueError("latency bars must be non-negative")
-        for label, delay in (
-            ("signal_to_order", self.signal_to_order),
-            ("order_to_exchange", self.order_to_exchange),
+        for label, delay, bars in (
+            ("signal_to_order", self.signal_to_order, self.signal_to_order_bars),
+            ("order_to_exchange", self.order_to_exchange, self.order_to_exchange_bars),
         ):
             if delay is not None and delay < timedelta(0):
                 raise ValueError(f"{label} timedelta must be non-negative")
+            if delay is not None and bars != 0:
+                raise ValueError(f"{label}: choose bar-count or timedelta latency, not both")
         if self.vwap_window_bars < 1 or self.l2_rest_bars < 0:
             raise ValueError("vwap window must be >= 1 and l2 rest bars >= 0")
         if self.min_notional < 0.0 or not math.isfinite(self.min_notional):
