@@ -94,8 +94,8 @@ def spread_crossing_cost(
     quantity: float | None = None,
 ) -> float:
     """Dollar spread. Quote-based half-spread overrides the bps schedule when given."""
-    if (half_spread is None) != (quantity is None):
-        raise ValueError("half_spread and quantity must be provided together")
+    if half_spread is not None and quantity is None:
+        raise ValueError("half_spread requires quantity to scale it")
     if half_spread is not None and quantity is not None:
         if not math.isfinite(half_spread) or half_spread < 0.0:
             raise ValueError("half_spread must be finite and non-negative")
