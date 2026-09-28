@@ -1,8 +1,8 @@
 {
   "directories": {
     "api": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 3,
+      "status": "audited"
     },
     "audit": {
       "doc": "docs/AUDIT_OBSERVABILITY.md",
