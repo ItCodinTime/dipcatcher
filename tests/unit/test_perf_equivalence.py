@@ -249,7 +249,11 @@ def test_backtest_mixed_datetime_units_stay_on_reference_path(tmp_path: object) 
     assert got.equity.equals(ref.equity) and got.fills.equals(ref.fills)
 
 
-def test_backtest_duplicate_bars_stay_on_reference_path(tmp_path: object) -> None:
+def test_backtest_duplicate_bars_fail_closed_on_both_paths(tmp_path: object) -> None:
+    """Duplicate bar keys are ambiguous — both engines refuse rather than
+    last-write-wins (order-dependent fills). Fast replay already refused;
+    the event loop now matches the paper-loop guard.
+    """
     from pathlib import Path
 
     bars, weights = _book(n_symbols=2, n_days=8)
@@ -258,9 +262,10 @@ def test_backtest_duplicate_bars_stay_on_reference_path(tmp_path: object) -> Non
     assert _fast_replay_panel_supported(bars, weights) is False
     config = _backtest_config()
     config.data.root = Path(str(tmp_path))
-    got = run_backtest(bars, weights, config)
-    ref = _run_backtest_event_loop(bars, weights, config)
-    assert got.equity.equals(ref.equity) and got.fills.equals(ref.fills)
+    with pytest.raises(ValueError, match="duplicate bars"):
+        _run_backtest_event_loop(bars, weights, config)
+    with pytest.raises(ValueError, match="duplicate bars"):
+        run_backtest(bars, weights, config, fast=True)
 
 
 def test_perf_ci_presence_requires_exact_benchmark_id(

@@ -32,6 +32,11 @@ run, and a record of what the package checks today.
   `python -c "from fx1.data import build_corpus; build_corpus('receipts', 'data/fx1/corpus.jsonl')"`
 - `eval/suite.py` — deterministic eval harness (honesty / domain / general
   task kinds). Runs **before** any training; the honesty gate blocks shipping.
+- `eval/capability.py` — aggregate capability battery over the sealed
+  SYNTHETIC banks: `ts_reasoning`, `calibration_eval` (ECE + Spiegelhalter Z,
+  gate at 0.02), `tooluse_eval`, `retrieval_eval`. One `ModelFn` in, one
+  `CapabilityEvalReport` out; honesty sub-gates are hard. CLI:
+  `fx1 capability-eval --backend hosted_k3|local_fx1 --seed N`.
 - `train/config.py` — validated run config: ladder stage (`proxy` →
   `final_k3` → `distill`), LoRA hyperparameters, mandatory cost disclosure,
   K3 constraints (multi-node, preserved `reasoning_content`).

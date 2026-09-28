@@ -586,7 +586,7 @@ def northset_metrics_required_keys_finite_when_present_honesty_errors(blob: obje
         return []
     try:
         from quant_fund.microstructure.book_metrics import METRICS_REQUIRED_FINITE_KEYS
-    except Exception:
+    except ImportError:
         return []
     errs: list[str] = []
     for key in METRICS_REQUIRED_FINITE_KEYS:

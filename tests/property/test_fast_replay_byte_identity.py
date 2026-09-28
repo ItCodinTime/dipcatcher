@@ -270,7 +270,7 @@ def test_fast_flag_true_refuses_unsupported_workloads() -> None:
     with pytest.raises(ValueError, match="fast replay"):
         run_backtest(mixed, weights, cfg, fast=True)
     dup = pl.concat([bars, bars.head(1)])
-    with pytest.raises(ValueError, match="fast replay"):
+    with pytest.raises(ValueError, match="duplicate bars"):
         run_backtest(dup, weights, cfg, fast=True)
     empty = pl.DataFrame(schema=bars.schema)
     with pytest.raises(ValueError, match="fast replay"):
