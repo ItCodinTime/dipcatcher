@@ -674,6 +674,16 @@ def _check_lh009(tree: ast.AST, path_str: str) -> list[_Finding]:
                     "direct parquet read outside the data layer bypasses the PIT choke point",
                 )
             )
+        elif name == "history":
+            out.append(
+                _Finding(
+                    "LH009",
+                    node.lineno,
+                    node.col_offset,
+                    "PitVault.history() returns every version including future "
+                    "known_at — audit-only API must not appear in strategy code paths",
+                )
+            )
         # ADVERSARIAL §1a-E12: getattr(pl, "read_" + "parquet")(path).
         elif name == "getattr" and len(node.args) >= 2:
             attr = _fold_str(node.args[1])

@@ -54,6 +54,28 @@ def _batch(
     )
 
 
+def _dedupe(
+    sids: list[str], event_offsets: list[int], known_offsets: list[int], values: list[float]
+) -> tuple[list[str], list[int], list[int], list[float]]:
+    """Drop duplicate (sid, event, known_at) rows, keeping first arrival.
+
+    require_pit_frame rejects ambiguous versions of one publication instant
+    inside a single append, so generated batches must carry unique keys.
+    """
+    seen: set[tuple[str, int, int]] = set()
+    keep = [
+        i
+        for i, key in enumerate(zip(sids, event_offsets, known_offsets, strict=True))
+        if key not in seen and not seen.add(key)
+    ]
+    return (
+        [sids[i] for i in keep],
+        [event_offsets[i] for i in keep],
+        [known_offsets[i] for i in keep],
+        [values[i] for i in keep],
+    )
+
+
 @settings(
     max_examples=15,
     derandomize=True,
@@ -85,6 +107,7 @@ class PitVaultMachine(RuleBasedStateMachine):
         values = [
             data.draw(st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)) for _ in range(n)
         ]
+        sids, events, knowns, values = _dedupe(sids, events, knowns, values)
         self.vault.append("silver/bars", _batch(sids, events, knowns, values))
         for sid, ev, ka, val in zip(sids, events, knowns, values, strict=True):
             self.state.setdefault((sid, ev), []).append((ka, val))
@@ -99,10 +122,11 @@ class PitVaultMachine(RuleBasedStateMachine):
         if not self.state:
             return
         n = data.draw(st.integers(min_value=1, max_value=4))
-        keys = [data.draw(st.sampled_from(sorted(self.state))) for _ in range(n)]
+        keys = list(dict.fromkeys(data.draw(st.sampled_from(sorted(self.state))) for _ in range(n)))
         hi = data.draw(st.integers(min_value=0, max_value=10_000))
         values = [
-            data.draw(st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)) for _ in range(n)
+            data.draw(st.floats(min_value=-1e6, max_value=1e6, allow_nan=False))
+            for _ in range(len(keys))
         ]
         frame = pl.DataFrame(
             {
@@ -177,10 +201,13 @@ def test_adversarial_future_known_at_never_visible(data, t_offset: int, future_o
         values = [
             data.draw(st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)) for _ in range(n)
         ]
+        sids, events, knowns, values = _dedupe(sids, events, knowns, values)
         vault.append("silver/bars", _batch(sids, events, knowns, values))
         # Adversarial injection: poison values published far in the future.
-        poison = _batch(sids, events, [future_offset] * n, [-9e99] * n)
-        vault.append("silver/bars", poison)
+        p_sids, p_events, p_knowns, p_values = _dedupe(
+            sids, events, [future_offset] * len(sids), [-9e99] * len(sids)
+        )
+        vault.append("silver/bars", _batch(p_sids, p_events, p_knowns, p_values))
 
         t = T0 + timedelta(days=t_offset)
         out = vault.asof("silver/bars", t)
@@ -209,18 +236,20 @@ def test_restatement_inert_before_publication(data, t_offset: int, publish_offse
         values = [
             data.draw(st.floats(min_value=-1e6, max_value=1e6, allow_nan=False)) for _ in range(n)
         ]
+        sids, events, knowns, values = _dedupe(sids, events, knowns, values)
         vault.append("silver/bars", _batch(sids, events, knowns, values))
 
         t = T0 + timedelta(days=t_offset)
         before = vault.asof("silver/bars", t)
         publish = T0 + timedelta(days=t_offset + publish_offset)  # strictly > t
+        r_sids, r_events, _, r_values = _dedupe(sids, events, [0] * len(sids), [-1.0] * len(sids))
         vault.restate(
             "silver/bars",
             pl.DataFrame(
                 {
-                    "security_id": list(sids),
-                    "event_time": [T0 + timedelta(days=e) for e in events],
-                    "close": [-1.0] * n,
+                    "security_id": list(r_sids),
+                    "event_time": [T0 + timedelta(days=e) for e in r_events],
+                    "close": r_values,
                 }
             ),
             known_at=publish,

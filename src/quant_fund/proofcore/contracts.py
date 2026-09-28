@@ -343,6 +343,16 @@ class PitManifest(_Strict):
     revision: int = Field(ge=0, description="monotonic per-dataset append counter")
     prev_manifest_sha256: str = Field(min_length=HASH_HEX_LEN, max_length=HASH_HEX_LEN)
     files: tuple[PitManifestFile, ...]
+    dataset_meta_sha256: str = Field(
+        default=GENESIS_HASH,
+        min_length=HASH_HEX_LEN,
+        max_length=HASH_HEX_LEN,
+        description=(
+            "sha256 of the dataset's dataset.json metadata bytes, committed at "
+            "creation and re-verified on every manifest read. GENESIS_HASH marks "
+            "an unanchored legacy manifest (pre-anchor vaults)."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

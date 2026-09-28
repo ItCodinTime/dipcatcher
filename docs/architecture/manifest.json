@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 734,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -239,6 +239,10 @@
       "src": "fx1.eval"
     },
     {
+      "dst": "fx1.eval.capability",
+      "src": "fx1.eval"
+    },
+    {
       "dst": "fx1.eval.compare",
       "src": "fx1.eval"
     },
@@ -281,6 +285,26 @@
     {
       "dst": "quant_fund.metrics.calibration_tests",
       "src": "fx1.eval.calibration_eval"
+    },
+    {
+      "dst": "fx1.eval.calibration_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.retrieval_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.suite",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.tooluse_eval",
+      "src": "fx1.eval.capability"
+    },
+    {
+      "dst": "fx1.eval.ts_reasoning",
+      "src": "fx1.eval.capability"
     },
     {
       "dst": "fx1.data.quality",
@@ -4976,6 +5000,10 @@
     },
     {
       "dst": "quant_fund.proofcore.contracts",
+      "src": "quant_fund.pit.cli"
+    },
+    {
+      "dst": "quant_fund.proofcore.contracts",
       "src": "quant_fund.pit.corrections"
     },
     {
@@ -7119,6 +7147,7 @@
     "fx1.eval",
     "fx1.eval.bank",
     "fx1.eval.calibration_eval",
+    "fx1.eval.capability",
     "fx1.eval.compare",
     "fx1.eval.contamination",
     "fx1.eval.masking",
@@ -7923,7 +7952,7 @@
     },
     {
       "dst": "fx1.eval",
-      "imports": 18,
+      "imports": 24,
       "src": "fx1.eval"
     },
     {
@@ -8938,7 +8967,7 @@
     },
     {
       "dst": "quant_fund.proofcore",
-      "imports": 5,
+      "imports": 6,
       "src": "quant_fund.pit"
     },
     {

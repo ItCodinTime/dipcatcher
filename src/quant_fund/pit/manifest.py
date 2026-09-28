@@ -131,9 +131,30 @@ def write_manifest(
     return sha256_hex_bytes(payload)
 
 
+def _check_manifest_shape(manifest: PitManifest) -> None:
+    """Structural invariants every vault-written manifest satisfies.
+
+    ``revision`` counts appends and each append adds exactly one part named
+    ``r{revision:07d}.parquet``, so the revision equals the file count and the
+    i-th entry is always the i-th part. Forged manifests that violate these
+    invariants are rejected before any hash verification runs.
+    """
+    if manifest.revision != len(manifest.files):
+        raise ManifestError(
+            f"{manifest.dataset}: revision {manifest.revision} lists {len(manifest.files)} files"
+        )
+    for index, entry in enumerate(manifest.files, start=1):
+        expected = f"{manifest.dataset}/{PARTS_DIR}/r{index:07d}.parquet"
+        if entry.path != expected:
+            raise ManifestError(
+                f"{manifest.dataset}: file {index} path {entry.path!r} != expected {expected!r}"
+            )
+
+
 def _validated_history(root: Path, dataset: str, current: PitManifest) -> list[bytes]:
     """Validate every retained link and return the canonical revision bytes."""
     previous_sha = GENESIS_HASH
+    meta_anchor: str | None = None
     revisions: list[bytes] = []
     for revision in range(current.revision + 1):
         revision_path = versioned_manifest_path(root, dataset, revision)
@@ -150,6 +171,11 @@ def _validated_history(root: Path, dataset: str, current: PitManifest) -> list[b
             raise ManifestError(f"{dataset}: manifest revision {revision} identity mismatch")
         if prior.prev_manifest_sha256 != previous_sha:
             raise ManifestError(f"{dataset}: manifest chain broken at revision {revision}")
+        _check_manifest_shape(prior)
+        if meta_anchor is None:
+            meta_anchor = prior.dataset_meta_sha256
+        elif prior.dataset_meta_sha256 != meta_anchor:
+            raise ManifestError(f"{dataset}: manifest revision {revision} metadata anchor drift")
         revisions.append(revision_bytes)
         previous_sha = sha256_hex_bytes(revision_bytes)
     if revisions[-1] != manifest_path(root, dataset).read_bytes():
@@ -182,6 +208,19 @@ def read_manifest(root: Path, dataset: str) -> PitManifest:
     revisions = _validated_history(root, dataset, manifest)
     if manifest.revision > 0 and anchor != sha256_hex_bytes(revisions[-2]):
         raise ManifestError(f"{dataset}: manifest chain broken at current anchor")
+    if manifest.dataset_meta_sha256 != GENESIS_HASH:
+        # dataset.json is create-time immutable; the manifest chain anchors its
+        # bytes so a tampered/swapped metadata file fails closed like any other
+        # committed file. Legacy manifests (GENESIS_HASH) are unanchored.
+        meta_file = dataset_dir(root, dataset) / DATASET_META_NAME
+        if not meta_file.is_file():
+            raise ManifestError(f"{dataset}: dataset.json missing but manifest anchors it")
+        try:
+            meta_sha = sha256_file(meta_file)
+        except OSError as exc:
+            raise ManifestError(f"{dataset}: dataset.json unreadable: {exc}") from exc
+        if meta_sha != manifest.dataset_meta_sha256:
+            raise ManifestError(f"{dataset}: dataset.json sha256 disagrees with anchored manifest")
     extra = versioned_manifest_path(root, dataset, manifest.revision + 1)
     if extra.exists():
         raise ManifestError(f"{dataset}: uncommitted later manifest revision exists")
@@ -225,8 +264,10 @@ def recover_interrupted_manifest(root: Path, dataset: str) -> bool:
         or pending.prev_manifest_sha256 != current_sha
         or pending.files[: len(current.files)] != current.files
         or len(pending.files) != len(current.files) + 1
+        or pending.dataset_meta_sha256 != current.dataset_meta_sha256
     ):
         raise ManifestError(f"{dataset}: pending manifest does not extend current chain")
+    _check_manifest_shape(pending)
     violations = verify_part_hashes(root, pending)
     if violations:
         raise ManifestError(f"{dataset}: pending manifest part invalid: {violations[0]}")

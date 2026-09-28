@@ -197,8 +197,12 @@ def test_verify_reports_missing_and_unreadable_part(vault: PitVault, monkeypatch
     assert any("part file missing" in message for message in vault.verify("silver/bars"))
     part.write_bytes(b"bytes")
 
+    real_sha256_file = manifest_mod.sha256_file
+
     def unreadable(_path):
-        raise OSError("simulated read error")
+        if str(_path).endswith(".parquet"):
+            raise OSError("simulated read error")
+        return real_sha256_file(_path)
 
     monkeypatch.setattr(manifest_mod, "sha256_file", unreadable)
     assert any("unreadable part" in message for message in vault.verify("silver/bars"))

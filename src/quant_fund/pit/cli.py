@@ -54,6 +54,7 @@ def verify_cmd(
 def stats_cmd(root: Path = typer.Option(..., "--root", help="Vault root directory.")) -> None:
     """Per-dataset rows / revisions / time span."""
     from quant_fund.pit import PitVault
+    from quant_fund.proofcore.contracts import ManifestError
 
     vault = PitVault(root)
     names = vault.list_datasets()
@@ -65,7 +66,11 @@ def stats_cmd(root: Path = typer.Option(..., "--root", help="Vault root director
         status = "ok" if not violations else f"CORRUPT({len(violations)})"
         from quant_fund.pit.manifest import read_manifest
 
-        manifest = read_manifest(root, name)
+        try:
+            manifest = read_manifest(root, name)
+        except ManifestError as exc:
+            typer.echo(f"{name}: manifest unreadable ({exc}) status={status}")
+            continue
         rows = sum(entry.rows for entry in manifest.files)
         if manifest.files:
             span = (

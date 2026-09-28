@@ -60,6 +60,14 @@ def require_pit_frame(frame: pl.DataFrame, *, security_level: bool) -> None:
         raise VaultError("null event_time/known_at is unobservable — fail closed")
     if security_level and frame[SECURITY_ID_COL].null_count():
         raise VaultError("null security_id in security-level append — fail closed")
+    # Two rows carrying the same (key, known_at) are ambiguous versions of one
+    # publication instant; selection resolves them by arrival order, silently
+    # shadowing the loser. Fail closed instead of picking a winner.
+    dup_cols = [*key_columns(security_level=security_level), KNOWN_AT_COL]
+    if frame.select(dup_cols).is_duplicated().any():
+        raise VaultError(
+            "duplicate (key, known_at) rows in one append — ambiguous version, fail closed"
+        )
 
 
 def normalize_pit_frame(frame: pl.DataFrame) -> pl.DataFrame:
@@ -111,9 +119,8 @@ def select_asof(
         sliced = available.group_by(key_cols, maintain_order=True).first()
     else:  # pragma: no cover - enum is closed
         raise VaultError(f"unknown restatement policy: {policy!r}")
-    sort_keys = list(key_cols) if columns is None else [c for c in key_cols]
     try:
-        return sliced.sort(sort_keys + [KNOWN_AT_COL]).collect()
+        return sliced.sort(list(key_cols) + [KNOWN_AT_COL]).collect()
     except pl.exceptions.ColumnNotFoundError as exc:
         raise VaultError(f"asof projection references unknown column: {exc}") from exc
 

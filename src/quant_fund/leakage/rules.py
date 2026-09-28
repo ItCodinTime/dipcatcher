@@ -97,7 +97,8 @@ RULE_REGISTRY: dict[str, RuleSpec] = {
         "warning",
         "Direct parquet read outside data layer",
         "`pl.read_parquet`/`pl.scan_parquet` outside `data/`/`pit/` bypasses "
-        "the PIT choke point (audit A2 F8). Route reads through "
+        "the PIT choke point (audit A2 F8); `PitVault.history()` returns "
+        "unfiltered versions and is audit-only. Route reads through "
         "`pit.guarded_read_parquet`. WARNING-only until the call-site "
         "migration wave lands (adjudicated; flips to error afterwards).",
     ),

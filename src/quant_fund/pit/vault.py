@@ -73,9 +73,16 @@ def _now_iso() -> str:
 @contextmanager
 def _dataset_write_lock(directory: Path):
     """Serialize appends across processes; SQLite releases the lock on crash."""
-    connection = sqlite3.connect(directory / ".append-lock.sqlite3", timeout=30)
+    try:
+        connection = sqlite3.connect(directory / ".append-lock.sqlite3", timeout=30)
+    except sqlite3.Error as exc:
+        raise VaultError(f"dataset append lock unavailable: {exc}") from exc
     try:
         connection.execute("BEGIN EXCLUSIVE")
+    except sqlite3.Error as exc:
+        connection.close()
+        raise VaultError(f"dataset append lock busy: {exc}") from exc
+    try:
         yield
     finally:
         connection.rollback()
@@ -125,6 +132,8 @@ class PitVault:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             if not isinstance(meta, dict) or not isinstance(meta.get("security_level"), bool):
                 raise ValueError("dataset metadata must declare a boolean security_level")
+            if meta.get("dataset") != name:
+                raise ValueError(f"dataset metadata name field {meta.get('dataset')!r} != {name!r}")
             if not isinstance(meta.get("monotonic_known_at", False), bool):
                 raise ValueError("monotonic_known_at must be boolean")
             return meta
@@ -151,15 +160,26 @@ class PitVault:
         directory = self._dataset_dir(name)
         if manifest_mod.manifest_path(self.root, name).exists():
             raise VaultError(f"dataset already exists: {name!r}")
+        # Dataset dirs must never nest: a descendant's files would land inside
+        # the parent's machinery namespace (parts/, manifests/) and can wedge
+        # its write-once appends or pollute verify(); an ancestor swallows the
+        # existing child's storage.
+        for other in self.list_datasets():
+            if name.startswith(other + "/") or other.startswith(name + "/"):
+                raise VaultError(
+                    f"dataset dirs must not nest: {name!r} conflicts with "
+                    f"existing dataset {other!r}"
+                )
         (directory / manifest_mod.PARTS_DIR).mkdir(parents=True, exist_ok=True)
         meta = {
             "dataset": name,
             "security_level": bool(security_level),
             "monotonic_known_at": bool(monotonic_known_at),
         }
+        meta_payload = json.dumps(meta, sort_keys=True).encode("utf-8")
         manifest_mod._atomic_write(
             directory / manifest_mod.DATASET_META_NAME,
-            json.dumps(meta, sort_keys=True).encode("utf-8"),
+            meta_payload,
         )
         manifest = PitManifest(
             dataset=name,
@@ -167,6 +187,7 @@ class PitVault:
             revision=0,
             prev_manifest_sha256=GENESIS_HASH,
             files=(),
+            dataset_meta_sha256=sha256_hex_bytes(meta_payload),
         )
         manifest_mod.write_manifest(self.root, name, manifest, prev_manifest_sha256=GENESIS_HASH)
 
@@ -271,6 +292,7 @@ class PitVault:
                 revision=revision,
                 prev_manifest_sha256=current_sha,
                 files=(*current.files, entry),
+                dataset_meta_sha256=current.dataset_meta_sha256,
             )
             manifest_mod.write_manifest(self.root, name, updated, prev_manifest_sha256=current_sha)
             return updated
@@ -284,9 +306,14 @@ class PitVault:
             orphan = directory / manifest_mod.PARTS_DIR / f"r{revision:07d}.parquet"
             if manifest_mod.versioned_manifest_path(self.root, name, revision).exists():
                 raise VaultError(f"{name}: revision {revision} has a retained manifest")
+            # A symlink must be checked before exists(): a dangling link reports
+            # exists() == False and would be silently skipped while still
+            # wedging the next append's write-once check.
+            if orphan.is_symlink():
+                raise VaultError(f"{name}: unsafe uncommitted part: {orphan}")
             if not orphan.exists():
                 return False
-            if orphan.is_symlink() or not orphan.is_file():
+            if not orphan.is_file():
                 raise VaultError(f"{name}: unsafe uncommitted part: {orphan}")
             orphan.unlink()
             return True

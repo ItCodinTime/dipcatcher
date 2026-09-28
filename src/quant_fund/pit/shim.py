@@ -37,6 +37,12 @@ def _to_pit_frame(frame: pl.DataFrame, *, dataset: str, t: datetime) -> PitFrame
             f"{dataset}: frame lacks 'event_time' — PIT observability cannot be "
             "established; refusing the read (fail-closed)"
         )
+    et_dtype = frame.schema[EVENT_TIME_COL]
+    if not isinstance(et_dtype, pl.Datetime) or et_dtype.time_zone is None:
+        raise PointInTimeError(
+            f"{dataset}: {EVENT_TIME_COL} must be timezone-aware Datetime, "
+            f"got {et_dtype} — fail-closed"
+        )
     if KNOWN_AT_COL not in frame.columns:
         # Legacy column set (data/point_in_time.py PIT_COLS): available_time
         # is the publication timestamp; map it onto the vault's known_at.
