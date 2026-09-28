@@ -1500,10 +1500,21 @@ def compare_return_bases(
     )
     # Regime series stays on quote closes for the causal SPY filter in both
     # modes so the on/off mask is identical; only constituent marks change.
+    # Drop action rows for names absent from the stock panel (including SPY).
+    stock_ids = stocks.select("security_id").unique()
+    stock_actions = actions.join(stock_ids, on="security_id", how="inner")
+    bar_keys = stocks.select(["security_id", "event_time"]).unique()
+    matched_actions = stock_actions.join(bar_keys, on=["security_id", "event_time"], how="inner")
+    dropped_actions = int(stock_actions.height - matched_actions.height)
+    if dropped_actions:
+        print(
+            f"dropped {dropped_actions} corporate-action rows without a matching stock bar",
+            flush=True,
+        )
     name_cap = float(spec["risk_gate"]["max_name"])
     net_cap = float(spec["risk_gate"]["max_net"])
     modes: dict[str, dict[str, Any]] = {}
-    for mode, mode_actions in ((_RETURN_QUOTE, None), (_RETURN_TOTAL, actions)):
+    for mode, mode_actions in ((_RETURN_QUOTE, None), (_RETURN_TOTAL, matched_actions)):
         print(f"prepare mode={mode}", flush=True)
         real, panel, coverage, n_exit = _prepare_eligible_panel(
             stocks, membership, spec, actions=mode_actions
@@ -1524,7 +1535,7 @@ def compare_return_bases(
         modes[mode] = {
             "return_basis": mode,
             "n_dividend_rows": int(
-                actions.filter(
+                matched_actions.filter(
                     pl.col("action_type").is_in(["cash_dividend", "special_dividend"])
                 ).height
             )
@@ -1610,9 +1621,10 @@ def compare_return_bases(
         "membership_sha256": member_hash,
         "n_fetch_failures": len(failures),
         "fetch_failures": failures,
-        "n_corporate_action_rows": int(actions.height),
+        "n_corporate_action_rows": int(matched_actions.height),
+        "n_corporate_action_rows_dropped_no_bar": dropped_actions,
         "n_cash_dividend_rows": int(
-            actions.filter(
+            matched_actions.filter(
                 pl.col("action_type").is_in(["cash_dividend", "special_dividend"])
             ).height
         ),

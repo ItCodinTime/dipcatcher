@@ -32,3 +32,9 @@ sealed receipt, and audit chain stay byte-identical under `studies/`.
 | study | verdict | archive |
 |---|---|---|
 | `reality-us-liquid-daily-2026-09-27` | `deflated` (DSR 0.684 < 0.95, PSR 0.801, 29 trials, 3 clusters) | `studies/reality-us-liquid-daily-2026-09-27/` — see `docs/REALITY_TRIAL_2026.md` |
+| `reality-sp500-pit-daily-2026-09-28` | `deflated` on the appended ledger (see receipt); quote closes omit dividends | `survivorship/` — see `docs/REALITY_TRIAL_SURVIVORSHIP_2026.md`. Paired quote vs total-return re-score: `docs/REALITY_TRIAL_SURVIVORSHIP_TOTAL_RETURN_2026.md` |
+
+The generated index of every recorded batch is
+[`docs/research/findings.md`](../../docs/research/findings.md). Regenerate it
+with `uv run python scripts/research_findings.py`. It copies figures from
+artifacts and does not fill a missing one.
