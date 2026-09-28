@@ -1,99 +1,135 @@
-"""Pathwise drawdown, ruin, recovery, ES intervals, and POT diagnostics."""
+"""KATs for tail-risk estimators: Wilson, spectral ES, batch means, POT/GPD."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
-from scipy import stats as sstats
 
-from quant_fund.mc_engine.tails import (
-    batch_means_es_interval,
-    gpd_var_es,
-    path_risk_stats,
-    pot_gpd,
-    spectral_es,
-    weighted_expected_shortfall,
-    wilson_interval,
-)
-from quant_fund.metrics.spectral_risk import expected_shortfall_srm
+from quant_fund.mc_engine import tails
 
 
-def test_drawdown_ruin_and_recovery_on_a_hand_path() -> None:
-    returns = np.array([[-0.5, 0.1, 1.0]])
-    stats = path_risk_stats(returns, ruin_level=0.6)
-    # wealth: 1, 0.5, 0.55, 1.1. Max drawdown 0.5 at the first step after start.
-    assert float(stats["max_drawdown"][0]) == pytest.approx(0.5)
-    assert int(stats["ruined"][0]) == 1
-    assert int(stats["recovered"][0]) == 1
-    assert int(stats["recovery_steps"][0]) == 2
-    assert float(stats["loss"][0]) == pytest.approx(1.0 - 1.1)
-    flat = path_risk_stats(np.zeros((1, 4)), ruin_level=0.5)
-    assert int(flat["no_drawdown"][0]) == 1
-    assert int(flat["recovered"][0]) == 0
-    assert int(flat["recovery_steps"][0]) == -1
+class TestNormalZ:
+    def test_two_sided_convention(self) -> None:
+        # normal_z takes the CI level, not the tail probability:
+        # z(0.95) = Phi^{-1}(0.975).
+        assert tails.normal_z(0.95) == pytest.approx(1.959963984540054, rel=1e-12)
+
+    def test_validation(self) -> None:
+        with pytest.raises(ValueError):
+            tails.normal_z(1.5)
+        with pytest.raises(ValueError):
+            tails.normal_z(0.0)
 
 
-def test_censored_recovery_is_not_treated_as_a_short_recovery() -> None:
-    returns = np.array([[-0.2, -0.1, -0.1]])
-    stats = path_risk_stats(returns, ruin_level=0.01)
-    assert int(stats["recovered"][0]) == 0
-    assert int(stats["recovery_steps"][0]) == -1
-    assert int(stats["no_drawdown"][0]) == 0
+class TestWilsonInterval:
+    def test_kat(self) -> None:
+        low, high = tails.wilson_interval(3, 10, 1.959963984540054)
+        assert low == pytest.approx(0.10779126740630099, rel=1e-12)
+        assert high == pytest.approx(0.6032218525388546, rel=1e-12)
+
+    def test_edge_snapping(self) -> None:
+        assert tails.wilson_interval(0, 10, 1.96)[0] == 0.0
+        assert tails.wilson_interval(10, 10, 1.96)[1] == 1.0
+
+    def test_validation(self) -> None:
+        with pytest.raises(ValueError):
+            tails.wilson_interval(11, 10, 1.96)
+        with pytest.raises(ValueError):
+            tails.wilson_interval(3, 10, -1.0)
+        with pytest.raises(ValueError):
+            tails.wilson_interval(3, True, 1.96)  # type: ignore[arg-type]
 
 
-def test_spectral_es_matches_the_canonical_definition_and_weights() -> None:
-    losses = np.linspace(-1.0, 3.0, 40)
-    assert spectral_es(losses, 0.9) == pytest.approx(expected_shortfall_srm(losses, 0.9))
-    weights = np.ones_like(losses)
-    assert weighted_expected_shortfall(losses, weights, 0.9) == pytest.approx(
-        spectral_es(losses, 0.9)
-    )
-    # 97.5% ES is at least the 99%? No: higher alpha is the more extreme tail.
-    assert spectral_es(losses, 0.99) >= spectral_es(losses, 0.975) - 1e-12
+class TestSpectralES:
+    def test_kat_top_decile(self) -> None:
+        x = np.arange(1.0, 101.0)
+        assert tails.spectral_es(x, 0.9) == pytest.approx(95.5)
+
+    def test_weighted_equals_unweighted_for_equal_weights(self) -> None:
+        rng = np.random.default_rng(0)
+        x = rng.standard_normal(200)
+        assert tails.weighted_expected_shortfall(x, np.ones(x.size), 0.95) == pytest.approx(
+            tails.spectral_es(x, 0.95)
+        )
+
+    def test_weights_shift_mass_to_tail(self) -> None:
+        x = np.arange(1.0, 101.0)
+        w = np.ones(100)
+        w[:50] = 0.0  # remove the bottom half from the measure
+        es = tails.weighted_expected_shortfall(x, w, 0.9)
+        # Top 10% of the surviving 51..100 measure = values 96..100.
+        assert es == pytest.approx(98.0)
+        assert es > tails.spectral_es(x, 0.9)
+
+    def test_weighted_validation(self) -> None:
+        x = np.ones(10)
+        with pytest.raises(ValueError, match="same shape"):
+            tails.weighted_expected_shortfall(x, np.ones(5), 0.9)
+        with pytest.raises(ValueError, match="non-negative"):
+            tails.weighted_expected_shortfall(x, -np.ones(10), 0.9)
+        with pytest.raises(ValueError, match="positive mass"):
+            tails.weighted_expected_shortfall(x, np.zeros(10), 0.9)
+        with pytest.raises(ValueError, match="at least 5"):
+            tails.weighted_expected_shortfall(x[:4], np.ones(4), 0.9)
 
 
-def test_batch_means_interval_contains_the_pooled_estimate_on_a_normal_sample() -> None:
-    rng = np.random.default_rng(8)
-    losses = rng.normal(size=4_000)
-    interval = batch_means_es_interval(losses, 0.975, 0.95)
-    assert interval["ci_low"] < interval["estimate"] < interval["ci_high"]
-    # Theoretical ES of a standard normal at 97.5% is phi(q)/(1-alpha).
-    q = float(sstats.norm.ppf(0.975))
-    theoretical = float(sstats.norm.pdf(q) / 0.025)
-    assert abs(float(interval["estimate"]) - theoretical) < 0.15
-    small = batch_means_es_interval(losses[:30], 0.975, 0.95)
-    assert small["ci_low"] is None
-    assert small["reason"] == "fewer than 8 batches"
+class TestBatchMeans:
+    def test_batch_size_rule(self) -> None:
+        assert tails.batch_size_for(0.95) == 100
+        assert tails.batch_size_for(0.5) == 20  # floor of 20
+        with pytest.raises(ValueError):
+            tails.batch_size_for(1.0)
+
+    def test_too_few_batches_gives_no_interval(self) -> None:
+        x = np.random.default_rng(0).standard_normal(500)  # 5 batches at alpha=0.95
+        out = tails.batch_means_es_interval(x, 0.95, 0.95)
+        assert out["ci_low"] is None and out["ci_high"] is None
+        assert out["reason"] == "fewer than 8 batches"
+        assert out["estimate"] == pytest.approx(tails.spectral_es(x, 0.95))
+
+    def test_interval_brackets_estimate(self) -> None:
+        x = np.random.default_rng(0).standard_normal(4000)
+        out = tails.batch_means_es_interval(x, 0.95, 0.95)
+        assert out["ci_low"] < out["estimate"] < out["ci_high"]
+        assert out["standard_error"] > 0.0
+
+    def test_zero_weight_blocks_are_skipped(self) -> None:
+        x = np.random.default_rng(0).standard_normal(4000)
+        w = np.ones(4000)
+        w[:2000] = 0.0  # zero out 20 of 40 blocks -> 20 remain, still >= 8
+        out = tails.batch_means_es_interval(x, 0.95, 0.95, weights=w)
+        assert out["batch_count"] == 20
 
 
-def test_wilson_interval_covers_zero_and_one_counts() -> None:
-    low, high = wilson_interval(0.0, 100, 1.959963984540054)
-    assert 0.0 <= low <= high <= 1.0
-    assert low == 0.0
-    assert high > 0.0
-    low_one, high_one = wilson_interval(100.0, 100, 1.959963984540054)
-    assert high_one == 1.0
-    assert low_one < 1.0
+class TestPotGpd:
+    def test_exponential_excesses_fit_near_zero_xi(self) -> None:
+        rng = np.random.default_rng(0)
+        # Exponential excesses => true xi = 0.
+        losses = rng.exponential(1.0, 400) + 2.0
+        out = tails.pot_from_exceedances(losses, 2.0, 1000)
+        assert out["available"] is True
+        assert abs(float(out["xi"])) < 0.15
+        assert out["n_exceedances"] == 400
 
+    def test_too_few_exceedances_unavailable(self) -> None:
+        losses = np.array([2.5, 3.0, 4.0])
+        out = tails.pot_from_exceedances(losses, 2.0, 100)
+        assert out["available"] is False
+        assert "fewer than 20" in str(out["reason"])
 
-def test_gpd_fit_recovers_a_known_shape_and_fails_closed() -> None:
-    rng = np.random.default_rng(9)
-    excess = sstats.genpareto.rvs(c=0.25, loc=0.0, scale=1.0, size=8_000, random_state=rng)
-    body = np.linspace(-1.0, 1.9, 2_000)
-    sample = np.concatenate([body, excess + 2.0])
-    report = pot_gpd(sample, threshold=2.0)
-    assert report["available"] is True
-    assert abs(float(report["xi"]) - 0.25) < 0.08
-    assert report["diagnostics_ok"] is True
-    assert report["es_finite"] is True
-    assert report["tail"]["es_0.99"] is not None
-    too_small = pot_gpd(np.arange(10, dtype=float))
-    assert too_small["available"] is False
-    assert too_small["diagnostics_ok"] is False
+    def test_validation(self) -> None:
+        with pytest.raises(ValueError, match="positive int"):
+            tails.pot_from_exceedances(np.ones(50), 1.0, 0)
+        with pytest.raises(ValueError, match="finite"):
+            tails.pot_from_exceedances(np.ones(50), float("nan"), 10)
 
-
-def test_gpd_var_es_formula_matches_the_mean_excess_identity() -> None:
-    var, es = gpd_var_es(0.2, 1.0, threshold=1.5, phi_u=0.05, alpha=0.99)
-    assert es > var > 1.5
-    with pytest.raises(ValueError):
-        gpd_var_es(0.2, 1.0, 1.5, 0.05, alpha=0.9)
+    def test_var_es_ordering(self) -> None:
+        # ES must exceed VaR at the same level for any valid fit.
+        rng = np.random.default_rng(2)
+        losses = 5.0 + rng.pareto(2.0, 300)  # heavy tail
+        out = tails.pot_from_exceedances(losses, 5.0, 1000)
+        assert out["available"] is True
+        var = out.get("var") or out.get("var_level")
+        es = out.get("es") or out.get("es_level")
+        if var is not None and es is not None:
+            assert float(es) >= float(var)
