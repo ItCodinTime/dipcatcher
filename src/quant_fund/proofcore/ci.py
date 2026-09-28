@@ -13,6 +13,8 @@ in ``pyproject.toml`` (additive to the global 80% floor in
 from __future__ import annotations
 
 import argparse
+import hashlib
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -75,7 +77,6 @@ def coverage_gate(
                 sys.executable,
                 "-m",
                 "coverage",
-                "report",
                 f"--include={src_root}/{pkg}/*",
                 f"--fail-under={floor}",
             ],
@@ -93,6 +94,96 @@ def coverage_gate(
 def receipt_paths(receipts_dir: Path) -> list[Path]:
     """Committed receipt files, sorted for deterministic CI logs."""
     return sorted(Path(receipts_dir).glob("*.json"))
+
+
+# ---------------------------------------------------------------------------
+# WAVE2 §7.2: code-fingerprint fallback outside git worktrees.
+# ---------------------------------------------------------------------------
+
+# Repo root derived from this file: src/quant_fund/proofcore/ci.py.
+_DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Process cache: resolved repo root -> fingerprint. Fingerprinting walks the
+# whole src tree; caching keeps repeat calls (runner + replay in one process)
+# cheap and deterministic.
+_FINGERPRINT_CACHE: dict[Path, str] = {}
+
+
+def _git_revision(root: Path, *, runner: RunFn = subprocess.run) -> str | None:
+    """``git rev-parse HEAD`` at ``root``; None when no worktree is available.
+
+    Any failure — git missing, non-zero exit, subprocess error, or empty
+    stdout — means "not in a git worktree" and triggers the src-tree fallback.
+    """
+    git = shutil.which("git")
+    if git is None:
+        return None
+    try:
+        proc = runner(
+            [git, "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    revision = (proc.stdout or "").strip()
+    return revision or None
+
+
+def src_tree_sha256(src_root: Path) -> str:
+    """sha256 over ``src_root/**/*.py`` (WAVE2 §7.2 fallback fingerprint).
+
+    Files are hashed in sorted relative-posix-path order as
+    ``relpath`` + NUL + content bytes + NUL; ``__pycache__`` directories are
+    excluded. Deterministic for identical trees. Fail-closed: a missing
+    ``src_root`` raises ``ProofcoreError``.
+    """
+    src_root = Path(src_root)
+    if not src_root.is_dir():
+        raise ProofcoreError(f"src tree not found for fingerprint fallback: {src_root}")
+    digest = hashlib.sha256()
+    paths = [
+        path
+        for path in src_root.rglob("*.py")
+        if "__pycache__" not in path.relative_to(src_root).parts
+    ]
+    for path in sorted(paths, key=lambda p: p.relative_to(src_root).as_posix()):
+        digest.update(path.relative_to(src_root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def code_fingerprint(
+    root: Path | None = None,
+    *,
+    runner: RunFn = subprocess.run,
+) -> str:
+    """Fingerprint of the quant_fund code (WAVE2 §7.2).
+
+    The git revision (40-hex) when ``root`` is inside a git worktree; else a
+    sha256 over ``<root>/src/quant_fund/**/*.py`` (sorted relative posix path
+    + content bytes, ``__pycache__`` excluded). Cached per process (keyed by
+    resolved root), so repeat calls are deterministic and cheap.
+    """
+    root = Path(root) if root is not None else _DEFAULT_REPO_ROOT
+    key = root.resolve()
+    cached = _FINGERPRINT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    revision = _git_revision(key, runner=runner)
+    fingerprint = revision if revision is not None else src_tree_sha256(key / "src" / "quant_fund")
+    _FINGERPRINT_CACHE[key] = fingerprint
+    return fingerprint
+
+
+def _reset_code_fingerprint_cache() -> None:
+    """Drop the process cache (test helper; production code never calls this)."""
+    _FINGERPRINT_CACHE.clear()
 
 
 def _cli_verifier(path: Path) -> bool:
