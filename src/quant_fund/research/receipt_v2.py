@@ -382,10 +382,23 @@ def _code_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
 
 def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     """Lane-specific re-derivation of the bound digests, where defined."""
-    if payload.get("kind") == "distribution_fleet_eval":
+    kind = payload.get("kind")
+    if kind == "distribution_fleet_eval":
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
+    if kind == "capacity_overlay_eval":
+        from quant_fund.research.capacity_overlay import capacity_v2_consistency_errors
+
+        return capacity_v2_consistency_errors(payload)
+    if kind == "cross_sectional_rankic_eval":
+        from quant_fund.research.cross_sectional import rankic_v2_consistency_errors
+
+        return rankic_v2_consistency_errors(payload)
+    if kind == "vol_bench":
+        from quant_fund.research.vol_bench import vol_bench_v2_consistency_errors
+
+        return vol_bench_v2_consistency_errors(payload)
     return []
 
 

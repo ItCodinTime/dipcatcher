@@ -364,6 +364,11 @@ def vol_bench(
         None, help="Base seed (default: train.random_seed from config)."
     ),
     out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = vol_bench.v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """Run the SYNTHETIC volatility bench and write a sealed receipt.
 
@@ -399,7 +404,9 @@ def vol_bench(
         )
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
-    path = write_vol_bench_receipt(receipt, out_dir)
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_vol_bench_receipt(receipt, out_dir, receipt_version=receipt_version)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(frame)
     typer.echo(f"receipt={path}")
@@ -418,6 +425,11 @@ def rankic(
     horizons: str = typer.Option("1,5,20", help="Comma-separated forward horizons."),
     seed: int = typer.Option(11, help="Base seed for the synthetic panels."),
     out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = cross_sectional_rankic.v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """Cross-sectional rank-IC bench on SYNTHETIC planted-signal panels (P3.4).
 
@@ -452,7 +464,9 @@ def rankic(
         )
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
-    path = write_rankic_receipt(receipt, out_dir)
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_rankic_receipt(receipt, out_dir, receipt_version=receipt_version)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo("SYNTHETIC")
     typer.echo(format_rankic_table(frame))
@@ -476,6 +490,11 @@ def capacity(
     impact_coeff: float = typer.Option(0.1, help="Square-root impact coefficient."),
     dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
     out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = capacity_overlay.v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """P5.6 participation-capacity bench on SYNTHETIC books (dev-only).
 
@@ -507,7 +526,9 @@ def capacity(
         participation_cap=participation_cap,
         impact_coeff=impact_coeff,
     )
-    path = write_capacity_receipt(receipt, out_dir)
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    path = write_capacity_receipt(receipt, out_dir, receipt_version=receipt_version)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(format_capacity_table(frame))
     typer.echo(f"receipt={path}")

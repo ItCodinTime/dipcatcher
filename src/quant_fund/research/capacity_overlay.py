@@ -309,25 +309,138 @@ def run_capacity_bench(
     return frame, receipt
 
 
+def capacity_contract_errors(receipt: Mapping[str, object]) -> list[str]:
+    """Fail-closed contract for a ``capacity_overlay.v1`` payload (writer + verifier)."""
+    research_blob = {k: v for k, v in receipt.items() if k != "live_pnl_claim"}
+    errors: list[str] = []
+    if receipt.get("schema") != CAPACITY_SCHEMA:
+        errors.append("schema_not_capacity_v1")
+    if receipt.get("kind") != "capacity_overlay_eval":
+        errors.append("kind_not_capacity_overlay_eval")
+    if receipt.get("data_label") != "SYNTHETIC":
+        errors.append("data_label_not_synthetic")
+    if receipt.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim_not_false")
+    if receipt.get("dev_only") is not True:
+        errors.append("dev_only_not_true")
+    if not family_blob_forbidden_metrics_absent(research_blob):
+        errors.append("forbidden_metric_keys")
+    return errors
+
+
+def capacity_dataset_identity(receipt: Mapping[str, object]) -> dict[str, object]:
+    """Book content digests bound by a v2 ``dataset_hash``."""
+    books = receipt.get("books")
+    if not isinstance(books, list):
+        raise ValueError("capacity receipt has no books block")
+    dataset: dict[str, object] = {}
+    for meta in books:
+        if not isinstance(meta, Mapping):
+            raise ValueError("capacity book metadata is not an object")
+        dataset[str(meta.get("name"))] = {
+            "weights_sha256": meta.get("weights_sha256"),
+            "adv_sha256": meta.get("adv_sha256"),
+        }
+    return dataset
+
+
+def capacity_params(receipt: Mapping[str, object]) -> dict[str, object]:
+    """Run parameters bound by a v2 ``params_hash``."""
+    books = receipt.get("books")
+    return {
+        "seed": receipt.get("seed"),
+        "inputs_sha256": receipt.get("inputs_sha256"),
+        "books": sorted(str(meta.get("name")) for meta in books if isinstance(meta, Mapping))
+        if isinstance(books, list)
+        else None,
+    }
+
+
+def capacity_verdict(receipt: Mapping[str, object]) -> str:
+    """pass iff every scored row reported ``status == "ok"``."""
+    results = receipt.get("results")
+    if not isinstance(results, list) or not results:
+        return "fail"
+    return (
+        "pass"
+        if all(isinstance(row, Mapping) and row.get("status") == "ok" for row in results)
+        else "fail"
+    )
+
+
+def capacity_receipt_v2(receipt: Mapping[str, object]) -> dict[str, object]:
+    """Wrap a ``capacity_overlay.v1`` payload in the unified ``receipt.v2`` envelope.
+
+    The v1 payload is embedded verbatim under ``payload``; the envelope binds
+    the book content digests, run params, this module's source hash, and the
+    loaded numeric stack. Validates the v1 contract first — a malformed v1
+    receipt is never wrapped.
+    """
+    from quant_fund.research.receipt_v2 import build_receipt_v2
+
+    if capacity_contract_errors(receipt):
+        raise ValueError("capacity receipt violates its synthetic research contract")
+    return build_receipt_v2(
+        kind=str(receipt["kind"]),
+        data_label=str(receipt["data_label"]),
+        dataset=capacity_dataset_identity(receipt),
+        params=capacity_params(receipt),
+        code_files=(Path(__file__),),
+        verdict=capacity_verdict(receipt),
+        payload=dict(receipt),
+        generated_at=str(receipt["generated_at"]),
+        revision=str(receipt["git_revision"]),
+    )
+
+
+def capacity_v2_consistency_errors(envelope: Mapping[str, object]) -> list[str]:
+    """Re-derive a capacity receipt.v2 envelope's bound digests from its payload."""
+    errors: list[str] = []
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    contract_errors = capacity_contract_errors(payload)
+    errors.extend(f"payload_{name}" for name in contract_errors)
+    if contract_errors:
+        return errors
+    try:
+        dataset = capacity_dataset_identity(payload)
+    except ValueError as exc:
+        return [*errors, f"payload_{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(capacity_params(payload))) != envelope.get("params_hash"):
+        errors.append("params_hash_mismatch")
+    if capacity_verdict(payload) != envelope.get("verdict"):
+        errors.append("verdict_mismatch")
+    return errors
+
+
 def write_capacity_receipt(
     receipt: Mapping[str, object],
     receipts_dir: Path | str = Path("receipts"),
+    *,
+    receipt_version: int = 1,
 ) -> Path:
-    """Seal a capacity receipt to ``receipts/capacity_eval_<hash>.json``."""
-    research_blob = {k: v for k, v in receipt.items() if k != "live_pnl_claim"}
-    if (
-        receipt.get("schema") != CAPACITY_SCHEMA
-        or receipt.get("kind") != "capacity_overlay_eval"
-        or receipt.get("data_label") != "SYNTHETIC"
-        or receipt.get("live_pnl_claim") is not False
-        or receipt.get("dev_only") is not True
-        or not family_blob_forbidden_metrics_absent(research_blob)
-    ):
-        raise ValueError("capacity receipt violates the honesty contract")
-    payload = dict(receipt)
-    digest = hash_bytes(canonical_json_bytes(payload))
-    payload["receipt_sha256"] = digest
-    path = Path(receipts_dir) / f"capacity_eval_{digest[:16]}.json"
+    """Seal a capacity receipt to ``receipts/capacity_eval_<hash>.json``.
+
+    The filename hash is the sha256 of the canonical receipt payload; the
+    same digest is embedded as ``receipt_sha256``. The write is atomic.
+    ``receipt_version=2`` wraps the v1 payload in the unified ``receipt.v2``
+    envelope before sealing.
+    """
+    from quant_fund.research.receipt_v2 import seal_receipt
+
+    if receipt_version == 1:
+        if capacity_contract_errors(receipt):
+            raise ValueError("capacity receipt violates the honesty contract")
+        body: Mapping[str, object] = receipt
+    elif receipt_version == 2:
+        body = capacity_receipt_v2(receipt)
+    else:
+        raise ValueError(f"receipt_version must be 1 or 2, got {receipt_version!r}")
+    payload = seal_receipt(body)
+    path = Path(receipts_dir) / f"capacity_eval_{payload['receipt_sha256'][:16]}.json"
     _atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
     return path
 

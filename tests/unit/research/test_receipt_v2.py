@@ -389,3 +389,194 @@ def test_cli_verify_receipt_fails_closed(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["verify-receipt", str(bad)])
     assert result.exit_code == 1
     assert '"valid": false' in result.output
+
+
+# ---------------------------------------------------------------------------
+# P7.4 lane adoption: capacity, rank-IC, vol-bench receipts in the v2 envelope.
+# ---------------------------------------------------------------------------
+
+
+def _capacity_receipt() -> dict[str, Any]:
+    from quant_fund.research.capacity_overlay import run_capacity_bench
+
+    _, receipt = run_capacity_bench(seed=7, n_dates=40, n_names=8)
+    return receipt
+
+
+def test_capacity_receipt_v2_round_trip(tmp_path: Path) -> None:
+    from quant_fund.research.capacity_overlay import write_capacity_receipt
+
+    receipt = _capacity_receipt()
+    path = write_capacity_receipt(receipt, tmp_path, receipt_version=2)
+    assert path.name.startswith("capacity_eval_")
+    payload = json.loads(path.read_text())
+    assert payload["schema"] == "receipt.v2"
+    assert payload["kind"] == "capacity_overlay_eval"
+    assert payload["data_label"] == "SYNTHETIC"
+    assert payload["live_pnl_claim"] is False
+    assert payload["verdict"] == "pass"
+    assert payload["payload"]["schema"] == "capacity_overlay.v1"
+    result = verify_receipt_file(path)
+    assert result["valid"] is True, result["errors"]
+
+
+def test_capacity_v2_detects_rebound_payload(tmp_path: Path) -> None:
+    from quant_fund.research.capacity_overlay import write_capacity_receipt
+
+    path = write_capacity_receipt(_capacity_receipt(), tmp_path, receipt_version=2)
+    envelope = json.loads(path.read_text())
+    other = _capacity_receipt()
+    other["seed"] = int(other["seed"]) + 1
+    forged = seal_receipt({**envelope, "payload": other})
+    result = verify_receipt_payload(forged)
+    assert result["valid"] is False
+    assert "params_hash_mismatch" in result["errors"]
+
+
+def test_capacity_v1_unchanged_default(tmp_path: Path) -> None:
+    from quant_fund.research.capacity_overlay import write_capacity_receipt
+
+    path = write_capacity_receipt(_capacity_receipt(), tmp_path)
+    result = verify_receipt_file(path)
+    assert result["valid"] is True, result["errors"]
+    assert result["schema"] == "capacity_overlay.v1"
+
+
+def _rankic_receipt() -> dict[str, Any]:
+    from quant_fund.research.cross_sectional import run_cross_sectional_bench
+
+    _, receipt = run_cross_sectional_bench(seed=5, n_assets=8, n_dates=52, horizons=(1, 2))
+    return receipt
+
+
+def test_rankic_receipt_v2_round_trip(tmp_path: Path) -> None:
+    from quant_fund.research.cross_sectional import write_rankic_receipt
+
+    receipt = _rankic_receipt()
+    path = write_rankic_receipt(receipt, tmp_path, receipt_version=2)
+    assert path.name.startswith("rankic_eval_")
+    payload = json.loads(path.read_text())
+    assert payload["schema"] == "receipt.v2"
+    assert payload["kind"] == "cross_sectional_rankic_eval"
+    assert payload["verdict"] == "pass"
+    assert payload["payload"]["schema"] == "cross_sectional_rankic.v1"
+    result = verify_receipt_file(path)
+    assert result["valid"] is True, result["errors"]
+
+
+def test_rankic_v2_verdict_forgery_caught(tmp_path: Path) -> None:
+    from quant_fund.research.cross_sectional import write_rankic_receipt
+
+    path = write_rankic_receipt(_rankic_receipt(), tmp_path, receipt_version=2)
+    envelope = json.loads(path.read_text())
+    forged = seal_receipt({**envelope, "verdict": "fail"})
+    result = verify_receipt_payload(forged)
+    assert result["valid"] is False
+    assert "verdict_mismatch" in result["errors"]
+
+
+def _vol_bench_receipt() -> dict[str, Any]:
+    from quant_fund.research.vol_bench import VolShard, run_vol_bench
+
+    def _const_shard(n: int, seed: int) -> VolShard:
+        del seed
+        return VolShard(
+            "const_vol",
+            np.zeros(n, dtype=float),
+            np.full(n, 1e-3, dtype=float),
+            np.full(n, 1e-3, dtype=float),
+            {"data_label": "SYNTHETIC", "seed": 0},
+        )
+
+    def _persist(rets: np.ndarray, rv: np.ndarray, park: np.ndarray, h: int, seed: int) -> float:
+        return h * float(rv[-1])
+
+    _, receipt = run_vol_bench(
+        {"persist": _persist},
+        shards={"const_vol": _const_shard},
+        horizons=(1, 2),
+        min_history=40,
+        n_origins=10,
+        stride=2,
+        seed=5,
+    )
+    return receipt
+
+
+def test_vol_bench_receipt_v2_round_trip(tmp_path: Path) -> None:
+    from quant_fund.research.vol_bench import write_vol_bench_receipt
+
+    receipt = _vol_bench_receipt()
+    path = write_vol_bench_receipt(receipt, tmp_path, receipt_version=2)
+    assert path.name.startswith("vol_bench_")
+    payload = json.loads(path.read_text())
+    assert payload["schema"] == "receipt.v2"
+    assert payload["kind"] == "vol_bench"
+    assert payload["verdict"] == "pass"
+    assert payload["payload"]["schema"] == "vol_bench.v1"
+    result = verify_receipt_file(path)
+    assert result["valid"] is True, result["errors"]
+
+
+def test_vol_bench_v2_detects_rebound_dataset(tmp_path: Path) -> None:
+    from quant_fund.research.vol_bench import write_vol_bench_receipt
+
+    path = write_vol_bench_receipt(_vol_bench_receipt(), tmp_path, receipt_version=2)
+    envelope = json.loads(path.read_text())
+    other = _vol_bench_receipt()
+    other["shards"]["const_vol"]["rv_sha256"] = "0" * 64
+    forged = seal_receipt({**envelope, "payload": other})
+    result = verify_receipt_payload(forged)
+    assert result["valid"] is False
+    assert "dataset_hash_mismatch" in result["errors"]
+
+
+def test_cli_lanes_receipt_version_two(tmp_path: Path) -> None:
+    for command, prefix in (
+        (
+            [
+                "rankic",
+                "--n-assets",
+                "8",
+                "--n-dates",
+                "52",
+                "--horizons",
+                "1,2",
+                "--panels",
+                "linear_signal",
+                "--challengers",
+                "identity",
+                "--out-dir",
+                str(tmp_path),
+                "--receipt-version",
+                "2",
+            ],
+            "rankic_eval_*.json",
+        ),
+        (
+            [
+                "capacity",
+                "--dev",
+                "--n-dates",
+                "30",
+                "--n-names",
+                "6",
+                "--books",
+                "uniform",
+                "--out-dir",
+                str(tmp_path),
+                "--receipt-version",
+                "2",
+            ],
+            "capacity_eval_*.json",
+        ),
+    ):
+        result = CliRunner().invoke(app, command)
+        assert result.exit_code == 0, result.output
+        written = list(tmp_path.glob(prefix))
+        assert len(written) == 1
+        payload = json.loads(written[0].read_text())
+        assert payload["schema"] == "receipt.v2"
+        verify = CliRunner().invoke(app, ["verify-receipt", str(written[0])])
+        assert verify.exit_code == 0, verify.output
+        assert '"valid": true' in verify.output

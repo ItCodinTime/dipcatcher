@@ -424,25 +424,127 @@ def run_cross_sectional_bench(
     return frame, receipt
 
 
+def rankic_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Fail-closed contract for a ``cross_sectional_rankic.v1`` payload."""
+    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
+    errors: list[str] = []
+    if receipt.get("schema") != RANKIC_SCHEMA:
+        errors.append("schema_not_rankic_v1")
+    if receipt.get("data_label") != "SYNTHETIC":
+        errors.append("data_label_not_synthetic")
+    if receipt.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim_not_false")
+    if not isinstance(receipt.get("results"), list) or not receipt["results"]:
+        errors.append("results_missing_or_empty")
+    if not family_blob_forbidden_metrics_absent(research_blob):
+        errors.append("forbidden_metric_keys")
+    return errors
+
+
+def rankic_dataset_identity(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """Panel content digests bound by a v2 ``dataset_hash``."""
+    panels = receipt.get("panels")
+    if not isinstance(panels, Mapping):
+        raise ValueError("rank-IC receipt has no panels block")
+    dataset: dict[str, Any] = {}
+    for name, meta in panels.items():
+        if not isinstance(meta, Mapping):
+            raise ValueError(f"rank-IC panel {name!r} metadata is not an object")
+        dataset[str(name)] = {
+            "signal_sha256": meta.get("signal_sha256"),
+            "forward_sha256": meta.get("forward_sha256"),
+        }
+    return dataset
+
+
+def rankic_params(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """The run parameters bound by a v2 ``params_hash``."""
+    return {
+        "seed": receipt.get("seed"),
+        "n_assets": receipt.get("n_assets"),
+        "n_dates": receipt.get("n_dates"),
+        "horizons": receipt.get("horizons"),
+        "challengers": receipt.get("challengers"),
+    }
+
+
+def rankic_verdict(receipt: Mapping[str, Any]) -> str:
+    """pass iff every row scored without error; a recorded error is a fail."""
+    n_error_rows = receipt.get("n_error_rows")
+    return "pass" if n_error_rows == 0 else "fail"
+
+
+def rankic_receipt_v2(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """Wrap a ``cross_sectional_rankic.v1`` payload in the ``receipt.v2`` envelope.
+
+    The v1 payload is embedded verbatim under ``payload``; the envelope binds
+    the panel content digests, run params, this module's source hash, and the
+    loaded numeric stack. Validates the v1 contract first — a malformed v1
+    receipt is never wrapped.
+    """
+    from quant_fund.research.receipt_v2 import build_receipt_v2
+
+    if rankic_contract_errors(receipt):
+        raise ValueError("rank-IC receipt violates its synthetic research contract")
+    return build_receipt_v2(
+        kind=str(receipt["kind"]),
+        data_label=str(receipt["data_label"]),
+        dataset=rankic_dataset_identity(receipt),
+        params=rankic_params(receipt),
+        code_files=(Path(__file__),),
+        verdict=rankic_verdict(receipt),
+        payload=dict(receipt),
+        generated_at=str(receipt["generated_at"]),
+        revision=str(receipt["git_revision"]),
+    )
+
+
+def rankic_v2_consistency_errors(envelope: Mapping[str, Any]) -> list[str]:
+    """Re-derive a rank-IC receipt.v2 envelope's bound digests from its payload."""
+    errors: list[str] = []
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    contract_errors = rankic_contract_errors(payload)
+    errors.extend(f"payload_{name}" for name in contract_errors)
+    if contract_errors:
+        return errors
+    try:
+        dataset = rankic_dataset_identity(payload)
+    except ValueError as exc:
+        return [*errors, f"payload_{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(rankic_params(payload))) != envelope.get("params_hash"):
+        errors.append("params_hash_mismatch")
+    if rankic_verdict(payload) != envelope.get("verdict"):
+        errors.append("verdict_mismatch")
+    return errors
+
+
 def write_rankic_receipt(
     receipt: Mapping[str, Any],
     receipts_dir: Path | str = Path("receipts"),
+    *,
+    receipt_version: int = 1,
 ) -> Path:
-    """Seal a rank-IC receipt as ``receipts/rankic_eval_<hash>.json`` (atomic)."""
-    research_blob = {key: value for key, value in receipt.items() if key != "live_pnl_claim"}
-    if (
-        receipt.get("schema") != RANKIC_SCHEMA
-        or receipt.get("data_label") != "SYNTHETIC"
-        or receipt.get("live_pnl_claim") is not False
-        or not isinstance(receipt.get("results"), list)
-        or not receipt["results"]
-        or not family_blob_forbidden_metrics_absent(research_blob)
-    ):
-        raise ValueError("rank-IC receipt violates its synthetic research contract")
-    canonical = json.loads(canonical_json_bytes(dict(receipt)))
-    digest = hash_bytes(canonical_json_bytes(canonical))
-    payload = {**canonical, "receipt_sha256": digest}
-    path = Path(receipts_dir) / f"rankic_eval_{digest[:16]}.json"
+    """Seal a rank-IC receipt as ``receipts/rankic_eval_<hash>.json`` (atomic).
+
+    ``receipt_version=2`` wraps the v1 payload in the unified ``receipt.v2``
+    envelope before sealing.
+    """
+    from quant_fund.research.receipt_v2 import seal_receipt
+
+    if receipt_version == 1:
+        if rankic_contract_errors(receipt):
+            raise ValueError("rank-IC receipt violates its synthetic research contract")
+        body: Mapping[str, Any] = receipt
+    elif receipt_version == 2:
+        body = rankic_receipt_v2(receipt)
+    else:
+        raise ValueError(f"receipt_version must be 1 or 2, got {receipt_version!r}")
+    payload = seal_receipt(body)
+    path = Path(receipts_dir) / f"rankic_eval_{payload['receipt_sha256'][:16]}.json"
     _atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
     return path
 
