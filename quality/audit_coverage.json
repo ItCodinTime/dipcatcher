@@ -81,8 +81,8 @@
       "status": "audited"
     },
     "market_sim": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 13,
+      "status": "audited"
     },
     "mc_engine": {
       "doc": "docs/AUDIT_FRONTIER.md",
@@ -141,8 +141,8 @@
       "status": "partial"
     },
     "pretrade": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 9,
+      "status": "audited"
     },
     "proof": {
       "doc": "docs/AUDIT_FRONTIER.md",
