@@ -183,7 +183,10 @@ def es_leverage(
     for i in range(lb - 1, len(r)):
         window = r[i - lb + 1 : i + 1]
         es = float(historical_es(-window, alpha))
-        if not np.isfinite(es) or es <= _EPS:
+        if not np.isfinite(es):
+            lev[i] = 0.0  # unmeasurable tail → no size
+            continue
+        if es <= _EPS:
             continue
         lev[i] = float(min(1.0, es_limit / es))
     return lev
@@ -250,6 +253,8 @@ def crc_leverage(
             es = float(historical_es(losses, 1.0 - float(alpha)))
             if np.isfinite(es) and es > _EPS:
                 last = float(min(1.0, allowed / es))
+            elif not np.isfinite(es):
+                last = 0.0  # unmeasurable tail → drop the bound, not lift it
             else:
                 last = 1.0
         lev[i] = last
@@ -271,6 +276,7 @@ def crash_leverage(
         base = wealth[i - lb]
         last = wealth[i]
         if base <= _EPS:
+            lev[i] = 0.0  # wealth ≤ 0 at the lookback anchor: book is ruined
             continue
         trail = last / base - 1.0
         if trail <= float(crash_return):

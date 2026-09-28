@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
+import numpy as np
 import polars as pl
 import pytest
 
@@ -91,3 +92,37 @@ def test_scaler_is_causal_inside_engine(tmp_path) -> None:
     gross_p = plain.equity["gross"].to_list()
     assert gross_g[-1] < gross_p[-1] * 0.3
     assert res.metrics["live_pnl_claim"] is False
+
+
+def test_es_leverage_all_poisoned_window_halts() -> None:
+    from quant_fund.risk.gates import es_leverage
+
+    r = np.full(80, 0.001)
+    r[30:40] = np.nan  # an entirely unmeasurable window must not keep size
+    lev = es_leverage(r, lookback=10)
+    # Only i=39 has a fully-NaN window r[30:40]; neighbors contain finite bars.
+    assert lev[39] == 0.0
+    assert lev[38] == 1.0
+    assert lev[40] == 1.0
+    assert lev[-1] == 1.0
+
+
+def test_crc_leverage_all_poisoned_window_drops_bound() -> None:
+    from quant_fund.risk.gates import crc_leverage
+
+    r = np.full(120, 0.002)
+    r[60:80] = np.nan
+    lev = crc_leverage(r, lookback=20, step=1)
+    # i=79 is the only index whose full 20-bar window is NaN → bound drops to 0.
+    assert lev[79] == 0.0
+    assert lev[78] == 1.0
+    assert lev[-1] == 1.0  # clean tail window recalibrates
+
+
+def test_crash_leverage_stays_flat_after_ruin() -> None:
+    from quant_fund.risk.gates import crash_leverage
+
+    r = np.full(40, 0.01)
+    r[15] = -1.0  # ruin at bar 15
+    lev = crash_leverage(r, lookback=10)
+    assert np.all(lev[25:] == 0.0)
