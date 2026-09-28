@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke perf-record perf-check
+.PHONY: help test test-full test-durations coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke perf-record perf-check
 
 .DEFAULT_GOAL := help
 
@@ -14,6 +14,13 @@ test: ## PR-gate lab tests (not network, not slow; xdist)
 
 test-full: ## Full offline lab suite, including slow tests
 	uv run pytest -n auto --dist loadfile -m "not network"
+
+test-durations: ## Refresh checked-in .test_durations for pytest-split CI shards
+	# PR gate first, then slow tests so schedule/full shards stay balanced too.
+	uv run pytest -n auto --dist loadfile -m "not network and not slow" \
+		--store-durations --durations-path .test_durations --clean-durations
+	uv run pytest -n auto --dist loadfile -m "slow and not network" \
+		--store-durations --durations-path .test_durations
 
 parity-smoke: ## SYNTHETIC backtest/shadow parity smoke (simulated broker only)
 	uv run pytest -q tests/unit/parity

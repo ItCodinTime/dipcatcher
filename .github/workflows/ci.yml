@@ -211,6 +211,10 @@ jobs:
             --splits 4
             --group "${{ matrix.shard }}"
             --durations-path .test_durations
+            # least_duration keeps per-shard predicted runtime flat; the default
+            # duration_based_chunks algorithm packs contiguous collection ranges
+            # and left wall-clock skewed under xdist --dist loadfile.
+            --splitting-algorithm least_duration
           )
           if [ "${{ matrix.python }}" = "3.12" ]; then
             # Partial shards stay under the project threshold; the coverage job combines them.
