@@ -106,6 +106,24 @@ def _validate_target_weight_panel(weights: pl.DataFrame) -> None:
     _target_weight_map(weights)
 
 
+def _validate_bar_panel(bars: pl.DataFrame) -> None:
+    """Reject duplicate ``(event_time, security_id)`` bar keys.
+
+    The day map otherwise keeps every print and last-valid-write wins for
+    marks, so two conflicting opens for the same bar fill at different
+    prices when the frame is reordered. Exact duplicates are rejected too:
+    the panel is ambiguous. Matches the paper-loop guard and keeps the
+    event loop fail-closed with ``run_backtest_fast`` (which refuses the
+    same shape rather than collapsing keys into matrices).
+    """
+    if "event_time" not in bars.columns or "security_id" not in bars.columns:
+        return
+    if bars.height == 0:
+        return
+    if bool(bars.select("event_time", "security_id").is_duplicated().any()):
+        raise ValueError("duplicate bars for event_time/security_id")
+
+
 def _projected_exposures(
     book: Book,
     prices: dict[str, float],
@@ -255,6 +273,7 @@ def _run_backtest_event_loop(
 ) -> BacktestResult:
     """Reference event loop. ``run_backtest`` delegates here when the fast replay is incomplete."""
     _validate_target_weight_panel(weights)
+    _validate_bar_panel(bars)
     px = bars.select(
         "security_id",
         "event_time",

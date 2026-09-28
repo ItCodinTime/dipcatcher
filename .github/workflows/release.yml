@@ -2,22 +2,21 @@ name: Release
 
 # Tag push (v1.2.3, v1.2.3-rc1, …) builds the sdist and wheel, writes a
 # CycloneDX SBOM, signs the distributions with Sigstore, and emits SLSA
-# build provenance. Nothing is published to PyPI until the owner turns the
-# gate on. This file does not store a PyPI token.
-#
-# Gate (all three are required before an upload happens):
-#   1. The event is a tag push matching v*.*.* (pull requests and
-#      workflow_dispatch only build and attest).
-#   2. Repository variable PYPI_TRUSTED_PUBLISHING is exactly "true".
-#   3. GitHub Environment "pypi" is a Trusted Publisher on the fx-1 PyPI
-#      project for this workflow. OIDC is the only credential.
+# build provenance. This workflow does not publish to PyPI and does not
+# create a GitHub Release. Artifacts are uploaded as workflow artifacts
+# only. Verify downloaded bundles with:
+#   uv run python scripts/verify_release_artifacts.py <dist-dir>
+# Optional Sigstore identity check (needs network or --offline + bundles):
+#   uv run python scripts/verify_release_artifacts.py <dist-dir> --sigstore \
+#     --cert-identity \
+#     "https://github.com/<owner>/<repo>/.github/workflows/release.yml@refs/tags/vX.Y.Z"
+# SLSA provenance from GitHub artifact attestations:
+#   gh attestation verify <artifact> --repo <owner>/<repo>
 
 on:
   push:
     tags:
       - "v*.*.*"
-  pull_request:
-  workflow_dispatch:
 
 permissions: {}
 
@@ -87,8 +86,8 @@ jobs:
         # setup-uv exports VIRTUAL_ENV. uvx with those variables unset uses
         # its own environment. sigstore 4.5 has no --oidc switch; on Actions
         # it takes the ambient OIDC token (id-token: write). The certificate
-        # identity is the workflow file at GITHUB_REF, including pull_request
-        # merge refs. Bundles land next to each file as <name>.sigstore.json.
+        # identity is the workflow file at GITHUB_REF (refs/tags/v…). Bundles
+        # land next to each file as <name>.sigstore.json.
         run: |
           set -euo pipefail
           unset VIRTUAL_ENV UV_PYTHON UV_PROJECT_ENVIRONMENT
@@ -123,20 +122,8 @@ jobs:
             dist/*.tar.gz
           sbom-path: dist/sbom.cdx.json
 
-      - name: Record the PyPI gate
-        env:
-          PYPI_TRUSTED_PUBLISHING: ${{ vars.PYPI_TRUSTED_PUBLISHING }}
-        run: |
-          set -euo pipefail
-          echo "event=${GITHUB_EVENT_NAME}"
-          echo "ref=${GITHUB_REF}"
-          if [ "${PYPI_TRUSTED_PUBLISHING}" = "true" ]; then
-            echo "PYPI_TRUSTED_PUBLISHING=true"
-          else
-            echo "PYPI_TRUSTED_PUBLISHING=not-enabled"
-          fi
-          echo "PyPI upload runs only on a v*.*.* tag push when the variable is true."
-          echo "No PyPI token is stored in this repository."
+      - name: Local checksum verification
+        run: uv run --no-project python scripts/verify_release_artifacts.py dist
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -145,39 +132,3 @@ jobs:
           path: dist/*
           if-no-files-found: error
           retention-days: 14
-
-  publish-pypi:
-    name: Publish to PyPI
-    needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.PYPI_TRUSTED_PUBLISHING == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment:
-      name: pypi
-      url: https://pypi.org/project/fx-1/
-    permissions:
-      actions: read
-      attestations: write
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release-dists
-          path: dist
-
-      - name: Keep only sdist and wheel
-        run: |
-          set -euo pipefail
-          mkdir -p publish
-          cp dist/*.whl dist/*.tar.gz publish/
-          find publish -type f ! -name '*.whl' ! -name '*.tar.gz' -print >&2
-          find publish -type f ! -name '*.whl' ! -name '*.tar.gz' -exec false {} +
-
-      - name: Publish with Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
-        with:
-          packages-dir: publish
-          attestations: true
-          print-hash: true
-          skip-existing: false
