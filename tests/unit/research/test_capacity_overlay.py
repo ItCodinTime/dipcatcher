@@ -207,3 +207,42 @@ def test_table_shape() -> None:
     table = format_capacity_table(frame)
     assert "days_to_trade" in table and "impact_bps" in table
     assert len(table.strip().splitlines()) == 2 + frame.height
+
+
+def test_capacity_v1_audit_clean_and_tampered(tmp_path: Path) -> None:
+    """The audit recounts the grid, re-derives feasibility, catches tampering."""
+    from quant_fund.research.capacity_overlay import capacity_v1_audit_errors
+
+    _, receipt = run_capacity_bench(seed=3, n_dates=30, n_names=6)
+    assert capacity_v1_audit_errors(receipt) == []
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["results"].pop()
+    assert "n_rows_mismatch" in capacity_v1_audit_errors(tampered)
+
+    tampered = json.loads(json.dumps(receipt))
+    # Flip feasibility on an infeasible row: max_participation > cap.
+    row = next(r for r in tampered["results"] if r["feasible"] == 0)
+    row["feasible"] = 1
+    assert "row_feasible_mismatch" in capacity_v1_audit_errors(tampered)
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["results"][0]["days_to_trade"] += 0.5
+    assert "row_days_to_trade_mismatch" in capacity_v1_audit_errors(tampered)
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["books"][0]["adv_sha256"] = "deadbeef"
+    assert any(e.startswith("book_digest_invalid") for e in capacity_v1_audit_errors(tampered))
+
+
+def test_capacity_v1_audit_committed_receipt_clean() -> None:
+    """The sealed capacity receipt committed to main must audit clean."""
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    receipt_path = (
+        Path(__file__).resolve().parents[3] / "receipts" / "capacity_eval_cd0854242ed8a9ec.json"
+    )
+    if not receipt_path.exists():
+        pytest.skip("committed capacity receipt not present")
+    result = verify_receipt_file(receipt_path)
+    assert result["valid"], result["errors"]

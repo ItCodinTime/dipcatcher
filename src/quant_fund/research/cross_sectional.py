@@ -424,6 +424,129 @@ def run_cross_sectional_bench(
     return frame, receipt
 
 
+def _is_hex64_rk(value: object) -> bool:
+    return (
+        isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def rankic_v1_audit_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Deep audit of a ``cross_sectional_rankic.v1`` payload's result cells.
+
+    Re-derives what the sealed claims assert: the results grid is complete
+    over declared challengers x horizons x panels, counts recount, IC
+    magnitudes obey correlation bounds (|IC| <= 1, p-values in [0, 1],
+    finite t/ICIR), and panel digests are well-formed. Verifier-only.
+    """
+    errors: list[str] = []
+    results = receipt.get("results")
+    challengers = receipt.get("challengers")
+    horizons = receipt.get("horizons")
+    panels = receipt.get("panels")
+    if not (
+        isinstance(results, list)
+        and isinstance(challengers, list)
+        and isinstance(horizons, list)
+        and isinstance(panels, Mapping)
+    ):
+        return ["audit_inputs_missing"]
+
+    challenger_set = {str(c) for c in challengers}
+    horizon_set = {int(h) for h in horizons if isinstance(h, int) and not isinstance(h, bool)}
+    panel_set = {str(p) for p in panels}
+    seen: set[tuple[str, str, int]] = set()
+    n_error_rows = 0
+    n_dates_declared = receipt.get("n_dates")
+
+    for row in results:
+        if not isinstance(row, Mapping):
+            errors.append("row_not_object")
+            continue
+        shard = row.get("shard")
+        challenger = row.get("challenger")
+        horizon = row.get("horizon")
+        if not isinstance(shard, str) or not isinstance(challenger, str):
+            errors.append("row_identity_missing")
+            continue
+        key = (shard, challenger, horizon) if isinstance(horizon, int) else None
+        if shard not in panel_set or challenger not in challenger_set or horizon not in horizon_set:
+            errors.append(f"row_outside_grid:{shard}:{challenger}:{horizon}")
+        elif key is not None:
+            if key in seen:
+                errors.append(f"row_duplicate:{shard}:{challenger}:{horizon}")
+            seen.add(key)
+        status = row.get("status")
+        if status == "ok":
+            if row.get("error") != "":
+                errors.append(f"row_ok_with_error:{shard}:{challenger}:{horizon}")
+        elif status == "error":
+            n_error_rows += 1
+            if not row.get("error"):
+                errors.append(f"row_error_without_error:{shard}:{challenger}:{horizon}")
+            continue
+        else:
+            errors.append(f"row_status_unknown:{shard}:{challenger}:{horizon}")
+            continue
+        for name in ("mean_spearman", "mean_pearson"):
+            value = row.get(name)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                or not -1.0 <= value <= 1.0
+            ):
+                errors.append(f"row_{name}_invalid:{shard}:{challenger}:{horizon}")
+        p = row.get("p_spearman")
+        if (
+            not isinstance(p, (int, float))
+            or isinstance(p, bool)
+            or not math.isfinite(p)
+            or not 0.0 <= p <= 1.0
+        ):
+            errors.append(f"row_p_spearman_invalid:{shard}:{challenger}:{horizon}")
+        for name in ("t_spearman", "t_pearson", "icir_pearson", "icir_ann_pearson"):
+            value = row.get(name)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+            ):
+                errors.append(f"row_{name}_invalid:{shard}:{challenger}:{horizon}")
+        n_dates = row.get("n_dates")
+        if not isinstance(n_dates, int) or isinstance(n_dates, bool) or n_dates <= 0:
+            errors.append(f"row_n_dates_invalid:{shard}:{challenger}:{horizon}")
+        elif isinstance(n_dates_declared, int) and n_dates > n_dates_declared:
+            errors.append(f"row_n_dates_exceeds_panel:{shard}:{challenger}:{horizon}")
+
+    expected = {(s, c, h) for s in panel_set for c in challenger_set for h in horizon_set}
+    if seen != expected:
+        errors.append("results_grid_incomplete")
+    if receipt.get("n_rows") != len(results):
+        errors.append("n_rows_mismatch")
+    if receipt.get("n_error_rows") != n_error_rows:
+        errors.append("n_error_rows_mismatch")
+    for name, meta in panels.items():
+        if not isinstance(meta, Mapping):
+            errors.append(f"panel_meta_invalid:{name}")
+            continue
+        if not _is_hex64_rk(meta.get("signal_sha256")):
+            errors.append(f"panel_digest_invalid:{name}:signal_sha256")
+        fwd = meta.get("forward_sha256")
+        if not isinstance(fwd, Mapping):
+            errors.append(f"panel_digest_invalid:{name}:forward_sha256")
+        else:
+            if {int(k) for k in fwd if str(k).isdigit()} != horizon_set:
+                errors.append(f"panel_horizon_mismatch:{name}")
+            for h_key, digest in fwd.items():
+                if not _is_hex64_rk(digest):
+                    errors.append(f"panel_digest_invalid:{name}:{h_key}")
+        if meta.get("n_assets") != receipt.get("n_assets"):
+            errors.append(f"panel_n_assets_mismatch:{name}")
+        if meta.get("n_dates") != n_dates_declared:
+            errors.append(f"panel_n_dates_mismatch:{name}")
+    return errors
+
+
 def write_rankic_receipt(
     receipt: Mapping[str, Any],
     receipts_dir: Path | str = Path("receipts"),

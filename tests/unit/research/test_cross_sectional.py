@@ -180,3 +180,45 @@ def test_all_challengers_run_on_all_panels() -> None:
     expected = {(shard, chal) for shard in PANEL_GENERATORS for chal in CHALLENGERS}
     got = {(r["shard"], r["challenger"]) for r in combos.iter_rows(named=True)}
     assert got == expected
+
+
+def test_rankic_v1_audit_clean_and_tampered(tmp_path: Path) -> None:
+    """The audit recounts the grid, enforces IC bounds, catches tampering."""
+    from quant_fund.research.cross_sectional import rankic_v1_audit_errors
+
+    _, receipt = run_cross_sectional_bench(seed=11)
+    assert rankic_v1_audit_errors(receipt) == []
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["results"].pop()
+    assert "results_grid_incomplete" in rankic_v1_audit_errors(tampered)
+    assert "n_rows_mismatch" in rankic_v1_audit_errors(tampered)
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["results"][0]["mean_spearman"] = 1.5
+    assert any(e.startswith("row_mean_spearman_invalid") for e in rankic_v1_audit_errors(tampered))
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["results"][0]["p_spearman"] = 1.2
+    assert any(e.startswith("row_p_spearman_invalid") for e in rankic_v1_audit_errors(tampered))
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["panels"]["linear_signal"]["signal_sha256"] = "zz"
+    assert any(e.startswith("panel_digest_invalid") for e in rankic_v1_audit_errors(tampered))
+
+    tampered = json.loads(json.dumps(receipt))
+    tampered["n_error_rows"] = 7
+    assert "n_error_rows_mismatch" in rankic_v1_audit_errors(tampered)
+
+
+def test_rankic_v1_audit_committed_receipt_clean() -> None:
+    """The sealed rank-IC receipt committed to main must audit clean."""
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    receipt_path = (
+        Path(__file__).resolve().parents[3] / "receipts" / "rankic_eval_9ebdad7da83e7348.json"
+    )
+    if not receipt_path.exists():
+        pytest.skip("committed rankic receipt not present")
+    result = verify_receipt_file(receipt_path)
+    assert result["valid"], result["errors"]

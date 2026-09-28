@@ -441,6 +441,14 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
 
         errors.extend(fleet_v1_contract_errors(payload))
         errors.extend(fleet_v1_audit_errors(payload))
+    elif payload.get("schema") == "capacity_overlay.v1":
+        from quant_fund.research.capacity_overlay import capacity_v1_audit_errors
+
+        errors.extend(capacity_v1_audit_errors(payload))
+    elif payload.get("schema") == "cross_sectional_rankic.v1":
+        from quant_fund.research.cross_sectional import rankic_v1_audit_errors
+
+        errors.extend(rankic_v1_audit_errors(payload))
     return _result(path, payload, convention, errors)
 
 

@@ -18,10 +18,12 @@ square-root-impact cost estimate in basis points. Output is a sealed
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -307,6 +309,139 @@ def run_capacity_bench(
         "results": rows,
     }
     return frame, receipt
+
+
+_CAPACITY_ROW_UNIT_FIELDS = ("max_participation", "mean_participation")
+
+
+def _is_hex64_cap(value: object) -> bool:
+    return (
+        isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def capacity_v1_audit_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Deep audit of a ``capacity_overlay.v1`` payload's result cells.
+
+    Re-derives what the sealed claims assert: every book is evaluated on the
+    same AUM ladder, counts recount, participation/feasibility figures obey
+    the capacity-metric identities (``feasible`` iff
+    ``max_participation <= participation_cap``; ``days_to_trade ==
+    max_participation / participation_cap``), and book digests are
+    well-formed. Verifier-only — the writer contract stays structural.
+    """
+    errors: list[str] = []
+    results = receipt.get("results")
+    books = receipt.get("books")
+    if not isinstance(results, list) or not isinstance(books, list):
+        return ["audit_inputs_missing"]
+    book_names = sorted(str(b.get("name")) for b in books if isinstance(b, Mapping) and "name" in b)
+    if len(book_names) != len(set(book_names)):
+        errors.append("book_names_not_unique")
+    aum_sets: dict[str, set[float]] = {}
+    caps: set[float] = set()
+    for row in results:
+        if not isinstance(row, Mapping):
+            errors.append("row_not_object")
+            continue
+        book = row.get("book")
+        aum = row.get("aum")
+        cap = row.get("participation_cap")
+        if not isinstance(book, str) or book not in set(book_names):
+            errors.append("row_outside_books")
+        if (
+            not isinstance(aum, (int, float))
+            or isinstance(aum, bool)
+            or not math.isfinite(aum)
+            or aum <= 0
+        ):
+            errors.append("row_aum_invalid")
+        else:
+            aum_sets.setdefault(str(book), set()).add(float(aum))
+        if (
+            not isinstance(cap, (int, float))
+            or isinstance(cap, bool)
+            or not math.isfinite(cap)
+            or not 0 < cap <= 1
+        ):
+            errors.append("row_participation_cap_invalid")
+        else:
+            caps.add(float(cap))
+        if row.get("status") != "ok":
+            errors.append("row_status_not_ok")
+            continue
+        max_p = row.get("max_participation")
+        mean_p = row.get("mean_participation")
+        days = row.get("days_to_trade")
+        impact = row.get("impact_bps")
+        feasible = row.get("feasible")
+        if feasible not in (0, 1):
+            errors.append("row_feasible_invalid")
+        if (
+            isinstance(max_p, (int, float))
+            and not isinstance(max_p, bool)
+            and math.isfinite(max_p)
+            and isinstance(cap, (int, float))
+            and not isinstance(cap, bool)
+            and math.isfinite(cap)
+            and 0 < cap <= 1
+        ):
+            # feasible iff every required notional fits cap*ADV, i.e.
+            # max_participation <= cap (writer uses _EPS slack).
+            expect = 1 if max_p <= cap + 1e-9 else 0
+            if feasible != expect:
+                errors.append("row_feasible_mismatch")
+            if (
+                isinstance(days, (int, float))
+                and not isinstance(days, bool)
+                and math.isfinite(days)
+                and not math.isclose(days, max_p / cap, rel_tol=1e-9, abs_tol=1e-12)
+            ):
+                errors.append("row_days_to_trade_mismatch")
+        # Participation ratios are NOT unit-bounded: required notional over
+        # ADV exceeds 1 exactly when the book is infeasible at this AUM.
+        for name in _CAPACITY_ROW_UNIT_FIELDS:
+            value = row.get(name)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                errors.append(f"row_{name}_invalid")
+        if (
+            isinstance(mean_p, (int, float))
+            and isinstance(max_p, (int, float))
+            and math.isfinite(mean_p)
+            and math.isfinite(max_p)
+            and mean_p > max_p + 1e-12
+        ):
+            errors.append("row_mean_exceeds_max_participation")
+        if (
+            not isinstance(impact, (int, float))
+            or isinstance(impact, bool)
+            or not math.isfinite(impact)
+            or impact < 0
+        ):
+            errors.append("row_impact_invalid")
+    if len(caps) > 1:
+        errors.append("participation_cap_not_uniform")
+    if len(aum_sets) > 1 and len({tuple(sorted(s)) for s in aum_sets.values()}) != 1:
+        errors.append("aum_ladder_not_uniform")
+    if receipt.get("n_rows") != len(results):
+        errors.append("n_rows_mismatch")
+    for meta in books:
+        if not isinstance(meta, Mapping):
+            errors.append("book_meta_invalid")
+            continue
+        for key in ("adv_sha256", "weights_sha256"):
+            if not _is_hex64_cap(meta.get(key)):
+                errors.append(f"book_digest_invalid:{meta.get('name')}:{key}")
+        for key in ("n_dates", "n_names"):
+            value = meta.get(key)
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                errors.append(f"book_dim_invalid:{meta.get('name')}:{key}")
+    return errors
 
 
 def write_capacity_receipt(
