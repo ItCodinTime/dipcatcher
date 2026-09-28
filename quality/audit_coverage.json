@@ -86,8 +86,8 @@
       "status": "audited"
     },
     "mc_engine": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 13,
+      "status": "audited"
     },
     "metrics": {
       "doc": "docs/AUDIT_P62_STATS.md",
