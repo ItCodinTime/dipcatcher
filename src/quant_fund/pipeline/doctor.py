@@ -41,8 +41,10 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
     cfg: AppConfig
     if config_path:
         cfg = load_config(config_path)
+        status["config"] = "ok"
     else:
         cfg = AppConfig()
+        status["config"] = "default"
     status["mode"] = cfg.runtime.mode.value
     status["live_allowed"] = str(cfg.runtime.allow_live)
     if cfg.runtime.mode is RuntimeMode.LIVE and not cfg.runtime.allow_live:

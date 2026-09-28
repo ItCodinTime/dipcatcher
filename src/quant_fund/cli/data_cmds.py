@@ -18,7 +18,13 @@ from .support import _cfg, _collect_param_value
 def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     from quant_fund.pipeline.doctor import doctor as run_doctor
 
-    info = run_doctor(str(config))
+    # Doctor's job is to report problems, not crash on them: an unreadable
+    # config becomes a status line and the rest of the check runs on defaults.
+    try:
+        info = run_doctor(str(config))
+    except Exception as exc:
+        info = run_doctor(None)
+        info["config"] = f"unreadable: {type(exc).__name__}"
     for k, v in info.items():
         typer.echo(f"{k}: {v}")
     # Research-only Kyle/OFI dump path (CLI hint; not a live gate).
@@ -34,8 +40,14 @@ def doctor(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
         "ls: dipcatcher ls hunt|book|race|confirm "
         "(frozen Lightspeed engines; research_only, no live broker)"
     )
-    cfg = _cfg(config)
-    ns = cfg.northset
+    try:
+        cfg = _cfg(config)
+    except typer.BadParameter:
+        from quant_fund.config.models import AppConfig
+
+        ns = AppConfig().northset
+    else:
+        ns = cfg.northset
     typer.echo(
         f"northset.shape_floors: depth_shape_finite_floor={ns.depth_shape_finite_floor} "
         f"concentration_top_finite_floor={ns.concentration_top_finite_floor} "

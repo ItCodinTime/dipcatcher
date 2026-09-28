@@ -137,3 +137,27 @@ def test_paper_cli_rejects_conflicting_halt_flags() -> None:
     result = CliRunner().invoke(app, ["paper", "--halt", "--clear-halt", "--max-steps", "1"])
     assert result.exit_code != 0
     assert "pass only one of" in result.output
+
+
+def test_config_errors_render_cleanly_not_as_tracebacks(tmp_path):
+    """Every config-taking command must translate a missing/broken config into
+    a clean `Invalid value` error (exit 2) — not a raw traceback; `doctor`
+    reports the failure as a status line and keeps checking on defaults."""
+    from typer.testing import CliRunner
+
+    from quant_fund.cli.main import app
+
+    runner = CliRunner()
+    missing = tmp_path / "missing.yaml"
+
+    res = runner.invoke(app, ["backtest", "--config", str(missing)])
+    assert res.exit_code == 2
+    assert "config file not found" in res.output
+    assert "Traceback" not in res.output
+
+    res = runner.invoke(app, ["doctor", "--config", str(missing)])
+    assert res.exit_code == 0
+    assert "config: unreadable: FileNotFoundError" in res.output
+    # The rest of the self-check still ran on defaults.
+    assert "mode:" in res.output
+    assert "dir_metadata:" in res.output

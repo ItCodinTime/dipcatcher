@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
+import yaml
+from pydantic import ValidationError
 
 from quant_fund.hmm.cli import hmm_app as hmm_app
 from quant_fund.leakage.cli import leakage_app
@@ -77,7 +79,14 @@ def _cfg(config: Path) -> AppConfig:
     from quant_fund.config import dump_resolved, load_config
     from quant_fund.utils.logging import configure_logging
 
-    cfg = load_config(config)
+    try:
+        cfg = load_config(config)
+    except FileNotFoundError as exc:
+        raise typer.BadParameter(f"config file not found: {config}") from exc
+    except yaml.YAMLError as exc:
+        raise typer.BadParameter(f"config is not valid YAML: {config}: {exc}") from exc
+    except (ValueError, ValidationError) as exc:
+        raise typer.BadParameter(f"invalid config {config}: {exc}") from exc
     configure_logging()
     dump_resolved(cfg, Path(cfg.data.root) / "metadata" / "resolved_config.json")
     return cfg
