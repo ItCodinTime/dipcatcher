@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 733,
+  "module_count": 734,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -1524,6 +1524,10 @@
     },
     {
       "dst": "quant_fund.research.fleet_eval",
+      "src": "quant_fund.cli.research_cmds"
+    },
+    {
+      "dst": "quant_fund.research.hstep_bench",
       "src": "quant_fund.cli.research_cmds"
     },
     {
@@ -6251,6 +6255,38 @@
       "src": "quant_fund.research.garch_benchmark"
     },
     {
+      "dst": "quant_fund.metrics.probability",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.metrics.scoring",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.models.hstep",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.research.catalog",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.research.fleet_eval",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.research.receipt_v2",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.utils.hashing",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
+      "dst": "quant_fund.utils.reproducibility",
+      "src": "quant_fund.research.hstep_bench"
+    },
+    {
       "dst": "quant_fund.microstructure.book_metrics",
       "src": "quant_fund.research.identity_sweep"
     },
@@ -6448,6 +6484,10 @@
     },
     {
       "dst": "quant_fund.research.fleet_eval",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
+      "dst": "quant_fund.research.hstep_bench",
       "src": "quant_fund.research.receipt_v2"
     },
     {
@@ -7743,6 +7783,7 @@
     "quant_fund.research.forward_evidence",
     "quant_fund.research.forward_shadow",
     "quant_fund.research.garch_benchmark",
+    "quant_fund.research.hstep_bench",
     "quant_fund.research.identity_sweep",
     "quant_fund.research.net_replay",
     "quant_fund.research.net_tournament",
@@ -8263,7 +8304,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 11,
+      "imports": 12,
       "src": "quant_fund.cli"
     },
     {
@@ -9118,7 +9159,7 @@
     },
     {
       "dst": "quant_fund.metrics",
-      "imports": 49,
+      "imports": 51,
       "src": "quant_fund.research"
     },
     {
@@ -9128,7 +9169,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 57,
+      "imports": 58,
       "src": "quant_fund.research"
     },
     {
@@ -9168,7 +9209,7 @@
     },
     {
       "dst": "quant_fund.research",
-      "imports": 100,
+      "imports": 104,
       "src": "quant_fund.research"
     },
     {
@@ -9183,7 +9224,7 @@
     },
     {
       "dst": "quant_fund.utils",
-      "imports": 22,
+      "imports": 24,
       "src": "quant_fund.research"
     },
     {
