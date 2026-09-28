@@ -176,8 +176,7 @@ def execution_sensitivity_cmd(
     from quant_fund.backtest.event_sim import execution_sensitivity, format_sensitivity_table
     from quant_fund.features.engine import build_features
     from quant_fund.pipeline.dataset import ensure_silver
-    from quant_fund.pipeline.dataset import panel as decision_panel
-    from quant_fund.pipeline.forecast import build_causal_weight_panel
+    from quant_fund.pipeline.forecast import build_causal_weight_panel, decision_dates
 
     def _ints(raw: str) -> tuple[int, ...]:
         parts = tuple(int(piece.strip()) for piece in raw.split(",") if piece.strip())
@@ -194,11 +193,9 @@ def execution_sensitivity_cmd(
     cfg = _cfg(config)
     bars = ensure_silver(cfg)
     feat = build_features(bars, cfg)
-    dates = feat["event_time"].unique().sort().to_list()
     # Gold drops warmup bars (history / label horizon). optimize_asof refuses
     # a decision date with no panel row, so the grid uses the overlap only.
-    on_panel = set(decision_panel(cfg)["event_time"].unique().to_list())
-    dates = [day for day in dates if day in on_panel]
+    dates = decision_dates(cfg, feat["event_time"].unique().sort().to_list())
     if len(dates) < 2:
         raise typer.BadParameter(
             "need at least 2 decision dates on both the feature panel and the causal gold panel"

@@ -132,10 +132,12 @@ def backtest(
         "ref", "--engine", help="ref (event loop) or fast (bit-identical vectorized replay)"
     ),
 ) -> None:
+    import polars as pl
+
     from quant_fund.backtest.engine import run_backtest
     from quant_fund.backtest.fast_replay import run_backtest_fast
     from quant_fund.pipeline.dataset import ensure_silver
-    from quant_fund.pipeline.forecast import build_causal_weight_panel
+    from quant_fund.pipeline.forecast import build_causal_weight_panel, decision_dates
 
     if engine not in ("ref", "fast"):
         raise typer.BadParameter("--engine must be 'ref' or 'fast'")
@@ -145,7 +147,15 @@ def backtest(
     from quant_fund.features.engine import build_features
 
     feat = build_features(bars, cfg)
-    dates = feat["event_time"].unique().sort().to_list()
+    # Gold drops warmup bars (universe membership) and the label-horizon tail;
+    # optimize_asof fails closed on a decision date with no panel row, so the
+    # replay grid is the overlap only (same contract as execution-sensitivity).
+    dates = decision_dates(cfg, feat["event_time"].unique().sort().to_list())
+    if len(dates) < 2:
+        raise typer.BadParameter(
+            "need at least 2 decision dates on both the feature panel and the causal gold panel"
+        )
+    feat = feat.filter(pl.col("event_time").is_in(dates))
     # Causal: optimize_asof(asof=d) per date — no end-of-sample weight broadcast
     weights = build_causal_weight_panel(cfg, dates)
     run = run_backtest_fast if engine == "fast" else run_backtest

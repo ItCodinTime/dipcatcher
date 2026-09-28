@@ -616,6 +616,24 @@ def optimize_asof(
     return out
 
 
+def decision_dates(
+    config: AppConfig,
+    dates: list[datetime] | None = None,
+) -> list[datetime]:
+    """Subset of ``dates`` that have a row on the causal gold panel.
+
+    The gold panel drops warmup bars (no universe membership yet) and the
+    label-horizon tail, so a raw feature-date grid always contains decision
+    dates ``optimize_asof`` must refuse. Callers iterating a coarse grid
+    intersect it here — the same convention as ``execution-sensitivity``.
+    ``dates=None`` returns the panel's own dates.
+    """
+    on_panel = set(panel(config)["event_time"].unique().to_list())
+    if dates is None:
+        return sorted(on_panel)
+    return [d for d in dates if d in on_panel]
+
+
 def build_causal_weight_panel(
     config: AppConfig,
     dates: list[datetime] | None = None,
@@ -669,6 +687,7 @@ def build_causal_weight_panel(
 
 __all__ = [
     "build_causal_weight_panel",
+    "decision_dates",
     "forecast_asof",
     "optimize_asof",
 ]

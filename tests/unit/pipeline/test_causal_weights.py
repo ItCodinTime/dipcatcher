@@ -8,8 +8,13 @@ import polars as pl
 import pytest
 
 from quant_fund.config import load_config
-from quant_fund.pipeline.dataset import build_gold
-from quant_fund.pipeline.forecast import build_causal_weight_panel, optimize_asof
+from quant_fund.features.engine import build_features
+from quant_fund.pipeline.dataset import build_gold, ensure_silver, panel
+from quant_fund.pipeline.forecast import (
+    build_causal_weight_panel,
+    decision_dates,
+    optimize_asof,
+)
 
 
 @pytest.mark.synthetic
@@ -62,3 +67,26 @@ def test_causal_panel_not_broadcast(tmp_path: Path) -> None:
         for d in sample
     }
     assert by_date[sample[0]] != by_date[sample[-1]] or by_date[sample[0]] != by_date[sample[1]]
+
+
+@pytest.mark.synthetic
+def test_decision_dates_intersects_feature_grid_with_gold(tmp_path: Path) -> None:
+    """backtest/paper feed a raw bar/feature grid; the gold panel drops warmup
+    and the label-horizon tail. decision_dates must return exactly the gold
+    dates — never a warmup or past-the-tail date."""
+    cfg = load_config("configs/research.yaml")
+    cfg.data.root = tmp_path
+    cfg.data.synthetic_n_assets = 4
+    cfg.data.synthetic_n_days = 80
+    cfg.universe.min_history_bars = 10
+    build_gold(cfg)
+    gold_dates = panel(cfg)["event_time"].unique().sort().to_list()
+    # The CLIs compute their grid as build_features(silver) WITHOUT the
+    # membership filter — every bar date, including pre-membership warmup
+    # and any date the label join drops. That grid is strictly wider.
+    feat_dates = build_features(ensure_silver(cfg), cfg)["event_time"].unique().sort().to_list()
+    assert set(gold_dates) < set(feat_dates)
+    not_on_panel = [d for d in feat_dates if d not in set(gold_dates)]
+    assert decision_dates(cfg, feat_dates) == gold_dates
+    assert decision_dates(cfg, not_on_panel) == []
+    assert decision_dates(cfg) == gold_dates

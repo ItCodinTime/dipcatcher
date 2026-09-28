@@ -762,6 +762,7 @@ def test_backtest_post_bounds_engine_to_causal_window(tmp_path: Path, monkeypatc
         captured["engine_dates"] = engine_bars["event_time"].unique().sort().to_list()
         return result
 
+    monkeypatch.setattr(api, "_causal_decision_dates", lambda _cfg, ds: ds)
     monkeypatch.setattr(api, "build_causal_weight_panel", capture_weights)
     monkeypatch.setattr("quant_fund.backtest.engine.run_backtest", capture_backtest)
 
@@ -797,6 +798,7 @@ def test_backtest_post_forces_honesty_over_poisoned_metrics(tmp_path: Path, monk
         "quant_fund.pipeline.dataset.ensure_silver",
         lambda _cfg: bars,
     )
+    monkeypatch.setattr(api, "_causal_decision_dates", lambda _cfg, ds: ds)
     monkeypatch.setattr(api, "build_causal_weight_panel", lambda _cfg, _dates: pl.DataFrame())
     monkeypatch.setattr(
         "quant_fund.backtest.engine.run_backtest",

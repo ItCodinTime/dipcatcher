@@ -376,6 +376,7 @@ def test_backtest_dispatches_engine(
         lambda c: pl.DataFrame({"close": [1.0]}),
     )
     monkeypatch.setattr("quant_fund.features.engine.build_features", lambda b, c: feat)
+    monkeypatch.setattr("quant_fund.pipeline.forecast.decision_dates", lambda c, ds: ds)
     monkeypatch.setattr(
         "quant_fund.pipeline.forecast.build_causal_weight_panel",
         lambda c, d: pl.DataFrame({"target_weight": [0.5]}),
@@ -399,16 +400,71 @@ def test_backtest_dispatches_engine(
     assert "sharpe" in result.output
 
 
-def test_backtest_non_synthetic_source_note(
+def test_backtest_restricts_grid_to_gold_panel_dates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    ts = datetime(2026, 1, 1, tzinfo=UTC)
-    feat = pl.DataFrame({"event_time": [ts]})
+    """The feature grid is wider than the causal gold panel (membership
+    warmup + label tail). backtest must intersect before optimizing —
+    optimize_asof fails closed on off-panel dates."""
+    d1 = datetime(2026, 1, 1, tzinfo=UTC)
+    d2 = datetime(2026, 1, 2, tzinfo=UTC)
+    d3 = datetime(2026, 1, 3, tzinfo=UTC)
+    feat = pl.DataFrame({"event_time": [d1, d2, d3], "close": [1.0, 1.0, 1.0]})
     monkeypatch.setattr(
         "quant_fund.pipeline.dataset.ensure_silver",
         lambda c: pl.DataFrame({"close": [1.0]}),
     )
     monkeypatch.setattr("quant_fund.features.engine.build_features", lambda b, c: feat)
+    monkeypatch.setattr(
+        "quant_fund.pipeline.forecast.decision_dates",
+        lambda c, ds: [d for d in ds if d in (d2, d3)],
+    )
+    seen: dict[str, object] = {}
+
+    def _weights(cfg: object, ds: list[datetime]) -> pl.DataFrame:
+        seen["dates"] = list(ds)
+        return pl.DataFrame({"target_weight": [0.5]})
+
+    def _run(f: pl.DataFrame, w: pl.DataFrame, c: object) -> SimpleNamespace:
+        seen["feat_dates"] = f["event_time"].to_list()
+        return SimpleNamespace(source_note="SYNTHETIC", metrics={"sharpe": 0.0})
+
+    monkeypatch.setattr("quant_fund.pipeline.forecast.build_causal_weight_panel", _weights)
+    monkeypatch.setattr("quant_fund.backtest.engine.run_backtest", _run)
+    result = runner.invoke(app, ["backtest", "--config", str(_data_config(tmp_path))])
+    assert result.exit_code == 0, result.output
+    assert seen["dates"] == [d2, d3]
+    assert seen["feat_dates"] == [d2, d3]
+
+
+def test_backtest_rejects_when_no_dates_overlap_gold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "quant_fund.pipeline.dataset.ensure_silver",
+        lambda c: pl.DataFrame({"close": [1.0]}),
+    )
+    monkeypatch.setattr(
+        "quant_fund.features.engine.build_features",
+        lambda b, c: pl.DataFrame({"event_time": [datetime(2026, 1, 1, tzinfo=UTC)]}),
+    )
+    monkeypatch.setattr("quant_fund.pipeline.forecast.decision_dates", lambda c, ds: [])
+    result = runner.invoke(app, ["backtest", "--config", str(_data_config(tmp_path))])
+    assert result.exit_code != 0
+    assert "causal gold panel" in _plain(result.output)
+
+
+def test_backtest_non_synthetic_source_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ts = datetime(2026, 1, 1, tzinfo=UTC)
+    feat = pl.DataFrame({"event_time": [ts, datetime(2026, 1, 2, tzinfo=UTC)]})
+    monkeypatch.setattr(
+        "quant_fund.pipeline.dataset.ensure_silver",
+        lambda c: pl.DataFrame({"close": [1.0]}),
+    )
+    monkeypatch.setattr("quant_fund.features.engine.build_features", lambda b, c: feat)
+    monkeypatch.setattr("quant_fund.pipeline.forecast.decision_dates", lambda c, ds: ds)
     monkeypatch.setattr(
         "quant_fund.pipeline.forecast.build_causal_weight_panel",
         lambda c, d: pl.DataFrame({"target_weight": [0.5]}),
@@ -1025,6 +1081,7 @@ def _patch_paper_backend(
         lambda c: pl.DataFrame({"close": [1.0]}),
     )
     monkeypatch.setattr("quant_fund.features.engine.build_features", lambda b, c: feat)
+    monkeypatch.setattr("quant_fund.pipeline.forecast.decision_dates", lambda c, ds: ds)
     monkeypatch.setattr(
         "quant_fund.pipeline.forecast.build_causal_weight_panel", lambda c, d: weights
     )

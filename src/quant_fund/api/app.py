@@ -21,6 +21,7 @@ from quant_fund.config.models import AppConfig
 from quant_fund.metrics.analytics import validate_analytics_export
 from quant_fund.pipeline.doctor import doctor
 from quant_fund.pipeline.forecast import build_causal_weight_panel, forecast_asof, optimize_asof
+from quant_fund.pipeline.forecast import decision_dates as _causal_decision_dates
 
 app = FastAPI(title=f"{__firm__} Dipcatcher", version=__version__)
 
@@ -690,8 +691,14 @@ def backtest(req: BacktestRequest) -> dict[str, Any]:
     bars = ensure_silver(cfg)
     all_dates = bars["event_time"].unique().sort().to_list()
     # Bound HTTP work: 30 causal decisions plus one next-open execution date.
-    decision_dates = all_dates[:30]
-    simulation_dates = all_dates[:31]
+    # Gold drops warmup + label-tail dates and optimize_asof fails closed on
+    # dates with no panel row — intersect before slicing the window (the same
+    # overlap contract as the `backtest` and `execution-sensitivity` CLIs).
+    grid = _causal_decision_dates(cfg, all_dates)
+    if len(grid) < 2:
+        raise HTTPException(422, "fewer than 2 bar dates coincide with the causal gold panel")
+    decision_dates = grid[:30]
+    simulation_dates = grid[:31]
     simulation_bars = bars.filter(bars["event_time"].is_in(simulation_dates))
     # Causal weights per decision date (no end-of-sample broadcast)
     weights = build_causal_weight_panel(cfg, decision_dates)

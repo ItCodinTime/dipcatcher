@@ -207,6 +207,7 @@ from .decide import (
 )
 from .decide import (
     build_causal_weight_panel,
+    decision_dates,
     forecast_asof,
     optimize_asof,
 )
@@ -484,6 +485,7 @@ __all__ = [
     "available_features",
     "build_causal_weight_panel",
     "build_event_time_day_index",
+    "decision_dates",
     "ccc",
     "clear_forecast_caches",
     "clear_wrappee_cache",

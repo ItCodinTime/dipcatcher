@@ -177,7 +177,7 @@ def paper(
     from quant_fund.paper.ledger import latest_run_id
     from quant_fund.paper.loop import build_scaled_challenger_weights, run_paper_loop
     from quant_fund.pipeline.dataset import ensure_silver
-    from quant_fund.pipeline.forecast import build_causal_weight_panel
+    from quant_fund.pipeline.forecast import build_causal_weight_panel, decision_dates
 
     cfg = _cfg(config)
     if halt and clear_halt:
@@ -188,7 +188,12 @@ def paper(
         cfg.kill_switch.state = "ENABLED"
     bars = ensure_silver(cfg)
     feat = build_features(bars, cfg)
-    dates = feat["event_time"].unique().sort().to_list()
+    # Same gold-panel overlap contract as execution-sensitivity/backtest:
+    # warmup and label-tail dates have no panel rows, and optimize_asof
+    # fails closed on them. Intersect before any --max-steps tail slice.
+    dates = decision_dates(cfg, feat["event_time"].unique().sort().to_list())
+    if not dates:
+        raise typer.BadParameter("no decision dates on the causal gold panel")
     steps = max_steps if max_steps is not None else cfg.paper.max_steps
     resume_id = run_id or (
         latest_run_id(cfg.data.root, cfg.paper.ledger_subdir) if resume else None
