@@ -284,10 +284,14 @@ Each: pinned artifact + sha256, zero-shot, native output honored
       property suite `tests/property/test_fast_replay_byte_identity.py`,
       scope/gap analysis `docs/FAST_REPLAY_P42.md`, receipt
       `receipts/fast_replay_p42_conformance_20260927.json`.
-- [ ] P4.3 If fast path can't reach ≤1× honestly, write the argument:
+- [x] P4.3 If fast path can't reach ≤1× honestly, write the argument:
       per-order risk gates + fail-closed semantics are the product; vectorbt
       is a vectorized reducer without them; show latency decomposition
       table + the 3/3 fault-injection wins.
+      Landed: `docs/P4_3_FAST_PATH_ARGUMENT.md` — ~80% per-order
+      gate/cost/schema, ~15% interpreter, ~5% marshalling decomposition of
+      the residual ~5.3×; byte-identity + fault-injection parity cited as
+      the claim. Numbers from the P4.1/P6.8 profile sweep.
 - [ ] P4.4 NautilusTrader conformance replay attempt (third incumbent):
       same bars/panel/costs; document matched or not-fair with receipts.
 - [ ] P4.5 UX evidence: `dipcatcher doctor` self-check output, error-message

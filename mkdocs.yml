@@ -182,6 +182,7 @@ nav:
       - Frontier audit: AUDIT_FRONTIER.md
       - Scenario Monte Carlo: MC_ENGINE.md
       - Fast replay conformance: FAST_REPLAY_P42.md
+      - Fast-path latency argument: P4_3_FAST_PATH_ARGUMENT.md
       - Explainability: EXPLAINABILITY.md
       - Reality pre-registration: REALITY_PREREGISTRATION.md
       - Reality trial 2026: REALITY_TRIAL_2026.md
