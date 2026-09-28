@@ -141,3 +141,13 @@ def test_fail_closed_edges() -> None:
         time_decay_weights(np.array([-1.0]))
     with pytest.raises(ValueError):
         sequential_bootstrap(np.array([0]), np.array([2]), 0)
+
+
+def test_triple_barrier_last_bar_event_is_unobservable() -> None:
+    # An event on the final bar has no forward path: label/ret are NaN,
+    # never a fabricated flat outcome that meta-labels would score as wrong.
+    c = _walk(50)
+    out = triple_barrier(c, np.array([10, 49]), pt=0.05, sl=0.05, horizon=10)
+    assert np.isnan(out["label"][1]) and np.isnan(out["ret"][1])
+    assert out["t_touch"][1] == 49
+    assert np.isfinite(out["label"][0]) and np.isfinite(out["ret"][0])

@@ -76,6 +76,8 @@ def triple_barrier(
     without it barriers are absolute fractions of the event price.  Returns
     per-event ``label``, ``ret`` (touch/horizon return), ``touch`` (barrier
     id: +1/-1/0) and ``t_touch`` (index of first touch or horizon end).
+    An event on the final bar has no forward path: ``label``/``ret`` are NaN
+    (unobservable), never a fabricated flat outcome.
     """
     c = _as_vector(close, "close")
     if not np.isfinite(pt) or pt <= 0.0 or not np.isfinite(sl) or sl <= 0.0:
@@ -101,7 +103,11 @@ def triple_barrier(
         end = min(int(t) + horizon, c.size - 1)
         path = c[int(t) + 1 : end + 1] / c[int(t)] - 1.0
         if path.size == 0:
-            ret_out[i] = 0.0
+            # Event at the final bar: no forward path exists to evaluate.
+            # NaN marks the label unobservable; a fabricated flat label would
+            # silently enter meta-labels and sample weights.
+            labels[i] = np.nan
+            ret_out[i] = np.nan
             t_touch[i] = t
             continue
         up = pt * sigma[t]
