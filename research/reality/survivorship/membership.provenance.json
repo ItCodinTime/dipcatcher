@@ -1,0 +1,8 @@
+{
+  "commit": "e3b838430677f8c28bad9cf505b5b05a3ca85d26",
+  "license": "CC BY 4.0 (Coil); upstream Wikipedia List of S&P 500 companies CC BY-SA",
+  "note": "Vendored for survivorship-corrected trials and membership-coverage CLI. Not CRSP.",
+  "schema": "dipcatcher.membership_snapshot.v1",
+  "sha256": "6bedcb36dbf5713bec084f8b4c44ea7d59680a0a05a39a1214d712c52f00df19",
+  "source": "coiltrade/point-in-time-sp500"
+}

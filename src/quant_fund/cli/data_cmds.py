@@ -138,10 +138,93 @@ def build_labels_cmd(config: Path = typer.Option(Path("configs/research.yaml")))
     typer.echo(f"labels rows={labs.height}")
 
 
+@app.command("membership-coverage")
+def membership_coverage_cmd(
+    membership: Path = typer.Option(
+        ...,
+        "--membership",
+        help="Point-in-time index membership JSON (current + newest-first changes)",
+    ),
+    bars: list[Path] = typer.Option(
+        [],
+        "--bars",
+        help="Parquet bar panel (repeatable). Unioned before coverage.",
+    ),
+    anchor: list[str] = typer.Option(
+        [],
+        "--anchor",
+        help="Coverage anchor YYYY-MM-DD (repeatable). Default: 2016-01-04,2020-01-02,2023-01-03",
+    ),
+    out: Path | None = typer.Option(None, "--out", help="Write JSON coverage report"),
+    label: str = typer.Option(
+        "bars",
+        "--label",
+        help="Short label for the source set (echoed in the report)",
+    ),
+) -> None:
+    """Report point-in-time index-membership price coverage.
+
+    For each anchor date, finds the first panel session on or after that day
+    and prints the fraction of index members with at least one real bar.
+    Research diagnostic only — not a live-trading claim.
+    """
+    import json
+
+    import polars as pl
+
+    from quant_fund.data.index_membership import (
+        coverage_report_dict,
+        load_membership,
+        membership_price_coverage,
+        merge_bar_panels,
+    )
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+
+    if not membership.is_file():
+        raise typer.BadParameter(f"membership file not found: {membership}")
+    if not bars:
+        raise typer.BadParameter("pass at least one --bars parquet")
+    anchors = anchor or ["2016-01-04", "2020-01-02", "2023-01-03"]
+    frames: list[pl.DataFrame] = []
+    for path in bars:
+        if not path.is_file():
+            raise typer.BadParameter(f"bars parquet not found: {path}")
+        frames.append(pl.read_parquet(path))
+    panel = merge_bar_panels(frames)
+    member_payload = load_membership(membership)
+    member_hash = sha256_hex_bytes(membership.read_bytes())
+    rows = membership_price_coverage(panel, member_payload, anchors)
+    report = coverage_report_dict(
+        rows,
+        sources=[label],
+        membership_path=str(membership),
+        membership_sha256=member_hash,
+        extra={"n_bar_rows": panel.height, "bar_paths": [str(path) for path in bars]},
+    )
+    typer.echo(
+        f"membership_coverage label={label} members_file={membership.name} "
+        f"sha256={member_hash[:12]}… n_bars={panel.height}"
+    )
+    typer.echo("| anchor | session | members | with_bar | coverage | n_missing |")
+    typer.echo("|---|---|---:|---:|---:|---:|")
+    for row in rows:
+        session = row["session"] or "—"
+        typer.echo(
+            f"| {row['anchor']} | {session} | {row['members']} | {row['with_bar']} | "
+            f"{float(row['coverage']):.6f} | {row['n_missing']} |"
+        )
+    typer.echo(f"mean_coverage={float(report['mean_coverage']):.6f}")
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        typer.echo(f"wrote {out}")
+
+
 __all__ = [
     "build_features_cmd",
     "build_labels_cmd",
     "collect",
     "doctor",
     "ingest",
+    "membership_coverage_cmd",
 ]

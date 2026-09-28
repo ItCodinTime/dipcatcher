@@ -33,6 +33,7 @@ from quant_fund.cli.data_cmds import (
     collect,
     build_features_cmd,
     build_labels_cmd,
+    membership_coverage_cmd,
 )
 from quant_fund.cli.forecast_cmds import (
     validate,
@@ -144,6 +145,7 @@ __all__ = [
     "collect",
     "build_features_cmd",
     "build_labels_cmd",
+    "membership_coverage_cmd",
     "train_callback",
     "train_ranking",
     "train_distribution",
