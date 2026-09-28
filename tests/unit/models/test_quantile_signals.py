@@ -621,6 +621,10 @@ def test_sim_live_end_to_end_synthetic(tmp_path: Path) -> None:
     assert set(receipt["bars"]["sha256"]) == {"AAA", "BBB"}
     assert receipt["loop_metrics"]["n_steps_this_run"] > 0
     assert res.receipt_path.is_file()
+    # Written receipt is sealed and verifies end-to-end.
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    assert verify_receipt_file(res.receipt_path)["valid"] is True
     # Quantile cache written and is deterministic on re-read.
     cache_files = list((tmp_path / "out" / "qpanel_cache").glob("*.npz"))
     assert len(cache_files) == 4  # 2 sids x 2 specs
