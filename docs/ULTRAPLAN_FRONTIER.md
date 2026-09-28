@@ -207,8 +207,11 @@ fleet contract.
       1-step slice: `hstep_t`/`hstep_emp` adapters slice the `h=1`
       `student_t`/`empirical` blocks — the only horizon honestly scorable
       on the fleet's 1-step trailing slice — on all 9 shards (receipt
-      `fleet_eval_5ddf15b0dc7d3ca1`). Multi-horizon fleet scoring remains
-      open pending horizon-aligned targets.
+      `fleet_eval_5ddf15b0dc7d3ca1`). Multi-horizon scoring landed as a
+      dedicated lane: `research/hstep_bench.py` + `dipcatcher hstep-bench`
+      score per-horizon forward *sums* (stride-h disjoint targets) for
+      `hstep_t`/`hstep_emp` against `gaussian_iid`/`ewma_iid` baselines,
+      sealed `hstep_bench.v1`/v2 receipts, `verify-receipt` dispatched.
 
 ### P2 — New published targets (make the claim harder to dismiss)
 

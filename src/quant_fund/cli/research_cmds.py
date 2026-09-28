@@ -406,6 +406,68 @@ def vol_bench(
 
 
 @app.command()
+def hstep_bench(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    models: str | None = typer.Option(
+        None,
+        help="Comma-separated h-step models (default: gaussian_iid, ewma_iid, hstep_t, hstep_emp).",
+    ),
+    shards: str | None = typer.Option(
+        None, help="Comma-separated shard names (default: all SYNTHETIC fleet shards)."
+    ),
+    horizons: str = typer.Option(
+        "1,5,20", "--horizons", help="Comma-separated forward-sum horizons in bars."
+    ),
+    n_train: int = typer.Option(512, help="Leading fit bars per shard."),
+    n_eval: int = typer.Option(256, help="Trailing bars for horizon-aligned targets."),
+    seed: int | None = typer.Option(
+        None, help="Base seed (default: train.random_seed from config)."
+    ),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    receipt_version: int = typer.Option(
+        1, "--receipt-version", help="Receipt envelope version (1 = flat v1, 2 = receipt.v2)."
+    ),
+) -> None:
+    """Multi-horizon distribution bench on SYNTHETIC shards (P3.2-lite).
+
+    Scores per-horizon quantile constructions (h-step forward sums) with
+    proper scores only — pinball, CRPS, PIT-KS, central coverage — against
+    non-overlapping horizon-aligned targets. The naive iid baselines
+    (gaussian_iid, ewma_iid) make undercoverage visible; hstep_t/hstep_emp
+    are the challenger head's two constructions. Correctness evidence only —
+    never market or live-P&L claims.
+    """
+    from quant_fund.research.hstep_bench import (
+        hstep_bench_report,
+        resolve_hstep_models,
+        run_hstep_bench,
+        write_hstep_bench_receipt,
+    )
+
+    cfg = _cfg(config)
+    base_seed = cfg.train.random_seed if seed is None else seed
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
+    try:
+        horizon_set = tuple(int(h.strip()) for h in horizons.split(",") if h.strip())
+        resolved_models = resolve_hstep_models(None if models is None else models.split(","))
+        frame, receipt = run_hstep_bench(
+            resolved_models,
+            shards=None if shards is None else shards.split(","),
+            n_train=int(n_train),
+            n_eval=int(n_eval),
+            horizons=horizon_set,
+            seed=int(base_seed),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    path = write_hstep_bench_receipt(receipt, out_dir, receipt_version=receipt_version)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(hstep_bench_report(frame))
+    typer.echo(f"receipt={path}")
+
+
+@app.command()
 def rankic(
     panels: str | None = typer.Option(
         None, help="Comma-separated panel names (default: all synthetic panels)."
