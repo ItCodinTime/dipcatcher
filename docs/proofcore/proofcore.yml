@@ -167,4 +167,7 @@ jobs:
       - name: Sync
         run: uv sync --frozen --all-groups
       - name: fx1 coverage ratchet
-        run: uv run pytest tests/fx1 -q --cov=fx1 --cov-fail-under=60 --cov-report=term-missing
+        # Ratcheted 2026-09-28: suite measures 88% locally. Floor 80 keeps
+        # ~4pp headroom under the expected (lower) CI reading while closing
+        # most of the drift window. Raise, never lower.
+        run: uv run pytest tests/fx1 -q --cov=fx1 --cov-fail-under=80 --cov-report=term-missing
