@@ -105,7 +105,8 @@ def _json_default(value: Any) -> Any:
 
 
 def _dump(path: Path, payload: Mapping[str, Any]) -> None:
-    sealed = {**payload, "receipt_sha256": hash_bytes(canonical_json_bytes(payload))}
+    body = {k: v for k, v in payload.items() if k != "receipt_sha256"}
+    sealed = {**body, "receipt_sha256": hash_bytes(canonical_json_bytes(body))}
     path.write_text(
         json.dumps(sealed, indent=2, sort_keys=True, default=_json_default) + "\n",
         encoding="utf-8",

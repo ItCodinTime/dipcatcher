@@ -311,3 +311,24 @@ def test_merge_order_of_completed_chunks_does_not_matter(tmp_path: Path) -> None
         ),
     )
     assert first["fingerprint"] == second["fingerprint"]
+
+
+def test_tampered_checkpoint_manifest_is_refused(tmp_path: Path) -> None:
+    """A manifest whose seal does not match its body cannot be resumed."""
+    generator = IdentityShockGenerator(n_steps=2, n_factors=1)
+    run_simulation(
+        generator,
+        _identity_config(
+            n_paths=60,
+            chunk_size=30,
+            seed=21,
+            checkpoint_dir=str(tmp_path),
+            stop_after_new_chunks=1,
+        ),
+    )
+    manifest_path = tmp_path / "manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["note"] = "tampered"
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="seal"):
+        resume_simulation(tmp_path, generator)
