@@ -113,6 +113,14 @@ def test_determinism() -> None:
     assert ra == rb
 
 
+def test_method_seed_is_process_stable() -> None:
+    # str.hash() is salt-randomized per process; the seed derivation must not
+    # depend on it — this KAT pins the sha256-derived offset.
+    import hashlib
+
+    assert int.from_bytes(hashlib.sha256(b"copula_mc").digest()[:8]) % 7919 == 6206
+
+
 def test_write_and_contract(tmp_path: Path) -> None:
     _, receipt = _run()
     assert coherence_contract_errors(receipt) == []

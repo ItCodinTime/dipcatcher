@@ -25,6 +25,7 @@ envelopes under ``receipts/``. Correctness evidence, never market claims.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from collections.abc import Iterable, Mapping, Sequence
@@ -313,7 +314,10 @@ def run_coherence(
                 "n_eval": n_eval,
             }
             try:
-                rng = np.random.default_rng(panel_seed * 7919 + hash(method) % 7919)
+                rng = np.random.default_rng(
+                    panel_seed * 7919
+                    + int.from_bytes(hashlib.sha256(method.encode()).digest()[:8]) % 7919
+                )
                 q = _method_grid(method, y_train, n_eval, tau_arr, int(n_mc), rng)
                 row.update(_grid_metrics(q, agg_eval, tau_arr))
             except Exception as exc:  # recorded, never silent
