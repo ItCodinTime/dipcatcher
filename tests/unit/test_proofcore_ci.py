@@ -34,7 +34,7 @@ WORKFLOW_ACTIVATED = REPO_ROOT / ".github" / "workflows" / "proofcore.yml"
 MAKEFILE = REPO_ROOT / "Makefile"
 
 # §9.3/§12 (lead-adjudicated): pit/proof/reality/proofcore 90, leakage 85.
-EXPECTED_FLOORS = {"pit": 90, "proof": 90, "leakage": 85, "reality": 90, "proofcore": 90}
+EXPECTED_FLOORS = {"pit": 91, "proof": 91, "leakage": 86, "reality": 91, "proofcore": 91}
 
 
 # ---------------------------------------------------------------------------
