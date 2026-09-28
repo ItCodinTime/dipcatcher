@@ -287,9 +287,11 @@ def history_for_calibration(
     if not times:
         return frame.head(0)
     idx = next((i for i, t in enumerate(times) if t >= asof), len(times))
+    # A label issued at session i is realized at session i+horizon; it is
+    # available at asof only when i <= idx-horizon-1. When fewer than
+    # horizon+1 sessions precede asof no label can be realized — return empty
+    # rather than falling back to unrealized (future) labels.
     last = idx - horizon - 1
-    if last < 0:
-        last = idx - 1
     if last < 0:
         return frame.head(0)
     cutoff = times[last]

@@ -257,6 +257,35 @@ def test_history_for_calibration_rejects_non_datetime_event_times() -> None:
         history_for_calibration(frame, asof, horizon_bars=1, event_times=["2024-01-01"])
 
 
+@pytest.mark.parametrize("horizon", [1, 3, 5])
+def test_history_for_calibration_early_asof_never_returns_unrealized(horizon: int) -> None:
+    """Labels realized strictly after asof must not enter calibration history.
+
+    Regression: when fewer than horizon+1 sessions preceded asof the code fell
+    back to ``last = idx - 1``, returning rows whose h-step labels end after
+    the decision bar — unrealized labels leaking into conformal calibration.
+    """
+    frame = _sorted_panel(n_days=10, n_names=3)
+    times = frame["event_time"].unique().sort().to_list()
+    # asof inside the first `horizon` sessions: no label can be realized yet.
+    for idx in range(0, horizon + 1):
+        out = history_for_calibration(frame, times[idx], horizon_bars=horizon)
+        assert out.is_empty(), f"asof={times[idx]} h={horizon} leaked {out.height} rows"
+    # First asof where exactly one session's labels are realized: idx=h+1.
+    out = history_for_calibration(frame, times[horizon + 1], horizon_bars=horizon)
+    assert out["event_time"].max() == times[0]
+
+
+def test_history_for_calibration_asof_mid_grid_excludes_boundary() -> None:
+    """A label ending exactly at asof's session is not yet observable."""
+    frame = _sorted_panel(n_days=10, n_names=3)
+    times = frame["event_time"].unique().sort().to_list()
+    out = history_for_calibration(frame, times[5], horizon_bars=2)
+    # Label at session i ends at session i+2; realized before session 5
+    # requires i+2 <= 4 -> i <= 2.
+    assert out["event_time"].max() == times[2]
+
+
 def _unsorted_panel() -> pl.DataFrame:
     rows: list[dict] = []
     for d in [3, 1, 4, 2, 0]:
