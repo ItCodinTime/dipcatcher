@@ -141,5 +141,10 @@ jobs:
           # membership is unchanged. Repo paths contain no spaces, and the
           # expanded argv stays under the Windows 32k command-line limit
           # (~170 files * ~50 chars).
-          mapfile -t files < <(LC_ALL=C sort "$shard_file")
+          # while-read instead of mapfile: macOS runners use the
+          # system bash 3.2, which predates mapfile.
+          files=()
+          while IFS= read -r line; do
+            files+=("$line")
+          done < <(LC_ALL=C sort "$shard_file")
           uv run pytest -q -m "not network" "${files[@]}"
