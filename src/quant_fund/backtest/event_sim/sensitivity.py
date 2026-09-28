@@ -8,7 +8,6 @@ headlines and not a live P&L claim.
 from __future__ import annotations
 
 import math
-from datetime import timedelta
 
 import polars as pl
 
@@ -56,8 +55,8 @@ def _cell(
     return {
         "signal_to_order_bars": signal_bars,
         "order_to_exchange_bars": exchange_bars,
-        "signal_to_order": str(timedelta(0)),
-        "order_to_exchange": str(timedelta(0)),
+        "signal_to_order": f"{signal_bars} bars",
+        "order_to_exchange": f"{exchange_bars} bars",
         "impact_multiplier": float(impact_multiplier),
         "net_pnl": float(net_pnl),
         "sharpe_diagnostic": sharpe_value,
@@ -130,10 +129,12 @@ def execution_sensitivity(
     base_pnl = _cell_float(baseline, "net_pnl")
     base_sharpe = _cell_float(baseline, "sharpe_diagnostic")
     for row in rows:
-        row["net_pnl_delta"] = _cell_float(row, "net_pnl") - base_pnl
+        # Baseline minus scenario per the documented contract: positive delta
+        # means the slower/costlier scenario made less than the baseline cell.
+        row["net_pnl_delta"] = base_pnl - _cell_float(row, "net_pnl")
         sharpe = _cell_float(row, "sharpe_diagnostic")
         row["sharpe_delta"] = (
-            sharpe - base_sharpe
+            base_sharpe - sharpe
             if math.isfinite(sharpe) and math.isfinite(base_sharpe)
             else float("nan")
         )
