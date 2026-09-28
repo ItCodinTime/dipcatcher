@@ -120,6 +120,52 @@ def collect(
     typer.echo(f"receipt: {result.receipt}")
 
 
+@app.command("promote-bars")
+def promote_bars_cmd(
+    config: Path = typer.Option(Path("configs/research.yaml")),
+    source_file: Path | None = typer.Option(
+        None,
+        "--source-file",
+        help="Collected source parquet (default <data.root>/raw/sources/<source>.parquet)",
+    ),
+    source: str | None = typer.Option(
+        None, "--source", help="Resolve the collected frame under data.root/raw/sources/"
+    ),
+    dest_dir: Path | None = typer.Option(
+        None,
+        "--dest-dir",
+        help="Directory the parquet provider reads (default <data.root>/raw)",
+    ),
+    filename: str = typer.Option("bars.parquet", "--filename", help="Bars filename"),
+    force: bool = typer.Option(False, "--force", help="Replace an existing bars file"),
+) -> None:
+    """Publish a collected source frame as ``bars.parquet`` for ``source: parquet``.
+
+    Runs the same bars/PIT contract the provider enforces at read time, refuses
+    to overwrite without ``--force``, and writes a provenance receipt linking
+    the source parquet (and its collect receipt) to the published file.
+    """
+    from quant_fund.data.promote import promote_bars
+    from quant_fund.data.sources.base import SourceError
+
+    cfg = _cfg(config)
+    root = Path(cfg.data.root)
+    src = source_file
+    if src is None:
+        if not source:
+            raise typer.BadParameter("pass --source-file or --source")
+        if source in {".", ".."} or "/" in source or "\\" in source:
+            raise typer.BadParameter("--source must be a path-safe label")
+        src = root / "raw" / "sources" / f"{source}.parquet"
+    dest = dest_dir or (root / "raw")
+    try:
+        result = promote_bars(src, dest, filename=filename, force=force)
+    except SourceError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"rows={result['rows']} data={result['data']}")
+    typer.echo(f"receipt: {result['receipt']}")
+
+
 @app.command("build-features")
 def build_features_cmd(config: Path = typer.Option(Path("configs/research.yaml"))) -> None:
     from quant_fund.pipeline.dataset import build_gold
