@@ -47,7 +47,8 @@
       "status": "audited"
     },
     "features": {
-      "status": "pending"
+      "n_modules": 9,
+      "status": "audited"
     },
     "formal": {
       "n_modules": 4,
