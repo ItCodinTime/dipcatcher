@@ -129,8 +129,7 @@
       "status": "audited"
     },
     "pipeline": {
-      "n_modules": 4,
-      "status": "audited"
+      "status": "partial"
     },
     "pit": {
       "doc": "docs/AUDIT_FRONTIER.md",
@@ -138,8 +137,8 @@
       "status": "audited"
     },
     "portfolio": {
-      "doc": "docs/AUDIT_FRONTIER.md",
-      "status": "partial"
+      "n_modules": 13,
+      "status": "audited"
     },
     "pretrade": {
       "n_modules": 9,
