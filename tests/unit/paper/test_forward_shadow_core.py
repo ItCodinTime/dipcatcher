@@ -536,3 +536,45 @@ class TestDecideExecuteVerify:
         (run / "events").mkdir()
         out = fwd.verify(run)
         assert out["valid"] is False
+
+    def test_interrupt_preserves_cursor_and_verifies(self, tmp_path, monkeypatch) -> None:
+        m = _manifest(monkeypatch)
+        run = _make_run(tmp_path, m)
+        freeze = fwd._dt(m["freeze"]["recorded_at"])
+        close = _session_after(freeze.date())
+        observed = close.close_utc + timedelta(seconds=5)
+
+        attempted = _write_packet(tmp_path, {"kind": "forward_shadow_close", "bars": [{"bad": 1}]})
+        receipt = fwd.interrupt(
+            run,
+            "no_feed",
+            now=observed,
+            attempted_stage="close",
+            attempted_packet=attempted,
+            error="missing bars",
+        )
+        assert receipt["live_pnl_claim"] is False
+        with pytest.raises(ValueError, match="already interrupted"):
+            fwd.interrupt(run, "downtime", now=observed + timedelta(seconds=5))
+
+        out = fwd.verify(run)
+        assert out["valid"] is True
+        assert out["interruption_reason"] == "no_feed"
+        assert out["paired_sessions"] == 0
+
+    def test_interrupt_guards(self, tmp_path, monkeypatch) -> None:
+        m = _manifest(monkeypatch)
+        run = _make_run(tmp_path, m)
+        freeze = fwd._dt(m["freeze"]["recorded_at"])
+        observed = freeze + timedelta(seconds=10)
+        with pytest.raises(ValueError, match="no_feed/downtime"):
+            fwd.interrupt(run, "bogus", now=observed)
+        receipt = fwd.interrupt(run, "other", now=observed)
+        assert receipt["research_only"] is True
+
+    def test_interrupt_clock_must_advance(self, tmp_path, monkeypatch) -> None:
+        m = _manifest(monkeypatch)
+        run = _make_run(tmp_path, m)
+        freeze = fwd._dt(m["freeze"]["recorded_at"])
+        with pytest.raises(ValueError, match="advance"):
+            fwd.interrupt(run, "other", now=freeze - timedelta(seconds=1))
