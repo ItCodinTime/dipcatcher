@@ -42,7 +42,7 @@ _SETTINGS = settings(
     derandomize=True,
     deadline=None,
     database=None,
-    suppress_health_check=[HealthCheck.too_slow],
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
 )
 
 T0 = datetime(2024, 1, 1, tzinfo=UTC)
