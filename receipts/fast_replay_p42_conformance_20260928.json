@@ -1,0 +1,38 @@
+{
+ "receipt": "fast_replay_p42_conformance",
+ "generated": "2026-09-28T00:00:00Z",
+ "ultraplan_item": "P4.2",
+ "verdict": "vectorized replay path is byte-identical to the reference event loop on the matched-workload class, selected by an explicit fast flag; unsupported workload classes refuse fail-closed",
+ "supersedes": "receipts/fast_replay_p42_conformance_20260927.json",
+ "supersedes_reason": "code_sha256 pins were bound to 7d2e01e4; fast_replay.py changed under the mark-only-bar fill fix (#215). Re-verified byte-identical on current main under the same rerun suite.",
+ "base_commit": "92c154c8d563058c301dfb0de284dcb5ebe5f61e",
+ "code_sha256": {
+  "src/quant_fund/backtest/fast_replay.py": "8f2ea07afaffa543438772c3ea57fe5de24c2cc88d30f40901ccf05d4eb1c0e3",
+  "src/quant_fund/backtest/engine.py": "ab2dc3fd3f7954a69b06d34931681b8b33a55f730b54619fd7b9e77295a2c5bd",
+  "src/quant_fund/public.py": "2728625ace9f0951684988f6a6013cc8de040d4a9c7d1d6d084ce6c075b0a9ed",
+  "tests/property/test_fast_replay_byte_identity.py": "356b259a87adbb3d987036e73337751653237548036f990c80d8c2301b184c10",
+  "tests/unit/backtest/test_fast_replay.py": "86ccfb6c54d9b5db60a7bd113882b748bdf72baec439dbdc68e9d939ee1cfae4"
+ },
+ "evidence": [
+  "tests/property/test_fast_replay_byte_identity.py: hypothesis-generated matched-class workloads (adversarial profile, seeded); equity/fills Arrow-IPC bytes identical, metrics sha256 identical, interpreted fallback identical to numba kernel; reference exceptions reproduce with the same type",
+  "tests/unit/backtest/test_fast_replay.py: seeded 30-workload fuzz sweep + targeted stale/close-auction/dup/kill/empty/sparse cases + flag behavior (fast=True refusals incl. garch artifact, fast=False pins event loop, auto-dispatch)",
+  "tests/unit/test_perf_equivalence.py: fills/equity .equals on the perf lane workload",
+  "2026-09-28 reseal: rerun suite green on main post-#215 (36 tests incl. hypothesis byte-identity + 30-workload fuzz + perf-equivalence lane)"
+ ],
+ "fixes": [
+  "engine.run_backtest gained explicit fast: bool | None flag (None=auto, True=fail-closed contract, False=reference lane)",
+  "run_backtest_fast now carries the dispatcher's panel/completeness refusals itself \u2014 direct calls and fast=True share one fail-closed source of truth",
+  "fixed 1-ulp divergence in turnover_bps_cost: np.sum pairwise reduction replaced with sequential += fold matching the reference (caught by the new byte-identity property test, seed 394)",
+  "post-receipt fix on this code state: mark-only bars now value non-executing names at the pre-update mark (#215)",
+  "aggregate_shortfall top_cost_names resolves total_is ties by security_id \u2014 the receipt's former known_issue_out_of_lane (#347)"
+ ],
+ "gaps_refused": [
+  "allow_close_auction=True (close-auction order semantics not replicated)",
+  "risk_overlay (mid-loop target scaling/flattening not replicated)",
+  "GARCH/realized-GARCH market-overlay artifact present (overlay-date metric counters would read 0 \u2014 refused rather than approximate)",
+  "empty/duplicate-key/non-Datetime/mismatched-unit panels"
+ ],
+ "rerun": "uv run pytest tests/unit/backtest/test_fast_replay.py tests/property/test_fast_replay_byte_identity.py tests/unit/test_perf_equivalence.py -x -q",
+ "research_only": true,
+ "live_pnl_claim": false
+}
