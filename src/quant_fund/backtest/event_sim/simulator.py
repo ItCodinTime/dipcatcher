@@ -1435,6 +1435,15 @@ def run_event_backtest(
         order_bar = signal_index + step
         if order_bar < n:
             clock.schedule(order_bar, EventKind.ORDER, {"signal_index": signal_index})
+        else:
+            state.events.append(
+                {
+                    "kind": "CANCEL",
+                    "bar_index": bar_index,
+                    "signal_index": signal_index,
+                    "reason": "expired_after_sample",
+                }
+            )
 
     def on_order(bar_index: int, signal_index: int) -> None:
         _log("ORDER", bar_index, signal_index=signal_index)
@@ -1444,6 +1453,15 @@ def run_event_backtest(
         ex_bar = bar_index + step
         if ex_bar < n:
             clock.schedule(ex_bar, EventKind.EXCHANGE, {"signal_index": signal_index})
+        else:
+            state.events.append(
+                {
+                    "kind": "CANCEL",
+                    "bar_index": bar_index,
+                    "signal_index": signal_index,
+                    "reason": "expired_after_sample",
+                }
+            )
 
     def on_exchange(bar_index: int, signal_index: int) -> None:
         _log("EXCHANGE", bar_index, signal_index=signal_index)
