@@ -578,6 +578,84 @@ def basis_carry_hysteresis_weights(
     )
 
 
+def residual_mr_weights(
+    bars: pl.DataFrame,
+    *,
+    factor_window: int = 96,
+    z_window: int = 48,
+    reversal_window: int = 4,
+    z_clip: float = 3.0,
+    max_name: float = 0.05,
+    gross_scale: float = 1.0,
+) -> pl.DataFrame:
+    """Kakushadze-style cross-sectional residual mean-reversion.
+
+    The per-timestamp equal-weight mean return is the book factor; each name's
+    beta to it comes from a trailing covariance/variance window, residuals are
+    z-scored against their own trailing sigma, and the signal is the negative
+    of the clipped z summed over ``reversal_window`` — long residual-oversold
+    names, short residual-overbought, dollar-neutral after demeaning.
+
+    Strictly causal: beta, sigma and the residual feed are all shifted so the
+    emitted weight at row ``t`` depends only on bars strictly before ``t``.
+    """
+    _validate_bars(bars)
+    for label, v in (
+        ("factor_window", factor_window),
+        ("z_window", z_window),
+        ("reversal_window", reversal_window),
+    ):
+        if not isinstance(v, int) or v < 2:
+            raise ValueError(f"{label} must be an int >= 2")
+    if z_clip <= 0.0 or not np.isfinite(z_clip):
+        raise ValueError("z_clip must be positive and finite")
+
+    frame = bars.sort(["security_id", "event_time"]).with_columns(
+        pl.col("close").log().diff().over("security_id").alias("_r")
+    )
+    frame = frame.with_columns(pl.col("_r").mean().over("event_time").alias("_mkt"))
+    # Trailing per-name beta to the book factor, all estimators shifted by one
+    # bar so no current-bar return enters them.
+    frame = frame.with_columns(
+        (
+            (
+                (pl.col("_r") * pl.col("_mkt")).rolling_mean(factor_window)
+                - pl.col("_r").rolling_mean(factor_window)
+                * pl.col("_mkt").rolling_mean(factor_window)
+            )
+            / pl.col("_mkt").rolling_var(factor_window)
+        )
+        .shift(1)
+        .over("security_id")
+        .alias("_beta")
+    )
+    # Residual uses the trailing beta on the observed return, then the whole
+    # residual feed is shifted once more so the z-signal at t reads <= t-1.
+    frame = frame.with_columns(
+        (pl.col("_r") - pl.col("_beta") * pl.col("_mkt")).alias("_resid_now")
+    )
+    frame = frame.with_columns(
+        pl.col("_resid_now").shift(1).over("security_id").alias("_resid"),
+        pl.col("_resid_now")
+        .shift(2)
+        .rolling_std(z_window, min_samples=max(4, z_window // 4))
+        .over("security_id")
+        .alias("_resid_sigma"),
+    )
+    frame = frame.with_columns(
+        (
+            (-(pl.col("_resid") / pl.col("_resid_sigma")))
+            .clip(-float(z_clip), float(z_clip))
+            .rolling_mean(reversal_window, min_samples=1)
+        )
+        .over("security_id")
+        .alias("_raw")
+    )
+    # Dollar-neutral cross-section: subtract the per-timestamp median.
+    frame = frame.with_columns(pl.col("_raw") - pl.col("_raw").median().over("event_time"))
+    return _cap_and_emit(frame, "_raw", max_name=max_name, gross_scale=gross_scale)
+
+
 def blend_weights(
     sleeves: dict[str, pl.DataFrame],
     sleeve_weights: dict[str, float],
