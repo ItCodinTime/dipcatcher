@@ -18,6 +18,7 @@ import yaml
 
 from quant_fund.proofcore.ci import (
     REQUIRED_FLOOR_PACKAGES,
+    _cli_verifier,
     coverage_floors,
     coverage_gate,
     receipt_paths,
@@ -145,6 +146,31 @@ def test_committed_receipts_dir_nonempty() -> None:
     assert receipt_paths(REPO_ROOT / "receipts"), "receipts/ must not be empty"
 
 
+def test_default_verifier_is_verify_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: the default verifier shelled to verify-research (the
+    notebook verifier), which rejects every receipt — the gate reported
+    10/10 failures on sealed receipts that pass verify-receipt."""
+    seen: list[list[str]] = []
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(cmd: list[str], **_kw: object) -> _Proc:
+        seen.append(cmd)
+        return _Proc()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    receipt = tmp_path / "r.json"
+    receipt.write_text("{}")
+    assert _cli_verifier(receipt) is True
+    assert len(seen) == 1 and "verify-receipt" in seen[0]
+    assert "verify-research" not in seen[0]
+
+
 def test_cli_verifier_respects_exit_status(tmp_path: Path, monkeypatch) -> None:
     import subprocess
 
@@ -154,7 +180,7 @@ def test_cli_verifier_respects_exit_status(tmp_path: Path, monkeypatch) -> None:
     receipt.write_text("{}")
 
     def fake_run(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        assert cmd[-2:] == ["verify-research", str(receipt)]
+        assert cmd[-2:] == ["verify-receipt", str(receipt)]
         return subprocess.CompletedProcess(cmd, 1)
 
     monkeypatch.setattr(ci.subprocess, "run", fake_run)

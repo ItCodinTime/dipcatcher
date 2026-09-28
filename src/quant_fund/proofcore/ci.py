@@ -102,7 +102,7 @@ def _cli_verifier(path: Path) -> bool:
     module's import graph (layering contract, DESIGN.md §1.3).
     """
     proc = subprocess.run(
-        [sys.executable, "-m", "quant_fund.cli.main", "verify-research", str(path)],
+        [sys.executable, "-m", "quant_fund.cli.main", "verify-receipt", str(path)],
         capture_output=True,
         text=True,
     )
