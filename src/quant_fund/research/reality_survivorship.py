@@ -1531,7 +1531,7 @@ def compare_return_bases(
             label=mode,
         )
         winner = select_winner(scored)
-        pbo = pbo_on_pre_holdout(scored, n_splits=int(spec["pbo"]["n_splits"]))
+        pbo = pbo_on_pre_holdout(scored, spec)
         modes[mode] = {
             "return_basis": mode,
             "n_dividend_rows": int(
