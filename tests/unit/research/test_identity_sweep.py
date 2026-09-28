@@ -244,3 +244,59 @@ def test_cli_verify_identities_exit_codes(tmp_path: Path) -> None:
     payload = json.loads(out.read_text())
     assert payload["all_passed"] is True
     assert "session_volume_conservation" in ok.output
+
+
+def test_cli_verify_identities_receipt_v2(tmp_path: Path) -> None:
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    out = tmp_path / "identity_sweep_v2.json"
+    ok = CliRunner().invoke(
+        app,
+        [
+            "verify-identities",
+            "--out",
+            str(out),
+            "--trials",
+            "1",
+            "--seed",
+            "9",
+            "--receipt-version",
+            "2",
+        ],
+    )
+    assert ok.exit_code == 0, ok.output
+    envelope = json.loads(out.read_text())
+    assert envelope["kind"] == "identity_sweep"
+    assert envelope["data_label"] == "SYNTHETIC"
+    assert envelope["verdict"] == "pass"
+    assert envelope["payload"]["all_passed"] is True
+    result = verify_receipt_file(out)
+    assert result["errors"] == [], result["errors"]
+
+
+def test_identity_receipt_v2_detects_tampering(tmp_path: Path) -> None:
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    receipt = _sweep(n_trials=1, seed=3)
+    out = tmp_path / "identity_sweep_v2.json"
+    write_identity_receipt(out, receipt, receipt_version=2)
+
+    tampered = json.loads(out.read_text())
+    tampered["payload"]["n_trials"] = tampered["payload"]["n_trials"] + 1
+    tampered_path = tmp_path / "tampered.json"
+    tampered_path.write_text(json.dumps(tampered))
+    result = verify_receipt_file(tampered_path)
+    assert result["errors"], "tampered payload must fail verification"
+
+    # Seal-consistent but dishonest envelope verdict: flip the envelope
+    # verdict and reseal so every digest matches while the verdict disagrees
+    # with the payload — kind-consistency must still catch it.
+    dishonest = json.loads(out.read_text())
+    dishonest["verdict"] = "fail"
+    from quant_fund.research.receipt_v2 import seal_receipt
+
+    dishonest = seal_receipt(dishonest)
+    dishonest_path = tmp_path / "dishonest.json"
+    dishonest_path.write_text(json.dumps(dishonest))
+    result = verify_receipt_file(dishonest_path)
+    assert "verdict_mismatch" in result["errors"], result["errors"]

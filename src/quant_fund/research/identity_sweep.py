@@ -21,7 +21,7 @@ import json
 import math
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from importlib import import_module
@@ -1152,23 +1152,121 @@ def format_identity_table(receipt: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def write_identity_receipt(path: Path, receipt: dict[str, Any]) -> Path:
-    """Atomically publish an immutable, hash-verified SYNTHETIC receipt."""
-    path = Path(path)
-    if (
-        receipt.get("kind") != "identity_sweep"
-        or receipt.get("schema_version") != IDENTITY_SWEEP_SCHEMA_VERSION
-        or receipt.get("synthetic") is not True
-        or receipt.get("data_source") != "SYNTHETIC"
-        or receipt.get("claim") != "research_only"
-        or not family_blob_forbidden_metrics_absent(receipt)
-    ):
-        raise ValueError("identity receipt violates its synthetic research contract")
+def _identity_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """The synthetic-contract predicates every identity receipt must satisfy."""
+    errors: list[str] = []
+    if receipt.get("kind") != "identity_sweep":
+        errors.append("kind")
+    if receipt.get("schema_version") != IDENTITY_SWEEP_SCHEMA_VERSION:
+        errors.append("schema_version")
+    if receipt.get("synthetic") is not True:
+        errors.append("synthetic")
+    if receipt.get("data_source") != "SYNTHETIC":
+        errors.append("data_source")
+    if receipt.get("claim") != "research_only":
+        errors.append("claim")
+    if not family_blob_forbidden_metrics_absent(dict(receipt)):
+        errors.append("forbidden_metrics")
+    return errors
+
+
+def _identity_seal_errors(receipt: Mapping[str, Any]) -> list[str]:
     unsigned = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
     expected_digest = hash_bytes(canonical_json_bytes(unsigned))
-    if receipt.get("receipt_sha256") != expected_digest:
-        raise ValueError("identity receipt hash mismatch")
-    canonical = json.loads(canonical_json_bytes(receipt))
+    return [] if receipt.get("receipt_sha256") == expected_digest else ["receipt_sha256"]
+
+
+def identity_dataset_identity(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """What was evaluated: the seeded SYNTHETIC trial set and registered families."""
+    return {
+        "seed": receipt["seed"],
+        "n_trials": receipt["n_trials"],
+        "registered_families": list(receipt["registered_families"]),
+        "enumerated_pairs": list(receipt["enumerated_pairs"]),
+    }
+
+
+def identity_params(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    return {"seed": receipt["seed"], "n_trials": receipt["n_trials"]}
+
+
+def identity_verdict(receipt: Mapping[str, Any]) -> str:
+    return "pass" if receipt.get("all_passed") is True else "fail"
+
+
+def identity_receipt_v2(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """Wrap an ``identity_sweep`` payload in the unified ``receipt.v2`` envelope.
+
+    The v1 payload is embedded verbatim under ``payload``; the envelope binds
+    the seeded trial-set identity, run params, this module's source hash, and
+    the loaded numeric stack. A malformed payload is never wrapped.
+    """
+    from quant_fund.research.receipt_v2 import build_receipt_v2
+
+    if _identity_contract_errors(receipt) or _identity_seal_errors(receipt):
+        raise ValueError("identity receipt violates its synthetic research contract")
+    return build_receipt_v2(
+        kind=str(receipt["kind"]),
+        data_label=str(receipt["data_source"]),
+        dataset=identity_dataset_identity(receipt),
+        params=identity_params(receipt),
+        code_files=(Path(__file__),),
+        verdict=identity_verdict(receipt),
+        payload=dict(receipt),
+        generated_at=str(receipt["generated_at"]),
+        revision=str(receipt["git_revision"]),
+    )
+
+
+def identity_v2_consistency_errors(envelope: Mapping[str, Any]) -> list[str]:
+    """Re-derive an identity receipt.v2 envelope's bound digests from its payload."""
+    errors: list[str] = []
+    payload = envelope.get("payload")
+    if not isinstance(payload, Mapping):
+        return ["payload_not_object"]
+    contract_errors = _identity_contract_errors(payload)
+    errors.extend(f"payload_{name}" for name in contract_errors)
+    errors.extend(f"payload_{name}" for name in _identity_seal_errors(payload))
+    if contract_errors:
+        return errors
+    try:
+        dataset = identity_dataset_identity(payload)
+        params = identity_params(payload)
+    except (KeyError, TypeError) as exc:
+        return [*errors, f"payload_missing_field:{exc}"]
+    if hash_bytes(canonical_json_bytes(dataset)) != envelope.get("dataset_hash"):
+        errors.append("dataset_hash_mismatch")
+    if hash_bytes(canonical_json_bytes(params)) != envelope.get("params_hash"):
+        errors.append("params_hash_mismatch")
+    if identity_verdict(payload) != envelope.get("verdict"):
+        errors.append("verdict_mismatch")
+    return errors
+
+
+def write_identity_receipt(
+    path: Path, receipt: dict[str, Any], *, receipt_version: int = 1
+) -> Path:
+    """Atomically publish an immutable, hash-verified SYNTHETIC receipt.
+
+    ``receipt_version=2`` wraps the payload in the unified ``receipt.v2``
+    envelope before writing; the envelope seal is recomputed over the wrap.
+    """
+    path = Path(path)
+    if receipt_version == 1:
+        body: dict[str, Any] | Mapping[str, Any] = receipt
+    elif receipt_version == 2:
+        body = identity_receipt_v2(receipt)
+        from quant_fund.research.receipt_v2 import seal_receipt
+
+        body = seal_receipt(body)
+    else:
+        raise ValueError(f"receipt_version must be 1 or 2, got {receipt_version!r}")
+    if receipt_version == 1:
+        if _identity_contract_errors(body):
+            raise ValueError("identity receipt violates its synthetic research contract")
+        if _identity_seal_errors(body):
+            raise ValueError("identity receipt hash mismatch")
+    canonical = json.loads(canonical_json_bytes(dict(body)))
     content = json.dumps(canonical, indent=2, sort_keys=True) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.is_symlink():

@@ -237,6 +237,11 @@ def verify_identities(
     ),
     trials: int = typer.Option(8, "--trials", help="Seeded SYNTHETIC draws per identity."),
     seed: int = typer.Option(7, "--seed", help="Base seed for the synthetic generators."),
+    receipt_version: int = typer.Option(
+        1,
+        "--receipt-version",
+        help="Receipt schema version: 1 = identity_sweep v1 (default), 2 = unified receipt.v2 envelope.",
+    ),
 ) -> None:
     """Prove catalog/northset microstructure identities on SYNTHETIC draws.
 
@@ -250,8 +255,10 @@ def verify_identities(
         write_identity_receipt,
     )
 
+    if receipt_version not in (1, 2):
+        raise typer.BadParameter("--receipt-version must be 1 or 2")
     receipt = run_identity_sweep(n_trials=int(trials), seed=int(seed))
-    write_identity_receipt(out, receipt)
+    write_identity_receipt(out, receipt, receipt_version=receipt_version)
     typer.echo("SYNTHETIC")
     typer.echo(format_identity_table(receipt))
     typer.echo(f"receipt={out}")
