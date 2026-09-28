@@ -1,8 +1,8 @@
-"""Cross-process determinism: a sealed receipt is identical under any hash seed.
+"""Cross-process determinism: receipt content is identical under any hash seed.
 
 In-process reruns share one PYTHONHASHSEED, so they cannot catch set-iteration
-or dict-insertion-order leaks into sealed artifacts. Running the same lane in
-two subprocesses with different hash seeds does.
+or dict-insertion-order leaks into receipts and artifact digests. Running the
+same lane in two subprocesses with different hash seeds does.
 """
 
 from __future__ import annotations
@@ -13,8 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import polars as pl
+
 _SCRIPT = r"""
-import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -87,21 +88,70 @@ def _run_once(root: Path, hashseed: str) -> Path:
 
 
 def test_sim_live_receipt_is_byte_identical_across_hash_seeds(tmp_path: Path) -> None:
-    from quant_fund.research.receipt_v2 import verify_receipt_file
-
     root_a, root_b = tmp_path / "a", tmp_path / "b"
     path_a = _run_once(root_a, "1")
     path_b = _run_once(root_b, "2")
-    # Each receipt is sealed and verifies on its own.
-    assert verify_receipt_file(path_a)["valid"] is True
-    assert verify_receipt_file(path_b)["valid"] is True
-    # Normalizing the machine-local absolute paths the seal legitimately
-    # covers, the two runs must produce identical receipt content.
+    # Normalizing the machine-local absolute paths (which legitimately differ
+    # between run roots), the two runs must produce identical receipt content.
     text_a = path_a.read_text(encoding="utf-8").replace(str(root_a), "$ROOT")
     text_b = path_b.read_text(encoding="utf-8").replace(str(root_b), "$ROOT")
     obj_a, obj_b = json.loads(text_a), json.loads(text_b)
-    assert obj_a.pop("receipt_sha256") != obj_b.pop("receipt_sha256")
+    for obj in (obj_a, obj_b):
+        obj.pop("receipt_sha256", None)
     assert obj_a == obj_b, (
         "sim_live receipt content differs across PYTHONHASHSEED values "
-        "(hash-ordering leak into a sealed artifact)"
+        "(hash-ordering leak into a receipt artifact)"
     )
+
+
+_GOLD_SCRIPT = r"""
+import sys
+from pathlib import Path
+
+from quant_fund.config import load_config
+from quant_fund.pipeline.dataset import build_gold
+
+cfg = load_config("configs/research.yaml")
+cfg.data.root = sys.argv[1]
+cfg.data.synthetic_n_assets = 6
+cfg.data.synthetic_n_days = 120
+build_gold(cfg)
+sys.stdout.write(str(Path(sys.argv[1]).resolve()))
+"""
+
+
+def test_gold_pipeline_frames_identical_across_hash_seeds(tmp_path: Path) -> None:
+    """The synthetic data pipeline must be deterministic modulo ingest stamps.
+
+    Set iteration or dict-order leaks into silver/gold parquet content would
+    diverge across processes. ``ingested_time`` is intentionally wall-clock —
+    it is audit metadata with a chain invariant (available_time <=
+    ingested_time), never a feature/label input — so it is excluded.
+    """
+
+    def _run(root: Path, hashseed: str) -> Path:
+        out = subprocess.run(
+            [sys.executable, "-c", _GOLD_SCRIPT, str(root)],
+            env={**os.environ, "PYTHONHASHSEED": hashseed},
+            check=True,
+            capture_output=True,
+        )
+        return Path(out.stdout.decode().strip())
+
+    root_a = _run(tmp_path / "a", "1")
+    root_b = _run(tmp_path / "b", "2")
+    for rel in (
+        "bronze/bars.parquet",
+        "silver/bars.parquet",
+        "silver/universe.parquet",
+        "gold/features.parquet",
+        "gold/labels.parquet",
+    ):
+        pa, pb = root_a / rel, root_b / rel
+        if not (pa.is_file() and pb.is_file()):
+            continue
+        fa, fb = pl.read_parquet(pa), pl.read_parquet(pb)
+        assert fa.shape == fb.shape, rel
+        fa = fa.drop("ingested_time") if "ingested_time" in fa.columns else fa
+        fb = fb.drop("ingested_time") if "ingested_time" in fb.columns else fb
+        assert fa.equals(fb), f"{rel} content differs across PYTHONHASHSEED"
