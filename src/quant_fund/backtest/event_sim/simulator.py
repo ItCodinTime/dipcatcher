@@ -375,7 +375,7 @@ def _load_books(
         indexed: dict[tuple[str, datetime], OrderBookSnapshot] = {}
         for day in rows.values():
             for row in day:
-                snap = _snapshot_from_row(row, 0.0)
+                snap = _snapshot_from_row(row, 4.0)
                 if snap is not None:
                     indexed[(snap.security_id, snap.event_time)] = snap
         return indexed
