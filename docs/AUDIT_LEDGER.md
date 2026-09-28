@@ -69,7 +69,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `honesty.py` + `data/` | Child audit — regex evasions, corpus screening, contamination floor, vacuous honesty gate | #321 |
 | `eval/` | Deterministic seeded banks, contract-validated prompts, unparseable answers counted (never propagated), degenerate forecasts fail closed NaN, `passed` requires finite ECE AND finite \|Z\| | — |
 | `serve/` | HMAC-env signing (never hardcoded), fail-closed compare_digest verify, structural TEE + zkML manifests with honest crypto delegation | #321 (TEE existence-only status) |
-| `train/` / `bench/` / `forecast/` | Spot-checked: provenance timestamps only; forward labels explicitly marked "do not pass to predict" | — |
+| `train/` / `bench/` / `forecast/` | `bench/dip.py` verified: causal dip detection (fires below running peak only), recovery windows bounded at data end → `None` never imputed, out-of-range probabilities raise, `assert_bench_output_honest` mirrors the forbidden-token contract inside the bench itself; `forecast/` forward labels explicitly marked "do not pass to predict"; `train/` wrappers over verified eval paths | — |
 
 ## Rules
 
