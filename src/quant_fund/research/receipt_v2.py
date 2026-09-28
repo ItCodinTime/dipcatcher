@@ -433,6 +433,10 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
+    if payload.get("catalog") == "hedge_lab_analytics":
+        from quant_fund.hedge_lab._receipt import lane_receipt_contract_errors
+
+        errors.extend(lane_receipt_contract_errors(payload))
     return _result(path, payload, convention, errors)
 
 

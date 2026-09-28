@@ -351,6 +351,7 @@ flowchart LR
   quant_fund_research -->|10| quant_fund_config
   quant_fund_research -->|1| quant_fund_data
   quant_fund_research -->|2| quant_fund_execution
+  quant_fund_research -->|1| quant_fund_hedge_lab
   quant_fund_research -->|49| quant_fund_metrics
   quant_fund_research -->|4| quant_fund_microstructure
   quant_fund_research -->|57| quant_fund_models
@@ -639,7 +640,7 @@ sequenceDiagram
 
 - Modules scanned: **734**
 - Packages: **65**
-- Cross-package import edges: **249**
+- Cross-package import edges: **250**
 
 <!-- END GENERATED: coverage -->
 

@@ -6471,6 +6471,10 @@
       "src": "quant_fund.research.receipt_schema"
     },
     {
+      "dst": "quant_fund.hedge_lab._receipt",
+      "src": "quant_fund.research.receipt_v2"
+    },
+    {
       "dst": "quant_fund.research.catalog",
       "src": "quant_fund.research.receipt_v2"
     },
@@ -9148,6 +9152,11 @@
     {
       "dst": "quant_fund.execution",
       "imports": 2,
+      "src": "quant_fund.research"
+    },
+    {
+      "dst": "quant_fund.hedge_lab",
+      "imports": 1,
       "src": "quant_fund.research"
     },
     {

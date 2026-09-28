@@ -68,6 +68,22 @@ def test_contract_errors_cover_each_honesty_field() -> None:
     )
 
 
+def test_verify_receipt_dispatch_catches_lane_claim_drift(tmp_path: Path) -> None:
+    """verify-receipt re-derives the lane contract from the catalog marker."""
+    from quant_fund.research.receipt_v2 import verify_receipt_file
+
+    drifted = seal_receipt({**_lane_receipt(), "live_pnl_claim": True})
+    path = tmp_path / "lane.json"
+    path.write_text(json.dumps(drifted, indent=2, default=str), encoding="utf-8")
+    result = verify_receipt_file(path)
+    assert result["valid"] is False
+    assert "live_pnl_claim" in result["errors"]
+
+    good = seal_receipt(_lane_receipt())
+    path.write_text(json.dumps(good, indent=2, default=str), encoding="utf-8")
+    assert verify_receipt_file(path)["valid"] is True
+
+
 def test_verify_fails_closed_on_garbage_and_missing(tmp_path: Path) -> None:
     bad = tmp_path / "bad.json"
     bad.write_text("not json{", encoding="utf-8")
