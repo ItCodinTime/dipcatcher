@@ -19,7 +19,9 @@ correctness evidence, not market data.
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -814,6 +816,135 @@ def fleet_v1_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
         errors.append("results_missing_or_empty")
     if not family_blob_forbidden_metrics_absent(research_blob):
         errors.append("forbidden_metric_keys")
+    return errors
+
+
+_HEX64 = re.compile(r"\A[0-9a-f]{64}\Z")
+
+# pit_ks_p is deliberately null on serially-dependent shards (an iid KS
+# p-value would be a false claim there); every other score field is
+# populated on an ok row.
+_FLEET_ROW_FLOAT_FIELDS = ("crps", "pit_ks")
+
+
+def _is_hex64(value: object) -> bool:
+    return isinstance(value, str) and bool(_HEX64.match(value))
+
+
+def fleet_v1_audit_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Deep audit of a ``fleet_eval.v1`` payload's result cells.
+
+    ``fleet_v1_contract_errors`` proves the envelope is shaped right; this
+    re-derives the claims: the results grid must be complete over the
+    declared models x shards, counts must recount, score fields must be
+    finite and in range, and shard digests must be well-formed. Used by the
+    verifier only — the writer contract stays structural so receipts fail
+    closed at write time on shape, and at verify time on arithmetic.
+    """
+    errors: list[str] = []
+    results = receipt.get("results")
+    models = receipt.get("models")
+    shards = receipt.get("shards")
+    taus = receipt.get("taus")
+    if not isinstance(results, list) or not isinstance(models, list):
+        return ["audit_inputs_missing"]
+    if not isinstance(shards, Mapping) or not isinstance(taus, list):
+        return ["audit_inputs_missing"]
+
+    model_set = sorted(str(m) for m in models)
+    shard_set = sorted(str(s) for s in shards)
+    seen: set[tuple[str, str]] = set()
+    n_error_rows = 0
+    tau_fields = {f"pinball_{tau}" for tau in taus}
+
+    for row in results:
+        if not isinstance(row, Mapping):
+            errors.append("row_not_object")
+            continue
+        model = row.get("model")
+        shard = row.get("shard")
+        if not isinstance(model, str) or not isinstance(shard, str):
+            errors.append("row_identity_missing")
+            continue
+        pair = (model, shard)
+        if model not in set(models) or shard not in set(shards):
+            errors.append(f"row_outside_grid:{model}:{shard}")
+        if pair in seen:
+            errors.append(f"row_duplicate:{model}:{shard}")
+        seen.add(pair)
+        status = row.get("status")
+        if status == "ok":
+            if row.get("error") is not None:
+                errors.append(f"row_ok_with_error:{model}:{shard}")
+        elif status == "error":
+            n_error_rows += 1
+            if row.get("error") is None:
+                errors.append(f"row_error_without_error:{model}:{shard}")
+        else:
+            errors.append(f"row_status_unknown:{model}:{shard}")
+        missing_taus = sorted(tau_fields - set(row))
+        if missing_taus:
+            errors.append(f"row_missing_pinball:{model}:{shard}")
+        for tau in taus:
+            value = row.get(f"pinball_{tau}")
+            if status == "ok" and (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                errors.append(f"row_pinball_invalid:{model}:{shard}:{tau}")
+        for name in _FLEET_ROW_FLOAT_FIELDS:
+            value = row.get(name)
+            if status == "ok" and (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+            ):
+                errors.append(f"row_{name}_invalid:{model}:{shard}")
+        shard_meta = shards.get(shard)
+        serial_dependence = (
+            isinstance(shard_meta, Mapping)
+            and isinstance(shard_meta.get("config"), Mapping)
+            and bool(shard_meta["config"].get("serial_dependence"))
+        )
+        if status == "ok":
+            ks_p = row.get("pit_ks_p")
+            if serial_dependence:
+                if ks_p is not None:
+                    errors.append(f"row_pit_ks_p_on_dependent_shard:{model}:{shard}")
+            elif (
+                not isinstance(ks_p, (int, float))
+                or isinstance(ks_p, bool)
+                or not math.isfinite(ks_p)
+            ):
+                errors.append(f"row_pit_ks_p_invalid:{model}:{shard}")
+        for name in ("coverage_80", "coverage_90", "pit_ks", "pit_ks_p"):
+            value = row.get(name)
+            if status == "ok" and isinstance(value, (int, float)) and not 0 <= value <= 1:
+                errors.append(f"row_{name}_out_of_unit_interval:{model}:{shard}")
+        if status == "ok":
+            if row.get("n_eval") != receipt.get("n_eval"):
+                errors.append(f"row_n_eval_mismatch:{model}:{shard}")
+            if row.get("n_train") != receipt.get("n_train"):
+                errors.append(f"row_n_train_mismatch:{model}:{shard}")
+
+    if seen != {(m, s) for m in model_set for s in shard_set}:
+        errors.append("results_grid_incomplete")
+    if receipt.get("n_rows") != len(results):
+        errors.append("n_rows_mismatch")
+    if receipt.get("n_error_rows") != n_error_rows:
+        errors.append("n_error_rows_mismatch")
+    versions = receipt.get("model_versions")
+    if not isinstance(versions, Mapping) or sorted(str(k) for k in versions) != model_set:
+        errors.append("model_versions_mismatch")
+    for name, meta in shards.items():
+        if not isinstance(meta, Mapping):
+            errors.append(f"shard_meta_invalid:{name}")
+            continue
+        for key in ("x_sha256", "y_sha256"):
+            if not _is_hex64(meta.get(key)):
+                errors.append(f"shard_digest_invalid:{name}:{key}")
     return errors
 
 
