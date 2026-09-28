@@ -65,7 +65,10 @@ def lot_spread(returns: Array, eps: float = 1e-8) -> dict[str, float]:
     """
     r = _v(returns, 30)
     z = zero_freq(r, eps)
-    sig = float(np.std(r[r != 0])) if np.any(r != 0) else 0.0
+    # ``sig`` must measure the same nonzero population ``z`` excludes — a
+    # return inside the dead zone is zero for both.
+    nonzero = np.abs(r) > eps
+    sig = float(np.std(r[nonzero])) if np.any(nonzero) else 0.0
     if sig <= 0.0 or not np.isfinite(sig):
         raise ValueError("no nonzero returns")
     # Approximate: central mass between -z1 and +z2 of a normal ~ zero freq.

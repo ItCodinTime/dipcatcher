@@ -121,3 +121,18 @@ class TestTickTurnover:
             effective_tick(-np.ones(50))
         with pytest.raises(ValueError):
             turnover_volatility(np.zeros(30))
+
+
+def test_lot_spread_uses_eps_dead_zone_for_both_stats():
+    """A return inside the dead zone is zero for ``z`` AND excluded from ``sig``."""
+    rng = np.random.default_rng(7)
+    r = rng.normal(scale=0.02, size=400)
+    # 5% of observations sit inside the dead zone but are not exactly 0.
+    tiny = rng.random(400) < 0.05
+    r[tiny] = 1e-9
+    out = lot_spread(r, eps=1e-8)
+    expected_sig = float(np.std(r[np.abs(r) > 1e-8]))
+    assert out["sigma_nonzero"] == pytest.approx(expected_sig)
+    # The dead-zone entries count toward zero_share.
+    exact_zero_share = float(np.mean(np.abs(r) <= 1e-8))
+    assert out["zero_share"] == pytest.approx(exact_zero_share)
