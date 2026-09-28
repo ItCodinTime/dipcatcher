@@ -129,17 +129,29 @@ def caviar_forecast(
     y_last: float,
 ) -> float:
     """One-step-ahead conditional quantile given last observation."""
-    q = np.asarray(q_path, dtype=float)
-    b = np.asarray(beta, dtype=float)
+    q = np.asarray(q_path, dtype=float).reshape(-1)
+    b = np.asarray(beta, dtype=float).reshape(-1)
+    if q.size == 0 or not np.isfinite(q).all():
+        raise ValueError("q_path must be non-empty and finite")
+    if not np.isfinite(b).all():
+        raise ValueError("beta must be finite")
     q_prev = float(q[-1])
     y = float(y_last)
+    if not np.isfinite(y):
+        raise ValueError("y_last must be finite")
     if spec == "sav":
-        return float(b[0] + b[1] * q_prev + b[2] * abs(y))
-    if spec == "as":
-        return float(b[0] + b[1] * q_prev + b[2] * max(y, 0.0) + b[3] * min(y, 0.0))
-    if spec == "ig":
+        out = float(b[0] + b[1] * q_prev + b[2] * abs(y))
+    elif spec == "as":
+        out = float(b[0] + b[1] * q_prev + b[2] * max(y, 0.0) + b[3] * min(y, 0.0))
+    elif spec == "ig":
         inner = b[0] + b[1] * q_prev**2 + b[2] * y * y
-        return float(np.sign(q_prev) * np.sqrt(max(inner, 0.0)))
-    if spec == "adaptive":
-        return float(q_prev + b[0] / (1.0 + np.exp(10.0 * (y - q_prev))))
-    raise ValueError(f"unknown spec {spec!r}")
+        if inner <= 0:
+            raise ValueError("ig recursion hit a non-positive variance")
+        out = float(np.sign(q_prev) * np.sqrt(inner))
+    elif spec == "adaptive":
+        out = float(q_prev + b[0] / (1.0 + np.exp(10.0 * (y - q_prev))))
+    else:
+        raise ValueError(f"unknown spec {spec!r}")
+    if not np.isfinite(out):
+        raise ValueError(f"{spec} forecast overflowed")
+    return out

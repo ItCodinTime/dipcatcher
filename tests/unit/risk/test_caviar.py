@@ -78,3 +78,24 @@ def test_fail_closed() -> None:
         caviar_fit(np.random.default_rng(0).standard_normal(500), spec="bogus")
     with pytest.raises(ValueError):
         caviar_forecast(np.array([1.0]), np.zeros(3), "bogus", 0.0)
+
+
+def test_caviar_forecast_rejects_nonfinite_inputs() -> None:
+    from quant_fund.models.caviar import caviar_forecast
+
+    q = np.array([-0.02, -0.025])
+    beta = np.array([0.001, 0.9, 0.05])
+    assert caviar_forecast(q, beta, "sav", -0.03) < 0.0
+    with pytest.raises(ValueError, match="finite"):
+        caviar_forecast(q, beta, "sav", np.nan)
+    with pytest.raises(ValueError, match="finite"):
+        caviar_forecast(np.array([np.nan]), beta, "sav", -0.03)
+    with pytest.raises(ValueError, match="finite"):
+        caviar_forecast(q, np.array([0.001, np.inf, 0.05]), "sav", -0.03)
+
+
+def test_caviar_forecast_ig_rejects_nonpositive_variance() -> None:
+    from quant_fund.models.caviar import caviar_forecast
+
+    with pytest.raises(ValueError, match="non-positive"):
+        caviar_forecast(np.array([-0.02]), np.array([-1.0, 0.9, 0.05]), "ig", -0.03)
