@@ -293,7 +293,7 @@ def load_chain(bundle_dir: Path) -> list[ProofBundleV1]:
 
 
 def _append_chain_line(bundle_dir: Path, bundle_bytes: bytes) -> None:
-    path = bundle_dir / BUNDLES_JSONL
+    path = Path(bundle_dir) / BUNDLES_JSONL
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("ab") as handle:
         handle.write(bundle_bytes + b"\n")
@@ -313,11 +313,20 @@ def build_bundle(
     bundle_dir: Path,
     signer: Signer | None = None,
     created_utc: str | None = None,
+    round_config: bool = True,
 ) -> ProofBundleV1:
     """Mint, sign, chain, and persist a ProofBundleV1 (DESIGN.md §5.2 steps 5-7).
 
     ``created_utc`` is injectable ONLY for tests; production callers leave it
     None (wall clock). It is evidence, excluded from the self-hash preimage.
+
+    ``round_config`` (wave-2, additive; default preserves wave-1 bytes): when
+    True the config sidecar is float-rounded to the §8.2 determinism
+    precision. The wave-2 proven runner passes False because
+    ``trace.spec_sha256`` commits to the UNROUNDED canonical RunSpec dump —
+    rounding would break the mint -> replay hash identity for spec params
+    with more than 12 significant digits (canonical_json_bytes already
+    encodes non-finite floats deterministically).
     """
     signer = signer if signer is not None else NullSigner()
     bundle_dir = Path(bundle_dir)
@@ -325,7 +334,9 @@ def build_bundle(
     signal_bytes = _parquet_bytes(signal_log)
     trade_bytes = _parquet_bytes(trade_log)
     metrics_bytes = canonical_json_bytes(round_floats(engine_metrics))
-    config_bytes = canonical_json_bytes(round_floats(config_dump))
+    if round_config:
+        config_dump = round_floats(config_dump)
+    config_bytes = canonical_json_bytes(config_dump)
 
     # Fail closed at MINT time (ADVERSARIAL §2-H): canonical JSON encodes
     # NaN/inf as null, which the bundle schema (`metrics_recompute:

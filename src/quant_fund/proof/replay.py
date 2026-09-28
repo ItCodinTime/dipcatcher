@@ -32,8 +32,6 @@ from __future__ import annotations
 
 import json
 import platform
-import shutil
-import subprocess
 import tempfile
 from importlib import metadata as importlib_metadata
 from pathlib import Path
@@ -45,6 +43,7 @@ from quant_fund.proofcore.contracts import (
     DecisionTrace,
     Divergence,
     ProofBundleV1,
+    ProofcoreError,
     ProofError,
     ReplayVerdict,
     RunSpec,
@@ -109,7 +108,8 @@ def expected_seeds_sidecar(spec: RunSpec) -> dict[str, Any]:
 
 # ---------------------------------------------------------------------------
 # Current-environment probes (private; tests monkeypatch these, not the gate).
-# The formulas mirror proof.runner (W6), which wrote the stored fingerprints.
+# Integration reconciliation: runner and replay share the SAME canonical
+# helpers in proofcore.ci (env_fingerprint §2.2, code_fingerprint §7.2).
 # ---------------------------------------------------------------------------
 
 
@@ -119,43 +119,30 @@ def _current_python_tag() -> str:
 
 
 def _current_env_fingerprint() -> str:
-    """``platform|python tag|quant_fund-dev`` — mirrors proof.runner (W6)."""
+    """COMPAT SHIM (expires wave 3): the W6 development-time literal
+    ``platform|python tag|quant_fund-dev``, accepted so bundles minted before
+    the §2.2 reconciliation still replay. New bundles mint the canonical
+    ``_current_env_fingerprint_contracts`` form; remove this accept-arm once
+    no dev-minted bundles remain in scope (track: wave-3 cleanup)."""
     return f"{platform.platform()}|{platform.python_version()}|quant_fund-dev"
 
 
 def _current_env_fingerprint_contracts() -> str:
-    """Contracts-style variant (§2.2): real ``quant_fund.__version__`` or dev."""
-    version = "dev"
-    try:
-        import quant_fund
+    """Canonical §2.2 variant via ``proofcore.ci.env_fingerprint`` — exactly
+    what the reconciled runner mints (integration amendment, single source)."""
+    from quant_fund.proofcore import ci
 
-        version = str(getattr(quant_fund, "__version__", "dev") or "dev")
-    except Exception:  # never let a version probe break the gate
-        version = "dev"
-    return f"{platform.platform()}|{platform.python_version()}|{version}"
+    return ci.env_fingerprint()
 
 
 def _current_code_fingerprint() -> str:
-    """Git revision of the working tree, else ``"nogit"`` (mirrors W6; the
-    src-tree hash fallback is W8 §7.2, integration wave)."""
-    git = shutil.which("git")
-    if git is None:
-        return "nogit"
-    try:
-        proc = subprocess.run(
-            [git, "rev-parse", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=Path(__file__).resolve().parent,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "nogit"
-    revision = proc.stdout.strip()
-    if proc.returncode != 0 or not revision:
-        return "nogit"
-    return revision
+    """Git revision in a worktree, else the W8 §7.2 src-tree hash fallback —
+    via ``proofcore.ci.code_fingerprint`` so runner and replay agree (the
+    pre-integration ``"nogit"`` fallback here would have diverged from the
+    runner's minted fingerprint on nogit machines)."""
+    from quant_fund.proofcore import ci
+
+    return ci.code_fingerprint()
 
 
 def _current_package_pins() -> dict[str, str]:
@@ -295,7 +282,12 @@ def _default_executor(spec: RunSpec, vault: Any, tmp_bundle_dir: Path) -> Decisi
         ok, result = run_proven(spec, vault=vault, bundle_dir=tmp_bundle_dir)
     except ReplayUnavailable:
         raise
-    except Exception as exc:  # runner fails closed by raising (§4.4)
+    # The runner fails closed by raising (§4.4): contract violations are
+    # ProofcoreError subclasses; vault/FS failures surface as OSError;
+    # pydantic rebuilds as ValueError; a missing/mis-shaped injected vault as
+    # TypeError/AttributeError. Anything else is a bug and propagates to the
+    # caller's replay_reexecute_error arm instead of posing as "unavailable".
+    except (ProofcoreError, OSError, ValueError, TypeError, AttributeError) as exc:
         raise ReplayUnavailable(str(exc)) from exc
     if not ok:
         raise ReplayUnavailable(str(result))
