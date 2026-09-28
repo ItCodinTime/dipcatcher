@@ -38,6 +38,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `paper/` | loop, ledger, sim_live resume cursors, divergence merge, atomic receipts | #258 seals, #303 fail-closed cursors, #338 |
 | `parity/` | `__main__` dual-clock smoke, fail-closed report | — |
 | `pit/` | Vault enforcement | #289 (child: 12 enforcement gaps) |
+| `pipeline/` | All 21 modules: purged walk-forward (observed label-end fallback), asof-bounded everything, unfitted-clone GARCH/RGARCH refits, spec-bytes + full-history digest caches, named-estimator family/spec/object pinning, PIT history builders (strict `<` origins, null `available_time` fail-closed, duplicate-key rejection on the full frame), labeled homoskedastic fallback emitted per-row | #213 (calibration unrealized-label fallback) |
 | `portfolio/` | Optimizer (infeasible diagnostics), allocators (PSD cov), factor betas (trailing ridge), conformal (chrono split), attribution (prev-bar weights) | #332 non-PSD refusal, fingerprint framing |
 | `pretrade/` | Hot risk-gate surface | #287 (child audit doc) |
 | `proof/` | HMAC env-only, merkle canonical dumps | — |
@@ -60,7 +61,6 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 |---|---|
 | `models/` (142 modules) | Child session `b95e8bcbd3a0426285a47725ec48086c` — estimator-by-estimator verification |
 | `research/` (29 modules) | Child session `3dca4dedd8634a5182f3e7a94e0cd15d` — lane/receipt audit |
-| `pipeline/` (21 modules) | Queued — top-level verified; train/+forecast/ residual line-pass pending |
 
 ## fx1 (the gated product — out of manifest scope)
 
