@@ -19,6 +19,11 @@ import polars as pl
 
 from quant_fund.config.models import AppConfig, FillConvention
 from quant_fund.execution.costs import total_cost
+from quant_fund.execution.spread_calibration import (
+    is_calibrated_spread_estimator,
+    pit_calibrated_half_spread_bps,
+    require_ohlc_for_calibration,
+)
 from quant_fund.metrics.analytics import (
     ANALYTICS_SCHEMA_KEYS,
     analytics_export_digest,
@@ -179,8 +184,14 @@ def _fast_replay_is_complete(config: AppConfig, risk_overlay: BookRiskOverlay | 
     and both counters stay 0, so the fast replay plus those zeros is the same
     result. A present artifact keeps the event loop, which counts overlay dates
     and feeds the per-order vol gate.
+
+    OHLC spread calibration is also out of class: the fast kernel only charges
+    the flat ``half_spread_bps`` surface, so auto-dispatch stays on the event
+    loop and an explicit ``fast=True`` call refuses with ``ValueError``.
     """
     if risk_overlay is not None or config.execution.allow_close_auction:
+        return False
+    if is_calibrated_spread_estimator(config.costs.spread_estimator):
         return False
     from quant_fund.pipeline.forecast import (
         _garch_artifact_path,
@@ -256,7 +267,17 @@ def _run_backtest_event_loop(
 ) -> BacktestResult:
     """Reference event loop. ``run_backtest`` delegates here when the fast replay is incomplete."""
     _validate_target_weight_panel(weights)
-    px = bars.select(
+    costs_cfg0 = config.costs
+    require_ohlc_for_calibration(bars, costs_cfg0.spread_estimator)
+    calibrated_half_spread: dict[tuple[str, datetime], float] | None = None
+    if is_calibrated_spread_estimator(costs_cfg0.spread_estimator):
+        calibrated_half_spread = pit_calibrated_half_spread_bps(
+            bars,
+            estimator=costs_cfg0.spread_estimator,
+            lookback=int(costs_cfg0.spread_calibration_lookback),
+            floor_bps=float(costs_cfg0.half_spread_bps),
+        )
+    select_cols: list[pl.Expr | str] = [
         "security_id",
         "event_time",
         "open",
@@ -268,7 +289,10 @@ def _run_backtest_event_loop(
         else (pl.col("close") * pl.col("volume")).alias("adv"),
         pl.col("vol_20") if "vol_20" in bars.columns else pl.lit(0.02).alias("vol_20"),
         "source",
-    )
+    ]
+    if calibrated_half_spread is not None:
+        select_cols.extend(["high", "low"])
+    px = bars.select(select_cols)
     # Pre-index rows by timestamp once: per-date frame scans inside the loop
     # are O(rows x dates) and dominate wall time on wide books. Dict lookup
     # keeps identical iteration order (input row order preserved per date).
@@ -429,12 +453,31 @@ def _run_backtest_event_loop(
             ):
                 reject_count += 1
                 continue
-            costs = total_cost(delta, price, adv, vols.get(sid, 0.02), costs_cfg)
+            half_bps = (
+                None
+                if calibrated_half_spread is None
+                else calibrated_half_spread.get((sid, dt), float(costs_cfg.half_spread_bps))
+            )
+            costs = total_cost(
+                delta,
+                price,
+                adv,
+                vols.get(sid, 0.02),
+                costs_cfg,
+                half_spread_bps=half_bps,
+            )
             # Cap executable size using liquidity available at the decision.
             max_qty = costs_cfg.participation_limit * (adv / price)
             if abs(delta) > max_qty:
                 delta = np.sign(delta) * max_qty
-                costs = total_cost(delta, price, adv, vols.get(sid, 0.02), costs_cfg)
+                costs = total_cost(
+                    delta,
+                    price,
+                    adv,
+                    vols.get(sid, 0.02),
+                    costs_cfg,
+                    half_spread_bps=half_bps,
+                )
             try:
                 kill.assert_new_orders_allowed()
             except KillSwitchActive:

@@ -513,8 +513,58 @@ def capacity(
     typer.echo(f"receipt={path}")
 
 
+@app.command("cost-calibration")
+def cost_calibration(
+    half_spread_bps: float = typer.Option(1.0, help="Flat half-spread floor in bps."),
+    lookback: int = typer.Option(20, help="Trailing OHLC window for estimators."),
+    n_dates: int = typer.Option(40, help="Dates in the SYNTHETIC panel."),
+    n_names: int = typer.Option(4, help="Names in the SYNTHETIC panel."),
+    seed: int = typer.Option(7, help="Panel seed."),
+    planted_rel_spread: float = typer.Option(
+        0.002, help="Planted high-low relative full spread for the SYNTHETIC book."
+    ),
+    dev: bool = typer.Option(False, "--dev", help="Acknowledge dev-only use; required to run."),
+    out_dir: Path = typer.Option(Path("receipts"), help="Receipt output directory."),
+    report_path: Path = typer.Option(
+        Path("reports/cost_calibration_flat_vs_ohlc.md"),
+        help="Markdown report path (flat vs calibrated trial table).",
+    ),
+) -> None:
+    """Flat vs OHLC-calibrated cost trials (dev-only SYNTHETIC diagnostic).
+
+    Matched books under flat half-spread and Corwin–Schultz / Abdi–Ranaldo /
+    Roll. Reports decomposed costs only — never Sharpe or live P&L.
+    """
+    if not dev:
+        raise typer.BadParameter(
+            "cost-calibration is dev-only evidence tooling; pass --dev to acknowledge."
+        )
+    from quant_fund.research.cost_calibration import (
+        format_cost_calibration_table,
+        run_cost_calibration_trials,
+        write_cost_calibration_receipt,
+        write_cost_calibration_report,
+    )
+
+    frame, receipt = run_cost_calibration_trials(
+        half_spread_bps=half_spread_bps,
+        lookback=lookback,
+        n_dates=n_dates,
+        n_names=n_names,
+        seed=seed,
+        planted_rel_spread=planted_rel_spread,
+    )
+    path = write_cost_calibration_receipt(receipt, out_dir)
+    report = write_cost_calibration_report(frame, receipt, report_path)
+    typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
+    typer.echo(format_cost_calibration_table(frame))
+    typer.echo(f"receipt={path}")
+    typer.echo(f"report={report}")
+
+
 __all__ = [
     "capacity",
+    "cost_calibration",
     "execution_sensitivity_cmd",
     "fleet",
     "rankic",

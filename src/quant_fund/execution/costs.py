@@ -58,6 +58,8 @@ def total_cost(
     adv_dollars: float,
     sigma: float,
     config: CostConfig,
+    *,
+    half_spread_bps: float | None = None,
 ) -> dict[str, float | str]:
     if not np.isfinite(quantity) or not np.isfinite(price) or price <= 0:
         raise ValueError("quantity must be finite and price must be finite and positive")
@@ -69,6 +71,9 @@ def total_cost(
         value = float(getattr(config, name))
         if not np.isfinite(value) or value < 0:
             raise ValueError(f"{name} must be finite and non-negative")
+    spread_bps = float(config.half_spread_bps if half_spread_bps is None else half_spread_bps)
+    if not np.isfinite(spread_bps) or spread_bps < 0:
+        raise ValueError("half_spread_bps must be finite and non-negative")
     if config.frictionless:
         return {
             "commission": 0.0,
@@ -81,7 +86,7 @@ def total_cost(
         }
     notional = abs(quantity) * price
     commission = commission_cost(notional, config.commission_bps)
-    spread = half_spread_cost(notional, config.half_spread_bps)
+    spread = half_spread_cost(notional, spread_bps)
     impact = sqrt_impact(quantity, price, adv_dollars, sigma, config.impact_y)
     bps_to = abs(notional) * config.bps_per_turnover / 1e4
     total = commission + spread + impact + bps_to

@@ -30,7 +30,7 @@ over daily bars where:
 - the bars panel is non-empty;
 - `execution.fill` is `NEXT_OPEN` or `CLOSE_AUCTION` with
   `allow_close_auction=False`;
-- the full `CostConfig` surface (commission, half-spread, sqrt impact,
+- the full flat `CostConfig` surface (commission, half-spread, sqrt impact,
   turnover bps, borrow, participation limit, frictionless) and the full
   `RiskGateConfig` surface (order notional, gross/net/name/participation/
   predicted-vol caps, `stale_price_bars` fail-closed) — all enforced per
@@ -45,6 +45,7 @@ over daily bars where:
 |---|---|
 | `allow_close_auction=True` | close-auction order semantics are not replicated — a different fill-time model |
 | `risk_overlay` (`BookRiskOverlay`) | overlay scales/flattens carried targets mid-loop; not replicated |
+| `costs.spread_estimator` ≠ `flat` (Corwin–Schultz / Abdi–Ranaldo / Roll) | OHLC-calibrated half-spreads are only implemented on the event loop; the fast kernel would silently charge the flat floor — refused with a clear `ValueError` |
 | GARCH / realized-GARCH market-overlay artifact present under `data.root/metadata/` | the per-order `max_predicted_vol` gate *is* replicated, but the `garch_risk_overlay_dates`/`realized_garch_risk_overlay_dates` metrics counters are stamped by the event loop and would silently read 0 — refused rather than approximate metrics. Closable: capture `market_risk_overlay_asof`'s source label per decision date and count it. |
 | empty bars / duplicate bar keys / non-Datetime or mismatched-unit `event_time` | matrices have no faithful reading of these shapes |
 | limit/stop order types | not in `run_backtest`'s contract at all (the API is target-percent weights only) — nothing to refuse |

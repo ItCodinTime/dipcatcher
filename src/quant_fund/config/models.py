@@ -184,6 +184,12 @@ class CostConfig(StrictConfigModel):
     financing_bps_per_year: float = 0.0
     frictionless: bool = False
     participation_limit: float = 0.1
+    # Opt-in OHLC spread calibration. Default ``flat`` keeps the constant
+    # half_spread_bps path. Calibrated estimators charge
+    # max(half_spread_bps, estimator_half_spread_bps) so the flat value is a
+    # floor. ``run_backtest_fast`` refuses any non-flat estimator.
+    spread_estimator: str = "flat"
+    spread_calibration_lookback: int = 20
 
     @model_validator(mode="after")
     def non_negative_costs(self) -> CostConfig:
@@ -200,6 +206,14 @@ class CostConfig(StrictConfigModel):
                 raise ValueError(f"{name} must be finite and non-negative")
         if not 0 < self.participation_limit <= 1:
             raise ValueError("participation_limit must be in (0, 1]")
+        allowed = ("flat", "corwin_schultz", "abdi_ranaldo", "roll")
+        if self.spread_estimator not in allowed:
+            raise ValueError(f"spread_estimator must be one of {allowed}")
+        if (
+            type(self.spread_calibration_lookback) is not int
+            or self.spread_calibration_lookback < 2
+        ):
+            raise ValueError("spread_calibration_lookback must be an integer >= 2")
         return self
 
 
