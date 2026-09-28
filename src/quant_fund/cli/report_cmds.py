@@ -150,8 +150,64 @@ def tearsheet_cmd(
         typer.echo(tearsheet_markdown(sheet))
 
 
+@app.command("regime-performance")
+def regime_performance_cmd(
+    equity: Path = typer.Option(
+        ..., "--equity", help="Strategy equity parquet: event_time, nav (research-only)"
+    ),
+    benchmark: Path | None = typer.Option(
+        None,
+        "--benchmark",
+        help="Benchmark equity parquet for vol terciles + drawdown state",
+    ),
+    out_md: Path | None = typer.Option(None, "--out-md", help="Markdown output path"),
+    out_json: Path | None = typer.Option(None, "--out-json", help="JSON report output path"),
+    vol_window: int = typer.Option(20, "--vol-window", help="Lagged realized-vol window"),
+    h15_series: str = typer.Option("DGS10", "--h15-series", help="Bundled H.15 series id"),
+    periods_per_year: float = typer.Option(252.0, "--periods-per-year"),
+    label: str = typer.Option("BACKTEST_SIM", "--label"),
+    synthetic: bool = typer.Option(False, "--synthetic"),
+) -> None:
+    """Split strategy performance by vol terciles, benchmark DD state, and H.15 rates.
+
+    H.15 rate regimes are scored only on dates that overlap the bundled
+    public-domain extract. Reporting only — never a live-P&L claim.
+    """
+    import json
+
+    import polars as pl
+
+    from quant_fund.reporting.regime_performance import (
+        build_regime_performance_from_equity,
+        regime_performance_markdown,
+        write_regime_performance_md,
+    )
+
+    eq = pl.read_parquet(equity)
+    bench = pl.read_parquet(benchmark) if benchmark is not None else None
+    report = build_regime_performance_from_equity(
+        eq,
+        benchmark=bench,
+        vol_window=vol_window,
+        h15_series_id=h15_series,
+        periods_per_year=periods_per_year,
+        label=label,
+        synthetic=synthetic,
+    )
+    if out_md is not None:
+        write_regime_performance_md(out_md, report)
+        typer.echo(f"markdown={out_md}")
+    if out_json is not None:
+        out_json.parent.mkdir(parents=True, exist_ok=True)
+        out_json.write_text(json.dumps(report, indent=2, default=str))
+        typer.echo(f"json={out_json}")
+    if out_md is None and out_json is None:
+        typer.echo(regime_performance_markdown(report))
+
+
 __all__ = [
     "lab",
+    "regime_performance_cmd",
     "report",
     "tearsheet_cmd",
     "verify_research",

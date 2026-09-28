@@ -543,6 +543,7 @@ Pairs selection - quant_fund.models.pairs:
 - Hoeffding (1963), *JASA* 58 — bounded e-values. Shiryaev (1963) — geometric-prior mixture.
 - Zaffran et al. (2022), ICML — AgACI (arXiv:2202.07282); Zaffran et al. (2022), NeurIPS — FACI aggregation under distribution shift. `models/agaci.py`.
 - Gibbs & Candès (2021), NeurIPS 34 — ACI; Koenker & Bassett (1978) — pinball; Cesa-Bianchi & Lugosi (2006) — EG updates; Gaillard, Stoltz & Van Erven (2014), COLT — ML-OGD.
+- Zhang, Wei, Ren & Zou (2025), ICML — e-GAI: e-value generalized alpha-investing; e-LORD + adaptive e-SAFFRON online FDR under arbitrary dependence (arXiv:2506.01452); SAFFRON base: Ramdas, Zrnic, Wainwright & Jordan (2018), *ICML* — `metrics/anytime_fdr.py` `ELord`/`ESaffron`.
 
 ### SOTA canon wave 9 — distributional forecasts and change monitoring (2026-09-27)
 - Prinster, Han, Liu & Saria (2025). "WATCH: Adaptive Monitoring for AI Deployments via Weighted-Conformal Martingales." *ICML*, PMLR 267, arXiv:2505.04608. `metrics/watch.py`.

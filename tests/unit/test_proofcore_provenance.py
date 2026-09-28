@@ -10,6 +10,7 @@ import json
 
 import pytest
 
+from quant_fund.proofcore import provenance as provenance_mod
 from quant_fund.proofcore.contracts import (
     GENESIS_HASH,
     CodeFingerprint,
@@ -289,3 +290,74 @@ def test_db_persists_across_connections(tmp_path) -> None:
     with ProvenanceDB(path) as db:
         assert len(db.bundles()) == 1
         assert db.chain_head() == _id(1)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "bundle_id; DROP TABLE proof_bundles",
+        "bundle_id' OR '1'='1",
+        "id, (SELECT 1)",
+        "created_utc--",
+        "bundle id",
+        "",
+        "1bad",
+        'bundle_id"',
+        "proof_bundles.bundle_id",
+    ],
+)
+def test_sql_identifier_validation_rejects_injection(payload: str) -> None:
+    with pytest.raises(ProvenanceError, match="SQL identifier"):
+        provenance_mod._sql_identifier(payload)
+    with pytest.raises(ProvenanceError, match="SQL identifier"):
+        provenance_mod._sql_identifier_list(("bundle_id", payload))
+    with pytest.raises(ProvenanceError, match="SQL identifier"):
+        provenance_mod._insert_statement("proof_bundles", ("bundle_id", payload))
+    with pytest.raises(ProvenanceError, match="SQL identifier"):
+        provenance_mod._select_statement(payload, provenance_mod._TRIAL_COLUMNS)
+
+
+def test_sql_builders_reject_empty_identifier_lists() -> None:
+    assert provenance_mod._sql_identifier("bundle_id") == "bundle_id"
+    with pytest.raises(ProvenanceError, match="empty SQL identifier"):
+        provenance_mod._sql_identifier_list(())
+    with pytest.raises(ProvenanceError, match="no bound parameters"):
+        provenance_mod._bound_placeholders(0)
+
+
+def test_write_path_rejects_injected_column_before_execute(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        provenance_mod,
+        "_BUNDLE_COLUMNS",
+        ("bundle_id", "created_utc; DROP TABLE proof_bundles"),
+    )
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        with pytest.raises(ProvenanceError, match="SQL identifier"):
+            db.insert_bundle(bundle, None)
+        # Static chain-head query still sees the table, so the DROP never ran.
+        assert db.chain_head() == GENESIS_HASH
+
+
+def test_bound_parameters_store_sql_text_as_data(tmp_path) -> None:
+    payload = "alpha'; DROP TABLE trial_ledger; --"
+    cluster = "1' OR '1'='1"
+    with ProvenanceDB(tmp_path / "prov.duckdb") as db:
+        bundle = _bundle(_id(1), created="2026-09-26T00:00:00+00:00")
+        db.insert_bundle(bundle, None)
+        trial = _trial(_id(11), bundle.bundle_id, family="calibration").model_copy(
+            update={"strategy": payload, "cluster_id": cluster}
+        )
+        db.insert_trial(trial)
+        stored = db.trials()
+        assert len(stored) == 1
+        assert stored[0].strategy == payload
+        assert stored[0].cluster_id == cluster
+        assert db.trials(family="calibration' OR '1'='1") == []
+        assert db.trials(family="calibration' OR family='discovery") == []
+        assert [row.trial_id for row in db.trials(family="calibration")] == [trial.trial_id]
+        assert db.chain_head() == bundle.bundle_id
+        insert_sql = provenance_mod._insert_statement("trial_ledger", provenance_mod._TRIAL_COLUMNS)
+        assert insert_sql.count("?") == len(provenance_mod._TRIAL_COLUMNS)
+        assert "'" not in insert_sql
+        assert "--" not in insert_sql
