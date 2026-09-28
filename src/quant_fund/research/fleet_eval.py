@@ -697,7 +697,7 @@ def run_distribution_fleet(
                     blob["head"] = str(head)
                 if version:
                     blob["version"] = str(version)
-            except Exception:
+            except (AttributeError, RuntimeError, TypeError, ValueError):
                 pass
 
     columns = [
