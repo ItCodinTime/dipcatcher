@@ -55,10 +55,29 @@ def test_receipt_fixtures_are_byte_identical_to_sealed_sources() -> None:
         )
 
 
+def test_every_committed_receipt_is_exported() -> None:
+    """A new receipts/*.json without a fixture export silently drops evidence
+    from the explorer. Completeness is pinned both directions."""
+    committed = {f"receipts/{p.name}" for p in (REPO_ROOT / "receipts").glob("*.json")}
+    exported = {receipt["file"] for receipt in _load("index.json")["receipts"]}
+    assert committed - exported == set(), (
+        f"receipts missing from fixtures — re-run web/scripts/export_fixtures.py: "
+        f"{sorted(committed - exported)}"
+    )
+    assert exported - committed == set(), (
+        f"fixtures index points at deleted receipts: {sorted(exported - committed)}"
+    )
+
+
 def test_receipts_declare_research_only_flags() -> None:
     for path in sorted((FIXTURES / "receipts").glob("*.json")):
         payload = json.loads(path.read_text())
-        assert payload.get("research_only") is True, path.name
+        # v1 receipts carry research_only; receipt.v2 envelopes carry the same
+        # guarantee as data_label (SYNTHETIC/SIMULATED — REAL is evidence).
+        research_only = payload.get("research_only")
+        if research_only is None and "data_label" in payload:
+            research_only = payload["data_label"] in {"SYNTHETIC", "SIMULATED"}
+        assert research_only is True, path.name
         assert payload.get("live_pnl_claim") is False, path.name
 
 

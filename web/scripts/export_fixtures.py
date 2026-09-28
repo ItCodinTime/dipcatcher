@@ -290,13 +290,19 @@ def main() -> None:
         for digest in hashes:
             if digest in hash_index:
                 receipt_hash_matches[digest] = hash_index[digest]
+        # receipt.v2 envelopes carry the honesty flag as data_label: anything
+        # that is not REAL is research-only by contract. A receipt declaring
+        # neither keeps None — unknown stays blank.
+        research_only = payload.get("research_only")
+        if research_only is None and "data_label" in payload:
+            research_only = payload["data_label"] != "REAL"
         receipt_entries.append(
             {
                 "id": src.stem,
                 "file": rel,
                 "schema": payload.get("schema"),
                 "evidence_level": payload.get("evidence_level"),
-                "research_only": payload.get("research_only"),
+                "research_only": research_only,
                 "live_pnl_claim": payload.get("live_pnl_claim"),
                 "created_at": payload.get("created_at") or payload.get("generated_at"),
                 "n_hashes": len(hashes),
