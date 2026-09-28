@@ -14,7 +14,13 @@ from __future__ import annotations
 import numpy as np
 from sklearn.tree import DecisionTreeRegressor
 
-from quant_fund.metrics.anytime_fdr import ELond, e_bh, stopped_e_bh
+from quant_fund.metrics.anytime_fdr import (
+    ELond,
+    ELord,
+    ESaffron,
+    e_bh,
+    stopped_e_bh,
+)
 from quant_fund.metrics.conformal_martingale import WatchMonitor
 from quant_fund.metrics.e_detectors import EDetectorGaussian, run_detector
 from quant_fund.metrics.energy_score import energy_score
@@ -40,7 +46,8 @@ def bench_anytime_valid() -> dict[str, float]:
 
     Gaussian location e-variables exp(Z - 1/2) are exact null e-values
     (E=1); signal uses Z ~ N(1.5, 1). e-BH/stopped e-BH (Wang & Ramdas
-    2022/2025), e-LOND (Xu & Ramdas 2024), mixture-SR e-detector
+    2022/2025), e-LOND (Xu & Ramdas 2024), e-LORD/e-SAFFRON e-GAI
+    alpha-investing (Zhang, Wei, Ren & Zou 2025), mixture-SR e-detector
     (Shin, Ramdas & Rinaldo 2023).
     """
     try:
@@ -67,12 +74,23 @@ def bench_anytime_valid() -> dict[str, float]:
         stopped = stopped_e_bh(paths, alpha)
         lond = ELond(alpha)
         lond_rejects = sum(int(lond.submit(e)) for e in battery)
+        # e-GAI (Zhang, Wei, Ren & Zou 2025): data-driven alpha-investing
+        # levels; omega1 ~ 1/T with T = stream length.
+        t_stream = n_null + n_signal
+        lord = ELord(alpha, omega1=1.0 / t_stream)
+        lord_rejects = sum(int(lord.submit(e)) for e in battery)
+        saffron = ESaffron(alpha, lam=0.1, omega1=1.0 / t_stream)
+        saffron_rejects = sum(int(saffron.submit(e)) for e in battery)
         # empirical FDR under the global null (seeded MC)
         fdr_hits = 0
+        saffron_fa_hits = 0
         reps = 200
         for _ in range(reps):
             if e_bh(_evalues(np.zeros(n_null)), alpha).num_rejected > 0:
                 fdr_hits += 1
+            null_proc = ESaffron(alpha, lam=0.1, omega1=1.0 / n_null)
+            if any(null_proc.submit(float(e)) for e in _evalues(np.zeros(n_null))):
+                saffron_fa_hits += 1
         # e-detector: 2-sigma mean shift, plus null FA rate
         shifted = np.concatenate([rng.standard_normal(600), rng.standard_normal(400) + 2.0])
         det = run_detector(EDetectorGaussian(sigma=1.0, alpha=alpha), shifted, alpha)
@@ -94,6 +112,10 @@ def bench_anytime_valid() -> dict[str, float]:
             "e_bh_rejected": float(res.num_rejected),
             "stopped_e_bh_rejected": float(stopped.num_rejected),
             "elond_rejected": float(lond_rejects),
+            "elord_rejected": float(lord_rejects),
+            "esaffron_rejected": float(saffron_rejects),
+            "esaffron_null_fa_rate": saffron_fa_hits / reps,
+            "esaffron_remaining_wealth": float(saffron.remaining_wealth),
             "null_fdr_empirical": fdr_hits / reps,
             "detector_alarm_time": float(det.alarm_time if det.alarm_time is not None else -1.0),
             "detector_null_fa_rate": fa_hits / fa_reps,
