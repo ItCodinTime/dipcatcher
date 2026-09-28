@@ -385,7 +385,9 @@ class PitVault:
         attached = active_recorder is not None and active_recorder is not self.recorder
         # ADVERSARIAL §1b-W2: re-resolve against the active proven-run context
         # so vaults created before the runner entered its run context are
-        # still recorded.
+        # still recorded. ADVERSARIAL R2 §1-W6: active_recorder/watchdog fall
+        # back to the run's thread-visible registry, so reads from worker
+        # threads carrying no proven-run context attach too (fail-loud).
         if recorder is None:
             recorder = run_context.active_recorder()
             attached = recorder is not None
@@ -396,11 +398,20 @@ class PitVault:
                 attached = True
         if attached and not self._warned_auto_attach:
             self._warned_auto_attach = True
-            _LOG.warning(
-                "PitVault(%s) has no recorder/watchdog of its own; auto-attached to "
-                "the active proven run's hooks so this read is proven",
-                self.root,
-            )
+            if run_context.context_is_proven():
+                _LOG.warning(
+                    "PitVault(%s) has no recorder/watchdog of its own; auto-attached "
+                    "to the active proven run's hooks so this read is proven",
+                    self.root,
+                )
+            else:
+                _LOG.warning(
+                    "PitVault(%s) read from a thread with no proven-run context "
+                    "while a proven run is active; cross-thread auto-attached to "
+                    "the run's recorder/watchdog so this read is proven (use "
+                    "proofcore.run_context.proven_thread to propagate the context)",
+                    self.root,
+                )
         if recorder is None and watchdog is None:
             return
         params = {"policy": policy.value}
