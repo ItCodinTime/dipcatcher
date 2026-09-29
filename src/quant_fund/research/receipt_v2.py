@@ -382,14 +382,19 @@ def _code_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
 
 def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     """Lane-specific re-derivation of the bound digests, where defined."""
+    inner = payload.get("payload")
     if payload.get("kind") == "distribution_fleet_eval":
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         return fleet_v2_consistency_errors(payload)
-    if payload.get("kind") == "hstep_bench":
+    looks_hstep = _looks_like_hstep_eval(inner)
+    if payload.get("kind") == "hstep_bench" or looks_hstep:
         from quant_fund.research.hstep_bench import hstep_bench_v2_consistency_errors
 
-        return hstep_bench_v2_consistency_errors(payload)
+        errors = hstep_bench_v2_consistency_errors(payload)
+        if looks_hstep and payload.get("kind") != "hstep_bench":
+            errors = [*errors, "kind_fingerprint_mismatch"]
+        return errors
     return []
 
 

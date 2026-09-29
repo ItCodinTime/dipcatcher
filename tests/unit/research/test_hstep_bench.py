@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -228,3 +229,46 @@ def test_hstep_grid_under_renamed_schema_still_gets_its_contract() -> None:
     }
     errors = verify_receipt_payload(seal_receipt(payload))["errors"]
     assert "schema_not_hstep_bench_v1" in errors
+
+
+def test_hstep_inner_payload_under_renamed_v2_kind_is_flagged() -> None:
+    """Renaming the v2 envelope ``kind`` must not strip the hstep lane's
+    deep check — the inner grid fingerprint fires and the rename is flagged."""
+    from quant_fund.research.receipt_v2 import (
+        build_receipt_v2,
+        seal_receipt,
+        verify_receipt_payload,
+    )
+
+    inner = {
+        "schema": "renamed.v1",
+        "data_label": "SYNTHETIC",
+        "live_pnl_claim": False,
+        "n_eval": 4,
+        "models": ["m"],
+        "shards": {"s": {}},
+        "horizons": [1, 5],
+        "results": [
+            {
+                "shard": "s",
+                "model": "m",
+                "horizon": 1,
+                "status": "ok",
+                "pinball_0.5": 0.1,
+                "crps": 0.2,
+            }
+        ],
+    }
+    envelope = seal_receipt(
+        build_receipt_v2(
+            kind="not_hstep",
+            data_label="SYNTHETIC",
+            dataset={"probe": 1},
+            params={"probe": 1},
+            code_files=(Path(__file__),),
+            verdict="pass",
+            payload=inner,
+        )
+    )
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert "kind_fingerprint_mismatch" in errors, errors
