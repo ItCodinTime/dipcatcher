@@ -258,6 +258,89 @@ def dip_bench_contract_errors(payload: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def _is_hex64(value: object) -> bool:
+    return (
+        isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def deps_hygiene_contract_errors(payload: Mapping[str, Any]) -> list[str]:
+    """``deps_hygiene.v1``: the audit's internal claims must be coherent.
+
+    The artifacts themselves aren't committed, so the check binds what is
+    re-derivable from the sealed body: digest shapes, finding counts that
+    are non-negative ints, scanned/audited denominators that are positive,
+    and the lock-check's agreement with the duplicate-name count.
+    """
+    errors: list[str] = []
+    artifact_hashes = payload.get("artifact_sha256")
+    if not isinstance(artifact_hashes, Mapping) or not artifact_hashes:
+        errors.append("artifact_sha256_missing")
+    else:
+        for name, digest in artifact_hashes.items():
+            if not _is_hex64(digest):
+                errors.append(f"artifact_sha256:{name}_not_hex64")
+    base_commit = payload.get("base_commit")
+    if not (
+        isinstance(base_commit, str)
+        and len(base_commit) == 40
+        and all(c in "0123456789abcdef" for c in base_commit)
+    ):
+        errors.append("base_commit_not_git_sha")
+    for key in ("ci_gates", "commands", "environment"):
+        if not isinstance(payload.get(key), Mapping) or not payload[key]:
+            errors.append(f"{key}_missing")
+    docs = payload.get("docs")
+    if not isinstance(docs, list) or not all(isinstance(d, str) for d in docs):
+        errors.append("docs_not_string_list")
+    results = payload.get("results")
+    if not isinstance(results, Mapping) or not results:
+        errors.append("results_missing")
+        return errors
+    count_keys = (
+        "vulnerabilities",
+        "leaks",
+        "severity_medium_or_high_findings",
+        "gpl_family_runtime",
+        "duplicate_names_in_export",
+        "adverse_statuses",
+        "eval_exec_hits",
+        "findings_total",
+    )
+    denominator_keys = (
+        "audited_packages",
+        "audited_dependencies",
+        "installed_scanned",
+        "pins_covered",
+        "loc",
+        "bytes_scanned",
+        "commits_scanned",
+    )
+    for tool, block in results.items():
+        if not isinstance(block, Mapping):
+            errors.append(f"results:{tool}_not_object")
+            continue
+        for key, value in block.items():
+            if key in count_keys and (
+                not isinstance(value, int) or isinstance(value, bool) or value < 0
+            ):
+                errors.append(f"results:{tool}.{key}_not_nonneg_int")
+            if key in denominator_keys and not _positive_int(value):
+                errors.append(f"results:{tool}.{key}_not_positive")
+    pin_audit = results.get("pin_audit")
+    if (
+        isinstance(pin_audit, Mapping)
+        and pin_audit.get("uv_lock_check") == "pass"
+        and pin_audit.get("duplicate_names_in_export") != 0
+    ):
+        errors.append("pin_audit:pass_with_duplicates")
+    if payload.get("research_only") is not True:
+        errors.append("research_only_not_true")
+    if payload.get("live_pnl_claim") is not False:
+        errors.append("live_pnl_claim_not_false")
+    return errors
+
+
 #: script-schema tag → contract-check function (dispatch lives in receipt_v2).
 SCRIPT_RECEIPT_CONTRACTS: dict[str, Any] = {
     "adaptive_mix_band_search.v1": band_search_contract_errors,
@@ -266,6 +349,7 @@ SCRIPT_RECEIPT_CONTRACTS: dict[str, Any] = {
     "basis_pair_candidate.v1": basis_pair_candidate_contract_errors,
     "incumbent_bench.v1": incumbent_bench_contract_errors,
     "fx1.dip_bench/v1": dip_bench_contract_errors,
+    "deps_hygiene.v1": deps_hygiene_contract_errors,
 }
 
 

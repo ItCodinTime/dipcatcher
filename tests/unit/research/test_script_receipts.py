@@ -176,3 +176,60 @@ def test_positive_int_strictness(value: object, expected: bool) -> None:
     from quant_fund.research.script_receipts import _positive_int
 
     assert _positive_int(value) is expected
+
+
+def _deps_hygiene() -> dict[str, object]:
+    return json.loads((RECEIPTS / "deps_security_hygiene_f3b4e6fd22e439b7.json").read_text())
+
+
+def test_deps_hygiene_committed_verifies() -> None:
+    path = RECEIPTS / "deps_security_hygiene_f3b4e6fd22e439b7.json"
+    if not path.is_file():
+        pytest.skip("deps_hygiene receipt not committed in this checkout")
+    result = verify_receipt_payload(json.loads(path.read_text()))
+    errors = result["errors"] if isinstance(result, dict) else result.errors
+    assert errors == []
+
+
+def test_deps_hygiene_forged_counts_fail() -> None:
+    path = RECEIPTS / "deps_security_hygiene_f3b4e6fd22e439b7.json"
+    if not path.is_file():
+        pytest.skip("deps_hygiene receipt not committed in this checkout")
+    forged = copy.deepcopy(json.loads(path.read_text()))
+    forged["results"]["gitleaks"]["leaks"] = -1
+    from quant_fund.research.receipt_v2 import seal_receipt
+
+    forged = seal_receipt(forged)
+    result = verify_receipt_payload(forged, "forged.json")
+    errors = result["errors"] if isinstance(result, dict) else result.errors
+    assert any("leaks_not_nonneg_int" in e for e in errors)
+
+
+#: schemas verified by the dedicated lane chain / kind dispatch rather than
+#: SCRIPT_RECEIPT_CONTRACTS. Extending this set is a deliberate act: a new
+#: receipt schema must pick a contract.
+_LANE_COVERED_SCHEMAS = frozenset(
+    {
+        "fleet_eval.v1",
+        "vol_bench.v1",
+        "capacity_overlay.v1",
+        "cross_sectional_rankic.v1",
+        "hstep_bench.v1",
+        "calibration_eval.v1",
+        "cost_calibration.v1",
+    }
+)
+
+
+def test_every_committed_receipt_schema_is_contract_covered() -> None:
+    """No receipt may verify on its seal alone — every committed schema must
+    dispatch to a deep check somewhere in the verifier."""
+    uncovered: list[str] = []
+    for path in sorted(RECEIPTS.glob("*.json")):
+        schema = json.loads(path.read_text()).get("schema")
+        if schema in ("receipt.v2", None):
+            continue  # v2 inners dispatch by kind fingerprint
+        if schema in SCRIPT_RECEIPT_CONTRACTS or schema in _LANE_COVERED_SCHEMAS:
+            continue
+        uncovered.append(f"{path.name}:{schema}")
+    assert uncovered == []
