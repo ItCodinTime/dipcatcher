@@ -424,15 +424,46 @@ def _looks_like_v2_envelope(payload: Mapping[str, Any]) -> bool:
     )
 
 
-def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
-    """Lane-specific re-derivation of the bound digests, where defined."""
+def _inner_claimed_kinds(payload: Mapping[str, Any]) -> set[str]:
+    """Kind strings the sealed *inner* payload claims about itself.
+
+    The envelope ``kind`` is attacker-renameable at zero cost; the inner
+    body's own ``kind``/``schema`` are inside the seal, so a renamed outer
+    kind must not strip the deep checks. ``<base>.vN`` schemas map to both
+    ``<base>`` and ``<base>_eval`` (the lane naming convention).
+    """
     inner = payload.get("payload")
+    claims: set[str] = set()
+    if not isinstance(inner, Mapping):
+        return claims
+    for key in ("kind", "schema"):
+        value = inner.get(key)
+        if isinstance(value, str) and value:
+            claims.add(value)
+            base, sep, suffix = value.rpartition(".v")
+            if sep and suffix.isdigit() and base:
+                claims.add(base)
+                claims.add(f"{base}_eval")
+    return claims
+
+
+def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
+    """Lane-specific re-derivation of the bound digests, where defined.
+
+    Dispatches on the envelope ``kind``, the fleet structural fingerprint,
+    and the sealed inner payload's claimed ``kind``/``schema``.
+    """
+    kind = payload.get("kind")
+    inner = payload.get("payload")
+    claims = _inner_claimed_kinds(payload)
     looks_fleet = _looks_like_fleet_eval(inner)
-    if payload.get("kind") == "distribution_fleet_eval" or looks_fleet:
+    if kind == "distribution_fleet_eval" or looks_fleet or "distribution_fleet_eval" in claims:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
         errors = fleet_v2_consistency_errors(payload)
-        if looks_fleet and payload.get("kind") != "distribution_fleet_eval":
+        if (
+            looks_fleet or "distribution_fleet_eval" in claims
+        ) and kind != "distribution_fleet_eval":
             errors = [*errors, "kind_fingerprint_mismatch"]
         return errors
     return []

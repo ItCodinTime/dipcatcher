@@ -283,3 +283,15 @@ def test_v2_inner_valid_seal_passes() -> None:
     envelope = seal_receipt(_v2_env_for(inner))
     errors = verify_receipt_payload(envelope)["errors"]
     assert not any(error.startswith("inner_") for error in errors)
+
+
+def test_v2_renamed_kind_dispatches_on_inner_claim_not_shape() -> None:
+    """An inner payload too sparse to match the structural fingerprint still
+    gets the lane check when its sealed ``kind`` claims it — the rename-evasion
+    class is closed on claims, not only on shape."""
+    inner = {"kind": "distribution_fleet_eval", "note": "sparse"}
+    envelope = seal_receipt(_v2_env_for(inner))
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert "kind_fingerprint_mismatch" in errors, errors
+    # dispatch fired on the claim: the fleet consistency check ran
+    assert any(e.startswith("payload_") for e in errors), errors
