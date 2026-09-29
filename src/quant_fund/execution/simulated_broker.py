@@ -46,6 +46,16 @@ def _limit_fill_price(
     return False, limit
 
 
+def _validate_exec_bar(bar_open: float, bar_high: float, bar_low: float) -> None:
+    """A bar can only fill prices inside its own range — fail closed otherwise."""
+    for name, value in (("bar_open", bar_open), ("bar_high", bar_high), ("bar_low", bar_low)):
+        v = float(value)
+        if not np.isfinite(v) or v <= 0:
+            raise ValueError(f"{name} must be finite and strictly positive")
+    if not bar_low <= bar_open <= bar_high:
+        raise ValueError("bar ordering must satisfy bar_low <= bar_open <= bar_high")
+
+
 class RejectReason(str, Enum):
     KILL_SWITCH = "kill_switch"
     RISK_GATE = "risk_gate"
@@ -195,6 +205,8 @@ class SimulatedBroker:
         touches the limit (``bar_open/high/low`` required); otherwise they
         rest in ``open_orders`` and can be swept later via ``process_bar``.
         """
+        if order.order_id in self.open_orders:
+            raise ValueError(f"order {order.order_id!r} is already working")
         if not np.isfinite(float(order.quantity)) or float(order.quantity) <= 0.0:
             rec = OrderRecord(
                 order=order.model_copy(update={"status": OrderStatus.REJECTED}),
@@ -261,6 +273,7 @@ class SimulatedBroker:
         if order.limit_price is not None:
             if bar_open is None or bar_high is None or bar_low is None:
                 return self._rest_order(order)
+            _validate_exec_bar(bar_open, bar_high, bar_low)
             touched, limit_fill = _limit_fill_price(order, bar_open, bar_high, bar_low)
             if not touched:
                 return self._rest_order(order)
@@ -346,10 +359,7 @@ class SimulatedBroker:
         ``bar_time`` stamps the fill time and drives ``expire_time`` cancels.
         A participation-capped fill keeps the residual working (PARTIAL).
         """
-        for name, value in (("bar_open", bar_open), ("bar_high", bar_high), ("bar_low", bar_low)):
-            v = float(value)
-            if not np.isfinite(v) or v <= 0:
-                raise ValueError(f"{name} must be finite and strictly positive")
+        _validate_exec_bar(bar_open, bar_high, bar_low)
         records: list[OrderRecord] = []
         if not self.allow_capital:
             # Shadow slots never move cash; sweeping them would only
@@ -550,11 +560,13 @@ class SimulatedBroker:
         px = dict(self.last_marks)
         px.update(prices)
         nav_use = float(nav if nav is not None else self.nav(px))
+        if not np.isfinite(nav_use):
+            raise ValueError("nav must be finite")
         orders: list[Order] = []
         ids = sorted(set(targets) | set(self.shares))
         for sid in ids:
             price = px.get(sid)
-            if price is None or price <= 0:
+            if price is None or not np.isfinite(float(price)) or float(price) <= 0:
                 continue
             tw = float(targets.get(sid, 0.0))
             desired = tw * nav_use / price
