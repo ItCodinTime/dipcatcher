@@ -211,7 +211,7 @@ flowchart LR
   quant_fund_cli -->|1| quant_fund_proofcore
   quant_fund_cli -->|1| quant_fund_quant_models
   quant_fund_cli -->|1| quant_fund_reality
-  quant_fund_cli -->|2| quant_fund_reporting
+  quant_fund_cli -->|3| quant_fund_reporting
   quant_fund_cli -->|11| quant_fund_research
   quant_fund_cli -->|1| quant_fund_schemas
   quant_fund_cli -->|1| quant_fund_stress
@@ -342,8 +342,10 @@ flowchart LR
   quant_fund_reality -->|6| quant_fund_proofcore
   quant_fund_registry -->|1| quant_fund_config
   quant_fund_registry -->|2| quant_fund_utils
-  quant_fund_reporting -->|3| quant_fund_metrics
+  quant_fund_reporting -->|5| quant_fund_metrics
+  quant_fund_reporting -->|1| quant_fund_native
   quant_fund_reporting -->|1| quant_fund_portfolio
+  quant_fund_reporting -->|1| quant_fund_stress
   quant_fund_research -->|1| quant_fund
   quant_fund_research -->|3| quant_fund_audit
   quant_fund_research -->|2| quant_fund_backtest
@@ -626,7 +628,7 @@ sequenceDiagram
 | `quant_fund.quant_models` | 17 |
 | `quant_fund.reality` | 8 |
 | `quant_fund.registry` | 2 |
-| `quant_fund.reporting` | 3 |
+| `quant_fund.reporting` | 4 |
 | `quant_fund.research` | 62 |
 | `quant_fund.risk` | 5 |
 | `quant_fund.robustness` | 13 |
@@ -636,9 +638,9 @@ sequenceDiagram
 | `quant_fund.utils` | 7 |
 | `quant_fund.validation` | 11 |
 
-- Modules scanned: **734**
+- Modules scanned: **735**
 - Packages: **65**
-- Cross-package import edges: **248**
+- Cross-package import edges: **250**
 
 <!-- END GENERATED: coverage -->
 

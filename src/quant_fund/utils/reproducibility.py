@@ -234,7 +234,8 @@ def _parse_lfs_pointer(blob: bytes) -> tuple[str, int] | None:
         text = blob.decode("ascii")
     except UnicodeDecodeError:
         return None
-    lines = text.split("\n")
+    # Checked-out pointer files may carry CRLF endings (core.autocrlf).
+    lines = text.replace("\r\n", "\n").split("\n")
     if not lines or lines[0] != "version https://git-lfs.github.com/spec/v1":
         return None
     oid: str | None = None

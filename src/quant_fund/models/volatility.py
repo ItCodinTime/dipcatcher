@@ -718,7 +718,11 @@ class TreeVol(JoblibMixin):
             from lightgbm import LGBMRegressor
 
             self.model = LGBMRegressor(
-                n_estimators=80, num_leaves=15, random_state=seed, verbosity=-1
+                n_estimators=80,
+                num_leaves=15,
+                n_jobs=1,
+                random_state=seed,
+                verbosity=-1,
             )
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], **kwargs: Any) -> TreeVol:

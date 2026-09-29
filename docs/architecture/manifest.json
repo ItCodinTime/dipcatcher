@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 734,
+  "module_count": 735,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -1488,6 +1488,10 @@
     },
     {
       "dst": "quant_fund.paper.forward_shadow",
+      "src": "quant_fund.cli.report_cmds"
+    },
+    {
+      "dst": "quant_fund.reporting.regime_performance",
       "src": "quant_fund.cli.report_cmds"
     },
     {
@@ -5431,12 +5435,32 @@
       "src": "quant_fund.registry.mlflow_store"
     },
     {
+      "dst": "quant_fund.reporting.regime_performance",
+      "src": "quant_fund.reporting"
+    },
+    {
       "dst": "quant_fund.reporting.report",
       "src": "quant_fund.reporting"
     },
     {
       "dst": "quant_fund.reporting.tearsheet",
       "src": "quant_fund.reporting"
+    },
+    {
+      "dst": "quant_fund.metrics.conformal",
+      "src": "quant_fund.reporting.regime_performance"
+    },
+    {
+      "dst": "quant_fund.metrics.returns",
+      "src": "quant_fund.reporting.regime_performance"
+    },
+    {
+      "dst": "quant_fund.native",
+      "src": "quant_fund.reporting.regime_performance"
+    },
+    {
+      "dst": "quant_fund.stress.bundle",
+      "src": "quant_fund.reporting.regime_performance"
     },
     {
       "dst": "quant_fund.metrics.analytics",
@@ -7722,6 +7746,7 @@
     "quant_fund.registry",
     "quant_fund.registry.mlflow_store",
     "quant_fund.reporting",
+    "quant_fund.reporting.regime_performance",
     "quant_fund.reporting.report",
     "quant_fund.reporting.tearsheet",
     "quant_fund.research",
@@ -8283,7 +8308,7 @@
     },
     {
       "dst": "quant_fund.reporting",
-      "imports": 2,
+      "imports": 3,
       "src": "quant_fund.cli"
     },
     {
@@ -9098,7 +9123,12 @@
     },
     {
       "dst": "quant_fund.metrics",
-      "imports": 3,
+      "imports": 5,
+      "src": "quant_fund.reporting"
+    },
+    {
+      "dst": "quant_fund.native",
+      "imports": 1,
       "src": "quant_fund.reporting"
     },
     {
@@ -9108,7 +9138,12 @@
     },
     {
       "dst": "quant_fund.reporting",
-      "imports": 2,
+      "imports": 3,
+      "src": "quant_fund.reporting"
+    },
+    {
+      "dst": "quant_fund.stress",
+      "imports": 1,
       "src": "quant_fund.reporting"
     },
     {
