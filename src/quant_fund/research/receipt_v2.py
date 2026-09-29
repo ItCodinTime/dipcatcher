@@ -37,6 +37,7 @@ from pydantic import (
 )
 
 from quant_fund.research.catalog import family_blob_forbidden_metrics_absent
+from quant_fund.research.impossible_fit import impossible_fit_scan
 from quant_fund.utils.hashing import SHA256_HEX_LENGTH, canonical_json_bytes, hash_bytes
 from quant_fund.utils.reproducibility import git_revision
 
@@ -319,7 +320,12 @@ def _strict_digest(body: Mapping[str, Any]) -> str:
 
 
 class ReceiptVerification(TypedDict):
-    """``verify-receipt`` result. ``kind`` is untrusted until errors is empty."""
+    """``verify-receipt`` result. ``kind`` is untrusted until errors is empty.
+
+    ``warnings`` are informational statistical-leakage canaries from
+    ``impossible_fit_scan``: scores too good to be honest. They never affect
+    ``valid`` — a degenerate synthetic shard can legitimately trip them.
+    """
 
     valid: bool
     path: str
@@ -328,6 +334,7 @@ class ReceiptVerification(TypedDict):
     verdict: object
     digest_convention: str | None
     errors: list[str]
+    warnings: list[str]
 
 
 def _result(
@@ -343,6 +350,7 @@ def _result(
         "verdict": body.get("verdict"),
         "digest_convention": digest_convention,
         "errors": errors,
+        "warnings": impossible_fit_scan(payload),
     }
 
 
