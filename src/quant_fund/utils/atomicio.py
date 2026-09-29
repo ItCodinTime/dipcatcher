@@ -16,8 +16,10 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import polars as pl
+if TYPE_CHECKING:
+    import polars as pl
 
 
 def _fsync_directory(path: Path) -> None:

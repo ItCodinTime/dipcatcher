@@ -71,9 +71,10 @@ def session_book_cmd(
         )
     )
     # Keep session keys in the written file for path research.
+    from quant_fund.utils.atomicio import atomic_write_parquet
+
     to_write = session_book
-    out.parent.mkdir(parents=True, exist_ok=True)
-    to_write.write_parquet(out)
+    atomic_write_parquet(to_write, out)
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo("SYNTHETIC")
     chain = session_chain_rate(session)
@@ -116,8 +117,7 @@ def session_book_cmd(
     )
     if daily_out is not None:
         daily = aggregate_session_book_to_daily(session_book)
-        daily_out.parent.mkdir(parents=True, exist_ok=True)
-        daily.write_parquet(daily_out)
+        atomic_write_parquet(daily, daily_out)
         typer.echo(f"session_book_daily rows={daily.height} path={daily_out}")
     del panel  # validated shape for required cols
 

@@ -10,7 +10,6 @@ import gzip
 import hashlib
 import json
 import math
-import os
 import subprocess
 from datetime import UTC, date, datetime
 from functools import lru_cache
@@ -31,6 +30,7 @@ from quant_fund.paper.xnys_calendar import (
 from quant_fund.research.net_replay import ReplayConfig, Strategy, _universe, _weights, market_panel
 from quant_fund.research.real_benchmark import _load_bars, _read_receipt, _seal, protocol_for_run
 from quant_fund.schemas.orders import Order, OrderSide
+from quant_fund.utils.atomicio import publish_text_once
 
 BOOKS = ("momentum_20", "equal_weight")
 SCENARIOS = ("configured", "double_impact")
@@ -79,10 +79,9 @@ def _sealed(path: Path) -> dict[str, Any]:
 
 
 def _write_new(path: Path, content: dict[str, Any]) -> None:
-    with path.open("x", encoding="utf-8") as stream:
-        json.dump(content, stream, sort_keys=True, allow_nan=False)
-        stream.flush()
-        os.fsync(stream.fileno())
+    # publish-once via tmp+link — a crash leaves no torn packet at the
+    # canonical path (open("x") would poison it for every later retry).
+    publish_text_once(path, json.dumps(content, sort_keys=True, allow_nan=False))
 
 
 def _source_hashes() -> dict[str, str]:

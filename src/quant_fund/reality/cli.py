@@ -150,9 +150,11 @@ def trial_report(
     except (RealityFilterError, ValueError) as exc:
         typer.echo(f"REALITY_FILTER_ERROR: {exc}", err=True)
         raise typer.Exit(code=2) from exc
+    from quant_fund.utils.atomicio import atomic_write_text
+
     text = json.dumps(report.model_dump(mode="json"), sort_keys=True)
     if out is not None:
-        out.write_text(text + "\n", encoding="utf-8")
+        atomic_write_text(out, text + "\n")
     typer.echo(DISCLAIMER, err=True)
     _emit(text)
 

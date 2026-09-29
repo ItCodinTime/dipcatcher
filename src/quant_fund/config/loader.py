@@ -56,5 +56,7 @@ def load_config(
 
 
 def dump_resolved(config: AppConfig, dest: Path) -> None:
+    from quant_fund.utils.atomicio import atomic_write_text
+
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(config.dump(), indent=2, sort_keys=True))
+    atomic_write_text(dest, json.dumps(config.dump(), indent=2, sort_keys=True))

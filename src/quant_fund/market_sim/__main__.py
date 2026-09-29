@@ -18,6 +18,7 @@ from quant_fund.market_sim.harness import (
 from quant_fund.market_sim.native import matching_benchmark
 from quant_fund.market_sim.scenarios import SCENARIOS, run_scenario, scenario_spread
 from quant_fund.market_sim.stylized import run_stylized_validation
+from quant_fund.utils.atomicio import atomic_write_text
 
 
 def _print(payload: object) -> None:
@@ -82,7 +83,7 @@ def main(argv: list[str] | None = None) -> None:
         }
         text = json.dumps(payload, indent=2, sort_keys=True, default=str)
         if args.out is not None:
-            args.out.write_text(text)
+            atomic_write_text(args.out, text)
         print(text)
         return
     raise SystemExit(f"unknown command {args.cmd}")

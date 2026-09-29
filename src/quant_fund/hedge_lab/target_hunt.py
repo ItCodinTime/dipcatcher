@@ -36,6 +36,7 @@ from quant_fund.lightspeed.specs import (
     stock_momentum_v1,
 )
 from quant_fund.risk.gates import GateSpec, apply_gate_stack, dd_halt, vol_target
+from quant_fund.utils.atomicio import atomic_write_text
 
 Array = NDArray[np.float64]
 _EPS = 1e-12
@@ -425,6 +426,6 @@ def run_target_hunt(
     }
     out = Path("artifacts") / "hedge_lab" / artifact_name
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
+    atomic_write_text(out, json.dumps(receipt, indent=2, default=str))
     receipt["artifact_path"] = str(out)
     return receipt

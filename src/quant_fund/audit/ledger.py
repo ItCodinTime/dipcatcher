@@ -26,7 +26,6 @@ from quant_fund.audit.canonical import canonical_json_bytes, json_safe, sha256_h
 from quant_fund.audit.errors import AuditError
 from quant_fund.audit.merkle import merkle_root
 from quant_fund.audit.signing import Signature
-from quant_fund.utils.atomicio import atomic_write_text
 
 if sys.platform == "win32":
     import msvcrt
@@ -326,6 +325,8 @@ class AuditLedger:
             "sigstore_issuer": signature.sigstore_issuer,
         }
         self._append_line(self.checkpoints_path, canonical_json_bytes(record))
+        from quant_fund.utils.atomicio import atomic_write_text
+
         if signer.scheme == "ed25519" and signature.public_key_hex:
             pub = self.root / "ed25519.pub"
             atomic_write_text(pub, signature.public_key_hex + "\n")

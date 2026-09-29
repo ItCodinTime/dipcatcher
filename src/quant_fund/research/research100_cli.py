@@ -8,14 +8,14 @@ from typing import Any
 
 import typer
 
-from quant_fund.utils.atomicio import atomic_write_text
-
 research100_app = typer.Typer(
     help="100 source-linked research components; no live-performance claims."
 )
 
 
 def _emit(value: Any, output: Path | None) -> None:
+    from quant_fund.utils.atomicio import atomic_write_text
+
     def clean(x: Any) -> Any:
         import math
 

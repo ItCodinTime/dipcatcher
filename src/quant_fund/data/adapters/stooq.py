@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 import polars as pl
 
 from quant_fund.data.concurrent_io import IoError, call_with_retry, map_ordered, pooled_request
+from quant_fund.utils.atomicio import atomic_write_parquet
 
 SOURCE = "stooq"
 REVISION = "STOOQ_VENDOR_ADJ"
@@ -245,23 +246,26 @@ def write_file_lake(
     bars_path = root / "bars.parquet"
     master_path = root / "security_master.parquet"
     actions_path = root / "corporate_actions.parquet"
-    bars.write_parquet(bars_path)
-    master.write_parquet(master_path)
+    atomic_write_parquet(bars, bars_path)
+    atomic_write_parquet(master, master_path)
     # Empty actions: Stooq EOD is already vendor-adjusted; identity silver splits.
-    pl.DataFrame(
-        schema={
-            "security_id": pl.String,
-            "event_time": pl.Datetime(time_zone="UTC"),
-            "available_time": pl.Datetime(time_zone="UTC"),
-            "ingested_time": pl.Datetime(time_zone="UTC"),
-            "source": pl.String,
-            "revision_id": pl.String,
-            "action_type": pl.String,
-            "factor": pl.Float64,
-            "amount": pl.Float64,
-            "new_ticker": pl.String,
-        }
-    ).write_parquet(actions_path)
+    atomic_write_parquet(
+        pl.DataFrame(
+            schema={
+                "security_id": pl.String,
+                "event_time": pl.Datetime(time_zone="UTC"),
+                "available_time": pl.Datetime(time_zone="UTC"),
+                "ingested_time": pl.Datetime(time_zone="UTC"),
+                "source": pl.String,
+                "revision_id": pl.String,
+                "action_type": pl.String,
+                "factor": pl.Float64,
+                "amount": pl.Float64,
+                "new_ticker": pl.String,
+            }
+        ),
+        actions_path,
+    )
     return {"bars": bars_path, "master": master_path, "actions": actions_path}
 
 

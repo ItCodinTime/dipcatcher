@@ -38,13 +38,18 @@ _TRIAL_CSV_FIELDS: tuple[str, ...] = (
 
 def write_trial_csv(rows: list[TrialLedgerRow], path: Path) -> None:
     """Write trial rows as CSV. Same columns the JSONL export carries."""
+    import io
+
+    from quant_fund.utils.atomicio import atomic_write_text
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=_TRIAL_CSV_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        payload = row.model_dump(mode="json")
+        writer.writerow({name: payload[name] for name in _TRIAL_CSV_FIELDS})
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=_TRIAL_CSV_FIELDS, lineterminator="\n")
-        writer.writeheader()
-        for row in rows:
-            payload = row.model_dump(mode="json")
-            writer.writerow({name: payload[name] for name in _TRIAL_CSV_FIELDS})
+    atomic_write_text(path, buffer.getvalue())
 
 
 _DB_OPTION = typer.Option(
@@ -118,19 +123,25 @@ def export(
     with ProvenanceDB(db) as prov:
         trials = prov.trials()
         bundles = prov.bundles()
+    from quant_fund.utils.atomicio import atomic_write_text
+
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8") as fh:
-        for row in trials:
-            fh.write(json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n")
+    atomic_write_text(
+        out,
+        "".join(json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n" for row in trials),
+    )
     typer.echo(f"exported {len(trials)} trial rows -> {out}")
     if csv_out is not None:
         write_trial_csv(trials, csv_out)
         typer.echo(f"exported {len(trials)} trial rows -> {csv_out}")
     if bundles_out is not None:
         bundles_out.parent.mkdir(parents=True, exist_ok=True)
-        with bundles_out.open("w", encoding="utf-8") as fh:
-            for bundle_row in bundles:
-                fh.write(json.dumps(bundle_row, sort_keys=True, default=str) + "\n")
+        atomic_write_text(
+            bundles_out,
+            "".join(
+                json.dumps(bundle_row, sort_keys=True, default=str) + "\n" for bundle_row in bundles
+            ),
+        )
         typer.echo(f"exported {len(bundles)} bundle rows -> {bundles_out}")
 
 

@@ -41,6 +41,7 @@ from quant_fund.lightspeed.specs import (
 from quant_fund.metrics.cross_section import date_ic_series
 from quant_fund.metrics.inference import diebold_mariano, overlap_aware_hac_lags
 from quant_fund.metrics.snooping import reality_check, spa_test, stepm
+from quant_fund.utils.atomicio import atomic_write_text
 
 Array = NDArray[np.float64]
 _EPS = 1e-12
@@ -445,10 +446,9 @@ def run_lightspeed_file_book(
     root = Path(cfg.data.root)
     out = root / "metadata" / "lightspeed_book.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
+    atomic_write_text(out, json.dumps(receipt, indent=2, default=str))
     public = Path("artifacts") / "hedge_lab" / "lightspeed_book.json"
-    public.parent.mkdir(parents=True, exist_ok=True)
-    public.write_text(json.dumps(receipt, indent=2, default=str), encoding="utf-8")
+    atomic_write_text(public, json.dumps(receipt, indent=2, default=str))
     receipt["receipt_path"] = str(out)
     receipt["artifact_path"] = str(public)
     return receipt

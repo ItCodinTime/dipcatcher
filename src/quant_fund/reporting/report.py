@@ -9,6 +9,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
+from quant_fund.utils.atomicio import atomic_write_text
+
 
 def build_evidence_report(
     *,
@@ -151,7 +153,7 @@ def write_report(path: Path, title: str, sections: dict[str, Any], *, synthetic:
         else:
             lines.append(str(body))
         lines.append("")
-    path.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(path, "\n".join(lines))
     return path
 
 

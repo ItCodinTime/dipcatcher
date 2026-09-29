@@ -22,6 +22,7 @@ from scipy.stats import norm
 
 from quant_fund.metrics.scoring import crps_empirical
 from quant_fund.models.arch_fit import arch_fit as _arch_fit
+from quant_fund.utils.atomicio import publish_text_once
 
 SCHEMA = "prospective_sota_v1"
 METHODS = ("candidate", "dip_fhs", "published")
@@ -51,12 +52,7 @@ def _read(path: Path) -> Any:
 
 
 def _write_new(path: Path, value: Any) -> None:
-    with path.open("x", encoding="utf-8") as handle:
-        handle.write(_json(value).decode() + "\n")
-        handle.flush()
-        import os
-
-        os.fsync(handle.fileno())
+    publish_text_once(path, _json(value).decode() + "\n")
 
 
 def _keys(value: Any, expected: set[str], label: str) -> dict[str, Any]:
