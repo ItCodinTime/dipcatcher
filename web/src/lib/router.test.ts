@@ -31,6 +31,18 @@ describe("parseHash", () => {
     });
     expect(parseHash("#/unknown/route")).toEqual({ name: "overview" });
   });
+
+  it("falls back to overview on malformed uri components", () => {
+    // decodeURIComponent throws URIError on truncated/invalid escapes —
+    // a bad hash must route to overview, not crash the app.
+    expect(parseHash("#/receipt/%")).toEqual({ name: "overview" });
+    expect(parseHash("#/receipt/%E0%A4%A")).toEqual({ name: "overview" });
+    expect(parseHash("#/strategy/%zz")).toEqual({ name: "overview" });
+    expect(parseHash("#/receipt/valid_id")).toEqual({
+      name: "receipt",
+      id: "valid_id",
+    });
+  });
 });
 
 describe("routeHref", () => {

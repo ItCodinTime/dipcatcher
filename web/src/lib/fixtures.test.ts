@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { decodeEquity, validateIndex } from "./fixtures";
 
 const FIXTURES = join(import.meta.dirname, "..", "..", "public", "fixtures");
+const SEALED = join(import.meta.dirname, "..", "..", "..", "receipts");
 
 describe("validateIndex", () => {
   it("accepts the real generated index", () => {
@@ -12,7 +13,11 @@ describe("validateIndex", () => {
     ) as unknown;
     const idx = validateIndex(raw);
     expect(idx.strategies.length).toBeGreaterThanOrEqual(9);
-    expect(idx.receipts).toHaveLength(6);
+    // must cover every sealed receipt — a gap hides committed evidence
+    const sealed = readdirSync(SEALED).filter((f) => f.endsWith(".json"));
+    expect(idx.receipts.map((r) => r.file).sort()).toEqual(
+      sealed.map((f) => `receipts/${f}`).sort(),
+    );
     expect(idx.honesty.research_only).toBe(true);
     const carry = idx.strategies.find((s) => s.id === "carry")!;
     expect(carry.has_equity).toBe(true);

@@ -15,16 +15,24 @@ Sources are read-only; originals are never modified. Re-run after any
 (sealed, intentional) change to ``receipts/`` or the committed artifacts::
 
     uv run --no-sync python web/scripts/export_fixtures.py
+
+``--check`` regenerates everything into a scratch directory and exits 1 when
+any committed fixture is missing, stale, or extra — the same freshness gate
+as ``scripts/gen_arch_diagrams.py --check``.
 """
 
 from __future__ import annotations
 
+import argparse
+import filecmp
 import hashlib
 import io
 import json
 import math
 import re
 import subprocess
+import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -229,6 +237,7 @@ def _strategy_entry(
     extras: dict[str, Any] | None = None,
     stats_file: str | None = None,
     equity_file: str | None = None,
+    fixtures_dir: Path = FIXTURES_DIR,
 ) -> tuple[dict[str, Any], str]:
     """Emit a normalized strategy stats fixture and return its index entry."""
 
@@ -245,7 +254,7 @@ def _strategy_entry(
         "extras": extras or {},
         "equity_file": equity_file,
     }
-    _write_json(FIXTURES_DIR / stats_rel, stats_payload)
+    _write_json(fixtures_dir / stats_rel, stats_payload)
     entry = {
         "id": strategy_id,
         "name": name,
@@ -259,7 +268,8 @@ def _strategy_entry(
     return entry, stats_rel
 
 
-def main() -> None:
+def _export(fixtures_dir: Path) -> dict[str, int]:
+    """Materialize every fixture under ``fixtures_dir``; return row counts."""
     receipts_dir = REPO_ROOT / "receipts"
     artifacts_dir = REPO_ROOT / "artifacts"
     if not receipts_dir.is_dir():
@@ -280,7 +290,7 @@ def main() -> None:
             continue
         src = REPO_ROOT / name
         rel = f"receipts/{src.name}"
-        dst = FIXTURES_DIR / rel
+        dst = fixtures_dir / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         raw = _committed_bytes(files[name])
         dst.write_bytes(raw)
@@ -314,7 +324,7 @@ def main() -> None:
         equity_rel = f"equity/{strategy_id}.json"
         equity_meta = _export_equity(
             parquet_path,
-            FIXTURES_DIR / equity_rel,
+            fixtures_dir / equity_rel,
             _committed_bytes(files[f"artifacts/{parquet_name}"]),
         )
         raw_stats = json.loads(_committed_bytes(files[f"artifacts/{champion_name}"]))
@@ -335,6 +345,7 @@ def main() -> None:
             },
             segments=segments,
             equity_file=equity_rel,
+            fixtures_dir=fixtures_dir,
         )
         strategies.append(entry)
 
@@ -367,6 +378,7 @@ def main() -> None:
                 },
                 segments=segments,
                 extras=extras,
+                fixtures_dir=fixtures_dir,
             )
             strategies.append(entry)
         sleeves = receipt.get("paper_sleeves", {})
@@ -391,6 +403,7 @@ def main() -> None:
                     "receipt; diagnostic only, no equity series exported.",
                 },
                 segments=segments,
+                fixtures_dir=fixtures_dir,
             )
             strategies.append(entry)
 
@@ -409,13 +422,78 @@ def main() -> None:
         "receipts": receipt_entries,
         "hash_matches": receipt_hash_matches,
     }
-    _write_json(FIXTURES_DIR / "index.json", index)
-    print(
-        f"exported {len(receipt_entries)} receipts, "
-        f"{len(strategies)} strategies, "
-        f"{len(receipt_hash_matches)} hash matches -> {FIXTURES_DIR}"
+    _write_json(fixtures_dir / "index.json", index)
+    return {
+        "receipts": len(receipt_entries),
+        "strategies": len(strategies),
+        "hash_matches": len(receipt_hash_matches),
+    }
+
+
+def _index_payload(path: Path) -> dict[str, Any]:
+    """index.json minus the volatile stamp fields."""
+    payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    for key in ("generated_at", "repo_revision"):
+        payload.pop(key, None)
+    return payload
+
+
+def _stale_fixtures(expected: Path, actual: Path) -> list[str]:
+    """Fixture paths whose committed bytes differ from a fresh export."""
+    stale: list[str] = []
+    if actual.is_dir():
+        for path in sorted(actual.rglob("*")):
+            if path.is_file():
+                rel = path.relative_to(actual)
+                if not (expected / rel).is_file():
+                    stale.append(f"{rel} (no longer produced)")
+    for path in sorted(expected.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(expected)
+        committed = actual / rel
+        if not committed.is_file():
+            stale.append(f"{rel} (missing)")
+        elif rel.name == "index.json":
+            if _index_payload(path) != _index_payload(committed):
+                stale.append(f"{rel} (drifted)")
+        elif not filecmp.cmp(path, committed, shallow=False):
+            stale.append(f"{rel} (drifted)")
+    return stale
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="verify committed fixtures are fresh; do not write",
     )
+    args = parser.parse_args(argv)
+
+    if args.check:
+        with tempfile.TemporaryDirectory(
+            prefix=".fixture-check-", dir=FIXTURES_DIR.parent
+        ) as scratch:
+            fresh = Path(scratch) / "fixtures"
+            _export(fresh)
+            stale = _stale_fixtures(fresh, FIXTURES_DIR)
+        if stale:
+            print("stale fixtures — run `python web/scripts/export_fixtures.py`:")
+            for rel in stale:
+                print(f"  {rel}")
+            return 1
+        print("fixtures are fresh")
+        return 0
+
+    counts = _export(FIXTURES_DIR)
+    print(
+        f"exported {counts['receipts']} receipts, "
+        f"{counts['strategies']} strategies, "
+        f"{counts['hash_matches']} hash matches -> {FIXTURES_DIR}"
+    )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

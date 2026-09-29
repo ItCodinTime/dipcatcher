@@ -55,11 +55,29 @@ def test_receipt_fixtures_are_byte_identical_to_sealed_sources() -> None:
         )
 
 
-def test_receipts_declare_research_only_flags() -> None:
+def test_fixtures_cover_every_sealed_receipt() -> None:
+    """Every committed receipts/*.json must be exported — a silent gap hides
+    sealed evidence from the explorer (this caught a stale-fixture drift)."""
+    index = _load("index.json")
+    indexed = {receipt["file"] for receipt in index["receipts"]}
+    sealed = {f"receipts/{p.name}" for p in (REPO_ROOT / "receipts").glob("*.json")}
+    assert sealed == indexed, f"fixture/receipt mismatch: {sorted(sealed ^ indexed)}"
+    assert {p.name for p in (FIXTURES / "receipts").glob("*.json")} == {
+        p.name for p in (REPO_ROOT / "receipts").glob("*.json")
+    }
+
+
+def test_receipts_declare_non_live_evidence() -> None:
+    """Receipts must never claim live P&L and must carry at least one
+    non-live marker (research_only, SYNTHETIC data_label, or dev_only)."""
     for path in sorted((FIXTURES / "receipts").glob("*.json")):
         payload = json.loads(path.read_text())
-        assert payload.get("research_only") is True, path.name
         assert payload.get("live_pnl_claim") is False, path.name
+        assert (
+            payload.get("research_only") is True
+            or payload.get("data_label") == "SYNTHETIC"
+            or payload.get("dev_only") is True
+        ), f"{path.name}: no non-live-evidence marker"
 
 
 def test_equity_fixtures_are_finite_sorted_series() -> None:
@@ -151,3 +169,30 @@ def test_export_hash_counts_match_fields_not_distinct_values() -> None:
         {"a_sha256": "a" * 64, "input_hashes": {"x": "a" * 64, "bad": "z" * 64}}, values
     )
     assert values == ["a" * 64, "a" * 64]
+
+
+def test_check_mode_detects_stale_fixtures(tmp_path: Path, monkeypatch) -> None:
+    """--check must fail closed on missing, drifted, or extra fixture files."""
+    module = _exporter()
+    assert module.main(["--check"]) == 0, "committed fixtures should be fresh"
+
+    fresh = tmp_path / "fresh"
+    module._export(fresh)
+    assert module._stale_fixtures(fresh, FIXTURES) == []
+
+    missing = tmp_path / "missing"
+    module._export(missing)
+    next((missing / "receipts").glob("*.json")).unlink()
+    assert module._stale_fixtures(fresh, missing)
+
+    drifted = tmp_path / "drifted"
+    module._export(drifted)
+    index = json.loads((drifted / "index.json").read_text())
+    index["receipts"] = index["receipts"][:1]
+    (drifted / "index.json").write_text(json.dumps(index, indent=1))
+    assert module._stale_fixtures(fresh, drifted) == ["index.json (drifted)"]
+
+    extra = tmp_path / "extra"
+    module._export(extra)
+    (extra / "receipts" / "ghost.json").write_text("{}")
+    assert module._stale_fixtures(fresh, extra) == ["receipts/ghost.json (no longer produced)"]

@@ -82,9 +82,24 @@ describe("extractHashFields", () => {
         "allocator_sha256",
       ]),
     );
-    // the export-time scan matched metrics_sha256 to a committed file
+    // returns.py changed since the receipt was sealed — the digest no
+    // longer resolves at HEAD and must be reported unresolved, not faked
     const metrics = fields.find((f) => f.key === "metrics_sha256");
-    expect(metrics?.match).toBe("src/quant_fund/metrics/returns.py");
+    expect(metrics?.match).toBeNull();
+  });
+
+  it("resolves the real fast-replay code_sha256 match", () => {
+    const receipt = JSON.parse(
+      readFileSync(
+        join(FIXTURES, "receipts", "fast_replay_p42_conformance_20260927.json"),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+    const fields = extractHashFields(receipt, REAL_INDEX.hash_matches);
+    const pub = fields.find(
+      (f) => f.key === "code_sha256.src/quant_fund/public.py",
+    );
+    expect(pub?.match).toBe("src/quant_fund/public.py");
   });
 });
 

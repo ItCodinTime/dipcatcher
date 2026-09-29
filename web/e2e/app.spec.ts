@@ -12,7 +12,7 @@ test.describe("research explorer", () => {
     await expect(table.locator("tbody tr")).toHaveCount(9);
     await expect(
       page.getByTestId("receipt-summary-table").locator("tbody tr"),
-    ).toHaveCount(6);
+    ).toHaveCount(10);
   });
 
   test("navigates to a strategy detail and renders charts", async ({
@@ -56,7 +56,7 @@ test.describe("research explorer", () => {
   test("receipt list and verification panel render", async ({ page }) => {
     await page.goto("/#/receipts");
     const table = page.getByTestId("receipt-table");
-    await expect(table.locator("tbody tr")).toHaveCount(6);
+    await expect(table.locator("tbody tr")).toHaveCount(10);
     await table
       .getByRole("link", { name: "adaptive_mix_20asset_1d_20260922" })
       .click();
@@ -76,9 +76,13 @@ test.describe("research explorer", () => {
     );
     const hashPanel = page.getByTestId("hash-panel");
     await expect(hashPanel).toContainText("script_sha256");
-    await expect(hashPanel).toContainText(
-      "src/quant_fund/metrics/returns.py",
-    );
+    // fast_replay embeds code_sha256 entries; public.py resolves at HEAD
+    await page.goto("/#/receipt/fast_replay_p42_conformance_20260927");
+    const fastHash = page.getByTestId("hash-panel");
+    await expect(fastHash).toContainText("src/quant_fund/public.py");
+    await expect(
+      page.getByTestId("checks-panel"),
+    ).toContainText("1/5 digests match a committed file");
   });
 
   test("hash routing handles direct loads and bad ids", async ({ page }) => {
@@ -87,6 +91,9 @@ test.describe("research explorer", () => {
     await page.goto("/#/strategy/does-not-exist");
     await expect(page.getByText("Unknown strategy")).toBeVisible();
     await page.goto("/#/bogus/path/here");
+    await expect(page.getByTestId("overview-page")).toBeVisible();
+    // malformed percent-escapes must not crash the router
+    await page.goto("/#/receipt/%");
     await expect(page.getByTestId("overview-page")).toBeVisible();
   });
 

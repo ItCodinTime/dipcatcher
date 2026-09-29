@@ -10,18 +10,30 @@ export type Route =
   | { name: "receipts" }
   | { name: "receipt"; id: string };
 
+function decodeId(component: string): string | null {
+  try {
+    return decodeURIComponent(component);
+  } catch {
+    return null;
+  }
+}
+
 export function parseHash(hash: string): Route {
   const cleaned = hash.replace(/^#/, "");
   const parts = cleaned.split("/").filter((p) => p.length > 0);
   if (parts.length === 0) return { name: "overview" };
   if (parts[0] === "strategy" && parts[1]) {
-    return { name: "strategy", id: decodeURIComponent(parts[1]) };
+    const id = decodeId(parts[1]);
+    if (id !== null) return { name: "strategy", id };
+    return { name: "overview" };
   }
   if (parts[0] === "receipts" && parts.length === 1) {
     return { name: "receipts" };
   }
   if (parts[0] === "receipt" && parts[1]) {
-    return { name: "receipt", id: decodeURIComponent(parts[1]) };
+    const id = decodeId(parts[1]);
+    if (id !== null) return { name: "receipt", id };
+    return { name: "overview" };
   }
   return { name: "overview" };
 }
