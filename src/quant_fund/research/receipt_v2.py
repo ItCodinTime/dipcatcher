@@ -433,6 +433,9 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
+    from quant_fund.research.lane_contracts import lane_contract_errors
+
+    errors.extend(lane_contract_errors(payload))
     return _result(path, payload, convention, errors)
 
 
