@@ -133,23 +133,30 @@ def impossible_fit_flags(metrics: Mapping[str, Any], *, n_obs: int | None = None
     return sorted(flags)
 
 
-def impossible_fit_scan(payload: object, *, _path: str = "") -> list[str]:
+_MAX_SCAN_DEPTH = 64
+
+
+def impossible_fit_scan(payload: object, *, _path: str = "", _depth: int = 0) -> list[str]:
     """Walk a receipt payload; flag every metrics-like block found.
 
     A metrics-like block is a mapping where at least one value is numeric and
     at least one key matches a known score family. Flags are reported as
     ``<json-path>:<flag>`` so a large leaderboard pinpoints the offending row.
     Deterministic traversal order (insertion order of the parsed document).
+    Descent stops at ``_MAX_SCAN_DEPTH``; the cutoff is itself flagged so a
+    pathological document surfaces rather than crashing the verifier.
     """
     flags: list[str] = []
+    if _depth >= _MAX_SCAN_DEPTH:
+        return [f"{_path or '$'}:scan_depth_cap"]
     if isinstance(payload, Mapping):
         if any(_is_number(value) for value in payload.values()):
             for flag in impossible_fit_flags(payload):
                 flags.append(f"{_path or '$'}:{flag}")
         for key, value in payload.items():
             child_path = f"{_path}.{key}" if _path else str(key)
-            flags.extend(impossible_fit_scan(value, _path=child_path))
+            flags.extend(impossible_fit_scan(value, _path=child_path, _depth=_depth + 1))
     elif isinstance(payload, Sequence) and not isinstance(payload, (str, bytes, bytearray)):
         for index, item in enumerate(payload):
-            flags.extend(impossible_fit_scan(item, _path=f"{_path}[{index}]"))
+            flags.extend(impossible_fit_scan(item, _path=f"{_path}[{index}]", _depth=_depth + 1))
     return flags

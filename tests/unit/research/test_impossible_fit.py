@@ -125,3 +125,16 @@ class TestVerifyReceiptWarnings:
 
 def test_min_obs_constant_is_sane() -> None:
     assert IMPOSSIBLE_FIT_MIN_OBS >= 20
+
+
+def test_scan_survives_pathological_depth() -> None:
+    """A document nested past _MAX_SCAN_DEPTH must not overflow the stack —
+    the cap itself is flagged so the cutoff is observable, not silent."""
+    doc: dict[str, object] = {}
+    node = doc
+    for _ in range(200):
+        node["child"] = {}
+        node = node["child"]  # type: ignore[assignment]
+    node["crps"] = 0.0
+    flags = impossible_fit_scan(doc)
+    assert any(flag.endswith("scan_depth_cap") for flag in flags)
