@@ -380,12 +380,44 @@ def _code_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     return []
 
 
+def _looks_like_fleet_eval(body: object) -> bool:
+    """Structural fingerprint of a fleet_eval receipt — schema/kind agnostic.
+
+    Dispatch on content, not the claimed ``schema``/``kind``: those fields are
+    attacker-controlled, and a reseal costs nothing (the digest is a public
+    sha256), so renaming them must not evade the deep contract checks.
+    """
+    return (
+        isinstance(body, Mapping)
+        and isinstance(body.get("results"), list)
+        and isinstance(body.get("models"), list)
+        and isinstance(body.get("shards"), dict)
+        and "n_eval" in body
+    )
+
+
+def _looks_like_v2_envelope(payload: Mapping[str, Any]) -> bool:
+    """Structural fingerprint of the receipt.v2 envelope."""
+    return (
+        isinstance(payload.get("payload"), Mapping)
+        and isinstance(payload.get("environment"), Mapping)
+        and isinstance(payload.get("code_files"), dict)
+        and isinstance(payload.get("dataset_hash"), str)
+        and isinstance(payload.get("params_hash"), str)
+    )
+
+
 def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     """Lane-specific re-derivation of the bound digests, where defined."""
-    if payload.get("kind") == "distribution_fleet_eval":
+    inner = payload.get("payload")
+    looks_fleet = _looks_like_fleet_eval(inner)
+    if payload.get("kind") == "distribution_fleet_eval" or looks_fleet:
         from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
 
-        return fleet_v2_consistency_errors(payload)
+        errors = fleet_v2_consistency_errors(payload)
+        if looks_fleet and payload.get("kind") != "distribution_fleet_eval":
+            errors = [*errors, "kind_fingerprint_mismatch"]
+        return errors
     return []
 
 
@@ -429,7 +461,7 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     claim = payload.get("live_pnl_claim")
     if claim is not None and claim is not False:
         errors.append("live_pnl_claim_not_false")
-    if payload.get("schema") == "fleet_eval.v1":
+    if _looks_like_fleet_eval(payload):
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
@@ -450,9 +482,18 @@ def verify_receipt_payload(
     path = Path(path)
     if not isinstance(payload, dict):
         return _result(path, payload, None, ["receipt_not_object"])
-    if payload.get("schema") == RECEIPT_V2_SCHEMA or payload.get("schema_version") == 2:
-        return _verify_v2(path, payload)
-    return _verify_v1(path, payload)
+    try:
+        if (
+            payload.get("schema") == RECEIPT_V2_SCHEMA
+            or payload.get("schema_version") == 2
+            or _looks_like_v2_envelope(payload)
+        ):
+            return _verify_v2(path, payload)
+        return _verify_v1(path, payload)
+    except (TypeError, ValueError, RecursionError) as exc:
+        # Non-finite floats and pathological nesting make the canonical digest
+        # raise; a malformed receipt must fail closed, not crash a sweep.
+        return _result(path, payload, None, [f"receipt_undigestable:{exc.__class__.__name__}"])
 
 
 def verify_receipt_file(path: Path | str) -> ReceiptVerification:
@@ -460,7 +501,9 @@ def verify_receipt_file(path: Path | str) -> ReceiptVerification:
     file_path = Path(path)
     try:
         payload: object = json.loads(file_path.read_text())
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
+        # ValueError covers JSONDecodeError and the >4300-digit integer limit;
+        # RecursionError covers pathological nesting.
         return _result(file_path, {}, None, [f"receipt_unreadable:{exc.__class__.__name__}"])
     return verify_receipt_payload(payload, file_path)
 
