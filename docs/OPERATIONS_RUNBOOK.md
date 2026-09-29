@@ -451,7 +451,7 @@ DATA_CONTRACTS **Commander box #73–#100 SKIPPED**; **CoS/Sergeant candle-book 
 
 **GREEN (pytest-verified; NOT inflight):**
 - Sergeant `structure_finite_rate` real stamp + derivation asserts **6/6** (`test_northset_finite_rates_receipt_stamp.py` + `test_candle_book_structure_finite_rate_stamp.py`); candle ≠ northset
-- CoS `tests/unit/test_mean_session_means_receipt_stamp_batch.py` **4/4** (11 `mean_session_*` keys) + `_nanmean` asarray fix
+- CoS `tests/unit/microstructure/test_mean_session_means_receipt_stamp_batch.py` **4/4** (11 `mean_session_*` keys) + `_nanmean` asarray fix
 
 **True INFLIGHT only (not stamp-tests):** Sergeant soft-verify `structure_finite_rate` on northset / CLI polish.
 

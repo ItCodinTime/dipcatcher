@@ -961,7 +961,7 @@ structure_finite_rate=…
 | `session_reconstructs_daily_rate` | H23; ≠ session_ohlc |
 | `session_volume_conservation_rate` | H24 |
 | `structure_finite_rate` | Stamped: northset = nanmean of concentration/queue/side_notional/tob finite rates; candle = nanmean of `finite_rate_*` companions. CLI echoes both. Distinct surfaces — never equate northset aggregate with candle companions. |
-| Never-equate test | `tests/unit/test_structure_finite_rate_never_equate_surfaces.py` |
+| Never-equate test | `tests/unit/microstructure/test_structure_finite_rate_never_equate_surfaces.py` |
 
 Also: research compact line still uses short aliases (`ohlc_ok` / `book_ok` / `chain_ok` / …). `session-book` CLI echoes live rates at gate time separately.
 
@@ -976,7 +976,7 @@ Also: research compact line still uses short aliases (`ohlc_ok` / `book_ok` / `c
 | `NORTHSET_RECEIPT_CLASSIFIED` | REQUIRED ∪ EXTRA ∪ BLOB_ONLY |
 | Soft-verify | `northset_receipt_key_classification_honesty_errors` — fail-closed on silent new stamps; wired on northset in verify-research |
 | Invariant | Every stamped non-discovery / non-kyle key is CLI-echoed **or** blob-only; REQUIRED ∩ BLOB_ONLY = ∅ |
-| Test | `tests/unit/test_northset_cli_echo_required_blob_only.py` |
+| Test | `tests/unit/microstructure/test_northset_cli_echo_required_blob_only.py` |
 
 Aliases: `mean_book_age_seconds` → `mean_book_age_s`, `max_book_age_seconds` → `max_book_age_s`. Discovery IC companions and `kyle_*` out of scope. Distinct from CoS mean_* 54/54 completeness.
 
@@ -990,7 +990,7 @@ Aliases: `mean_book_age_seconds` → `mean_book_age_s`, `max_book_age_seconds` �
 | Surfaces | Shape/notional/imbalance/queue/slope/tick/spread/microprice/session means lines on `dipcatcher northset` |
 | Exclusions | Jump intermediate keys / non-`mean_*` rates stay on other echo lines |
 | Ops | Prefer CLI + receipt blob together; never invent a mean as echoed if not in live CLI |
-| Test | `tests/unit/test_northset_cli_mean_echo_priority_batch.py` |
+| Test | `tests/unit/microstructure/test_northset_cli_mean_echo_priority_batch.py` |
 
 Cross-ref: NORTHSET **receipt means — CoS overnight stamp wave**; spread / tob / queue CLI sections.
 
@@ -1015,7 +1015,7 @@ Nested sweep research rows carry raw bps fields; northset **flattens** them onto
 | event_mean_bps ≠ control_diff_mean_bps | Excess vs matched event−control difference |
 | event_mean_bps ≠ cost_adjusted_mean_bps | Raw event excess ≠ cost-adjusted |
 
-CLI: CoS echoes both event + control_diff flat keys on the northset residual honesty line. Tests: `tests/unit/test_cli_mean_diff_excess_and_candle_gaps.py`. research_only — **never live Sharpe**.
+CLI: CoS echoes both event + control_diff flat keys on the northset residual honesty line. Tests: `tests/unit/microstructure/test_cli_mean_diff_excess_and_candle_gaps.py`. research_only — **never live Sharpe**.
 
 
 ## CoS candle-book CLI: `n_fused` + `min_names`
@@ -1064,7 +1064,7 @@ Also still stamps `depth_shape_finite_rate` (separate helper).
 |---|---|
 | `structure_finite_rate_honesty_errors` on family **`candle_order_book`** | Each present `finite_rate_*` key ∈ **[0, 1]** when finite; NaN skip; ±inf fail-closed |
 | Effect | On SYNTHETIC candle receipts the keys are present + finite → helper **bites** (no longer a no-op) |
-| Tests | `tests/unit/test_candle_book_structure_finite_rate_stamp.py` |
+| Tests | `tests/unit/microstructure/test_candle_book_structure_finite_rate_stamp.py` |
 | CLI | `dipcatcher candle-book` echoes the three `finite_rate_*` keys |
 
 research_only — **never live Sharpe**. Distinct from northset CLI `structure_finite_rate=` (single aggregate echo on northset receipt).
@@ -1075,7 +1075,7 @@ research_only — **never live Sharpe**. Distinct from northset CLI `structure_f
 | Piece | Live |
 |---|---|
 | CLI echo | `dipcatcher candle-book` prints `family={receipt family}` (e.g. `candle_order_book`) on the summary line with n_bars / n_fused / min_names / join / finite_rate_* / … |
-| Parity guard | `test_candle_book_cli_echoes_all_non_ic_receipt_keys` in `tests/unit/test_cli_mean_diff_excess_and_candle_gaps.py` |
+| Parity guard | `test_candle_book_cli_echoes_all_non_ic_receipt_keys` in `tests/unit/microstructure/test_cli_mean_diff_excess_and_candle_gaps.py` |
 | Rule | Every **non-`ic_*`** key stamped by `bench_candle_order_book` on a synth receipt must appear in the `candle_book` CLI source (`key=` / `get('key')` / `['key']`) |
 | Sibling | `test_candle_book_cli_echoes_bench_mean_keys`, `test_candle_book_echoes_n_fused_min_names` |
 
@@ -1110,8 +1110,8 @@ Cross-ref: **CoS candle-book finite_rate_***; **Sergeant candle-book family= + n
 
 | Path | Tests |
 |---|---|
-| `tests/unit/test_northset_finite_rates_receipt_stamp.py` | 4 — source stamps; synth unit-interval; candle structure+depth_shape; **northset structure derived from shape rates** |
-| `tests/unit/test_candle_book_structure_finite_rate_stamp.py` | 2 — synth stamps; **structure_finite_rate == nanmean of `finite_rate_*` companions** |
+| `tests/unit/microstructure/test_northset_finite_rates_receipt_stamp.py` | 4 — source stamps; synth unit-interval; candle structure+depth_shape; **northset structure derived from shape rates** |
+| `tests/unit/microstructure/test_candle_book_structure_finite_rate_stamp.py` | 2 — synth stamps; **structure_finite_rate == nanmean of `finite_rate_*` companions** |
 
 **candle ≠ northset (never equate):**
 - **candle:** nanmean of `finite_rate_microprice_minus_mid` + bid/ask `finite_rate_*_size_concentration_top`
@@ -1121,7 +1121,7 @@ Cross-ref: **CoS candle-book finite_rate_***; **Sergeant candle-book family= + n
 
 | Path | Status |
 |---|---|
-| `tests/unit/test_mean_session_means_receipt_stamp_batch.py` | **4/4 GREEN** |
+| `tests/unit/microstructure/test_mean_session_means_receipt_stamp_batch.py` | **4/4 GREEN** |
 
 11 receipt keys: `mean_session_book_snaps`, `mean_session_close_ask_depth`, `mean_session_close_bid_depth`, `mean_session_close_imbalance`, `mean_session_close_micro_bps`, `mean_session_close_mid`, `mean_session_close_spread_bps`, `mean_session_imbalance_mean`, `mean_session_imbalance_std`, `mean_session_ofi_abs_sum`, `mean_session_spread_bps_mean`.
 
@@ -1134,11 +1134,11 @@ Cross-ref: **CoS candle-book finite_rate_***; **Sergeant candle-book family= + n
 ### Soft-verify dual-family — **GREEN 11/11** (NOT inflight)
 
 Sergeant `structure_finite_rate` dual-family soft-verify is **GREEN 11/11** (pytest-verified). Anchors include:
-- `tests/unit/test_structure_finite_rate_soft_verify.py` (companions + aggregate + verify wire)
-- `tests/unit/test_northset_structure_finite_rate_distinct_soft_verify.py` (northset ≠ candle companions)
+- `tests/unit/microstructure/test_structure_finite_rate_soft_verify.py` (companions + aggregate + verify wire)
+- `tests/unit/microstructure/test_northset_structure_finite_rate_distinct_soft_verify.py` (northset ≠ candle companions)
 - never-equate soft-verify cases in `test_structure_finite_rate_never_equate_surfaces.py`
 
-**Never-equate surfaces:** `tests/unit/test_structure_finite_rate_never_equate_surfaces.py` **4/4 GREEN** (separate from the 11/11 soft-verify count).
+**Never-equate surfaces:** `tests/unit/microstructure/test_structure_finite_rate_never_equate_surfaces.py` **4/4 GREEN** (separate from the 11/11 soft-verify count).
 
 ### CLI partition + soft-verify — **GREEN** (no INFLIGHT here)
 
@@ -1156,11 +1156,11 @@ research_only — **never live Sharpe**. Box #73–#100 → Mac merge remains **
 | Path | Status |
 |---|---|
 | Dual-family soft-verify suite | **11/11 GREEN** (NOT inflight) — `test_structure_finite_rate_soft_verify.py` + distinct + never-equate soft-verify cases |
-| `tests/unit/test_structure_finite_rate_never_equate_surfaces.py` | **4/4 GREEN** — northset aggregate vs candle `finite_rate_*` companions; independent soft-verify per surface |
+| `tests/unit/microstructure/test_structure_finite_rate_never_equate_surfaces.py` | **4/4 GREEN** — northset aggregate vs candle `finite_rate_*` companions; independent soft-verify per surface |
 
 ### Lt — candle `_FEATURE_COLS` **+5** structure LOB **2/2 GREEN**
 
-| Path | `tests/unit/test_candle_book_structure_feature_cols.py` |
+| Path | `tests/unit/microstructure/test_candle_book_structure_feature_cols.py` |
 |---|---|
 | Status | **2/2 GREEN** |
 | +5 cols | `bid_size_concentration_top`, `ask_size_concentration_top`, `queue_priority_proxy`, `tob_size_share`, `notional_imbalance` |
@@ -1170,8 +1170,8 @@ research_only — **never live Sharpe**. Box #73–#100 → Mac merge remains **
 
 | Path | Status | Keys / role |
 |---|---|---|
-| `tests/unit/test_mean_microprice_notional_tob_receipt_stamp.py` | **3/3 GREEN** | `mean_microprice_minus_mid` (+ `_bps`), `mean_notional_imbalance`, `mean_tob_notional_share` |
-| `tests/unit/test_northset_structure_finite_rate_distinct_soft_verify.py` | **4/4 GREEN** (part of dual-family 11/11) | Northset companions ≠ candle `finite_rate_*`; dispatcher wire |
+| `tests/unit/microstructure/test_mean_microprice_notional_tob_receipt_stamp.py` | **3/3 GREEN** | `mean_microprice_minus_mid` (+ `_bps`), `mean_notional_imbalance`, `mean_tob_notional_share` |
+| `tests/unit/microstructure/test_northset_structure_finite_rate_distinct_soft_verify.py` | **4/4 GREEN** (part of dual-family 11/11) | Northset companions ≠ candle `finite_rate_*`; dispatcher wire |
 
 ### CLI partition — **GREEN** (was INFLIGHT)
 
@@ -1219,8 +1219,8 @@ research_only companions — **never live Sharpe**. Off inventing.
 | Path | Status |
 |---|---|
 | `catalog.candle_feature_cols_ic_honesty_errors` | wired in `verify.py` for candle family |
-| `tests/unit/test_candle_feature_cols_ic_soft_verify.py` | **3/3 GREEN** |
-| `tests/unit/test_candle_feature_cols_structure_ic_presence.py` | **2/2** presence / honesty on structure LOB IC keys |
+| `tests/unit/microstructure/test_candle_feature_cols_ic_soft_verify.py` | **3/3 GREEN** |
+| `tests/unit/microstructure/test_candle_feature_cols_structure_ic_presence.py` | **2/2** presence / honesty on structure LOB IC keys |
 
 Checks when present: `ic_*_p` ∈ [0,1]; `ic_*_n_dates` ≥ 0; signed IC / t / pearson finite-when-present (±inf fail-closed); `mean_abs_ic` ≥ 0; `best_feature_ic_key` empty or valid `ic_*` spearman key with matching |best| identity.
 
@@ -1233,21 +1233,21 @@ Pairs with Lt `_FEATURE_COLS` +5 structure LOB scoring. research_only — **neve
 
 | Path | Status |
 |---|---|
-| `tests/unit/test_northset_cli_echo_required_blob_only.py` | **4/4 GREEN** — REQUIRED **51** / BLOB_ONLY **90** / disjoint (see **Northset CLI echo partition**) |
-| `tests/unit/test_northset_cli_echo_required_finite_on_synth.py` | **3/3 GREEN** — all `NORTHSET_CLI_ECHO_REQUIRED` present on synth; numeric finite; string keys nonempty |
+| `tests/unit/microstructure/test_northset_cli_echo_required_blob_only.py` | **4/4 GREEN** — REQUIRED **51** / BLOB_ONLY **90** / disjoint (see **Northset CLI echo partition**) |
+| `tests/unit/microstructure/test_northset_cli_echo_required_finite_on_synth.py` | **3/3 GREEN** — all `NORTHSET_CLI_ECHO_REQUIRED` present on synth; numeric finite; string keys nonempty |
 
 ### CoS — `queue_priority` stamp upgrade **GREEN**
 
 | Path | Status | Keys |
 |---|---|---|
-| `tests/unit/test_mean_queue_priority_receipt_stamp.py` | **3/3 GREEN** | `mean_queue_priority_proxy`, `mean_ask_queue_priority_proxy` — source stamp + synth ∈[0,1] + honesty |
+| `tests/unit/microstructure/test_mean_queue_priority_receipt_stamp.py` | **3/3 GREEN** | `mean_queue_priority_proxy`, `mean_ask_queue_priority_proxy` — source stamp + synth ∈[0,1] + honesty |
 
 ### CoS / Lt — candle FEATURE_COLS structure IC presence **5/5 GREEN**
 
 | Path | n | Role |
 |---|---|---|
-| `tests/unit/test_candle_feature_cols_structure_ic_presence.py` | **2** | +5 structure LOB companions listed + synth scores `ic_*` keys |
-| `tests/unit/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3** | all `FEATURE_COLS` IC keys present; completeness helper + verify wire |
+| `tests/unit/microstructure/test_candle_feature_cols_structure_ic_presence.py` | **2** | +5 structure LOB companions listed + synth scores `ic_*` keys |
+| `tests/unit/microstructure/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3** | all `FEATURE_COLS` IC keys present; completeness helper + verify wire |
 
 **5/5** = structure presence **2** + IC completeness **3**. Pairs with `candle_feature_cols_ic` honesty soft-verify.
 
@@ -1280,8 +1280,8 @@ research_only — **never live Sharpe**. Off inventing.
 | Helper | `northset.benches.northset_receipt_key_classification_honesty_errors` |
 | Rule | every non-discovery / non-kyle receipt key must be in `NORTHSET_RECEIPT_CLASSIFIED`; unknown stamps → fail-closed |
 | Wire | `verify.py` for northset family |
-| Tests | `tests/unit/test_northset_receipt_key_classification_soft_verify.py` **3/3** (synth fully classified; unknown fail-closed; verify wires classification + candle join) |
-| Partition tests | `tests/unit/test_northset_cli_echo_required_blob_only.py` (incl. `test_classified_union_matches_parts`) |
+| Tests | `tests/unit/microstructure/test_northset_receipt_key_classification_soft_verify.py` **3/3** (synth fully classified; unknown fail-closed; verify wires classification + candle join) |
+| Partition tests | `tests/unit/microstructure/test_northset_cli_echo_required_blob_only.py` (incl. `test_classified_union_matches_parts`) |
 
 research_only — **never live Sharpe**. New stamps must be classified (CLI echo or blob-only); do not invent silent keys.
 
@@ -1293,8 +1293,8 @@ research_only — **never live Sharpe**. New stamps must be classified (CLI echo
 
 | Path | Status | Notes |
 |---|---|---|
-| `tests/unit/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3/3 GREEN** | all `FEATURE_COLS` IC keys present; completeness helper + verify wire |
-| `tests/unit/test_mid_lag1_corr_receipt_stamp.py` | **3/3 GREEN** | `mid_lag1_corr` (+ `mid_lag1_n_securities`); source + synth honesty; rejects out-of-unit |
+| `tests/unit/microstructure/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3/3 GREEN** | all `FEATURE_COLS` IC keys present; completeness helper + verify wire |
+| `tests/unit/microstructure/test_mid_lag1_corr_receipt_stamp.py` | **3/3 GREEN** | `mid_lag1_corr` (+ `mid_lag1_n_securities`); source + synth honesty; rejects out-of-unit |
 
 Pairs with structure IC presence / `candle_feature_cols_ic` honesty. Never equate `mid_lag1_corr` vs `ofi_lag1_corr` (see existing never-equate). research_only — **never live Sharpe**.
 
@@ -1313,7 +1313,7 @@ Pairs with structure IC presence / `candle_feature_cols_ic` honesty. Never equat
 
 ### EXTRA finite-on-synth — **3/3 GREEN** (NOT INFLIGHT)
 
-| Path | `tests/unit/test_northset_cli_echo_extra_finite_on_synth.py` |
+| Path | `tests/unit/microstructure/test_northset_cli_echo_extra_finite_on_synth.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Asserts | EXTRA keys present on synth; numeric not ±inf when finite; non-numeric honest types |
@@ -1326,7 +1326,7 @@ Pairs with REQUIRED finite-on-synth **3/3**. research_only — **never live Shar
 |---|---|
 | `_FEATURE_COLS` adds | `ask_queue_priority_proxy`, `microprice_weight_balance` (plus prior +5 structure LOB) |
 | Bid/ask queue pair honesty | `northset_queue_priority_bid_ask_pair_honesty_errors` — when `mean_queue_priority_proxy` finite, require `mean_ask_queue_priority_proxy` present; never collapse ask into bid; ∈[0,1] when finite |
-| Tests | `tests/unit/test_ask_queue_priority_and_mwb_ic_honesty.py` **4/4** — FEATURE_COLS scores ask_queue+MWB; ask required when bid finite; northset synth pair + floors; verify wires MWB IC honesty |
+| Tests | `tests/unit/microstructure/test_ask_queue_priority_and_mwb_ic_honesty.py` **4/4** — FEATURE_COLS scores ask_queue+MWB; ask required when bid finite; northset synth pair + floors; verify wires MWB IC honesty |
 
 CLASSIFIED partition already documented. Off inventing.
 
@@ -1339,10 +1339,10 @@ CLASSIFIED partition already documented. Off inventing.
 
 | Path | n | Role |
 |---|---|---|
-| `tests/unit/test_ask_queue_priority_and_mwb_ic_honesty.py` | **4** | FEATURE_COLS scores `ask_queue_priority_proxy` + `microprice_weight_balance`; bid/ask queue pair; MWB IC verify wire |
-| `tests/unit/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3** | all FEATURE_COLS IC keys present |
-| `tests/unit/test_feature_cols_spearman_pearson_and_lag1_n_soft_verify.py` | **3** | Spearman/Pearson/**t** pack completeness; `mid_lag1_n_securities` / `ofi_lag1_n_securities` ≥ 0 |
-| `tests/unit/test_candle_feature_cols_structure_ic_presence.py` | **2** | structure LOB companions scored + `ic_*` presence |
+| `tests/unit/microstructure/test_ask_queue_priority_and_mwb_ic_honesty.py` | **4** | FEATURE_COLS scores `ask_queue_priority_proxy` + `microprice_weight_balance`; bid/ask queue pair; MWB IC verify wire |
+| `tests/unit/microstructure/test_candle_feature_cols_ic_completeness_soft_verify.py` | **3** | all FEATURE_COLS IC keys present |
+| `tests/unit/microstructure/test_feature_cols_spearman_pearson_and_lag1_n_soft_verify.py` | **3** | Spearman/Pearson/**t** pack completeness; `mid_lag1_n_securities` / `ofi_lag1_n_securities` ≥ 0 |
+| `tests/unit/microstructure/test_candle_feature_cols_structure_ic_presence.py` | **2** | structure LOB companions scored + `ic_*` presence |
 
 **12/12** = 4+3+3+2.
 
@@ -1368,8 +1368,8 @@ research_only — **never live Sharpe**. Off inventing.
 
 | Path | n | Role |
 |---|---|---|
-| `tests/unit/test_northset_blob_only_never_in_cli.py` | **2** | `BLOB_ONLY` disjoint from REQUIRED; **BLOB_ONLY keys absent** from `dipcatcher northset` CLI source (no silent CLI leak) |
-| `tests/unit/test_northset_book_age_fuse_honesty.py` | **3** | northset mean/max book_age fuse honesty (≥0; max≥mean); receipt dispatcher includes book_age helper |
+| `tests/unit/microstructure/test_northset_blob_only_never_in_cli.py` | **2** | `BLOB_ONLY` disjoint from REQUIRED; **BLOB_ONLY keys absent** from `dipcatcher northset` CLI source (no silent CLI leak) |
+| `tests/unit/microstructure/test_northset_book_age_fuse_honesty.py` | **3** | northset mean/max book_age fuse honesty (≥0; max≥mean); receipt dispatcher includes book_age helper |
 
 **5/5** = 2+3. Outside frozenset theater — leak lock + fuse PIT residual.
 
@@ -1383,7 +1383,7 @@ See **CoS FEATURE_COLS Spearman/Pearson completeness + lag1 n_securities**. Stil
 
 ## CoS candle MWB fuse ⇒ mean unit + overnight/rv/semi + notional IC (**6/6**)
 
-| Path | `tests/unit/test_candle_mwb_fuse_and_overnight_rv_synth.py` |
+| Path | `tests/unit/microstructure/test_candle_mwb_fuse_and_overnight_rv_synth.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Coverage | fuse `microprice_weight_balance` ∈[0,1]; scored MWB requires mean in unit; honesty flags missing/bad mean; northset overnight/rv/semi/bv companions honest on synth; `notional_imbalance` IC present when scored; verify wires MWB scored⇒mean helper |
@@ -1394,8 +1394,8 @@ research_only — **never live Sharpe**.
 
 | Path | n | Role |
 |---|---|---|
-| `tests/unit/test_northset_session_identity_rates_soft_verify.py` | **6** | session L2 identity rates ∈[0,1]; synth clean; **never equate** `session_ohlc_identity_rate` vs daily OHLC identity key |
-| `tests/unit/test_candle_book_age_fuse_honesty.py` | **3** | candle PIT mean/max book_age; max&lt;mean / ±inf fail-closed |
+| `tests/unit/microstructure/test_northset_session_identity_rates_soft_verify.py` | **6** | session L2 identity rates ∈[0,1]; synth clean; **never equate** `session_ohlc_identity_rate` vs daily OHLC identity key |
+| `tests/unit/microstructure/test_candle_book_age_fuse_honesty.py` | **3** | candle PIT mean/max book_age; max&lt;mean / ±inf fail-closed |
 
 **9/9** = 6+3. **GREEN** — not INFLIGHT.
 
@@ -1405,7 +1405,7 @@ Sergeant BLOB_ONLY∉CLI + northset book_age fuse **5/5** already documented.
 
 ## Sergeant `candle_order_book_ic_method_honesty_errors` (**6/6 GREEN**)
 
-| Path | `tests/unit/test_candle_order_book_ic_method_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_candle_order_book_ic_method_soft_verify.py` |
 |---|---|
 | Helper | `catalog.candle_order_book_ic_method_honesty_errors` |
 | Status | **6/6 GREEN** |
@@ -1415,7 +1415,7 @@ Candle FEATURE_COLS date-IC / HAC meta soft-verify. research_only — **never li
 
 ## CoS `spread_over_mid` FEATURE_COLS + IC⇒mean + `session_ofi_sum` IC (**4/4 GREEN**)
 
-| Path | `tests/unit/test_spread_over_mid_ic_and_session_ofi_ic.py` |
+| Path | `tests/unit/microstructure/test_spread_over_mid_ic_and_session_ofi_ic.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Coverage | `spread_over_mid` in `_FEATURE_COLS` + scored IC pack; `candle_spread_over_mid_ic_implies_mean_honesty_errors` (IC⇒`mean_spread_over_mid`); flags missing mean; `northset_session_ofi_sum_ic_honesty_errors` bounds + synth clean; never-equate `session_ofi_sum_p_ic` vs `ofi_p_ic`; verify wire |
@@ -1424,7 +1424,7 @@ research_only — **never live Sharpe**.
 
 ## CoS `depth_imbalance_abs` FEATURE_COLS + `ofi_lag` IC honesty (**4/4 GREEN**)
 
-| Path | `tests/unit/test_depth_imbalance_ic_and_ofi_lag_ic.py` |
+| Path | `tests/unit/microstructure/test_depth_imbalance_ic_and_ofi_lag_ic.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Coverage | `depth_imbalance_abs` in `_FEATURE_COLS` + means; `candle_depth_imbalance_ic_implies_mean_honesty_errors` (flags missing means); `northset_ofi_lag_ic_honesty_errors` bounds + synth; verify wire |
@@ -1433,7 +1433,7 @@ research_only — **never live Sharpe**. Pairs with spread_over_mid / session_of
 
 ## CoS queue/vpin IC + candle structure IC⇒mean (**4/4 GREEN**)
 
-| Path | `tests/unit/test_queue_vpin_ic_and_structure_means.py` |
+| Path | `tests/unit/microstructure/test_queue_vpin_ic_and_structure_means.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `candle_structure_ic_implies_mean_honesty_errors`; `northset_queue_imbalance_ic_honesty_errors`; `northset_vpin_ic_pack_honesty_errors` |
@@ -1450,14 +1450,14 @@ research_only — **never live Sharpe**.
 
 | Path | n | Role |
 |---|---|---|
-| `tests/unit/test_candle_feature_cols_best_feature_identity.py` | **5** | best_feature / `mean_abs_ic` identity residual — synth clean; missing key/IC fail-closed; mean_abs ≠ mean(|spearman|) fail-closed; still rejects not-max-abs |
-| `tests/unit/test_candle_feature_cols_ic_soft_verify.py` | **3** | existing FEATURE_COLS IC honesty (p / n_dates / mean_abs / best-key) |
+| `tests/unit/microstructure/test_candle_feature_cols_best_feature_identity.py` | **5** | best_feature / `mean_abs_ic` identity residual — synth clean; missing key/IC fail-closed; mean_abs ≠ mean(|spearman|) fail-closed; still rejects not-max-abs |
+| `tests/unit/microstructure/test_candle_feature_cols_ic_soft_verify.py` | **3** | existing FEATURE_COLS IC honesty (p / n_dates / mean_abs / best-key) |
 
 **8/8** = 5+3. Uses `candle_feature_cols_ic_honesty_errors`. research_only — **never live Sharpe**.
 
 ## Sergeant n_fused / n_bars / n_scored sizing (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_n_bars_scored_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_n_bars_scored_soft_verify.py` |
 |---|---|
 | Helper | `northset_n_bars_scored_honesty_errors` |
 | Status | **6/6 GREEN** |
@@ -1467,7 +1467,7 @@ Chain: `n_fused ≤ n_bars`, `n_scored ≤ n_bars` (and scored vs fused fail-clo
 
 ## CoS remaining FEATURE_COLS mean_* + amihud/depth/slope/body/vpin IC packs (**3/3 GREEN**)
 
-| Path | `tests/unit/test_amihud_depth_slope_ic_packs_and_feature_means.py` |
+| Path | `tests/unit/microstructure/test_amihud_depth_slope_ic_packs_and_feature_means.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `candle_feature_cols_ic_implies_mean_honesty_errors` (+ completeness); `northset_amihud_ic_pack_honesty_errors`; `northset_imbalance_depth_ic_pack_honesty_errors`; `northset_bid_log_size_slope_ic_pack_honesty_errors`; `northset_candle_body_ret_ic_pack_honesty_errors`; `northset_session_book_vpin_ic_pack_honesty_errors` |
@@ -1484,7 +1484,7 @@ Chain: `n_fused ≤ n_bars`, `n_scored ≤ n_bars` (and scored vs fused fail-clo
 
 ## CoS p_ic catchall + session_close / sweep / VoR packs (**3/3 GREEN**)
 
-| Path | `tests/unit/test_p_ic_catchall_and_session_close_sweep_packs.py` |
+| Path | `tests/unit/microstructure/test_p_ic_catchall_and_session_close_sweep_packs.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `northset_all_p_ic_unit_interval_honesty_errors`; `northset_all_n_dates_nonneg_honesty_errors`; `northset_session_close_ic_packs_honesty_errors`; `northset_sweep_signed_ic_packs_honesty_errors`; `northset_volume_over_range_ic_packs_honesty_errors` |
@@ -1496,7 +1496,7 @@ research_only — **never live Sharpe**. Off inventing.
 
 ## Sergeant candle_order_book sizing + depth≥1 soft-verify (**8/8 GREEN**)
 
-| Path | `tests/unit/test_candle_order_book_sizing_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_candle_order_book_sizing_soft_verify.py` |
 |---|---|
 | Helper | `candle_order_book_sizing_honesty_errors` |
 | Status | **8/8 GREEN** (prior 6 + depth **2**) |
@@ -1507,7 +1507,7 @@ Chain: `n_scored ≤ n_fused ≤ n_bars`; `depth` integer ≥1. Distinct from no
 
 ## CoS dm_park + sweep_evidence_scope + candle join/chain (**4/4 GREEN**)
 
-| Path | `tests/unit/test_dm_park_sweep_scope_and_candle_join_chain.py` |
+| Path | `tests/unit/microstructure/test_dm_park_sweep_scope_and_candle_join_chain.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `northset_dm_park_honesty_errors`; `northset_sweep_evidence_scope_honesty_errors`; `candle_join_coverage_and_chain_honesty_errors` |
@@ -1523,7 +1523,7 @@ Chain: `n_scored ≤ n_fused ≤ n_bars`; `depth` integer ≥1. Distinct from no
 
 ## Sergeant dgp / book_dgp ↔ data_source (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_receipt_dgp_data_source_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_receipt_dgp_data_source_soft_verify.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Coverage | synth clean; `dgp`/`book_dgp` mismatch fail-closed; SYNTHETIC ⇔ `synthetic_lob` / data_source rules; candle family skipped; helper registered |
@@ -1532,7 +1532,7 @@ research_only — **never live Sharpe**.
 
 ## CoS all_*_rate unit + sweep evidence blob (**3/3 GREEN**)
 
-| Path | `tests/unit/test_pattern_rate_catchall_and_sweep_evidence_blob.py` |
+| Path | `tests/unit/microstructure/test_pattern_rate_catchall_and_sweep_evidence_blob.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Coverage | pattern `*_rate` unit-interval catchall; sweep evidence blob honesty |
@@ -1547,7 +1547,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant use_session_l2 ↔ gate consistency (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_use_session_l2_gate_consistency.py` |
+| Path | `tests/unit/microstructure/test_northset_use_session_l2_gate_consistency.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Helper | `northset_use_session_l2_gate_consistency_errors` (registered) |
@@ -1570,7 +1570,7 @@ Fail-closed codes: `use_session_l2_true_gate_not_enforced`, `use_session_l2_fals
 
 ## CoS all_*_share unit + candle spread alias honesty (**3/3 GREEN**)
 
-| Path | `tests/unit/test_share_catchall_and_candle_spread_alias.py` |
+| Path | `tests/unit/microstructure/test_share_catchall_and_candle_spread_alias.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `northset_all_share_unit_honesty_errors` (northset helpers registry); `candle_spread_alias_honesty_errors` (wired in `verify.py`) |
@@ -1585,7 +1585,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant component_sources (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_component_sources_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_component_sources_soft_verify.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Helper | `northset_component_sources_honesty_errors` (registered) |
@@ -1609,7 +1609,7 @@ Always-on receipt map soft-verify (≠ nest). research_only — **never live Sha
 
 ## Sergeant northset depth (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_depth_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_depth_soft_verify.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Helper | `northset_depth_honesty_errors` (registered) |
@@ -1634,7 +1634,7 @@ research_only — **never live Sharpe**.
 
 ## CoS fraction catchall + queue_imbalance_mean alias (**3/3 GREEN**)
 
-| Path | `tests/unit/test_fraction_catchall_and_queue_imbalance_mean.py` |
+| Path | `tests/unit/microstructure/test_fraction_catchall_and_queue_imbalance_mean.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Docstring | Honesty: *_fraction unit catch-all + queue_imbalance_mean alias. |
@@ -1653,7 +1653,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant price_basis / return_basis (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_price_return_basis_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_price_return_basis_soft_verify.py` |
 |---|---|
 | Status | **6/6 GREEN** |
 | Helper | `northset_price_return_basis_honesty_errors` (registered) |
@@ -1678,7 +1678,7 @@ Always-on northset receipt stamps. research_only — **never live Sharpe**.
 
 ## CoS candle ic_*_p / t / n_dates catchalls (**4/4 GREEN**)
 
-| Path | `tests/unit/test_candle_ic_p_t_ndates_catchalls.py` |
+| Path | `tests/unit/microstructure/test_candle_ic_p_t_ndates_catchalls.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `candle_all_ic_p_unit_honesty_errors`, `candle_all_ic_t_finite_honesty_errors`, `candle_all_ic_n_dates_nonneg_honesty_errors` (wired in `verify.py`) |
@@ -1694,7 +1694,7 @@ Candle family only. research_only — **never live Sharpe**.
 
 ## Sergeant family / book_source + label nonempty (**8/8 GREEN**)
 
-| Path | `tests/unit/test_northset_family_book_source_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_family_book_source_soft_verify.py` |
 |---|---|
 | Status | **8/8 GREEN** (was 6/6; +label nonempty) |
 | Helper | `northset_family_book_source_honesty_errors` (registered) |
@@ -1713,7 +1713,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant candle family / provenance (**5/5 GREEN**)
 
-| Path | `tests/unit/test_candle_order_book_family_provenance_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_candle_order_book_family_provenance_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `candle_order_book_family_provenance_honesty_errors` (wired in `verify.py`) |
@@ -1729,7 +1729,7 @@ Candle-only provenance stamps (≠ northset family/book_source helper). research
 
 ## CoS mean_imbalance_top + shape_columns_ensured rates (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_imbalance_top_and_shape_ensured_rates.py` |
+| Path | `tests/unit/microstructure/test_candle_imbalance_top_and_shape_ensured_rates.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_imbalance_top_honesty_errors` (candle); `northset_shape_columns_ensured_rates_honesty_errors` (northset) |
@@ -1752,7 +1752,7 @@ Both wired in `verify.py`. research_only — **never live Sharpe**.
 
 ## Sergeant candle dgp / data_source (**5/5 GREEN**)
 
-| Path | `tests/unit/test_candle_order_book_dgp_data_source_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_candle_order_book_dgp_data_source_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `candle_order_book_dgp_data_source_honesty_errors` (wired in `verify.py`) |
@@ -1769,7 +1769,7 @@ research_only — **never live Sharpe**.
 
 ## CoS metrics_required_finite_ok ⇒ structure rates (**4/4 GREEN**)
 
-| Path | `tests/unit/test_metrics_required_finite_ok_rates_honesty.py` |
+| Path | `tests/unit/research/test_metrics_required_finite_ok_rates_honesty.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `northset_metrics_required_finite_ok_rates_honesty_errors` (wired in `verify.py`) |
@@ -1792,7 +1792,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant sweep_evidence_scope stamp-contract (**10/10 GREEN**)
 
-| Path | `tests/unit/test_northset_sweep_evidence_scope_stamp_contract.py` |
+| Path | `tests/unit/microstructure/test_northset_sweep_evidence_scope_stamp_contract.py` |
 |---|---|
 | Status | **10/10 GREEN** (Sergeant) |
 | Helper | `northset_sweep_evidence_scope_honesty_errors` (registered) |
@@ -1818,7 +1818,7 @@ Aligns allowed enums + companions; supersedes legacy vendor-style scopes. Distin
 
 ## CoS depth_imbalance(+abs) + METRICS_REQUIRED finite-when-present (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_depth_imbalance_and_metrics_keys_present.py` |
+| Path | `tests/unit/microstructure/test_candle_depth_imbalance_and_metrics_keys_present.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_depth_imbalance_honesty_errors`, `mean_depth_imbalance_abs_honesty_errors` (candle); `northset_metrics_required_keys_finite_when_present_honesty_errors` |
@@ -1833,7 +1833,7 @@ Wired in `verify.py`. research_only — **never live Sharpe**.
 
 ## Sergeant shape_columns_ensured ↔ book_panel_path (**5/5 GREEN**)
 
-| Path | `tests/unit/test_northset_shape_ensured_book_panel_path_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_shape_ensured_book_panel_path_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `northset_shape_columns_ensured_book_panel_path_honesty_errors` (registered) |
@@ -1849,7 +1849,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant include_kyle_ofi ↔ kyle_ofi nest (**5/5 GREEN**)
 
-| Path | `tests/unit/test_northset_include_kyle_ofi_nest_presence_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_include_kyle_ofi_nest_presence_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `northset_include_kyle_ofi_nest_presence_honesty_errors` (registered) |
@@ -1865,7 +1865,7 @@ Presence-only soft-verify (≠ nest never-equates / overwrite suites). research_
 
 ## CoS research_only ⇒ claim (**10/10 GREEN**)
 
-| Path | `tests/unit/test_research_only_implies_claim.py` |
+| Path | `tests/unit/research/test_research_only_implies_claim.py` |
 |---|---|
 | Status | **10/10 GREEN** (Sergeant/CoS reported) |
 | Helpers | `northset_top_level_claim_honesty_errors`, `candle_order_book_claim_honesty_errors` |
@@ -1887,7 +1887,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant conservation ↔ reconstructs never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_volume_conservation_vs_reconstructs_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_volume_conservation_vs_reconstructs_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_volume_conservation_vs_reconstructs_never_equate_honesty_errors` (registered) |
@@ -1901,7 +1901,7 @@ research_only — **never live Sharpe**.
 
 ## CoS control_sample_adequate ⇒ n / p / t (**3/3 GREEN**)
 
-| Path | `tests/unit/test_sweep_control_sample_adequate_honesty.py` |
+| Path | `tests/unit/microstructure/test_sweep_control_sample_adequate_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helper | `northset_sweep_control_sample_adequate_honesty_errors` (registered) |
@@ -1914,7 +1914,7 @@ False ⇒ skip. Fail-closed examples: `sweep_follow_control_n_dates_lt_one_while
 
 ## Sergeant impact_estimator_scope stamp-contract (**4/4 GREEN**)
 
-| Path | `tests/unit/test_northset_impact_estimator_scope_stamp_contract.py` |
+| Path | `tests/unit/microstructure/test_northset_impact_estimator_scope_stamp_contract.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `northset_sweep_evidence_scope_honesty_errors` (same helper also covers `impact_estimator_scope`) |
@@ -1938,7 +1938,7 @@ Pairs with sweep_evidence_scope stamp-contract; empty/non-allowed estimator scop
 
 ## CoS fold_positive rates (**2/2 GREEN**)
 
-| Path | `tests/unit/test_sweep_fold_positive_rates_honesty.py` |
+| Path | `tests/unit/microstructure/test_sweep_fold_positive_rates_honesty.py` |
 |---|---|
 | Status | **2/2 GREEN** |
 | Helper | `northset_sweep_fold_positive_rates_honesty_errors` (registered) |
@@ -1953,7 +1953,7 @@ Explicit soft-verify (complements fraction catch-all). research_only — **never
 
 ## Sergeant book_join_coverage_floor (**4/4 GREEN**)
 
-| Path | `tests/unit/test_northset_book_join_coverage_floor_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_book_join_coverage_floor_soft_verify.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `northset_shape_and_session_l2_floors_honesty_errors` (floors soft-verify path) |
@@ -1976,7 +1976,7 @@ research_only — **never live Sharpe**.
 
 ## CoS amihud / qlike / corwin pack (**8/8 GREEN**)
 
-| Path | `tests/unit/test_amihud_qlike_range_spread_honesty_pack.py` |
+| Path | `tests/unit/microstructure/test_amihud_qlike_range_spread_honesty_pack.py` |
 |---|---|
 | Status | **8/8 GREEN** (CoS reported) |
 | Helpers | `amihud_mean_honesty_errors`, `northset_qlike_means_honesty_errors`, `northset_range_spread_honesty_errors` (all registered) |
@@ -1992,7 +1992,7 @@ Synth receipt clean + helpers on `NORTHSET_RECEIPT_HONESTY_HELPERS`. research_on
 
 ## Sergeant session_chain ↔ siblings never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_chain_vs_siblings_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_chain_vs_siblings_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_chain_vs_session_identity_siblings_never_equate_honesty_errors` (registered) |
@@ -2017,7 +2017,7 @@ Synth receipt clean + helpers on `NORTHSET_RECEIPT_HONESTY_HELPERS`. research_on
 
 ## CoS candle mean_*_frac pack (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_frac_and_spread_x_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_frac_and_spread_x_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helper | `candle_frac_and_spread_x_honesty_errors` (wired in `verify.py`) |
@@ -2040,7 +2040,7 @@ Fail-closed examples: `*_out_of_unit_interval`, `*_out_of_signed_unit`, `mean_sp
 
 ## Sergeant ohlc ↔ session_ohlc never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_session_ohlc_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_session_ohlc_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `ohlc_identity_vs_session_ohlc_never_equate_honesty_errors` (registered) |
@@ -2055,7 +2055,7 @@ Fail-closed examples: `*_out_of_unit_interval`, `*_out_of_signed_unit`, `mean_sp
 
 ## Sergeant ohlc ↔ gap_finite never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `ohlc_identity_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2077,7 +2077,7 @@ Fail-closed examples: `*_out_of_unit_interval`, `*_out_of_signed_unit`, `mean_sp
 
 ## CoS candle_direction (**4/4 GREEN**)
 
-| Path | `tests/unit/test_candle_direction_mean_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_direction_mean_honesty.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `candle_direction_mean_honesty_errors` (wired in `verify.py`); IC⇒mean via `candle_feature_cols_ic_implies_mean_honesty_errors` |
@@ -2099,7 +2099,7 @@ Synth candle clean. research_only — **never live Sharpe**.
 
 ## Sergeant H20 ↔ H21 never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_book_uncrossed_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_book_uncrossed_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `ohlc_identity_vs_book_uncrossed_never_equate_honesty_errors` (registered) |
@@ -2113,7 +2113,7 @@ Synth candle clean. research_only — **never live Sharpe**.
 
 ## CoS wick_skew + candle_body_ret (**3/3 GREEN**)
 
-| Path | `tests/unit/test_wick_skew_and_candle_body_ret_finite_pack.py` |
+| Path | `tests/unit/microstructure/test_wick_skew_and_candle_body_ret_finite_pack.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `candle_wick_skew_and_body_ret_means_honesty_errors` (verify.py); `northset_wick_skew_ic_pack_honesty_errors`; `northset_candle_body_ret_ic_pack_honesty_errors` |
@@ -2135,7 +2135,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant session_ohlc ↔ reconstructs never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_ohlc_vs_reconstructs_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_ohlc_vs_reconstructs_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_ohlc_vs_reconstructs_never_equate_honesty_errors` (registered) |
@@ -2149,7 +2149,7 @@ research_only — **never live Sharpe**.
 
 ## CoS signed_vol_x_imbalance (**4/4 GREEN**)
 
-| Path | `tests/unit/test_signed_vol_x_imbalance_finite_pack.py` |
+| Path | `tests/unit/microstructure/test_signed_vol_x_imbalance_finite_pack.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `candle_signed_vol_x_imbalance_mean_honesty_errors` (wired in `verify.py`) |
@@ -2172,7 +2172,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H21 ↔ H22 never-equate (**4/4 GREEN**) — triad H20–H21–H22 complete
 
-| Path | `tests/unit/test_book_uncrossed_vs_imbalance_p_ic_never_equate.py` |
+| Path | `tests/unit/microstructure/test_book_uncrossed_vs_imbalance_p_ic_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `book_uncrossed_vs_imbalance_p_ic_never_equate_honesty_errors` (registered) |
@@ -2186,7 +2186,7 @@ research_only — **never live Sharpe**.
 
 ## CoS candle ofi / queue imbalance means (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_ofi_and_queue_imbalance_means_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_ofi_and_queue_imbalance_means_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helper | `candle_ofi_and_queue_imbalance_means_honesty_errors` (wired in `verify.py`) |
@@ -2200,7 +2200,7 @@ Synth candle stamps both clean. research_only — **never live Sharpe**.
 
 ## CoS microprice_minus_mid finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_microprice_minus_mid_finite_pack.py` |
+| Path | `tests/unit/microstructure/test_microprice_minus_mid_finite_pack.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `candle_microprice_minus_mid_finite_pack_honesty_errors`; `mean_microprice_minus_mid_honesty_errors`; IC⇒mean via `candle_ofi_qp_slope_ic_implies_mean_honesty_errors` |
@@ -2224,7 +2224,7 @@ research_only — **never live Sharpe**.
 
 ## CoS spread_bps + log slopes (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_spread_bps_and_log_slopes_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_spread_bps_and_log_slopes_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `candle_spread_bps_nonneg_honesty_errors`, `candle_log_slopes_finite_honesty_errors` (wired in `verify.py`); also exercises `mean_depth_imbalance_honesty_errors` on synth |
@@ -2240,7 +2240,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H20 ↔ H22 never-equate (**4/4 GREEN**) — triad diagonal complete
 
-| Path | `tests/unit/test_ohlc_identity_vs_imbalance_p_ic_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_imbalance_p_ic_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN**; with H20↔H21 + H21↔H22 edge suites → **12/12** triad never-equate |
 | Helper | `ohlc_identity_vs_imbalance_p_ic_never_equate_honesty_errors` (registered) |
@@ -2255,7 +2255,7 @@ research_only — **never live Sharpe**.
 
 ## CoS tob_size_share + concentration tops + tick_spacing (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_tob_concentration_tick_spacing_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_tob_concentration_tick_spacing_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_tob_size_share_honesty_errors`, `size_concentration_top_honesty_errors`, `candle_log_tick_spacing_finite_honesty_errors` (wired in `verify.py`) |
@@ -2271,7 +2271,7 @@ Synth candle pack clean (+ IC⇒mean companion). research_only — **never live 
 
 ## CoS notional_imbalance + queue_priority + MWB (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_notional_queue_mwb_means_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_notional_queue_mwb_means_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_notional_imbalance_honesty_errors`, `mean_queue_priority_honesty_errors`, `mean_microprice_weight_balance_honesty_errors` (candle wired in `verify.py`) |
@@ -2286,7 +2286,7 @@ research_only — **never live Sharpe**.
 
 ## Commander gap ↔ uncrossed never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_gap_finite_vs_book_uncrossed_never_equate.py` |
+| Path | `tests/unit/microstructure/test_gap_finite_vs_book_uncrossed_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `gap_finite_rate_vs_book_uncrossed_never_equate_honesty_errors` (registered) |
@@ -2300,7 +2300,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant session_bulk_vpin ↔ siblings never-equate (**5/5 GREEN**)
 
-| Path | `tests/unit/test_session_bulk_vpin_vs_siblings_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_bulk_vpin_vs_siblings_never_equate.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helpers | `session_bulk_vpin_vs_siblings_never_equate_honesty_errors`, `session_bulk_vpin_honesty_errors` (registered) |
@@ -2315,7 +2315,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant CLV alias identity (**5/5 GREEN**)
 
-| Path | `tests/unit/test_close_location_value_clv_alias_identity.py` |
+| Path | `tests/unit/microstructure/test_close_location_value_clv_alias_identity.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `close_location_value_clv_alias_identity_honesty_errors` (registered) |
@@ -2338,7 +2338,7 @@ Keys remain distinct names; mismatch → `*_clv_*_mismatch`. One side absent ⇒
 
 ## Commander session_ohlc ↔ gap never-equate (**4/4 GREEN**) + identity #186–#190
 
-| Path | `tests/unit/test_session_ohlc_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_ohlc_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_ohlc_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2353,7 +2353,7 @@ Keys remain distinct names; mismatch → `*_clv_*_mismatch`. One side absent ⇒
 
 ## CoS effective / half / ofi (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_effective_spread_half_ofi_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_effective_spread_half_ofi_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `candle_spread_alias_honesty_errors` (`mean_effective_spread` ≥0; half ≡ quoted/2); `candle_feature_ofi_finite_honesty_errors` (wired in `verify.py`) |
@@ -2375,7 +2375,7 @@ Synth candle clean. research_only — **never live Sharpe**.
 
 ## Sergeant impact_proxy_warning (**5/5 GREEN**)
 
-| Path | `tests/unit/test_northset_impact_proxy_warning_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_impact_proxy_warning_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `northset_impact_proxy_warning_honesty_errors` (registered) |
@@ -2392,7 +2392,7 @@ research_only — **never live Sharpe**. Not signed trade-flow impact.
 
 ## Sergeant product stamp (**5/5 GREEN**)
 
-| Path | `tests/unit/test_northset_product_stamp_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_product_stamp_soft_verify.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Helper | `northset_product_stamp_honesty_errors` (registered) |
@@ -2417,7 +2417,7 @@ research_only — **never live Sharpe**.
 
 ## Commander session_ohlc ↔ book_uncrossed never-equate (**4/4 GREEN**) + identity #191–#195
 
-| Path | `tests/unit/test_session_ohlc_vs_book_uncrossed_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_ohlc_vs_book_uncrossed_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_ohlc_vs_book_uncrossed_never_equate_honesty_errors` (registered) |
@@ -2432,7 +2432,7 @@ research_only — **never live Sharpe**.
 
 ## CoS finite_rate catchall + price_slope IC⇒mean (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_finite_rate_prefix_and_price_slope_ic.py` |
+| Path | `tests/unit/microstructure/test_candle_finite_rate_prefix_and_price_slope_ic.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `candle_all_finite_rate_prefix_honesty_errors`; IC⇒mean via `candle_ofi_qp_slope_ic_implies_mean_honesty_errors` (wired in `verify.py`) |
@@ -2454,7 +2454,7 @@ Synth clean. research_only — **never live Sharpe**.
 
 ## Sergeant session_ohlc ↔ volume_conservation never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_ohlc_vs_volume_conservation_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_ohlc_vs_volume_conservation_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_ohlc_vs_volume_conservation_never_equate_honesty_errors` (registered) |
@@ -2476,7 +2476,7 @@ Synth clean. research_only — **never live Sharpe**.
 
 ## Sergeant session_ohlc ↔ session_chain never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_ohlc_vs_session_chain_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_ohlc_vs_session_chain_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `session_ohlc_vs_session_chain_never_equate_honesty_errors` (registered) |
@@ -2490,7 +2490,7 @@ Synth clean. research_only — **never live Sharpe**.
 
 ## Sergeant ohlc ↔ session_reconstructs never-equate (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_session_reconstructs_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_session_reconstructs_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `ohlc_identity_vs_session_reconstructs_never_equate_honesty_errors` (registered) |
@@ -2504,7 +2504,7 @@ Synth clean. research_only — **never live Sharpe**.
 
 ## Commander gap ↔ session_chain never-equate (**4/4 GREEN**) + identity #196–#200
 
-| Path | `tests/unit/test_gap_finite_vs_session_chain_never_equate.py` |
+| Path | `tests/unit/microstructure/test_gap_finite_vs_session_chain_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `gap_finite_rate_vs_session_chain_never_equate_honesty_errors` (registered) |
@@ -2519,7 +2519,7 @@ Synth clean. research_only — **never live Sharpe**.
 
 ## CoS IC unit tighten (**2/2 GREEN**)
 
-| Path | `tests/unit/test_candle_ic_unit_interval_tighten.py` |
+| Path | `tests/unit/microstructure/test_candle_ic_unit_interval_tighten.py` |
 |---|---|
 | Status | **2/2 GREEN** |
 | Helper | `candle_feature_cols_ic_honesty_errors` |
@@ -2533,7 +2533,7 @@ research_only — **never live Sharpe**.
 
 ## Reconnect: Sergeant H20 ↔ H29 ohlc ↔ session_chain (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_session_chain_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_session_chain_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk reconnect) |
 | Helper | `ohlc_identity_vs_session_chain_never_equate_honesty_errors` (registered) |
@@ -2549,7 +2549,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H20 ↔ H24 ohlc ↔ volume_conservation (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ohlc_identity_vs_volume_conservation_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ohlc_identity_vs_volume_conservation_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `ohlc_identity_vs_volume_conservation_never_equate_honesty_errors` (registered) |
@@ -2564,7 +2564,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H21 ↔ H29 book_uncrossed ↔ session_chain (**4/4 GREEN**)
 
-| Path | `tests/unit/test_book_uncrossed_vs_session_chain_never_equate.py` |
+| Path | `tests/unit/microstructure/test_book_uncrossed_vs_session_chain_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `book_uncrossed_vs_session_chain_never_equate_honesty_errors` (registered) |
@@ -2579,7 +2579,7 @@ research_only — **never live Sharpe**.
 
 ## Commander gap ↔ H23 session_reconstructs (**4/4 GREEN**)
 
-| Path | `tests/unit/test_gap_finite_vs_session_reconstructs_never_equate.py` |
+| Path | `tests/unit/microstructure/test_gap_finite_vs_session_reconstructs_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `gap_finite_rate_vs_session_reconstructs_never_equate_honesty_errors` (registered) |
@@ -2594,7 +2594,7 @@ research_only — **never live Sharpe**.
 
 ## General H21 ↔ H24 book_uncrossed ↔ volume_conservation (**4/4 GREEN**)
 
-| Path | `tests/unit/test_book_uncrossed_vs_volume_conservation_never_equate.py` |
+| Path | `tests/unit/microstructure/test_book_uncrossed_vs_volume_conservation_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helper | `book_uncrossed_vs_volume_conservation_never_equate_honesty_errors` (registered) |
@@ -2610,7 +2610,7 @@ research_only — **never live Sharpe**.
 
 ## Commander gap ↔ volume_conservation (**4/4 GREEN**)
 
-| Path | `tests/unit/test_gap_finite_vs_session_volume_conservation_never_equate.py` |
+| Path | `tests/unit/microstructure/test_gap_finite_vs_session_volume_conservation_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `gap_finite_rate_vs_session_volume_conservation_never_equate_honesty_errors` (registered) |
@@ -2625,7 +2625,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H22 ↔ H29 imbalance_top_p_ic ↔ session_chain (**4/4 GREEN**)
 
-| Path | `tests/unit/test_imbalance_top_p_ic_vs_session_chain_never_equate.py` |
+| Path | `tests/unit/microstructure/test_imbalance_top_p_ic_vs_session_chain_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `imbalance_top_p_ic_vs_session_chain_never_equate_honesty_errors` (registered) |
@@ -2640,7 +2640,7 @@ research_only — **never live Sharpe**.
 
 ## Commander H22 ↔ gap imbalance_top_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_imbalance_top_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_imbalance_top_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `imbalance_top_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2656,7 +2656,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H22 ↔ H24 imbalance_top_p_ic ↔ volume_conservation (**4/4 GREEN**)
 
-| Path | `tests/unit/test_imbalance_top_p_ic_vs_session_volume_conservation_never_equate.py` |
+| Path | `tests/unit/microstructure/test_imbalance_top_p_ic_vs_session_volume_conservation_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `imbalance_top_p_ic_vs_session_volume_conservation_never_equate_honesty_errors` (registered) |
@@ -2671,7 +2671,7 @@ research_only — **never live Sharpe**.
 
 ## H22 ↔ session_ohlc imbalance_top_p_ic ↔ session_ohlc_identity (**4/4 GREEN**)
 
-| Path | `tests/unit/test_imbalance_top_p_ic_vs_session_ohlc_never_equate.py` |
+| Path | `tests/unit/microstructure/test_imbalance_top_p_ic_vs_session_ohlc_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `imbalance_top_p_ic_vs_session_ohlc_never_equate_honesty_errors` (registered) |
@@ -2687,7 +2687,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H22 ↔ H23 imbalance_top_p_ic ↔ session_reconstructs (**4/4 GREEN**)
 
-| Path | `tests/unit/test_imbalance_top_p_ic_vs_session_reconstructs_never_equate.py` |
+| Path | `tests/unit/microstructure/test_imbalance_top_p_ic_vs_session_reconstructs_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `imbalance_top_p_ic_vs_session_reconstructs_never_equate_honesty_errors` (registered) |
@@ -2703,7 +2703,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H25 ↔ gap microprice_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_microprice_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_microprice_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `microprice_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2718,7 +2718,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H27 ↔ gap ofi_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_ofi_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_ofi_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `ofi_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2733,7 +2733,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H26 ↔ gap wick_skew_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_wick_skew_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_wick_skew_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `wick_skew_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2748,7 +2748,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H30 ↔ gap clv_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_clv_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_clv_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `clv_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2764,7 +2764,7 @@ research_only — **never live Sharpe**.
 
 ## H32 ↔ gap vpin_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_vpin_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_vpin_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `vpin_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2779,7 +2779,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H28 ↔ gap dm_gk_vs_park_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_dm_gk_vs_park_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_dm_gk_vs_park_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `dm_gk_vs_park_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2794,7 +2794,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H31 ↔ gap dm_split_vs_park_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_dm_split_vs_park_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_dm_split_vs_park_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `dm_split_vs_park_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2809,7 +2809,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H33 ↔ gap sweep_reject_signed_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_signed_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_signed_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_signed_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2825,7 +2825,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H34 ↔ gap sweep_follow_signed_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_signed_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_signed_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_signed_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2841,7 +2841,7 @@ research_only — **never live Sharpe**.
 
 ## H35 ↔ gap sweep_reject_event_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_event_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_event_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_event_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2856,7 +2856,7 @@ research_only — **never live Sharpe**.
 
 ## H36 ↔ gap sweep_follow_event_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_event_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_event_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_event_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2871,7 +2871,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H37 ↔ gap sweep_reject_placebo_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_placebo_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_placebo_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_placebo_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2886,7 +2886,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H38 ↔ gap sweep_follow_placebo_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_placebo_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_placebo_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_placebo_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2901,7 +2901,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H40 ↔ gap sweep_follow_cost_adjusted_mean_bps ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_cost_adjusted_mean_bps_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_cost_adjusted_mean_bps_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_cost_adjusted_mean_bps_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2917,7 +2917,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H39 ↔ gap sweep_reject_cost_adjusted_mean_bps ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_cost_adjusted_mean_bps_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_cost_adjusted_mean_bps_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_cost_adjusted_mean_bps_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2933,7 +2933,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H41 ↔ gap sweep_reject_fold_positive_fraction ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_fold_positive_fraction_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_fold_positive_fraction_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_fold_positive_fraction_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2948,7 +2948,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H42 ↔ gap sweep_follow_fold_positive_fraction ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_fold_positive_fraction_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_fold_positive_fraction_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_fold_positive_fraction_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2963,7 +2963,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H44 ↔ gap sweep_reject_control_diff_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_control_diff_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_control_diff_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_control_diff_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2978,7 +2978,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H45 ↔ gap sweep_follow_control_diff_p ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_follow_control_diff_p_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_follow_control_diff_p_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_follow_control_diff_p_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -2994,7 +2994,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H43 ↔ gap session_book_vpin_p_ic ↔ gap_finite (**4/4 GREEN**)
 
-| Path | `tests/unit/test_session_book_vpin_p_ic_vs_gap_finite_never_equate.py` |
+| Path | `tests/unit/microstructure/test_session_book_vpin_p_ic_vs_gap_finite_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `session_book_vpin_p_ic_vs_gap_finite_never_equate_honesty_errors` (registered) |
@@ -3010,7 +3010,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H33 ≠ H34 sweep_reject_signed_p_ic ↔ sweep_follow_signed_p_ic (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_signed_p_ic_vs_sweep_follow_signed_p_ic_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_signed_p_ic_vs_sweep_follow_signed_p_ic_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_signed_p_ic_vs_sweep_follow_signed_p_ic_never_equate_honesty_errors` (registered) |
@@ -3025,7 +3025,7 @@ research_only — **never live Sharpe**.
 
 ## Lt H35 ≠ H36 sweep_reject_event_p ↔ sweep_follow_event_p (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_event_p_vs_sweep_follow_event_p_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_event_p_vs_sweep_follow_event_p_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_event_p_vs_sweep_follow_event_p_never_equate_honesty_errors` (registered) |
@@ -3040,7 +3040,7 @@ research_only — **never live Sharpe**.
 
 ## Sergeant H37 ≠ H38 sweep_reject_placebo_p ↔ sweep_follow_placebo_p (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_placebo_p_vs_sweep_follow_placebo_p_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_placebo_p_vs_sweep_follow_placebo_p_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_placebo_p_vs_sweep_follow_placebo_p_never_equate_honesty_errors` (registered) |
@@ -3055,7 +3055,7 @@ research_only — **never live Sharpe**.
 
 ## CoS H39 ≠ H40 sweep_reject_cost ↔ sweep_follow_cost (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_cost_adjusted_mean_bps_vs_sweep_follow_cost_adjusted_mean_bps_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_cost_adjusted_mean_bps_vs_sweep_follow_cost_adjusted_mean_bps_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_cost_adjusted_mean_bps_vs_sweep_follow_cost_adjusted_mean_bps_never_equate_honesty_errors` (registered) |
@@ -3071,7 +3071,7 @@ research_only — **never live Sharpe**.
 
 ## CoS candle spread_bps alias vs spread_over_mid (**4/4 GREEN**)
 
-| Path | `tests/unit/test_candle_spread_bps_vs_over_mid_identity.py` |
+| Path | `tests/unit/microstructure/test_candle_spread_bps_vs_over_mid_identity.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `candle_spread_alias_honesty_errors` (registered) |
@@ -3087,7 +3087,7 @@ book_metrics: `spread_bps = 1e4 * spread/mid`; `spread_over_mid = spread/mid`. r
 
 ## Lt H41 ≠ H42 reject_fold ↔ follow_fold (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_fold_positive_fraction_vs_sweep_follow_fold_positive_fraction_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_fold_positive_fraction_vs_sweep_follow_fold_positive_fraction_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_fold_positive_fraction_vs_sweep_follow_fold_positive_fraction_never_equate_honesty_errors` (registered) |
@@ -3102,7 +3102,7 @@ book_metrics: `spread_bps = 1e4 * spread/mid`; `spread_over_mid = spread/mid`. r
 
 ## Lt H44 ≠ H45 reject_control ↔ follow_control (**4/4 GREEN**)
 
-| Path | `tests/unit/test_sweep_reject_control_diff_p_vs_sweep_follow_control_diff_p_never_equate.py` |
+| Path | `tests/unit/microstructure/test_sweep_reject_control_diff_p_vs_sweep_follow_control_diff_p_never_equate.py` |
 |---|---|
 | Status | **4/4 GREEN** (on-disk confirm) |
 | Helper | `sweep_reject_control_diff_p_vs_sweep_follow_control_diff_p_never_equate_honesty_errors` (registered) |
@@ -3126,7 +3126,7 @@ Documented from day_grind; no invent beyond listed props. Cross-ref IC↔gap SPE
 
 ## CoS candle_dir_x_imbalance + close_mid_abs_rel (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_dir_x_imbalance_close_mid_join_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_dir_x_imbalance_close_mid_join_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_candle_dir_x_imbalance_honesty_errors`, `mean_close_mid_abs_rel_honesty_errors`; companion `candle_join_coverage_and_chain_honesty_errors` |
@@ -3142,7 +3142,7 @@ research_only — **never live Sharpe**.
 
 ## CoS tob / concentration / tick_spacing (**3/3 GREEN**)
 
-| Path | `tests/unit/test_candle_tob_concentration_tick_spacing_honesty.py` |
+| Path | `tests/unit/microstructure/test_candle_tob_concentration_tick_spacing_honesty.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `mean_tob_size_share_honesty_errors`, `size_concentration_top_honesty_errors`, `candle_log_tick_spacing_finite_honesty_errors` (wired in `verify.py`) |
@@ -3165,7 +3165,7 @@ Synth candle pack clean (+ IC⇒mean companion). research_only — **never live 
 
 ## CoS yang_zhang / overnight / QLIKE pack (**5/5 GREEN**)
 
-| Path | `tests/unit/test_yz_park_overnight_rv_bv_semi_pack.py` |
+| Path | `tests/unit/microstructure/test_yz_park_overnight_rv_bv_semi_pack.py` |
 |---|---|
 | Status | **5/5 GREEN** (CoS reported) |
 | Helpers | `northset_range_spread_honesty_errors` (YZ), `northset_qlike_means_honesty_errors` (park/gk/rs), `northset_overnight_rv_semi_honesty_errors` |
@@ -3187,7 +3187,7 @@ Synth pack clean + helpers registered. research_only — **never live Sharpe**.
 
 ## CoS IC t/mean/rank + finite_rate/floor catchalls (**2/2 GREEN**)
 
-| Path | `tests/unit/test_ic_finite_rate_floor_catchalls.py` |
+| Path | `tests/unit/core/test_ic_finite_rate_floor_catchalls.py` |
 |---|---|
 | Status | **2/2 GREEN** |
 | Helpers | `northset_all_t_ic_finite_honesty_errors`; `northset_all_mean_ic_finite_honesty_errors`; `northset_all_mean_rank_ic_unit_honesty_errors`; `northset_all_finite_rate_unit_honesty_errors`; `northset_all_floor_unit_honesty_errors` |
@@ -3202,7 +3202,7 @@ Already documented: `test_candle_order_book_sizing_soft_verify.py` **8/8**.
 
 ## Sergeant receipt bool-flags soft-verify (**6/6 GREEN**)
 
-| Path | `tests/unit/test_northset_receipt_bool_flags_soft_verify.py` |
+| Path | `tests/unit/microstructure/test_northset_receipt_bool_flags_soft_verify.py` |
 |---|---|
 | Helper | `northset_receipt_bool_flags_honesty_errors` |
 | Status | **6/6 GREEN** |
@@ -3212,7 +3212,7 @@ research_only — **never live Sharpe**.
 
 ## CoS candle claim + pearson ∈[-1,1] + northset string enums (**4/4 GREEN**)
 
-| Path | `tests/unit/test_candle_claim_pearson_and_northset_enums.py` |
+| Path | `tests/unit/microstructure/test_candle_claim_pearson_and_northset_enums.py` |
 |---|---|
 | Status | **4/4 GREEN** |
 | Helpers | `candle_order_book_claim_honesty_errors`; `candle_all_ic_pearson_unit_honesty_errors`; `northset_receipt_string_enum_honesty_errors` |
@@ -3225,7 +3225,7 @@ Already documented: `test_ic_finite_rate_floor_catchalls.py` **2/2**.
 
 ## CoS imbalance/CLV/microprice IC packs + ofi/queue/slope means (**3/3 GREEN**)
 
-| Path | `tests/unit/test_imbalance_clv_microprice_ic_packs_and_ofi_means.py` |
+| Path | `tests/unit/microstructure/test_imbalance_clv_microprice_ic_packs_and_ofi_means.py` |
 |---|---|
 | Status | **3/3 GREEN** |
 | Helpers | `northset_imbalance_top_ic_pack_honesty_errors`; `northset_clv_ic_pack_honesty_errors`; `northset_microprice_bps_ic_pack_honesty_errors`; `candle_ofi_qp_slope_ic_implies_mean_honesty_errors` |
@@ -3236,7 +3236,7 @@ Confirmed earlier: CoS queue/vpin IC + structure IC⇒mean **4/4** (`test_queue_
 
 ## Sergeant `session_book_snaps`↔`n_session` consistency — **PROMOTED GREEN 7/7** (INFLIGHT cleared)
 
-| Path | `tests/unit/test_session_book_snaps_n_session_consistency.py` |
+| Path | `tests/unit/microstructure/test_session_book_snaps_n_session_consistency.py` |
 |---|---|
 | Helper | `northset_session_book_snaps_n_session_consistency_errors` |
 | Status | **7/7 GREEN** (NOT INFLIGHT) |
@@ -3258,7 +3258,7 @@ Never equate `mean_session_book_snaps` ↔ `n_session_book_rows` / `n_session_ca
 
 ## Sergeant candle `ic_method` HAC soft-verify (**6/6 GREEN**)
 
-Confirmed: `candle_order_book_ic_method_honesty_errors` — `tests/unit/test_candle_order_book_ic_method_soft_verify.py` **6/6**. See prior section.
+Confirmed: `candle_order_book_ic_method_honesty_errors` — `tests/unit/microstructure/test_candle_order_book_ic_method_soft_verify.py` **6/6**. See prior section.
 
 ### True INFLIGHT now (Sergeant)
 
@@ -3270,7 +3270,7 @@ Confirmed: `candle_order_book_ic_method_honesty_errors` — `tests/unit/test_can
 
 ## CoS session_l2_enforced + notional IC⇒mean (**5/5 GREEN**)
 
-| Path | `tests/unit/test_session_l2_enforced_and_notional_ic_mean.py` |
+| Path | `tests/unit/microstructure/test_session_l2_enforced_and_notional_ic_mean.py` |
 |---|---|
 | Status | **5/5 GREEN** |
 | Coverage | enforced gate requires session identity rate keys; synth session_l2-on stamps identity rates; candle stamps `mean_notional_imbalance` and IC⇒mean; honesty flags missing mean; verify wires |
@@ -3315,7 +3315,7 @@ Off inventing. If box later catches up, Lt re-evaluates merge — not automatic.
 | Soft-verify helper | `mean_tob_notional_share_honesty_errors` — finite ⇒ ∈ **(0, 1]**; ±inf / 0 fail-closed; NaN/absent skip |
 | Never equate | ≠ `mean_tob_size_share` (Commander #62 — size vs notional) |
 | `verify-research` wire | **Direct** in `research.verify` on family northset (`for mtn_err in mean_tob_notional_share_honesty_errors(...)`) — **not** inside `NORTHSET_RECEIPT_HONESTY_HELPERS` (40) today |
-| Unit tests | `tests/unit/test_mean_tob_notional_share_receipt_stamp.py` — source stamp assert; honesty bounds; verify.py wire assert. Soft-verify twin: `test_mean_tob_notional_share_soft_verify.py` |
+| Unit tests | `tests/unit/microstructure/test_mean_tob_notional_share_receipt_stamp.py` — source stamp assert; honesty bounds; verify.py wire assert. Soft-verify twin: `test_mean_tob_notional_share_soft_verify.py` |
 | Property | `tests/property/test_order_book_metrics_identity.py` — `tob_notional_share` ∈(0,1] geometry |
 
 Cross-ref: NORTHSET receipt means **Notional / TOB share**; **mean_tob_size_share vs tob_size_share_finite_rate**.
@@ -4346,7 +4346,7 @@ mean_spread_bps=… mean_close_mid_abs_rel=… mean_microprice_weight_balance=�
 
 `mean_quoted_spread` is **not** on this compact line (use `dipcatcher northset` or blob). `vpin=` remains `vpin_mean` only.
 
-### `dipcatcher candle-order-book` (SYNTH path)
+### `dipcatcher candle-book` (SYNTH path)
 
 Prints `mean_quoted_spread` / `mean_effective_spread` / `mean_half_spread` / `mean_half_spread_bps` / `mean_spread_bps` (no `mean_close_mid_abs_rel` on that family line unless receipt carries it).
 

@@ -24,7 +24,7 @@ operator-supplied inputs. No code/runtime/clock override is exposed by the CLI.
 
 ```bash
 PYTHONPATH=src python -m quant_fund.research.forward_shadow freeze \
-  --spec configs/my_forward_protocol.json \
+  --spec configs/forward_shadow.example.json \
   --bootstrap inputs/bootstrap_closes.json \
   --run data/metadata/forward/shadow.sqlite
 ```

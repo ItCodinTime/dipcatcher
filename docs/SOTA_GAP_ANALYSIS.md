@@ -1193,7 +1193,7 @@ versioned as the v2 supervised input contract.
 ## Day Wave 4 DONE (2026-09-16)
 
 - Choe–Ramdas-style anytime-valid e-process on forecast loss differentials (`e_process_loss_diff` / `e_process_dm`); Ville via existing threshold helper
-- Closed-form / RNG fixtures + edges in `tests/unit/test_eprocess_dm.py`
+- Closed-form / RNG fixtures + edges in `tests/unit/research/test_eprocess_dm.py`
 - Thin research flag `include_e_process` on `pairwise_diebold_mariano` (optional fields only)
 - MATH_SPEC + RESEARCH_REFERENCES linked; no live capital / Sharpe claim
 
@@ -1214,7 +1214,7 @@ versioned as the v2 supervised input contract.
 
 ## Day Wave 6 DONE (2026-09-16)
 
-- PBO residual honesty: known closed-form fraction (PBO=0.5) + valid 0/1; invalid 1×N / N×1 / mismatch / all-NaN / partial non-finite → NaN (never silent 0.0) in `tests/unit/test_pbo_edges.py`
+- PBO residual honesty: known closed-form fraction (PBO=0.5) + valid 0/1; invalid 1×N / N×1 / mismatch / all-NaN / partial non-finite → NaN (never silent 0.0) in `tests/unit/research/test_pbo_edges.py`
 - CPCV: aggressive purge/embargo may yield fewer (or zero) folds than `C(n,k)` — documented + tested; empty groups / bad n_test already ValueError
 - MATH_SPEC CSCV/PBO note updated; OT conformal **skipped**
 - No fake live Sharpe / live capital claim
@@ -1231,14 +1231,14 @@ versioned as the v2 supervised input contract.
 
 - Distribution bench wires research-only `crps_gaussian_closed` (+ optional `crps_scaled_gaussian_closed`) beside quantile Riemann approx keys
 - Diebold–Mariano on per-obs quantile-CRPS losses: `dm_crps_preferred` / `dm_crps_p` / `dm_crps_stat` (gaussian vs empirical)
-- Thin smoke: `tests/unit/test_bench_crps_closed.py`; forbidden-key hygiene retained
+- Thin smoke: `tests/unit/research/test_bench_crps_closed.py`; forbidden-key hygiene retained
 - OT / multivariate conformal **skipped**; PERF rebench **skipped**
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 9 DONE (2026-09-16)
 
-- **Paper/shadow day-grind honesty smoke:** `tests/unit/test_day_paper_shadow_honesty.py` — minimal `run_paper_loop` + shadow; broker_state `allow_capital=False` / cash=0 / n_fills=0; `live_pnl_claim=false` on metrics + analytics_export (+ disk JSON); slim challenger blob `family_blob_forbidden_metrics_absent`
-- Volatility bench wires research-only `e_dm_final` / `e_dm_reject` / `e_dm_n` via Wave4 `e_process_dm` on ewma vs rolling losses (beside existing DM); thin smoke `tests/unit/test_bench_volatility_eprocess.py`
+- **Paper/shadow day-grind honesty smoke:** `tests/unit/backtest/test_day_paper_shadow_honesty.py` — minimal `run_paper_loop` + shadow; broker_state `allow_capital=False` / cash=0 / n_fills=0; `live_pnl_claim=false` on metrics + analytics_export (+ disk JSON); slim challenger blob `family_blob_forbidden_metrics_absent`
+- Volatility bench wires research-only `e_dm_final` / `e_dm_reject` / `e_dm_n` via Wave4 `e_process_dm` on ewma vs rolling losses (beside existing DM); thin smoke `tests/unit/research/test_bench_volatility_eprocess.py`
 - Bernoulli e-process honesty: docstring notes silent miss clip to [0,1] in `_step_e`; edge `test_miss_out_of_range_clips_like_soft_coverage` (no public API change; soft coverage preserved)
 - Conformal residual **skipped** (no concrete untested ValueError/NaN fixture found in skim)
 - OT / multivariate conformal **skipped**; PERF rebench **skipped**
@@ -1248,7 +1248,7 @@ versioned as the v2 supervised input contract.
 
 - **`/ready` missing-manifest fail-closed harden:** `resolve_allowed_config_path` always `.resolve()`s `_CONFIGS_DIR` before `relative_to` (macOS `/var`→`/private/var` flake → spurious 400 without `checks`); test isolates repo lake, asserts `report["data_manifest"]=="missing"`, plus unresolved-configs-dir regression
 - **Dual honesty catalogs:** research family/scorecard blobs keep `FORBIDDEN_RESEARCH_METRIC_KEYS` / `family_blob_forbidden_metrics_absent`; paper `analytics_export` may nest equity `nav_*` / stress `*_pnl` diagnostics but `validate_analytics_export` fails closed on `live_pnl_claim=true`
-- Docstrings on `research/catalog/` + `ANALYTICS_SCHEMA_KEYS` / `validate_analytics_export`; thin proof `tests/unit/test_honesty_catalog_dual.py`; INSTITUTIONAL_READINESS dual-catalog note
+- Docstrings on `research/catalog/` + `ANALYTICS_SCHEMA_KEYS` / `validate_analytics_export`; thin proof `tests/unit/research/test_honesty_catalog_dual.py`; INSTITUTIONAL_READINESS dual-catalog note
 - MATH_SPEC + RESEARCH_CENTRE dual-catalog note; conformal residual / OT / PERF **skipped** (no concrete gap / prefer skip)
 - No fake live Sharpe / live capital claim
 
@@ -1256,7 +1256,7 @@ versioned as the v2 supervised input contract.
 
 - **H-table Kupiec skip-on-nonfinite:** H16–H18 (and H4/H7/H8/H11/H12) mint only when `kupiec_p` is **finite**; `None` / NaN / inf skip the row (same as empty-panel). Prevents NaN-p success string "coverage consistent with nominal alpha" and FDR pollution.
 - Shared `_hyp` hardened: non-finite p → decision `"Inference unavailable (non-finite p-value)."` (never yes/no success claim).
-- Tests in `tests/unit/test_hypothesis_semantics.py` (nan skip, empty skip, finite present, other Kupiec nan).
+- Tests in `tests/unit/research/test_hypothesis_semantics.py` (nan skip, empty skip, finite present, other Kupiec nan).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
@@ -1265,35 +1265,35 @@ versioned as the v2 supervised input contract.
 - **H9 e-process skip-on-nonfinite:** NaN/inf `e_sup` omitted — Python `max(nan, 1.0)`→1.0 previously minted p=1 calibration **success** ("consistent with α").
 - **H10/H15 bound skip-on-nonfinite:** NaN coverage (or NaN CV+ floor) omitted — previously claimed "below floor".
 - **H19 FDR skip-on-nonfinite:** NaN FDR omitted (no "unavailable" bound mint); finite still at-or-below / exceeds.
-- Tests in `tests/unit/test_hypothesis_semantics.py` (H9/H10/H15/H19 NaN skips + finite still present).
+- Tests in `tests/unit/research/test_hypothesis_semantics.py` (H9/H10/H15/H19 NaN skips + finite still present).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 13 DONE (2026-09-16)
 
 - **Discovery DM/IC skip-on-nonfinite:** H1 (`p_ic`), H2 (`ls_p`) independent gates; H3 (`dm_p`); pairwise `H_rank_dm_*` (`p_value`) — NaN/inf **skip** mint (align with Kupiec; prefer omit over "unavailable" discovery rows). BH finite-mask unchanged.
-- Tests in `tests/unit/test_hypothesis_semantics.py` (H3 nan/finite, pairwise nan/finite, H1/H2 independence).
+- Tests in `tests/unit/research/test_hypothesis_semantics.py` (H3 nan/finite, pairwise nan/finite, H1/H2 independence).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 14 DONE (2026-09-16)
 
 - **Contrast-inference skip-on-nonfinite:** H5/H6/H13/H14 — `_finite_number` on input scalars before contrast; NaN/inf computed `p` **skip** mint (align discovery DM hygiene; prefer omit over "unavailable"). Finite inputs + finite p still present.
-- Tests in `tests/unit/test_hypothesis_semantics.py` (H5 nan brier / no-series; H6 nan advantage / no-series / with-series; H13/H14 nan inputs; shared contrast nan/finite).
+- Tests in `tests/unit/research/test_hypothesis_semantics.py` (H5 nan brier / no-series; H6 nan advantage / no-series / with-series; H13/H14 nan inputs; shared contrast nan/finite).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 15 DONE (2026-09-16)
 
 - **`bench_tail` ES diagnostics:** Acerbi–Székely Z1/Z2 + mean Fissler–Ziegel FZ0 wired beside Kupiec on holdout losses (scalar broadcast or scaled path arrays). Alpha matches analytics: coverage 0.95 for FZ; miss level 0.05 for Acerbi Z1. Primary keys prefer scaled when `vol_20` present; `*_unscaled` / `*_scaled` mirrors. Honest NaN on empty/no-hits/non-positive ES.
-- Thin tests: `tests/unit/test_bench_tail_es_diagnostics.py` (keys finite-or-NaN; forbidden-metrics absent; Kupiec retained).
+- Thin tests: `tests/unit/research/test_bench_tail_es_diagnostics.py` (keys finite-or-NaN; forbidden-metrics absent; Kupiec retained).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 16 DONE (2026-09-16)
 
 - **`bench_tail` Christoffersen ind+CC:** `christoffersen_ind_lr`/`ind_p` + `christoffersen_cc_lr`/`cc_p` wired beside Kupiec on the same holdout hit series (unscaled + scaled paths). Miss level \(p_{miss}=0.05\). Primary keys prefer scaled when `vol_20` present; `*_unscaled` / `*_scaled` mirrors. Honest NaN on empty/short series.
-- Thin tests: `tests/unit/test_bench_tail_es_diagnostics.py` (Christoffersen keys + mirrors; Kupiec+Acerbi+FZ retained; forbidden-metrics absent).
+- Thin tests: `tests/unit/research/test_bench_tail_es_diagnostics.py` (Christoffersen keys + mirrors; Kupiec+Acerbi+FZ retained; forbidden-metrics absent).
 - H-table mint for CC/ind **skipped** this wave (prefer omit; no invented p).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
@@ -1301,23 +1301,23 @@ versioned as the v2 supervised input contract.
 ## Day Wave 17 DONE (2026-09-16)
 
 - **H-table `H4b_var_christoffersen_cc`:** mints from finite `families['tail'].christoffersen_cc_p` (calibration; `_finite_number` skip-on-nonfinite; Kupiec-style yes/no on conditional coverage). **CC only** — no ind hyp (avoids BH double-count; CC nests ind+Kupiec). Never invent p.
-- Tests: `tests/unit/test_hypothesis_semantics.py` (`test_h4b_nan_christoffersen_cc_p_skips`, `test_h4b_finite_christoffersen_cc_p_mints_calibration`).
+- Tests: `tests/unit/research/test_hypothesis_semantics.py` (`test_h4b_nan_christoffersen_cc_p_skips`, `test_h4b_finite_christoffersen_cc_p_mints_calibration`).
 - OT / PERF / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 18 DONE (2026-09-16)
 
 - Distribution bench wires research-only `e_dm_crps_final` / `e_dm_crps_reject` / `e_dm_crps_n` via Wave4 `e_process_dm` on gaussian vs empirical per-obs quantile-CRPS losses (beside existing `dm_crps_*`; gate `n_te>=3`; omit on e-process failure; `research_only=True`; no `live_pnl_claim`). Prefixed to avoid vol-bench `e_dm_*` clash.
-- Thin smoke: `tests/unit/test_bench_distribution_eprocess.py`
+- Thin smoke: `tests/unit/research/test_bench_distribution_eprocess.py`
 - **Soft VaR-battery verify honesty:** when nonempty `families["tail"]` contains `kupiec_p` or `kupiec_lr` (even NaN), `verify_research_artifact` requires key *presence* of `christoffersen_cc_p`/`cc_lr` + preferred `christoffersen_ind_p`/`ind_lr` (values may be NaN). Empty `{}` skips. Fail-closed `tail_var_battery_incomplete:<key>`. Helpers: `catalog.tail_var_battery_missing_keys` / `tail_var_battery_keys_present`; soft scorecard `tail_var_battery_ok`. Not a live promotion gate.
-- Tests: `tests/unit/test_research_verify.py` (complete battery; Kupiec-without-CC fails; `kupiec_lr` marker; empty ok; NaN presence ok; forbidden-metrics hygiene unchanged).
+- Tests: `tests/unit/research/test_research_verify.py` (complete battery; Kupiec-without-CC fails; `kupiec_lr` marker; empty ok; NaN presence ok; forbidden-metrics hygiene unchanged).
 - OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 19 DONE (2026-09-16)
 
 - Distribution bench wires research-only `dm_crps_scaled_preferred` / `dm_crps_scaled_p` / `dm_crps_scaled_stat` and `e_dm_crps_scaled_final` / `e_dm_crps_scaled_reject` / `e_dm_crps_scaled_n` via `diebold_mariano` + Wave4 `e_process_dm` on ScaledGaussian vs ScaledStudentT per-obs quantile-CRPS losses when `vol_20` path present (`n_te>=3`; Day Wave 20: NaN/False/0 sentinels on e-process failure; `research_only=True`; no `live_pnl_claim`). Diagnostics only — wrappee selection unchanged. Unscaled `e_dm_crps_*` retained.
-- Thin smoke: `tests/unit/test_bench_distribution_eprocess.py` (scaled + unscaled hygiene).
+- Thin smoke: `tests/unit/research/test_bench_distribution_eprocess.py` (scaled + unscaled hygiene).
 - OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
@@ -1330,14 +1330,14 @@ versioned as the v2 supervised input contract.
 
 - Soft distribution CRPS e-process verify: when nonempty `families["distribution"]` has `dm_crps_p` and/or `dm_crps_scaled_p` (even NaN), require matching `e_dm_crps_*` / `e_dm_crps_scaled_*` key *presence* (NaN/False/0 ok). Empty `{}` skips. Helpers `catalog.dist_crps_eprocess_missing_keys` / `dist_crps_eprocess_keys_present`; `verify_research_artifact` → `dist_crps_eprocess_incomplete:<key>`; soft scorecard `dist_crps_eprocess_ok`. **Not** a live promotion gate.
 - Bench harden: on e-process failure beside DM, emit NaN/False/0 presence sentinels.
-- Tests: `tests/unit/test_research_verify.py` (empty/no-DM; DM-without-e; scaled; NaN ok; empty distribution).
+- Tests: `tests/unit/research/test_research_verify.py` (empty/no-DM; DM-without-e; scaled; NaN ok; empty distribution).
 - OT / PERF / Acerbi–FZ H-table / sprawling conformal / soft ES-battery (→ Wave21) **skipped**.
 - No fake live Sharpe / live capital claim
 
 ## Day Wave 21 DONE (2026-09-16)
 
 - **Soft ES-battery verify honesty:** when nonempty `families["tail"]` contains `es_95` OR `realized_es` OR `var_95` (even NaN), `verify_research_artifact` requires key *presence* of `acerbi_szekely_z1`/`z2`, `fissler_ziegel_mean`, `es_hit_count` (values may be NaN). Empty `{}` skips. Fail-closed `tail_es_battery_incomplete:<key>`. Helpers: `catalog.tail_es_battery_missing_keys` / `tail_es_battery_keys_present`; soft scorecard `tail_es_battery_ok`. **Orthogonal** to VaR-battery (Kupiec⇒Christoffersen; ES markers⇒Acerbi/FZ). Not a live promotion gate.
-- Tests: `tests/unit/test_research_verify.py` (complete; ES-marker-without-Acerbi fails; empty ok; NaN presence ok; both batteries independent; VaR-battery still green; forbidden-metrics hygiene unchanged).
+- Tests: `tests/unit/research/test_research_verify.py` (complete; ES-marker-without-Acerbi fails; empty ok; NaN presence ok; both batteries independent; VaR-battery still green; forbidden-metrics hygiene unchanged).
 - OT / PERF / Acerbi–FZ H-table / sprawling conformal **skipped**.
 - No fake live Sharpe / live capital claim
 
@@ -1788,7 +1788,7 @@ is in `test_validate_rejects_ambiguous_causal_panel`.
 - Added `_require_wrappee_resolve_inputs` on `resolve_wrappee_reselect_cached`: empty taus,
   empty train/cal, y vs scale length mismatch, alpha/min_coverage outside (0, 1) raise ValueError.
 - `fit_scaled_wrappee`: unknown family name raises ValueError (no silent gaussian fallback).
-- Tests in `tests/unit/test_wrappee_reselect.py` (Wave 50-labeled edges in file; suite green).
+- Tests in `tests/unit/pipeline/test_wrappee_reselect.py` (Wave 50-labeled edges in file; suite green).
   Full `pytest -m 'not network'` green; ruff clean on touch set.
 - Soft H-table / OT / PERF / Acerbi invented-p skipped. Not a live capital claim.
 

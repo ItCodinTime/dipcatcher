@@ -14,7 +14,7 @@ Accepted
 
 ## Decision
 
-Implement Gaussian DCC(1,1) two-stage QML in `quant_fund.models.covariance.dcc`, wrapping `arch` for stage 1. Test \(a,b>0\), \(a+b<1\), PSD of \(R_t\), and recovery on a synthetic CCC/DCC process.
+Implement Gaussian DCC(1,1) two-stage QML in `quant_fund.models.dcc`, wrapping `arch` for stage 1. Test \(a,b>0\), \(a+b<1\), PSD of \(R_t\), and recovery on a synthetic CCC/DCC process.
 
 ## Consequences
 

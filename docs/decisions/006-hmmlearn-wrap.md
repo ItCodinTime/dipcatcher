@@ -14,7 +14,7 @@ Need probabilistic regime inference. hmmlearn provides `GaussianHMM` and is spec
 
 ## Decision
 
-Wrap `hmmlearn.hmm.GaussianHMM`. Do not impose state labels during fit. Interpret states after fit from mean return/vol/correlation. Isolate the import behind `quant_fund.models.regime.hmm`.
+Wrap `hmmlearn.hmm.GaussianHMM`. Do not impose state labels during fit. Interpret states after fit from mean return/vol/correlation. Isolate the import behind `quant_fund.hmm`.
 
 ## Consequences
 

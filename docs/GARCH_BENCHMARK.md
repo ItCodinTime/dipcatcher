@@ -42,7 +42,7 @@ volatility forecasts on a bounded sample. It documents its own limits.
   the scored sample; fallback counts are reported.
 - The estimators here are deliberately simple; the production `GARCHVol`
   pipeline (percent-scale likelihood diagnostics, `forecast()`, joblib
-  contract) is exercised by `tests/unit/test_garch_contract.py` instead.
+  contract) is exercised by `tests/unit/models/test_garch_contract.py` instead.
 
 ## Real-data extension (v1-real, 2026-09-17)
 

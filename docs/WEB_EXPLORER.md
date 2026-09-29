@@ -49,7 +49,7 @@ npm run build          # tsc --noEmit + vite build -> dist/ (static)
 npm run preview        # serve dist/ locally
 ```
 
-Charts are hand-rolled SVG (`src/lib/chart.ts` + `components/LineChart.tsx`):
+Charts are hand-rolled SVG (`web/src/lib/chart.ts` + `web/src/components/LineChart.tsx`):
 linear/time scales, 1-2-5 "nice" ticks, and min-max bucket decimation that
 preserves peak/drawdown extremes — no chart dependency.
 
