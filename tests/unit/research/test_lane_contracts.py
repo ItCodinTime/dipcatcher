@@ -116,3 +116,55 @@ class TestP42Contract:
 def test_unknown_schema_returns_empty() -> None:
     assert lane_contract_errors({"schema": "something_else.v9"}) == []
     assert lane_contract_errors({}) == []
+
+
+def test_lane_contracts_apply_inside_v2_envelope() -> None:
+    """A v2 envelope must not shield lane-contract violations: the sealed
+    inner payload still claims its own schema, so the checks fire regardless
+    of what the envelope's ``kind`` was renamed to."""
+    from quant_fund.research.receipt_v2 import (
+        build_receipt_v2,
+        seal_receipt,
+        verify_receipt_payload,
+    )
+
+    inner = _load("capacity_eval_cd0854242ed8a9ec.json")
+    inner.pop("receipt_sha256", None)
+    inner["results"][0]["days_to_trade"] *= 2.0  # forge the embedded claim
+    envelope = seal_receipt(
+        build_receipt_v2(
+            kind="renamed_capacity_lane",
+            data_label="SYNTHETIC",
+            dataset={"probe": 1},
+            params={"probe": 1},
+            code_files=(Path(__file__),),
+            verdict="pass",
+            payload=inner,
+        )
+    )
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert any("days_to_trade" in e for e in errors), errors
+
+
+def test_lane_contracts_clean_inside_v2_envelope() -> None:
+    from quant_fund.research.receipt_v2 import (
+        build_receipt_v2,
+        seal_receipt,
+        verify_receipt_payload,
+    )
+
+    inner = _load("capacity_eval_cd0854242ed8a9ec.json")
+    inner.pop("receipt_sha256", None)
+    envelope = seal_receipt(
+        build_receipt_v2(
+            kind="renamed_capacity_lane",
+            data_label="SYNTHETIC",
+            dataset={"probe": 1},
+            params={"probe": 1},
+            code_files=(Path(__file__),),
+            verdict="pass",
+            payload=inner,
+        )
+    )
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert not any("days_to_trade" in e or "feasible" in e for e in errors), errors

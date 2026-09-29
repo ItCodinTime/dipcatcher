@@ -418,6 +418,11 @@ def _verify_v2(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         inner_claim = payload_body.get("live_pnl_claim")
         if inner_claim is not None and inner_claim is not False:
             errors.append("payload_live_pnl_claim_not_false")
+        # The inner body claims its own schema/kind — lane contracts apply
+        # regardless of what the envelope's ``kind`` was renamed to.
+        from quant_fund.research.lane_contracts import lane_contract_errors
+
+        errors.extend(lane_contract_errors(payload_body))
     errors.extend(_kind_consistency_errors(body))
     return _result(path, payload, convention, errors)
 
