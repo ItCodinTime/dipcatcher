@@ -12,6 +12,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `api/` | `app.py` line-by-line: loopback-only auth default + constant-time compare, TOCTOU-safe receipt verification (hash before+after), path-containment on configs/artifacts, request size limits, security headers, `_stamp_research_honesty` force-overwrite on every response | — |
 | `audit/` | Merkle-chained ledger, flock'd cross-process appends, checkpoint integrity; Windows O_BINARY/LF-only fix | #286 stress tests, #293 Windows corrupt-ledger |
 | `backtest/` | loop.py divergence bookkeeping, fast_replay byte-identity vs reference (P4.2), sleeves incl. residual_mr | #215 mark-price leak on non-executing names, #338 divergence-resume weighting |
+| `backtest/event_sim/` | All 7 modules line-by-line (child lane, #343): NAV/gating on pre-exec marks, resting-order expiry on missing/NaN tape, borrow charge unclamped, turnover per fill bar, duplicate-key bar rejection | #343 — 11 defects fixed (mark-leak parity with #215, starved orders, free-margin borrow clamp) |
 | `calendars/` | Session/window arithmetic; trading-day math verified against exchange-calendar semantics | — |
 | `cli/` | All 15 modules: argv-list subprocess only, no shell, config-error UX | #205 doctor UX |
 | `compute/` | Per-task seed derivation (murmur-finalize mix) so process_map result order = item order; serial fallback on pool failure; task exceptions propagate | — |

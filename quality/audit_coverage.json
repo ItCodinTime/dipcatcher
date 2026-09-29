@@ -173,9 +173,9 @@
       "status": "audited"
     },
     "research": {
-      "status": "audited",
+      "doc": "docs/AUDIT_LEDGER.md",
       "n_modules": 62,
-      "doc": "docs/AUDIT_LEDGER.md"
+      "status": "audited"
     },
     "risk": {
       "doc": "docs/AUDIT_FRONTIER.md",
@@ -216,25 +216,25 @@
       "status": "waived"
     },
     "backtest/event_sim/__init__.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/clock.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/constraints.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/costs.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/fills.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/sensitivity.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "backtest/event_sim/simulator.py": {
-      "status": "pending"
+      "status": "audited"
     },
     "public.py": {
       "reason": "package surface only",
