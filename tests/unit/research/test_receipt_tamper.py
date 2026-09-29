@@ -152,8 +152,26 @@ def test_v2_dropped_schema_still_fails_closed() -> None:
 
 def test_v2_downgrade_to_v1_dispatch_is_flagged() -> None:
     """Stripping both schema markers and resealing must not launder a v2
-    envelope through the weaker v1 contract."""
+    envelope through the weaker v1 contract. Either the evidence-field guard
+    (``possible_v2_downgrade``) or — where the v2 structural fingerprint is
+    also present — the v2 schema re-check rejects it."""
     downgraded = {k: v for k, v in _generic_v2().items() if k not in ("schema", "schema_version")}
+    downgraded["schema_version"] = 1
+    result = verify_receipt_payload(seal_receipt(downgraded))
+    assert result["valid"] is False
+    assert "possible_v2_downgrade" in result["errors"] or any(
+        e.startswith("receipt_v2_schema") for e in result["errors"]
+    )
+
+
+def test_v2_partial_strip_past_the_fingerprint_is_flagged() -> None:
+    """Stripping ``environment`` as well evades any structural fingerprint;
+    the evidence-field guard is the backstop."""
+    downgraded = {
+        k: v
+        for k, v in _generic_v2().items()
+        if k not in ("schema", "schema_version", "environment")
+    }
     downgraded["schema_version"] = 1
     result = verify_receipt_payload(seal_receipt(downgraded))
     assert result["valid"] is False
