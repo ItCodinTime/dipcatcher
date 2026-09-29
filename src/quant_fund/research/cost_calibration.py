@@ -9,6 +9,7 @@ is SYNTHETIC correctness / sensitivity, not market evidence.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -212,6 +213,8 @@ def run_cost_calibration_trials(
             "floor_binds": bool(np.isfinite(cs_half_bps) and cs_half_bps <= half_spread_bps),
         },
         "estimators": names,
+        "n_dates": int(n_dates),
+        "n_names": int(n_names),
         "results": rows,
         "inputs_sha256": hash_bytes(
             canonical_json_bytes(
@@ -228,6 +231,145 @@ def run_cost_calibration_trials(
         ),
     }
     return frame, receipt
+
+
+def cost_calibration_contract_errors(receipt: object) -> list[str]:
+    """Re-derive a ``cost_calibration.v1`` receipt's bound claims.
+
+    Everything checkable from the sealed body alone: the closed-form spread
+    arithmetic, per-row cost accounting (``total_cost = commission + spread +
+    impact``), the estimator registry membership, and the inputs digest. The
+    writer historically omitted ``n_dates``/``n_names`` — the digest binds
+    them anyway, so verification falls back to the writer defaults.
+    """
+    if not isinstance(receipt, Mapping):
+        return ["receipt_not_object"]
+    errors: list[str] = []
+    if receipt.get("schema") != COST_CALIBRATION_SCHEMA:
+        errors.append("schema_not_cost_calibration_v1")
+    if receipt.get("kind") != "cost_calibration_eval":
+        errors.append("kind_not_cost_calibration_eval")
+
+    estimators = receipt.get("estimators")
+    if not isinstance(estimators, list) or not estimators:
+        errors.append("estimators_missing")
+        estimators = []
+    else:
+        for name in estimators:
+            if name not in SPREAD_ESTIMATORS:
+                errors.append(f"estimator_unknown:{name}")
+
+    closed_form = receipt.get("closed_form")
+    if not isinstance(closed_form, Mapping):
+        errors.append("closed_form_missing")
+    else:
+        cs_rel = closed_form.get("corwin_schultz_relative")
+        cs_half = closed_form.get("corwin_schultz_half_spread_bps")
+        cs_eff = closed_form.get("corwin_schultz_effective_half_spread_bps")
+        floor = _finite_or_none(receipt.get("half_spread_bps_floor"))
+        if floor is None or floor < 0.0:
+            errors.append("half_spread_bps_floor_invalid")
+        cs_rel_f = _finite_or_none(cs_rel)
+        cs_half_f = _finite_or_none(cs_half)
+        cs_eff_f = _finite_or_none(cs_eff)
+        if cs_rel_f is not None and cs_half_f is not None:
+            if abs(cs_half_f - 0.5 * cs_rel_f * 1e4) > 1e-9 * max(1.0, abs(cs_half_f)):
+                errors.append("closed_form_half_spread_rederive_mismatch")
+            if floor is not None:
+                if cs_eff_f is None or abs(cs_eff_f - max(floor, cs_half_f)) > 1e-9 * max(
+                    1.0, abs(cs_eff_f)
+                ):
+                    errors.append("closed_form_effective_rederive_mismatch")
+                if closed_form.get("floor_binds") != (cs_half_f <= floor):
+                    errors.append("closed_form_floor_binds_mismatch")
+
+    rows = receipt.get("results")
+    if not isinstance(rows, list) or len(rows) != len(estimators):
+        errors.append("results_not_estimator_length")
+    elif isinstance(rows, list):
+        seen: set[str] = set()
+        for row in rows:
+            if not isinstance(row, Mapping):
+                errors.append("results_row_not_object")
+                continue
+            est = row.get("spread_estimator")
+            if est not in SPREAD_ESTIMATORS:
+                errors.append(f"results_row_unknown_estimator:{est}")
+            if est in seen:
+                errors.append(f"results_row_duplicate_estimator:{est}")
+            seen.add(str(est))
+            if row.get("research_only") is not True:
+                errors.append(f"results_row:{est}_not_research_only")
+            for key in ("commission", "spread", "impact", "total_cost", "turnover"):
+                if _finite_or_none(row.get(key)) is None:
+                    errors.append(f"results_row:{est}.{key}_not_finite")
+            n_fills = row.get("n_fills")
+            if not isinstance(n_fills, int) or isinstance(n_fills, bool) or n_fills <= 0:
+                errors.append(f"results_row:{est}_n_fills_not_positive")
+            commission = _finite_or_none(row.get("commission"))
+            spread = _finite_or_none(row.get("spread"))
+            impact = _finite_or_none(row.get("impact"))
+            total = _finite_or_none(row.get("total_cost"))
+            if (
+                commission is not None
+                and spread is not None
+                and impact is not None
+                and total is not None
+                and abs(commission + spread + impact - total) > 1e-6 * max(1.0, abs(total))
+            ):
+                errors.append(f"results_row:{est}_total_cost_rederive_mismatch")
+
+    inputs = receipt.get("inputs_sha256")
+    if not _is_sha256_str(inputs):
+        errors.append("inputs_sha256_invalid")
+    else:
+        # Legacy receipts omit n_dates/n_names; the digest binds them via the
+        # writer defaults — re-derive with the same convention.
+        try:
+            inputs_body = {
+                "seed": _require_int(receipt.get("seed")),
+                "n_dates": _require_int(receipt.get("n_dates", 40)),
+                "n_names": _require_int(receipt.get("n_names", 4)),
+                "half_spread_bps": _require_finite(receipt.get("half_spread_bps_floor")),
+                "lookback": _require_int(receipt.get("lookback")),
+                "planted_rel_spread": _require_finite(receipt.get("planted_rel_spread")),
+                "estimators": [str(name) for name in estimators],
+            }
+        except TypeError:
+            expected = None
+        else:
+            expected = hash_bytes(canonical_json_bytes(inputs_body))
+        if expected is None:
+            errors.append("inputs_sha256_unrederivable")
+        elif expected != inputs:
+            errors.append("inputs_sha256_mismatch")
+    return errors
+
+
+def _finite_or_none(value: object) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        f = float(value)
+        return f if math.isfinite(f) else None
+    return None
+
+
+def _require_int(value: object) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise TypeError("not an int")
+    return value
+
+
+def _require_finite(value: object) -> float:
+    f = _finite_or_none(value)
+    if f is None:
+        raise TypeError("not finite")
+    return f
+
+
+def _is_sha256_str(value: object) -> bool:
+    return (
+        isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+    )
 
 
 def write_cost_calibration_receipt(
