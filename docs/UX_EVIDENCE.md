@@ -111,3 +111,19 @@ Two real defects this run caught and fixed: the `backtest`/`paper`/`POST /backte
 decision grid was never intersected with the gold panel (#363 — the command
 raised on warmup dates), and `build_labels` silently emitted all-null
 `future_excess_return_*` when the configured benchmark had no tape rows (#364).
+
+Extended same-tape coverage (same lake, after #363/#364):
+
+| Command | Result |
+|---|---|
+| `backtest --engine fast` | **byte-identical to `--engine ref` on the real tape** — total_return, all 390 equity points, 4,861 fills, VaR backtests (Kupiec p=0.91, CC p=0.23) identical to full precision (P4.2 on real data) |
+| `train distribution` (gaussian) | sealed `model_artifact.v1`; mean_pinball 0.0151, crossing_rate 0.0, 1,560 OOS rows |
+| `train distribution --model gmm` | sealed artifact; mean_pinball 0.01512, crossing_rate 0.0 |
+| `train volatility` (ewma) | sealed artifact; QLIKE 4.02 |
+| `paper --resume --run-id …` | `resumed: true`, cursor detects completed window (`n_steps_this_run: 0`), receipts re-digested |
+| `POST /backtest` (FastAPI) | 29 causal decisions (API's 30-step cap), honesty stamps forced on the HTTP response, artifact + parquet digests written |
+| `tearsheet` | rendered markdown+JSON from the API artifact's equity/fills parquets; `Research diagnostic only` stamp |
+| `monitor` | all checks `ok` on the paper run; `feature_drift: insufficient_data` (honest, not fake-ok) |
+| `lineage verify` | `{"ok": true}` — all recorded dataset hashes re-derive |
+| `sim-live` (equity `1d` tape) | fhs_long_flat book benched via `run_backtest`: 68 fills, sealed `sim_live` receipt, SIMULATED label |
+| `stress report` | crisis catalog renders; correctly reports `n/a` for episodes whose tape isn't bundled rather than fabricating shocks |
