@@ -467,6 +467,12 @@ def _verify_v2(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         inner_claim = payload_body.get("live_pnl_claim")
         if inner_claim is not None and inner_claim is not False:
             errors.append("payload_live_pnl_claim_not_false")
+        # An inner body that carries receipt_sha256 asserts it binds this
+        # payload — a stale or forged inner seal must not ride inside a
+        # valid envelope (absent is fine: wrapped bodies are unsigned).
+        if "receipt_sha256" in payload_body:
+            _inner_conv, inner_seal_errors = _seal_errors(payload_body)
+            errors.extend(f"inner_{e}" for e in inner_seal_errors)
     errors.extend(_kind_consistency_errors(body))
     return _result(path, payload, convention, errors)
 

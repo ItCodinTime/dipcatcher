@@ -251,3 +251,35 @@ def test_scored_grid_payload_under_renamed_schema_is_fleet_checked() -> None:
     )
     errors = verify_receipt_payload(forged)["errors"]
     assert "schema_not_fleet_eval_v1" in errors
+
+
+def _v2_env_for(inner: dict[str, Any]) -> dict[str, Any]:
+    from quant_fund.research.receipt_v2 import build_receipt_v2
+
+    return build_receipt_v2(
+        kind="fuzz_lane",
+        data_label="SYNTHETIC",
+        dataset={"rows": 1, "content_sha256": "a" * 64},
+        params={"seed": 0},
+        code_files=(Path(__file__),),
+        verdict="pass",
+        payload=inner,
+    )
+
+
+def test_v2_inner_stale_seal_is_flagged() -> None:
+    """A payload carrying receipt_sha256 asserts it binds that body — a stale
+    inner seal inside a valid envelope must surface, not ride along."""
+    inner = seal_receipt({"schema": "v1", "kind": "fuzz", "value": 1})
+    inner["value"] = 999  # seal now stale relative to the body
+    envelope = seal_receipt(_v2_env_for(inner))
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert "inner_receipt_sha256_mismatch" in errors
+
+
+def test_v2_inner_valid_seal_passes() -> None:
+    """A correctly-sealed inner body keeps verifying inside the envelope."""
+    inner = seal_receipt({"schema": "v1", "kind": "fuzz", "value": 1})
+    envelope = seal_receipt(_v2_env_for(inner))
+    errors = verify_receipt_payload(envelope)["errors"]
+    assert not any(error.startswith("inner_") for error in errors)
