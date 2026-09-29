@@ -199,3 +199,32 @@ def test_report_renders(small_run):
     frame, _ = small_run
     text = hstep_bench_report(frame)
     assert "hstep_t" in text and "garch_cluster" in text and "cov90" in text
+
+
+def test_hstep_grid_under_renamed_schema_still_gets_its_contract() -> None:
+    """A stripped/renamed hstep receipt keeps its structural fingerprint —
+    the contract must fire on shape, not on the claimed schema string."""
+    from quant_fund.research.receipt_v2 import seal_receipt, verify_receipt_payload
+
+    payload = {
+        "schema": "renamed.v1",
+        "kind": "other",
+        "data_label": "SYNTHETIC",
+        "live_pnl_claim": False,
+        "n_eval": 4,
+        "models": ["m"],
+        "shards": {"s": {}},
+        "horizons": [1, 5],
+        "results": [
+            {
+                "shard": "s",
+                "model": "m",
+                "horizon": 1,
+                "status": "ok",
+                "pinball_0.5": 0.1,
+                "crps": 0.2,
+            }
+        ],
+    }
+    errors = verify_receipt_payload(seal_receipt(payload))["errors"]
+    assert "schema_not_hstep_bench_v1" in errors

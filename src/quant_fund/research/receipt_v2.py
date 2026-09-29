@@ -426,6 +426,32 @@ def _verify_v2(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     return _result(path, payload, convention, errors)
 
 
+def _looks_like_hstep_eval(body: object) -> bool:
+    """Structural fingerprint of an hstep_bench receipt — schema/kind agnostic.
+
+    Dispatch on content, not the claimed ``schema``: that field is
+    attacker-controlled, and a reseal costs nothing (the digest is a public
+    sha256), so renaming it must not evade the deep contract checks. The
+    signature is the multi-horizon scored grid: results/models/shards/n_eval
+    plus a ``horizons`` list and a per-row ``horizon``.
+    """
+    if not (
+        isinstance(body, Mapping)
+        and isinstance(body.get("results"), list)
+        and isinstance(body.get("models"), list)
+        and isinstance(body.get("shards"), dict)
+        and isinstance(body.get("horizons"), list)
+        and "n_eval" in body
+    ):
+        return False
+    return any(
+        isinstance(row, Mapping)
+        and "horizon" in row
+        and ("crps" in row or any(key.startswith("pinball_") for key in row))
+        for row in body["results"]
+    )
+
+
 def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
     errors: list[str] = []
     convention, seal_errors = _seal_errors(payload)
@@ -437,7 +463,7 @@ def _verify_v1(path: Path, payload: Mapping[str, Any]) -> ReceiptVerification:
         from quant_fund.research.fleet_eval import fleet_v1_contract_errors
 
         errors.extend(fleet_v1_contract_errors(payload))
-    if payload.get("schema") == "hstep_bench.v1":
+    if payload.get("schema") == "hstep_bench.v1" or _looks_like_hstep_eval(payload):
         from quant_fund.research.hstep_bench import hstep_bench_v1_contract_errors
 
         errors.extend(hstep_bench_v1_contract_errors(payload))
