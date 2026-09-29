@@ -30,8 +30,8 @@ quant proofcore chain-head
 quant proof verify --bundle path/to/bundles/id.json --bundle-dir path/to/chain
 # quant proof run and quant proof verify --replay fail closed pending causal reads
 
-# leakage scan (warn mode this wave)
-quant leakage scan --paths src/quant_fund --format json
+# leakage scan (error findings fail closed)
+quant leakage scan --paths src/quant_fund --format json --fail-on error
 
 # reality filter over the exported trial ledger (W4)
 quant reality trial-report --ledger data/metadata/proofcore-trials.jsonl --out report.json
@@ -45,9 +45,9 @@ make proofcore-test       # contracts, provenance, CI-helper, layering tests
 make proofcore-coverage   # per-package floors: pit/proof/reality/proofcore 90, leakage 85
 make proof-integrity      # current signer/recorder tests
 make proof-verify         # bundle verifier tests; no historical replay claim
-make leakage-scan         # warn mode this wave (adjudicated)
+make leakage-scan         # error findings fail closed; JSON report retained
 make reality-gate         # score trials; a non-empty pending research/reality/trials.jsonl is scored when the db is absent (decided studies archive to research/reality/studies/); an absent db and empty/absent ledger skips
-make receipts-reverify    # fail-closed audit; heterogeneous receipt verifiers pending
+make receipts-reverify    # schema-dispatched fail-closed audit of committed receipts
 ```
 
 ## Honesty contract
@@ -60,8 +60,8 @@ bundles as unverified and rejects `--verification` until a bound result schema
 and ingestion path are implemented. Reality reports are research diagnostics,
 not promotion evidence.
 
-The existing `receipts/*.json` use several schemas. The current
-`receipts-reverify` command reports unsupported receipts as failures and is
-not a blocking CI gate until each class has a matching verifier.
+The existing `receipts/*.json` use several schemas. `receipts-reverify`
+dispatches through the public `verify-receipt` command, verifies every
+committed seal, and is a blocking proof-integrity gate.
 
 See `MIGRATION.md` for the additive rollout phases.

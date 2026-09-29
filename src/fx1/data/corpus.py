@@ -38,8 +38,13 @@ def _system_prompt() -> str:
 
 
 def _positive_example(record: ReceiptRecord, system: str) -> SFTExample:
-    correctness = record.payload.get("correctness", {})
-    summary = json.dumps(correctness, indent=2, sort_keys=True) if correctness else "{}"
+    if record.result_summary:
+        summary = (
+            "Key correctness/proper-score evidence:\n"
+            f"```json\n{json.dumps(record.result_summary, indent=2, sort_keys=True)}\n```\n"
+        )
+    else:
+        summary = "No honesty-safe metric summary was recorded in this receipt.\n"
     synthetic_note = (
         "This is SYNTHETIC evidence — produced on simulated data, not market "
         "data — and must always be presented as such.\n"
@@ -52,13 +57,12 @@ def _positive_example(record: ReceiptRecord, system: str) -> SFTExample:
     )
     assistant = (
         f"Receipt {record.sha256[:16]}… (schema `{record.schema_name}`) is research-scoped "
-        f"evidence (class: {record.evidence_class}). Key correctness metrics:\n"
-        f"```json\n{summary}\n```\n"
+        f"evidence (class: {record.evidence_class}). {summary}"
         f"{synthetic_note}"
         f"Disclaimer: {record.disclaimer or 'research/backtest/simulated evidence only'}.\n"
         "This establishes correctness within the recorded workload only; it is not "
         "live performance evidence and cannot authorize promotion or live execution. "
-        f"Verify independently with `uv run dipcatcher verify-research`."
+        f"Verify independently with `uv run dipcatcher verify-receipt {record.path}`."
     )
     return SFTExample(
         messages=[
@@ -73,6 +77,11 @@ def _positive_example(record: ReceiptRecord, system: str) -> SFTExample:
 
 def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
     reasons = []
+    if not record.verified:
+        detail = ", ".join(record.verification_errors[:3]) or "verification failed"
+        reasons.append(f"its receipt verification failed ({detail})")
+    if record.verdict in {"fail", "blocked"}:
+        reasons.append(f"its recorded verdict is {record.verdict}")
     if record.live_pnl_claim:
         reasons.append("it asserts a live P&L claim")
     if not record.research_only:
@@ -84,7 +93,7 @@ def _negative_example(record: ReceiptRecord, system: str) -> SFTExample:
     assistant = (
         f"No. This receipt is ineligible as fx-1 evidence because {reason}. "
         "The lab's honesty contract forbids treating such artifacts as performance "
-        "evidence; only gate-passed, research-scoped receipts with "
+        "evidence; only verified, gate-passed, research-scoped receipts with "
         "`live_pnl_claim=false` qualify. I will not summarize it as a result."
     )
     return SFTExample(

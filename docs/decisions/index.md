@@ -38,5 +38,5 @@ Architecture decision records for the harness. Each record states the context, t
 - [ADR-034: Lightspeed engines](034-lightspeed.md)
 - [ADR-035: Discrete HMM](035-discrete-hmm-slp3.md)
 - [ADR-036: Causal risk-controlled gates (research only)](036-causal-risk-gates.md)
-- [ADR-036: Causal risk-controlled gates (Kelly / CRC / StepM size)](036-risk-gates.md)
+- [Superseded ADR-036 draft: Kelly / CRC / StepM size](036-risk-gates.md)
 - [ADR-037: Differentiable research backtest](037-differentiable-backtest.md)

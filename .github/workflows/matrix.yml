@@ -2,7 +2,8 @@ name: Platform Matrix
 
 # Additive cross-platform lane: the locked dependency set must stay green on
 # Linux, macOS, and Windows across the supported Python band. Kept in a
-# separate workflow so it never gates (or is gated by) ci.yml jobs.
+# separate post-merge/scheduled workflow so pull requests use the focused
+# Linux gate in ci.yml rather than spawning 36 redundant jobs.
 #
 # Python band: pyproject.toml has requires-python = ">=3.12", so the floor is
 # 3.12 (3.11 cannot even `uv sync --frozen` — the resolver rejects it). The
@@ -16,10 +17,10 @@ name: Platform Matrix
 # nested xdist workers within every platform job.
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
+  schedule:
+    - cron: "23 5 * * 1"
   workflow_dispatch:
 
 concurrency:

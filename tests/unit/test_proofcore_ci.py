@@ -154,7 +154,7 @@ def test_cli_verifier_respects_exit_status(tmp_path: Path, monkeypatch) -> None:
     receipt.write_text("{}")
 
     def fake_run(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        assert cmd[-2:] == ["verify-research", str(receipt)]
+        assert cmd[-2:] == ["verify-receipt", str(receipt)]
         return subprocess.CompletedProcess(cmd, 1)
 
     monkeypatch.setattr(ci.subprocess, "run", fake_run)
@@ -224,13 +224,17 @@ def test_workflow_references_existing_make_targets(workflow: dict) -> None:
     assert not missing, f"workflow invokes undefined make targets: {sorted(missing)}"
 
 
-def test_workflow_warn_and_advisory_modes_as_adjudicated(workflow: dict) -> None:
+def test_workflow_leakage_and_reality_gates_are_blocking(workflow: dict) -> None:
     jobs = workflow["jobs"]
-    # Adjudicated: leakage-scan runs in WARN mode this wave — the job never
-    # gates the build (no --fail-on, report archived as artifact).
+    # The Make target owns --fail-on error; the workflow must invoke it as a
+    # normal blocking step while retaining the report even on failure.
     leakage_runs = "\n".join(step.get("run", "") for step in jobs["leakage-scan"]["steps"])
-    assert "--fail-on error" not in leakage_runs
-    assert "warn" in yaml.safe_dump(jobs["leakage-scan"]).lower()
+    assert "make leakage-scan" in leakage_runs
+    assert not jobs["leakage-scan"].get("continue-on-error", False)
+    assert "blocking on errors" in yaml.safe_dump(jobs["leakage-scan"]).lower()
+    leakage_target = MAKEFILE.read_text().split("leakage-scan:", 1)[1].split("\n\n", 1)[0]
+    assert "--fail-on error" in leakage_target
+    assert "||" not in leakage_target
     # Empty provenance exports skip with a notice. The job itself is blocking:
     # a scored ledger that is not 'pass' fails the build. continue-on-error
     # used to hide the empty-ledger exit 2.

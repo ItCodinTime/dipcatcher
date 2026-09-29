@@ -281,10 +281,12 @@ def main() -> None:
         src = REPO_ROOT / name
         rel = f"receipts/{src.name}"
         dst = FIXTURES_DIR / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
         raw = _committed_bytes(files[name])
-        dst.write_bytes(raw)
         payload = json.loads(raw)
+        if payload.get("research_only") is not True or payload.get("live_pnl_claim") is not False:
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(raw)
         hashes: list[str] = []
         _collect_hashes(payload, hashes)
         for digest in hashes:

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from fx1.data import build_full_corpus, ledger_examples, notebook_examples
+from quant_fund.research.receipt_v2 import seal_receipt
 
 SYSTEM = "You are fx-1."
 
@@ -53,7 +54,9 @@ def test_build_full_corpus_merges_sources(tmp_path: Path):
     receipts = tmp_path / "receipts"
     receipts.mkdir()
     (receipts / "r.json").write_text(
-        json.dumps({"research_only": True, "live_pnl_claim": False, "correctness": {"m": 1}}),
+        json.dumps(
+            seal_receipt({"research_only": True, "live_pnl_claim": False, "correctness": {"m": 1}})
+        ),
         encoding="utf-8",
     )
     doc = tmp_path / "doc.md"

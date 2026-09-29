@@ -7,7 +7,7 @@ pipeline. No trained checkpoint is in this repository.
 
 | Source | Module | Content | Gate |
 |---|---|---|---|
-| Harness receipts | `fx1.data.receipts` | Verified lab results | `research_only=true`, `live_pnl_claim=false` else negative example |
+| Harness receipts | `fx1.data.receipts` | Verified lab results | Public `verify-receipt` seal/schema check passes, `research_only=true`, `live_pnl_claim=false`, and verdict is not failed/blocked; every rejection is retained as a negative example |
 | Research notebooks/docs | `fx1.data.notebooks` | Contracts, reasoning, evidence classes | chunked on sections, source SHA-256 |
 | Ledger artifacts | `fx1.data.ledgers` | Tournament/backtest evidence | recursive `live_pnl_claim` scan → negative |
 | Tool-use trajectories | `fx1.data.traces` | K3 teacher sessions | `verify_ok=true` for positive; reasoning_content + tool_calls preserved (K3 requirement) |

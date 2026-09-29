@@ -1,8 +1,8 @@
 {
- "generated_at": "2026-09-27T10:58:40.156720+00:00",
+ "generated_at": "2026-09-29T02:00:42.704326+00:00",
  "generator": "web/scripts/export_fixtures.py",
  "hash_matches": {
-  "54d2687facc424c40db20205e3d6ea19f0ad6bf25abce0233eeb322cac3f4c99": "src/quant_fund/metrics/returns.py"
+  "2728625ace9f0951684988f6a6013cc8de040d4a9c7d1d6d084ce6c075b0a9ed": "src/quant_fund/public.py"
  },
  "honesty": {
   "live_pnl_claim": false,
@@ -16,7 +16,7 @@
    "file": "receipts/adaptive_mix_20asset_1d_20260922.json",
    "id": "adaptive_mix_20asset_1d_20260922",
    "live_pnl_claim": false,
-   "n_hash_matches": 1,
+   "n_hash_matches": 0,
    "n_hashes": 46,
    "research_only": true,
    "schema": "adaptive_mix_replay.v1"
@@ -27,7 +27,7 @@
    "file": "receipts/adaptive_mix_band_search_20asset_1d_20260922.json",
    "id": "adaptive_mix_band_search_20asset_1d_20260922",
    "live_pnl_claim": false,
-   "n_hash_matches": 1,
+   "n_hash_matches": 0,
    "n_hashes": 46,
    "research_only": true,
    "schema": "adaptive_mix_band_search.v1"
@@ -38,7 +38,7 @@
    "file": "receipts/basis_pair_candidate_20asset_1d_20260922.json",
    "id": "basis_pair_candidate_20asset_1d_20260922",
    "live_pnl_claim": false,
-   "n_hash_matches": 1,
+   "n_hash_matches": 0,
    "n_hashes": 64,
    "research_only": true,
    "schema": "basis_pair_candidate.v1"
@@ -68,6 +68,17 @@
   {
    "created_at": null,
    "evidence_level": null,
+   "file": "receipts/fast_replay_p42_conformance_20260927.json",
+   "id": "fast_replay_p42_conformance_20260927",
+   "live_pnl_claim": false,
+   "n_hash_matches": 1,
+   "n_hashes": 5,
+   "research_only": true,
+   "schema": null
+  },
+  {
+   "created_at": null,
+   "evidence_level": null,
    "file": "receipts/incumbent_bench_qlib.json",
    "id": "incumbent_bench_qlib",
    "live_pnl_claim": false,
@@ -77,7 +88,7 @@
    "schema": "incumbent_bench.v1"
   }
  ],
- "repo_revision": "46517ac92629c6da10f56f1de88b679c804cbdef",
+ "repo_revision": "92c154c8d563058c301dfb0de284dcb5ebe5f61e",
  "strategies": [
   {
    "data_source": "UNVERIFIED",

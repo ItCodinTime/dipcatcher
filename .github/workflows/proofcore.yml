@@ -75,11 +75,11 @@ jobs:
         run: make proof-integrity
       - name: Proof bundle verification
         run: make proof-verify
+      - name: Re-verify committed receipts
+        run: make receipts-reverify
 
-  # §9.3 leakage-scan — WARN MODE this wave (adjudicated): the scan runs, the
-  # report is archived, findings do NOT fail the build. LH009 flips to error
-  # only in the follow-up call-site migration wave (DESIGN.md §11.2, §14.3).
-  # The seeded-leak fixture suite (W3) is blocking once present.
+  # §9.3 leakage-scan: error-severity findings and seeded-leak regressions
+  # fail the build; the JSON report is always retained for review.
   leakage-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -92,7 +92,7 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Sync
         run: uv sync --frozen --all-groups
-      - name: Leakage scan (warn mode)
+      - name: Leakage scan (blocking on errors)
         run: make leakage-scan
       - name: Upload leakage report
         if: always()

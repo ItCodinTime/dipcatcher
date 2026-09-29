@@ -1,9 +1,11 @@
-# MEGAPLAN — Honest Sharpe > 5, Max DD < 5%, exponential CAGR
+# Archived strategy stress-test plan
 
-**Status:** active. **Owner lane:** strategy-performance megaplan (distinct from the
-`.dsh-24x7` forecasting-SOTA lane, which stays untouched).
+**Status:** closed and archived. This document preserves a historical
+strategy-performance experiment plan; its return-ratio and wealth targets are
+not valid research headlines under the current honesty contract. The
+`.dsh-24x7` forecasting-SOTA lane is separate and remains untouched.
 
-## Goal (declared up front)
+## Historical goal (declared up front; not a current evidence claim)
 
 Produce a *backtest-evidenced* crypto book on real Binance data that hits, honestly:
 

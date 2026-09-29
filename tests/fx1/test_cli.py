@@ -6,6 +6,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from fx1.cli import app
+from quant_fund.research.receipt_v2 import seal_receipt
 
 runner = CliRunner()
 
@@ -21,12 +22,14 @@ def test_version_flag_reports_package_version():
 def _receipt(path: Path) -> None:
     path.write_text(
         json.dumps(
-            {
-                "schema": "test/v1",
-                "research_only": True,
-                "live_pnl_claim": False,
-                "correctness": {"metric": 1.0},
-            }
+            seal_receipt(
+                {
+                    "schema": "test/v1",
+                    "research_only": True,
+                    "live_pnl_claim": False,
+                    "correctness": {"metric": 1.0},
+                }
+            )
         ),
         encoding="utf-8",
     )
@@ -99,6 +102,7 @@ def _ship_eligible_card(tmp_path: Path) -> Path:
             general_pass_rate_base=0.9,
             general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
+            domain_significant_improvement=True,
         ),
     )
     path = tmp_path / "modelcard.json"

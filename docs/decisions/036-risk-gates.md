@@ -1,8 +1,9 @@
-# ADR-036: Causal risk-controlled gates (Kelly / CRC / StepM size)
+# ADR-036 draft: Causal risk-controlled gates (superseded)
 
 ## Status
 
-Accepted
+Superseded by [ADR-036: Causal risk-controlled gates](036-causal-risk-gates.md),
+which records the later holdout outcome and is the authoritative decision.
 
 ## Date
 

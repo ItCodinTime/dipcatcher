@@ -2,7 +2,7 @@
 
 Layer-4 glue: stdlib only at module level. Gate execution shells out to the
 existing console entry points (``python -m coverage``, ``python -m
-quant_fund.cli.main verify-research``) so this module never imports the
+quant_fund.cli.main verify-receipt``) so this module never imports the
 quant_fund SCC and stays inside the §1.3 layering contract.
 
 Single source of truth for the floors: ``[tool.proofcore.coverage-floors]``
@@ -102,7 +102,7 @@ def _cli_verifier(path: Path) -> bool:
     module's import graph (layering contract, DESIGN.md §1.3).
     """
     proc = subprocess.run(
-        [sys.executable, "-m", "quant_fund.cli.main", "verify-research", str(path)],
+        [sys.executable, "-m", "quant_fund.cli.main", "verify-receipt", str(path)],
         capture_output=True,
         text=True,
     )

@@ -159,6 +159,10 @@
       "src": "fx1.data.notebooks"
     },
     {
+      "dst": "fx1.honesty",
+      "src": "fx1.data.receipts"
+    },
+    {
       "dst": "fx1.data.sources.adapters",
       "src": "fx1.data.sources"
     },
@@ -611,11 +615,19 @@
       "src": "fx1.train.pipeline"
     },
     {
+      "dst": "fx1.modelcard",
+      "src": "fx1.train.pipeline"
+    },
+    {
       "dst": "fx1.train.config",
       "src": "fx1.train.pipeline"
     },
     {
       "dst": "fx1.train.receipts",
+      "src": "fx1.train.pipeline"
+    },
+    {
+      "dst": "fx1.train.run",
       "src": "fx1.train.pipeline"
     },
     {
@@ -3379,7 +3391,7 @@
       "src": "quant_fund.models.qar"
     },
     {
-      "dst": "quant_fund.metrics.scoring",
+      "dst": "quant_fund.models.qrf",
       "src": "quant_fund.models.quantile_forest"
     },
     {
@@ -7952,6 +7964,11 @@
       "src": "fx1.data"
     },
     {
+      "dst": "fx1.honesty",
+      "imports": 1,
+      "src": "fx1.data"
+    },
+    {
       "dst": "fx1",
       "imports": 1,
       "src": "fx1.doctor"
@@ -8062,8 +8079,13 @@
       "src": "fx1.train"
     },
     {
+      "dst": "fx1.modelcard",
+      "imports": 1,
+      "src": "fx1.train"
+    },
+    {
       "dst": "fx1.train",
-      "imports": 10,
+      "imports": 11,
       "src": "fx1.train"
     },
     {
@@ -8708,12 +8730,12 @@
     },
     {
       "dst": "quant_fund.metrics",
-      "imports": 36,
+      "imports": 35,
       "src": "quant_fund.models"
     },
     {
       "dst": "quant_fund.models",
-      "imports": 65,
+      "imports": 66,
       "src": "quant_fund.models"
     },
     {

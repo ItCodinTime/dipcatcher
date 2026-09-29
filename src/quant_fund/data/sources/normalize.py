@@ -14,6 +14,8 @@ from quant_fund.data.sources.base import SourceError, parse_time, pit_frame
 
 
 def _number(value: Any, field: str) -> float:
+    if isinstance(value, bool | bytes | bytearray | memoryview):
+        raise SourceError(f"{field} is not numeric")
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:

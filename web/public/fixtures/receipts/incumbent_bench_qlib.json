@@ -76,5 +76,6 @@
     "spread_impact_borrow": 0.0,
     "strategy": "causal SMA20 gate, equal-weight 0.9/3 per gated name",
     "weight_scale": 1.0
-  }
+  },
+  "receipt_sha256": "b12abab8debf5a72a2707acd6bcb7f3e002c12e0c1eb6cb6b1a06f008799f377"
 }

@@ -18,6 +18,7 @@ from fx1.modelcard import EvalDelta, ModelCard
 from fx1.mrm import compile_dossier
 from fx1.serve import LocalFx1Backend, sign_release
 from fx1.train.receipts import issue_receipt, verify_training_receipt
+from quant_fund.research.receipt_v2 import seal_receipt
 
 
 def _model(messages: list[dict[str, str]]) -> str:
@@ -43,17 +44,21 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
     receipts.mkdir()
     (receipts / "r1.json").write_text(
         json.dumps(
-            {
-                "schema": "bench/v1",
-                "research_only": True,
-                "live_pnl_claim": False,
-                "correctness": {"crps": 0.31},
-                "disclaimer": "research only",
-            }
+            seal_receipt(
+                {
+                    "schema": "bench/v1",
+                    "research_only": True,
+                    "live_pnl_claim": False,
+                    "correctness": {"crps": 0.31},
+                    "disclaimer": "research only",
+                }
+            )
         )
     )
     (receipts / "r2.json").write_text(
-        json.dumps({"schema": "bench/v1", "research_only": False, "live_pnl_claim": True})
+        json.dumps(
+            seal_receipt({"schema": "bench/v1", "research_only": False, "live_pnl_claim": True})
+        )
     )
     corpus_path = tmp_path / "corpus.jsonl"
     stats = build_corpus(receipts, corpus_path)
@@ -132,6 +137,7 @@ def test_full_lifecycle(tmp_path: Path, monkeypatch):
             general_pass_rate_base=0.9,
             general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
+            domain_significant_improvement=True,
         ),
     )
     card.save(ckpt / "modelcard.json")

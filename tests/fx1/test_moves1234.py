@@ -109,6 +109,7 @@ def _checkpoint(tmp_path: Path) -> Path:
                 general_pass_rate_base=0.9,
                 general_pass_rate_candidate=0.9,
                 honesty_gate_candidate=True,
+                domain_significant_improvement=True,
             ),
         ).model_dump_json(),
         encoding="utf-8",
@@ -236,6 +237,7 @@ def test_mrm_dossier_compiles_five_activities(tmp_path: Path):
             general_pass_rate_base=0.9,
             general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
+            domain_significant_improvement=True,
         ),
     ).save(card_path)
     art = tmp_path / "contamination_report.json"
@@ -265,6 +267,7 @@ def test_mrm_dossier_fail_closed_on_missing(tmp_path: Path):
             general_pass_rate_base=0.9,
             general_pass_rate_candidate=0.9,
             honesty_gate_candidate=True,
+            domain_significant_improvement=True,
         ),
     ).save(card_path)
     with pytest.raises(FileNotFoundError):

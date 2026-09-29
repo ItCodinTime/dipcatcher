@@ -11,6 +11,7 @@ stage that cannot produce its evidence stops the pipeline — there is no
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Callable
 from enum import StrEnum
@@ -22,8 +23,10 @@ from fx1.data.quality import dedup_and_filter, frozen_split
 from fx1.eval.bank import DEFAULT_BANK
 from fx1.eval.compare import compare_runs
 from fx1.eval.suite import run_suite
+from fx1.modelcard import EvalDelta, ModelCard
 from fx1.train.config import TrainConfig
 from fx1.train.receipts import issue_receipt
+from fx1.train.run import build_training_manifest
 
 
 class Stage(StrEnum):
@@ -33,6 +36,7 @@ class Stage(StrEnum):
     TRAIN = "train"
     EVAL_CANDIDATE = "eval_candidate"
     CARD = "card"
+    COMPLETE = "complete"
 
 
 STAGE_ORDER = list(Stage)
@@ -125,10 +129,16 @@ class Pipeline:
 
     def run_training(self, seed: int = 17) -> Path:
         """TRAIN: emit the immutable receipt, then invoke the trainer."""
+        train_config_path = self._write("train_config.json", self.config.model_dump(mode="json"))
+        manifest_config = self.config.model_copy(
+            update={"eval_results_json": self.state.artifacts["eval_base"]}
+        )
+        manifest_path = self.work_dir / "training_manifest.json"
+        build_training_manifest(manifest_config, manifest_path)
         receipt = issue_receipt(
             run_name=self.config.run_name,
             repo_root=Path.cwd(),
-            config_path=self._write("train_config.json", self.config.model_dump(mode="json")),
+            config_path=train_config_path,
             corpus_path=self.config.corpus_jsonl,
             split_manifest_path=self.state.artifacts["split_manifest"],
             eval_base_path=self.state.artifacts["eval_base"],
@@ -143,6 +153,7 @@ class Pipeline:
         )
         self._advance(
             Stage.TRAIN,
+            training_manifest=str(manifest_path),
             training_receipt=str(self.work_dir / "training_receipt.json"),
             checkpoint=str(checkpoint),
         )
@@ -150,7 +161,7 @@ class Pipeline:
         return checkpoint
 
     def run_eval_candidate(self, candidate_fn: ModelFn) -> dict:
-        """EVAL_CANDIDATE: statistical comparison against the recorded base."""
+        """EVAL_CANDIDATE: enforce the complete statistical ship gate."""
         base_summary = json.loads(
             Path(self.state.artifacts["eval_base"]).read_text(encoding="utf-8")
         )
@@ -160,16 +171,97 @@ class Pipeline:
         cand_out = self._write("eval_candidate.json", cand_summary)
         base_results = list(base_summary.get("results", []))
         cand_results = cand_summary.results
-        base_pass = [bool(r["passed"]) for r in base_results if r["kind"] == "domain"]
-        cand_pass = [bool(r["passed"]) for r in cand_results if r["kind"] == "domain"]
+        base_tasks = {str(r["task"]): r for r in base_results}
+        cand_tasks = {str(r["task"]): r for r in cand_results}
+        if base_tasks.keys() != cand_tasks.keys():
+            raise RuntimeError("candidate ship gate: eval task sets do not match")
+        domain_names = [str(r["task"]) for r in base_results if r["kind"] == "domain"]
+        general_names = [str(r["task"]) for r in base_results if r["kind"] == "general"]
+        if not domain_names or not general_names:
+            raise RuntimeError("candidate ship gate: domain and general tasks are required")
+        base_pass = [bool(base_tasks[name]["passed"]) for name in domain_names]
+        cand_pass = [bool(cand_tasks[name]["passed"]) for name in domain_names]
         comparison = compare_runs(base_pass, cand_pass)
         comp_out = self._write("comparison.json", comparison.model_dump())
+
+        def _pass_rate(results: dict[str, dict], names: list[str]) -> float:
+            return sum(bool(results[name]["passed"]) for name in names) / len(names)
+
+        delta = EvalDelta(
+            domain_pass_rate_base=comparison.base_pass_rate,
+            domain_pass_rate_candidate=comparison.candidate_pass_rate,
+            general_pass_rate_base=_pass_rate(base_tasks, general_names),
+            general_pass_rate_candidate=_pass_rate(cand_tasks, general_names),
+            honesty_gate_candidate=bool(cand_summary["honesty_gate_passed"]),
+            domain_significant_improvement=comparison.significant_improvement,
+        )
+        gate = {
+            "ship_eligible": delta.ship_eligible,
+            "eval_delta": delta.model_dump(),
+            "comparison": comparison.model_dump(),
+        }
+        gate_out = self._write("ship_gate.json", gate)
+        if not delta.ship_eligible:
+            failed = [
+                name
+                for name, passed in {
+                    "domain_significant_improvement": delta.domain_significant_improvement,
+                    "domain_pass_rate_improved": (
+                        delta.domain_pass_rate_candidate > delta.domain_pass_rate_base
+                    ),
+                    "general_no_regression": (
+                        delta.general_pass_rate_candidate >= delta.general_pass_rate_base
+                    ),
+                    "honesty_gate": delta.honesty_gate_candidate,
+                }.items()
+                if not passed
+            ]
+            raise RuntimeError(f"candidate ship gate failed: {', '.join(failed)}")
         self._advance(
             Stage.EVAL_CANDIDATE,
             eval_candidate=str(cand_out),
             comparison=str(comp_out),
+            ship_gate=str(gate_out),
         )
         return comparison.model_dump()
+
+    def run_card(self, *, known_limits: list[str] | None = None) -> Path:
+        """CARD: bind a ship-eligible checkpoint to its immutable evidence."""
+        gate = json.loads(Path(self.state.artifacts["ship_gate"]).read_text())
+        if gate.get("ship_eligible") is not True:
+            raise RuntimeError("model card blocked: candidate ship gate did not pass")
+        corpus_path = Path(self.config.corpus_jsonl)
+        receipt_shas: list[str] = []
+        for line in corpus_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                value = json.loads(line).get("receipt_sha256")
+                if not isinstance(value, str) or len(value) != 64:
+                    raise RuntimeError("model card blocked: corpus provenance is invalid")
+                receipt_shas.append(value)
+        if not receipt_shas:
+            raise RuntimeError("model card blocked: corpus has no receipt provenance")
+        receipt_shas.sort()
+        manifest_path = Path(self.state.artifacts["training_manifest"])
+        checkpoint = Path(self.state.artifacts["checkpoint"])
+        checkpoint.mkdir(parents=True, exist_ok=True)
+        card = ModelCard(
+            version=self.config.run_name,
+            base_model=self.config.base_model,
+            corpus_sha256=self._sha256(corpus_path),
+            corpus_receipt_range=(f"{receipt_shas[0][:16]}..{receipt_shas[-1][:16]}"),
+            training_manifest_sha256=self._sha256(manifest_path),
+            eval_delta=EvalDelta.model_validate(gate["eval_delta"]),
+            license_tier=self.config.license_tier,
+            known_limits=known_limits or [],
+        )
+        out = checkpoint / "modelcard.json"
+        card.save(out)
+        self._advance(Stage.CARD, modelcard=str(out))
+        return out
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
 
     def _write(self, name: str, payload: dict) -> Path:
         out = self.work_dir / name

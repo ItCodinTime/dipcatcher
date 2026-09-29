@@ -101,5 +101,6 @@
     }
   },
   "research_only": true,
-  "schema": "fx1.dip_bench/v1"
+  "schema": "fx1.dip_bench/v1",
+  "receipt_sha256": "e07a03d8437c44fd7cc7b90e0e4be178072e233142db6a644a15e4387ba09ac8"
 }

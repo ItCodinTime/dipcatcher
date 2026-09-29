@@ -11,7 +11,9 @@
 
 The workflow is additive: it never feeds `ci.yml` required checks, uses
 `fail-fast: false`, and shards each combo into 4 jobs (~1.5k tests each) by
-greedy-balancing the `pytest --collect-only` per-file test counts.
+greedy-balancing the `pytest --collect-only` per-file test counts. The full
+36-job matrix runs after merges to `main`, weekly, and on manual dispatch;
+pull requests use the focused Linux lanes in `ci.yml` and `fx1.yml`.
 
 ## Supported band
 

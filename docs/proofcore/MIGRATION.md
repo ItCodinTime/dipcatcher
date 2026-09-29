@@ -14,9 +14,9 @@ wave: the vacuous `test_live_requires_flag` (A3 #1) is replaced with a real
 ## Phase 1 — PIT vault alongside Lake (W1)
 
 `PitVault` + the migration shim land next to `quant_fund.data.lake.Lake`,
-which stays untouched. The 32 direct `pl.read_parquet` sites keep working;
-LH009 reports them as warnings. The vault reuses `require_pit_columns`-style
-checks on append.
+which stays untouched. Existing direct `pl.read_parquet` sites keep working;
+LH009 reports them as warnings until their call-site migration. The vault
+reuses `require_pit_columns`-style checks on append.
 
 ## Phase 2 — proof bundle primitives (W2)
 
@@ -27,18 +27,19 @@ what was known at each historical decision. An explicit decision schedule and
 corresponding as-of reads are required before enabling them. `run_backtest`
 and the receipt format are unchanged. Committed `receipts/*.json` remain valid
 under their existing contracts. The heterogeneous committed receipt classes
-do not yet have one universal verifier; `make receipts-reverify` fails closed
-and is not a blocking CI gate. Future proof bundles live in `proofs/`
+are dispatched through the public `verify-receipt` verifier;
+`make receipts-reverify` fails closed and is a blocking CI gate. Future proof
+bundles live in `proofs/`
 (gitignored, like `data/`); the provenance DB lives at
 `data/metadata/proofcore.duckdb` (gitignored).
 
 ## Phase 3 — leakage hunter (W3)
 
-`quant leakage scan` runs in CI in **warn mode** this wave (adjudicated):
-report archived as the `leakage-report` artifact, findings advisory. The
-seeded-leak fixture suite is blocking once present. The gate flips to
-`--fail-on error` after one release of soak; LH009 (direct parquet reads)
-flips to error only in the follow-up call-site migration wave.
+`quant leakage scan` runs in CI with `--fail-on error`; its report is archived
+as the `leakage-report` artifact even on failure. The seeded-leak fixture suite
+is also blocking. LH009 (direct parquet reads) remains warning-severity until
+the follow-up call-site migration is complete, so those findings stay visible
+without misrepresenting the migration as finished.
 
 ## Phase 4 — reality filter (W4)
 

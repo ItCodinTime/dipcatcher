@@ -145,7 +145,7 @@ class QuantileRegressionForest:
             raise RuntimeError("QuantileRegressionForest is not fitted")
         X = np.asarray(X, dtype=float)
         if X.ndim != 2 or X.shape[1] != self._n_features:
-            raise ValueError("X must be 2-D with the training feature count")
+            raise ValueError("X must be 2-D with the training features count")
         if not np.all(np.isfinite(X)):
             raise ValueError("X must be finite")
         return X

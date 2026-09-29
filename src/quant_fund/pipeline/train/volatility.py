@@ -511,27 +511,27 @@ def train_volatility(config: AppConfig, model_name: str = "ewma") -> dict[str, A
     )
 
     def make_model() -> Any:
-        catalog = {
-            "rolling": RollingVol(),
-            "ewma": EWMAVol(config.features.ewma_lambda),
-            "garch": GARCHVol(
+        catalog: dict[str, Callable[[], Any]] = {
+            "rolling": RollingVol,
+            "ewma": lambda: EWMAVol(config.features.ewma_lambda),
+            "garch": lambda: GARCHVol(
                 p=config.train.garch_p,
                 q=config.train.garch_q,
                 dist=config.train.garch_dist.value,
                 vol=config.train.garch_vol.value,
                 series_scope=GARCH_DATE_LEVEL_SCOPE,
             ),
-            "realized_garch": RealizedGARCHVol(
+            "realized_garch": lambda: RealizedGARCHVol(
                 series_scope=GARCH_DATE_LEVEL_SCOPE,
                 realized_measure=REALIZED_GARCH_MEASURE,
             ),
-            "har": HARVol(config.train.har_log),
-            "xgboost": TreeVol("xgboost", config.train.random_seed),
-            "lightgbm": TreeVol("lightgbm", config.train.random_seed),
+            "har": lambda: HARVol(config.train.har_log),
+            "xgboost": lambda: TreeVol("xgboost", config.train.random_seed),
+            "lightgbm": lambda: TreeVol("lightgbm", config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown volatility model {model_name!r}")
-        return catalog[model_name]
+        return catalog[model_name]()
 
     predictions: list[np.ndarray] = []
     targets: list[np.ndarray] = []

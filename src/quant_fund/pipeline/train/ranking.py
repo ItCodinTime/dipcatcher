@@ -5,6 +5,7 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -297,54 +298,60 @@ def train_calibration_auto(config: AppConfig) -> dict[str, Any]:
 
 def _make_ranker(name: str, config: AppConfig) -> Any:
     t = config.train
-    catalog = {
-        "composite": CompositeRanker(),
-        "ridge": RidgeRanker(t.ridge_alpha),
-        "elasticnet": ElasticNetRanker(t.ridge_alpha, t.elasticnet_l1),
-        "neural": NeuralRanker(t.random_seed),
-        "ensemble": EnsembleRanker(t.random_seed),
-        "xgboost": XGBRegRanker(t.xgb_n_estimators, t.xgb_max_depth, t.random_seed),
-        "lightgbm": LGBMRegRanker(t.lgbm_n_estimators, t.lgbm_num_leaves, t.random_seed),
-        "lambdarank": LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "lambdarank"),
-        "xendcg": LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "rank_xendcg"),
-        "rff": RandomFourierRanker(t.rff_n_features, t.rff_gamma, t.rff_z, t.random_seed),
-        "rff_ridgeless": RandomFourierRanker(t.rff_n_features, t.rff_gamma, 0.0, t.random_seed),
-        "sdf_ridge": SDFRidgeRanker(t.sdf_ridge_z),
-        "sdf_en": SDFElasticNetRanker(t.sdf_en_l2, t.sdf_en_l1),
-        "ipca": IPCARanker(t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=False),
-        "ipca_alpha": IPCARanker(t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=True),
-        "rp_pca": RPPCARanker(t.rp_pca_n_factors, t.rp_pca_gamma),
-        "fnw": FNWRanker(t.fnw_n_intervals, t.fnw_lam),
-        "gx3pass": GXThreePassRanker(t.gx_n_factors),
-        "ds_lasso": DoubleSelectionRanker(t.ds_lasso_alpha),
-        "fm": FamaMacBethRanker(),
-        "pcr": PCRRanker(t.pcr_n_factors),
-        "pls": PLSRanker(t.pls_n_factors),
-        "tprf": ThreePassFilterRanker(t.tprf_n_factors),
-        "gbrt": GBRTRanker(
+    catalog: dict[str, Callable[[], Any]] = {
+        "composite": CompositeRanker,
+        "ridge": lambda: RidgeRanker(t.ridge_alpha),
+        "elasticnet": lambda: ElasticNetRanker(t.ridge_alpha, t.elasticnet_l1),
+        "neural": lambda: NeuralRanker(t.random_seed),
+        "ensemble": lambda: EnsembleRanker(t.random_seed),
+        "xgboost": lambda: XGBRegRanker(t.xgb_n_estimators, t.xgb_max_depth, t.random_seed),
+        "lightgbm": lambda: LGBMRegRanker(t.lgbm_n_estimators, t.lgbm_num_leaves, t.random_seed),
+        "lambdarank": lambda: LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "lambdarank"),
+        "xendcg": lambda: LGBMLambdaRanker(t.lgbm_n_estimators, t.random_seed, "rank_xendcg"),
+        "rff": lambda: RandomFourierRanker(t.rff_n_features, t.rff_gamma, t.rff_z, t.random_seed),
+        "rff_ridgeless": lambda: RandomFourierRanker(
+            t.rff_n_features, t.rff_gamma, 0.0, t.random_seed
+        ),
+        "sdf_ridge": lambda: SDFRidgeRanker(t.sdf_ridge_z),
+        "sdf_en": lambda: SDFElasticNetRanker(t.sdf_en_l2, t.sdf_en_l1),
+        "ipca": lambda: IPCARanker(
+            t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=False
+        ),
+        "ipca_alpha": lambda: IPCARanker(
+            t.ipca_n_factors, t.ipca_max_iter, t.ipca_tol, unrestricted=True
+        ),
+        "rp_pca": lambda: RPPCARanker(t.rp_pca_n_factors, t.rp_pca_gamma),
+        "fnw": lambda: FNWRanker(t.fnw_n_intervals, t.fnw_lam),
+        "gx3pass": lambda: GXThreePassRanker(t.gx_n_factors),
+        "ds_lasso": lambda: DoubleSelectionRanker(t.ds_lasso_alpha),
+        "fm": FamaMacBethRanker,
+        "pcr": lambda: PCRRanker(t.pcr_n_factors),
+        "pls": lambda: PLSRanker(t.pls_n_factors),
+        "tprf": lambda: ThreePassFilterRanker(t.tprf_n_factors),
+        "gbrt": lambda: GBRTRanker(
             t.gbrt_n_estimators, t.gbrt_max_depth, t.gbrt_learning_rate, t.random_seed
         ),
-        "pp": PrincipalPortfolioRanker(t.pp_n_factors),
-        "combo": CombinationRanker(),
-        "alasso": AdaptiveLassoRanker(t.alasso_alpha),
-        "classic": ClassicRanker(),
-        "fm_ridge": FamaMacBethRidgeRanker(t.fm_ridge_alpha),
-        "combo_ic": ICWeightedCombinationRanker(),
-        "reversal": ReversalRanker(),
-        "classic_st": ClassicShortRanker(),
-        "ridge_st": make_ridge_st(t.ridge_alpha),
-        "ridge_neut": make_ridge_neut(t.ridge_alpha),
-        "fm_st": make_fm_st(t.fm_ridge_alpha),
-        "combo_ic_st": make_combo_ic_st(),
-        "combo_msfe": MSFECombinationRanker(),
-        "nautica": NauticaRanker(),
-        "tsmom": TSMOMRanker(),
-        "vme": VMERanker(),
-        "krauss": KraussRanker(),
+        "pp": lambda: PrincipalPortfolioRanker(t.pp_n_factors),
+        "combo": CombinationRanker,
+        "alasso": lambda: AdaptiveLassoRanker(t.alasso_alpha),
+        "classic": ClassicRanker,
+        "fm_ridge": lambda: FamaMacBethRidgeRanker(t.fm_ridge_alpha),
+        "combo_ic": ICWeightedCombinationRanker,
+        "reversal": ReversalRanker,
+        "classic_st": ClassicShortRanker,
+        "ridge_st": lambda: make_ridge_st(t.ridge_alpha),
+        "ridge_neut": lambda: make_ridge_neut(t.ridge_alpha),
+        "fm_st": lambda: make_fm_st(t.fm_ridge_alpha),
+        "combo_ic_st": make_combo_ic_st,
+        "combo_msfe": MSFECombinationRanker,
+        "nautica": NauticaRanker,
+        "tsmom": TSMOMRanker,
+        "vme": VMERanker,
+        "krauss": KraussRanker,
     }
     if name not in catalog:
         raise ValueError(f"unknown ranking model {name!r}")
-    return catalog[name]
+    return catalog[name]()
 
 
 def _fit_ranker(model: Any, name: str, x, y, dates, ids=None, features=None) -> None:

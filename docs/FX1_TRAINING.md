@@ -34,20 +34,20 @@ training run has been launched from it.
 4. Train on cluster; log checkpoints as `fx-1.vX.Y` with a model card:
    base checkpoint hash, corpus receipt range, domain/general eval deltas,
    license tier.
-5. Planned ship gate: a candidate must beat the K3 base on domain tasks,
-   keep general-task scores at or above the base, and pass every honesty
-   task natively.
+5. The enforced ship gate requires a statistically significant domain-task
+   improvement over the recorded base, no general-task regression, and a
+   native pass on every honesty task. Only then does `Pipeline.run_card`
+   bind the checkpoint to its corpus and training-manifest hashes.
 
 ## Corpus status
 
-Seed corpus built from `receipts/`: 5 receipts loaded, 5 eligible (positive),
-0 ineligible. Since v8 the loader also recognizes the lab's research-run
-manifest schema (`data/metadata/research/runs/*.json`: `claim: "research_only"`
-+ `synthetic` flag): 88 manifests → 77 positive (all labeled SYNTHETIC —
-simulated-data evidence, never market evidence) + 11 negative (no claim →
-fail-closed refusal examples). That directory is host-local (gitignored) —
-regenerate it with the lab research pipeline; the corpus build degrades
-gracefully without it. The corpus grows automatically as Phases 1–3 of
+Corpus counts are generated, not copied into this document. Run
+`make fx1-corpus` and use its `loaded`/`positive`/`negative` output as the
+current record. Every positive receipt must pass `verify-receipt`; tampered,
+unreadable, live-claiming, failed, and unscoped inputs are retained as
+fail-closed refusal examples. The optional
+`data/metadata/research/runs/` directory is host-local (gitignored), so its
+counts legitimately vary by checkout. The corpus grows automatically as Phases 1–3 of
 the roadmap (real-data benchmark, tournament, Dip Quality Score bench,
 leaderboard) produce new gate-passed receipts — the lab's research output *is*
 fx-1's training data flywheel.

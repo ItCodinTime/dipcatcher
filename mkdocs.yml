@@ -152,6 +152,7 @@ nav:
       - Data lake: DATA_LAKE.md
   - Research:
       - Research centre: RESEARCH_CENTRE.md
+      - Recorded trial batches: research/findings.md
       - Research 100: RESEARCH100.md
       - Research 100 catalog: RESEARCH100_CATALOG.md
       - Stress and scenarios: STRESS.md
@@ -239,7 +240,7 @@ nav:
       - "ADR-034: Lightspeed engines": decisions/034-lightspeed.md
       - "ADR-035: Discrete HMM": decisions/035-discrete-hmm-slp3.md
       - "ADR-036: Causal risk gates": decisions/036-causal-risk-gates.md
-      - "ADR-036: Risk gates": decisions/036-risk-gates.md
+      - "Superseded ADR-036 draft": decisions/036-risk-gates.md
       - "ADR-037: Differentiable backtest": decisions/037-differentiable-backtest.md
       - "ADR-038: Reality ledger lifecycle": decisions/038-reality-ledger-lifecycle.md
   - Atlas decisions:

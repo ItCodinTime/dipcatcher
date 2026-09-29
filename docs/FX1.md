@@ -25,8 +25,10 @@ run, and a record of what the package checks today.
 
 ## Package layout (`src/fx1/`)
 
-- `data/receipts.py` — receipt loading and eligibility (`research_only=true`,
-  `live_pnl_claim=false`); ineligible artifacts become negative examples.
+- `data/receipts.py` — receipt verification through the public,
+  schema-dispatched `verify-receipt` boundary plus eligibility
+  (`research_only=true`, `live_pnl_claim=false`, non-failed verdict);
+  tampered, malformed, and otherwise ineligible artifacts become negative examples.
 - `data/corpus.py` — SFT corpus builder → JSONL, one `SFTExample` per line,
   each with `receipt_sha256` provenance. Run:
   `python -c "from fx1.data import build_corpus; build_corpus('receipts', 'data/fx1/corpus.jsonl')"`

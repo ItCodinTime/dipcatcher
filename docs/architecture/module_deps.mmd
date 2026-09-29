@@ -81,6 +81,7 @@ flowchart LR
   fx1_cli -->|1| fx1_sbom
   fx1_cli -->|1| fx1_serve
   fx1_cli -->|3| fx1_train
+  fx1_data -->|1| fx1_honesty
   fx1_doctor -->|1| fx1
   fx1_doctor -->|1| fx1_data
   fx1_doctor -->|1| fx1_eval
@@ -100,6 +101,7 @@ flowchart LR
   fx1_serve -->|1| fx1_modelcard
   fx1_train -->|1| fx1_data
   fx1_train -->|4| fx1_eval
+  fx1_train -->|1| fx1_modelcard
   quant_fund -->|1| fx1
   quant_fund -->|1| quant_fund_public
   quant_fund_api -->|2| quant_fund
@@ -206,7 +208,7 @@ flowchart LR
   quant_fund_microstructure -->|3| quant_fund_schemas
   quant_fund_models -->|1| quant_fund_compute
   quant_fund_models -->|3| quant_fund_config
-  quant_fund_models -->|36| quant_fund_metrics
+  quant_fund_models -->|35| quant_fund_metrics
   quant_fund_models -->|3| quant_fund_pipeline
   quant_fund_models -->|2| quant_fund_research
   quant_fund_models -->|2| quant_fund_schemas

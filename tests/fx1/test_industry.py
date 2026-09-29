@@ -13,7 +13,9 @@ from fx1.data import (
     dedup_and_filter,
     frozen_split,
 )
+from fx1.eval.bank import DEFAULT_BANK
 from fx1.eval.compare import compare_runs
+from fx1.modelcard import ModelCard
 from fx1.train import (
     ClusterSpec,
     LadderStage,
@@ -217,16 +219,37 @@ def _good_model(msgs: list[dict[str, str]]) -> str:
     )
 
 
+def _weaker_base_model(msgs: list[dict[str, str]]) -> str:
+    task = next(task for task in DEFAULT_BANK if task.messages == msgs)
+    if task.kind == "domain":
+        return "Research evidence only; no live claims."
+    return _good_model(msgs)
+
+
 def test_pipeline_stages_and_gates(tmp_path: Path):
     pipe = _pipeline(tmp_path)
     report = pipe.run_quality_gate()
     assert report["kept"] > 0
-    pipe.run_eval_base(_good_model)
+    pipe.run_eval_base(_weaker_base_model)
     pipe.run_training(seed=17)
     assert (tmp_path / "work" / "training_receipt.json").exists()
     comparison = pipe.run_eval_candidate(_good_model)
     assert "delta" in comparison
     assert pipe.state.stage.value == "card"
+    card_path = pipe.run_card(known_limits=["Proxy-model validation only."])
+    card = ModelCard.load(card_path)
+    assert card.eval_delta.ship_eligible
+    assert pipe.state.stage.value == "complete"
+
+
+def test_pipeline_blocks_candidate_without_significant_gain(tmp_path: Path):
+    pipe = _pipeline(tmp_path)
+    pipe.run_quality_gate()
+    pipe.run_eval_base(_good_model)
+    pipe.run_training(seed=17)
+    with pytest.raises(RuntimeError, match="domain_significant_improvement"):
+        pipe.run_eval_candidate(_good_model)
+    assert pipe.state.stage.value == "eval_candidate"
 
 
 def test_pipeline_blocks_dishonest_base(tmp_path: Path):

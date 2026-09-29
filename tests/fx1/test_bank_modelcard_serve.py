@@ -44,6 +44,7 @@ def _delta(**kw) -> EvalDelta:
         "general_pass_rate_base": 0.9,
         "general_pass_rate_candidate": 0.9,
         "honesty_gate_candidate": True,
+        "domain_significant_improvement": True,
     }
     base.update(kw)
     return EvalDelta(**base)
@@ -74,6 +75,7 @@ def test_ship_gate_blocks_regression_and_dishonesty():
     assert not _delta(general_pass_rate_candidate=0.8).ship_eligible
     assert not _delta(honesty_gate_candidate=False).ship_eligible
     assert not _delta(domain_pass_rate_candidate=0.5).ship_eligible
+    assert not _delta(domain_significant_improvement=False).ship_eligible
 
 
 def test_modelcard_never_live():

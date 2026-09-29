@@ -20,12 +20,14 @@ class EvalDelta(BaseModel):
     general_pass_rate_base: float = Field(ge=0, le=1)
     general_pass_rate_candidate: float = Field(ge=0, le=1)
     honesty_gate_candidate: bool
+    domain_significant_improvement: bool
 
     @property
     def ship_eligible(self) -> bool:
         """Ship gate: honesty native, domain better, general not regressed."""
         return (
             self.honesty_gate_candidate
+            and self.domain_significant_improvement
             and self.domain_pass_rate_candidate > self.domain_pass_rate_base
             and self.general_pass_rate_candidate >= self.general_pass_rate_base
         )

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from fx1.data import build_corpus, load_receipts
+from quant_fund.research.receipt_v2 import seal_receipt
 
 
 def _write_receipt(path: Path, *, research_only: bool, live_pnl_claim: bool) -> None:
@@ -14,7 +15,7 @@ def _write_receipt(path: Path, *, research_only: bool, live_pnl_claim: bool) -> 
         "disclaimer": "test receipt",
         "correctness": {"metric": 1.0},
     }
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.write_text(json.dumps(seal_receipt(payload)), encoding="utf-8")
 
 
 def test_load_receipts_and_eligibility(tmp_path: Path):
@@ -22,10 +23,12 @@ def test_load_receipts_and_eligibility(tmp_path: Path):
     _write_receipt(tmp_path / "bad.json", research_only=False, live_pnl_claim=True)
     (tmp_path / "broken.json").write_text("{not json", encoding="utf-8")
     records = load_receipts(tmp_path)
-    assert len(records) == 2  # unparseable file skipped
+    assert len(records) == 3  # invalid inputs are retained as negative evidence
     by_path = {Path(r.path).name: r for r in records}
     assert by_path["good.json"].eligible
     assert not by_path["bad.json"].eligible
+    assert not by_path["broken.json"].eligible
+    assert by_path["broken.json"].verification_errors
     assert len(by_path["good.json"].sha256) == 64
 
 
@@ -43,7 +46,8 @@ def test_build_corpus_provenance_and_negatives(tmp_path: Path):
         assert roles == ["system", "user", "assistant"]
     pos = next(x for x in lines if not x["negative"])
     neg = next(x for x in lines if x["negative"])
-    assert "verify-research" in pos["messages"][-1]["content"]
+    assert "verify-receipt" in pos["messages"][-1]["content"]
+    assert "metric" in pos["messages"][-1]["content"]
     assert "No." in neg["messages"][-1]["content"]  # refusal taught
 
 
@@ -66,7 +70,36 @@ def _write_run_manifest(
         payload["claim"] = claim
     if live_pnl_claim is not None:
         payload["live_pnl_claim"] = live_pnl_claim
+    path.write_text(json.dumps(seal_receipt(payload)), encoding="utf-8")
+
+
+def test_tampered_seal_is_negative_evidence(tmp_path: Path):
+    path = tmp_path / "tampered.json"
+    _write_receipt(path, research_only=True, live_pnl_claim=False)
+    payload = json.loads(path.read_text())
+    payload["correctness"]["metric"] = 999.0
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+    record = load_receipts(tmp_path)[0]
+    assert not record.eligible
+    assert "receipt_sha256_mismatch" in record.verification_errors
+
+
+def test_positive_summary_removes_forbidden_headline_metrics(tmp_path: Path):
+    payload = seal_receipt(
+        {
+            "schema": "test/v1",
+            "research_only": True,
+            "live_pnl_claim": False,
+            "correctness": {"crps": 0.2, "flag_high_sharpe": 9.9},
+        }
+    )
+    (tmp_path / "r.json").write_text(json.dumps(payload), encoding="utf-8")
+    out = tmp_path / "corpus.jsonl"
+    build_corpus(tmp_path, out)
+    assistant = json.loads(out.read_text())["messages"][-1]["content"]
+    assert '"crps": 0.2' in assistant
+    assert "sharpe" not in assistant.lower()
 
 
 def test_run_manifest_schema_is_eligible_and_labeled_synthetic(tmp_path: Path):

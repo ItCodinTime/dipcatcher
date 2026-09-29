@@ -163,13 +163,10 @@ proof-integrity: ## Current proof signer/recorder integrity checks
 proof-verify: ## Bundle hash, sidecar, signature, and metric verification tests; replay remains closed
 	uv run pytest tests/unit/test_proof_bundle.py tests/unit/test_proof_verify.py tests/property/test_backtest_receipt_identity.py -q
 
-leakage-scan: ## Leakage hunter — WARN MODE this wave (adjudicated: advisory only)
-	@echo "leakage-scan is WARN MODE this wave: findings are advisory, the gate"
-	@echo "flips to --fail-on error in the migration wave (DESIGN.md §13 phase 3)."
-	uv run quant leakage scan --paths src/quant_fund --format json > leakage-report.json || \
-		echo "::warning::leakage scan failed or is not yet merged (advisory this wave)"
+leakage-scan: ## Leakage hunter — error findings fail closed
+	uv run quant leakage scan --paths src/quant_fund --format json --fail-on error > leakage-report.json
 	@if [ -d tests/leakage_fixtures ]; then \
-		uv run pytest tests/unit -q -k "leakage"; \
+		uv run pytest -q tests/unit/test_leakage_*.py tests/unit/pipeline/test_leakage*.py; \
 	else \
 		echo "tests/leakage_fixtures not present yet (W3 lands separately); skipped"; \
 	fi
@@ -193,7 +190,7 @@ reality-gate: ## Reality-filter gate: score trials; absent DB or empty export sk
 	uv run quant reality trial-report --ledger $(PROOFCORE_LEDGER) && \
 	uv run quant reality ledger-gate --ledger $(PROOFCORE_LEDGER)
 
-receipts-reverify: ## Fail-closed audit; schema-specific committed receipt verifiers pending
+receipts-reverify: ## Fail-closed schema-dispatched audit of every committed receipt
 	uv run python -m quant_fund.proofcore.ci receipts-reverify receipts
 
 market-sim-test: ## Matching engine and agent-market tests

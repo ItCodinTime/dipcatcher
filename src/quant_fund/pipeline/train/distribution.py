@@ -5,6 +5,7 @@ Split out of the original module. Import the parent path; it re-exports these na
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -69,24 +70,26 @@ def train_distribution(config: AppConfig, model_name: str = "gaussian") -> dict[
     taus = config.quantiles.levels
 
     def make_model() -> Any:
-        catalog = {
-            "empirical": EmpiricalDistribution(taus),
-            "gaussian": GaussianDistribution(taus),
-            "linear_qr": LinearQuantileDistribution(taus),
-            "xgboost": TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
-            "lightgbm": TreeQuantileDistribution(taus, "lightgbm", config.train.random_seed),
-            "lgbm_q2": LGBMQ2Distribution(taus, seed=config.train.random_seed),
-            "skew_t": SkewTDistribution(taus),
-            "gmm": GMMDistribution(taus, seed=config.train.random_seed),
-            "isotonic": IsotonicPitDistribution(taus),
-            "stack": StackedDistribution(taus, seed=config.train.random_seed),
-            "conf_t": ConformalTDistribution(taus),
-            "fhs_skew": FhsSkewDistribution(taus),
-            "regime": RegimeDistribution(taus, seed=config.train.random_seed),
+        catalog: dict[str, Callable[[], Any]] = {
+            "empirical": lambda: EmpiricalDistribution(taus),
+            "gaussian": lambda: GaussianDistribution(taus),
+            "linear_qr": lambda: LinearQuantileDistribution(taus),
+            "xgboost": lambda: TreeQuantileDistribution(taus, "xgboost", config.train.random_seed),
+            "lightgbm": lambda: TreeQuantileDistribution(
+                taus, "lightgbm", config.train.random_seed
+            ),
+            "lgbm_q2": lambda: LGBMQ2Distribution(taus, seed=config.train.random_seed),
+            "skew_t": lambda: SkewTDistribution(taus),
+            "gmm": lambda: GMMDistribution(taus, seed=config.train.random_seed),
+            "isotonic": lambda: IsotonicPitDistribution(taus),
+            "stack": lambda: StackedDistribution(taus, seed=config.train.random_seed),
+            "conf_t": lambda: ConformalTDistribution(taus),
+            "fhs_skew": lambda: FhsSkewDistribution(taus),
+            "regime": lambda: RegimeDistribution(taus, seed=config.train.random_seed),
         }
         if model_name not in catalog:
             raise ValueError(f"unknown distribution model {model_name!r}")
-        return catalog[model_name]
+        return catalog[model_name]()
 
     predictions: list[np.ndarray] = []
     targets: list[np.ndarray] = []

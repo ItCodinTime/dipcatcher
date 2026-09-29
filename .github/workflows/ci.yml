@@ -26,8 +26,6 @@ concurrency:
 # Least privilege. Artifact upload uses the runner's artifact token.
 permissions:
   contents: read
-  # setup-uv and actions/cache save dependency and synthetic-data caches.
-  actions: write
 
 jobs:
   lint:
