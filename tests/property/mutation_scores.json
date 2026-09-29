@@ -1,82 +1,257 @@
 {
-  "tool": "mutmut",
-  "hypothesis_profile": "ci",
-  "modules": [
-    {
-      "path": "src/quant_fund/execution/costs.py",
-      "tests": [
-        "tests/property/test_adversarial_costs.py",
-        "tests/unit/test_execution.py",
-        "tests/unit/test_cost_branch_killers.py"
-      ],
-      "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 48.77,
-      "killed": 207,
-      "survived": 0,
-      "timeout": 0,
-      "suspicious": 0,
-      "skipped": 0,
-      "no_tests": 0,
-      "total": 207,
-      "score_percent": 100.0,
-      "score_formula": "(killed + timeout) / (total - skipped)",
-      "equivalent_survivors": []
-    },
-    {
-      "path": "src/quant_fund/metrics/returns.py",
-      "tests": [
-        "tests/property/test_adversarial_returns_and_sizing.py",
-        "tests/property/test_drawdown.py",
-        "tests/unit/test_returns_edges.py",
-        "tests/unit/test_metrics.py",
-        "tests/unit/test_returns_branch_killers.py"
-      ],
-      "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 58.758,
-      "killed": 325,
-      "survived": 39,
-      "timeout": 0,
-      "suspicious": 0,
-      "skipped": 0,
-      "no_tests": 0,
-      "total": 364,
-      "score_percent": 89.28571428571429,
-      "score_formula": "(killed + timeout) / (total - skipped)",
-      "equivalent_survivors": [
-        "float('nan') and float('NAN') are the same value (15 mutants).",
-        "numpy reshape(-2) matches reshape(-1) (7 mutants).",
-        "reshape(None) is flattened by the following cumprod, std, or mean, so the returned number matches reshape(-1) (5 mutants: wealth, vol, sharpe, sortino, calmar).",
-        "np.asarray([], dtype=None) is still float64 (4 mutants).",
-        "cagr's years <= 0 versus years < 0: years is size/periods after a positive-period check, so it is never zero (1 mutant).",
-        "drawdown errstate invalid/divide set to None or omitted: values unchanged, and numpy 2.5.3 raised no RuntimeWarning on a NaN wealth path (4 mutants).",
-        "replacing `or` with `and` on the non-finite guards in sharpe, sortino, and calmar still returns NaN via the later checks (3 mutants)."
-      ]
-    },
-    {
-      "path": "src/quant_fund/utils/hashing.py",
-      "tests": [
-        "tests/property/test_adversarial_receipts.py",
-        "tests/property/test_utils_invariants_cov.py",
-        "tests/regression/test_receipt_set_and_array_canonical.py",
-        "tests/unit/test_hashing_branch_killers.py"
-      ],
-      "mutmut_version": "mutmut, version 3.8.0",
-      "elapsed_sec": 55.332,
-      "killed": 160,
-      "survived": 25,
-      "timeout": 2,
-      "suspicious": 0,
-      "skipped": 0,
-      "no_tests": 0,
-      "total": 187,
-      "score_percent": 86.63101604278074,
-      "score_formula": "(killed + timeout) / (total - skipped)",
-      "equivalent_survivors": [
-        "hash_file chunk sizes read(None), 2<<20, and 1<<21 still hash the whole file (3 mutants).",
-        "getattr(..., 'item' or 'tolist',) with a trailing comma is the same call (3 mutants).",
-        "sort-key json.dumps sort_keys/separators/ensure_ascii=None/allow_nan mutants: set elements are hashable and do not become dicts, so sort_keys does not change order; a 1485-pair probe of lists and strings found no separator order flip; ensure_ascii=None matches False; allow_nan=None matches False; allow_nan=True is unreachable in _json_sort_key because non-finite floats are already None (19 mutants)."
-      ]
-    }
-  ],
-  "numpy": "2.5.3"
+ "tool": "mutmut",
+ "hypothesis_profile": "ci",
+ "numpy": "2.5.3",
+ "modules": [
+  {
+   "path": "src/quant_fund/execution/costs.py",
+   "tests": [
+    "tests/property/test_adversarial_costs.py",
+    "tests/unit/test_execution.py",
+    "tests/unit/test_cost_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 48.77,
+   "killed": 207,
+   "survived": 0,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 207,
+   "score_percent": 100.0,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": []
+  },
+  {
+   "path": "src/quant_fund/metrics/returns.py",
+   "tests": [
+    "tests/property/test_adversarial_returns_and_sizing.py",
+    "tests/property/test_drawdown.py",
+    "tests/unit/test_returns_edges.py",
+    "tests/unit/test_metrics.py",
+    "tests/unit/test_returns_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 58.758,
+   "killed": 325,
+   "survived": 39,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 364,
+   "score_percent": 89.28571428571429,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "float('nan') and float('NAN') are the same value (15 mutants).",
+    "numpy reshape(-2) matches reshape(-1) (7 mutants).",
+    "reshape(None) is flattened by the following cumprod, std, or mean, so the returned number matches reshape(-1) (5 mutants: wealth, vol, sharpe, sortino, calmar).",
+    "np.asarray([], dtype=None) is still float64 (4 mutants).",
+    "cagr's years <= 0 versus years < 0: years is size/periods after a positive-period check, so it is never zero (1 mutant).",
+    "drawdown errstate invalid/divide set to None or omitted: values unchanged, and numpy 2.5.3 raised no RuntimeWarning on a NaN wealth path (4 mutants).",
+    "replacing `or` with `and` on the non-finite guards in sharpe, sortino, and calmar still returns NaN via the later checks (3 mutants)."
+   ]
+  },
+  {
+   "path": "src/quant_fund/utils/hashing.py",
+   "tests": [
+    "tests/property/test_adversarial_receipts.py",
+    "tests/property/test_utils_invariants_cov.py",
+    "tests/regression/test_receipt_set_and_array_canonical.py",
+    "tests/unit/test_hashing_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 55.332,
+   "killed": 160,
+   "survived": 25,
+   "timeout": 2,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 187,
+   "score_percent": 86.63101604278074,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "hash_file chunk sizes read(None), 2<<20, and 1<<21 still hash the whole file (3 mutants).",
+    "getattr(..., 'item' or 'tolist',) with a trailing comma is the same call (3 mutants).",
+    "sort-key json.dumps sort_keys/separators/ensure_ascii=None/allow_nan mutants: set elements are hashable and do not become dicts, so sort_keys does not change order; a 1485-pair probe of lists and strings found no separator order flip; ensure_ascii=None matches False; allow_nan=None matches False; allow_nan=True is unreachable in _json_sort_key because non-finite floats are already None (19 mutants)."
+   ]
+  },
+  {
+   "path": "src/quant_fund/validation/embargo.py",
+   "tests": [
+    "tests/unit/pipeline/test_embargo.py",
+    "tests/unit/test_validation_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 6.225,
+   "killed": 33,
+   "survived": 3,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 36,
+   "score_percent": 91.66666666666667,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "embargo_mask mut5: `embargo_bars <= 0` -> `<` \u2014 a zero-width embargo window masks nothing extra, matching the early all-True return.",
+    "embargo_mask mut10/11: `.get(block_end)` -> None/`.get(None)` falls through to the nearest-session lookup `min(keys, ...)`, which returns the same index whenever block_end is a session key."
+   ]
+  },
+  {
+   "path": "src/quant_fund/validation/purging.py",
+   "tests": [
+    "tests/unit/research/test_purging_edges.py",
+    "tests/unit/research/test_cpcv_extremes.py",
+    "tests/unit/pipeline/test_validation.py",
+    "tests/unit/test_validation_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 10.473,
+   "killed": 77,
+   "survived": 4,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 81,
+   "score_percent": 95.06172839506173,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "overlaps mut10: `train_decision < test_start` -> `<=` is unobservable \u2014 at train_decision == test_start the second disjunct `train_decision >= test_start` already returns True.",
+    "purge_mask mut41/42: dropping or nil-ing `.get(t)` falls back to `bisect_left(keys, t)`, which returns the same index for every decision time present in session_index.",
+    "purge_mask mut58: `t < test_start` -> `<=` \u2014 at t == test_start the in_holdout check `test_lo <= i <= test_hi` already drops the row, so the mask is unchanged."
+   ]
+  },
+  {
+   "path": "src/quant_fund/validation/cpcv.py",
+   "tests": [
+    "tests/unit/research/test_cpcv_extremes.py",
+    "tests/unit/research/test_backtest_overfitting.py",
+    "tests/property/test_backtest_overfitting.py",
+    "tests/unit/pipeline/test_validation.py",
+    "tests/unit/test_validation_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 62.02,
+   "killed": 289,
+   "survived": 49,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 338,
+   "score_percent": 85.50295857988165,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "Empty-group raise is unreachable: `n < n_groups` raises first, so group bounds can never be empty (cv mut44-47, indices mut37-40 \u2014 message variants).",
+    "Path-incidence RuntimeError is unreachable: by_group construction always yields exactly n_paths ids (mut24-27 \u2014 message variants).",
+    "bounds `range(n_groups+1)` -> `+2` appends one extra bound element that group slicing never reads (cv mut36, indices mut23).",
+    "dtype=None/dropped on asarray/arange/empty still infers int64/float64 (stitch mut3,5,32,34; indices mut27,30,58,59,60,61,62; path_assignments mut30,32).",
+    "test_times and train_times are provably non-empty (groups non-empty, n_test_groups < n_groups), so `or`->`and` and `continue`->`break` at the non-empty guards are dead (cv mut62,65,70; indices mut63,68).",
+    "`(train_parts) or True` and np.empty(1) else-branch are dead \u2014 train_parts is always non-empty (indices mut56,62).",
+    "zip(strict=True) -> None/False/dropped is inert: purge_mask returns len(keep) == len(purged) by construction (cv mut88,91,92).",
+    "Embargo boundary flips at idx == lo or idx == hi are unreachable for train times \u2014 those indices are test-group elements already removed (cv mut100,106; indices mut85,86,89,94,101).",
+    "astype(np.int64, copy=None/False/True/dropped) produces identical values (indices mut114,116,117,119,121,122)."
+   ]
+  },
+  {
+   "path": "src/quant_fund/validation/walk_forward.py",
+   "tests": [
+    "tests/unit/pipeline/test_walk_forward_extremes.py",
+    "tests/unit/research/test_cpcv_extremes.py",
+    "tests/unit/research/test_fold_stability.py",
+    "tests/unit/pipeline/test_validation.py",
+    "tests/unit/test_validation_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 21.302,
+   "killed": 247,
+   "survived": 35,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 282,
+   "score_percent": 87.58865248226951,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "astype/np.asarray dtype=None/dropped or copy=None/True on int64 arrays is a value-preserving no-op (timestamp_ns mut15,17; _one_timestamp_ns mut3,5,9,15,17,24,27,29,36).",
+    "issubdtype(arr.dtype, np.datetime64) -> (None,\u00b7) or (\u00b7,None) both yield False for datetime64 arrays, taking the same per-element path (timestamp_ns mut10,11).",
+    "zip(strict=True) -> None/False/dropped is inert: upstream guards already enforce equal lengths (walk_forward mut20,23,24,83,86,87).",
+    "`end > previous` -> `>=` writes the same value when label_end_times repeat a timestamp (walk_forward mut33).",
+    "`tr_start = 0` -> None: `uniq[None:cursor]` equals `uniq[0:cursor]` (walk_forward mut54).",
+    "session_index=idx -> None rebuilds an order-identical index over the contiguous train block, yielding the same purge mask (walk_forward mut64,70).",
+    "`cursor = test_end if scheme == 'rolling' else test_end` is an identity conditional \u2014 every comparison variant still assigns test_end (mut99-103); `if scheme == 'expanding': pass` mutants are no-ops (mut104-106).",
+    "`j == hi + 1` -> `hi - 1` never holds for strictly increasing sorted holdout ids, and singleton partition coverage is identical (assert_no_label_overlap mut12).",
+    "continue -> break at `label_end <= i`: horizon_bars is global, so the condition holds for all or none of train_times (assert_no_label_overlap mut22).",
+    "float('NAN') is the same value as float('nan') (fold_ic_stability mut21,26)."
+   ]
+  },
+  {
+   "path": "src/quant_fund/risk/overlay.py",
+   "tests": [
+    "tests/unit/risk/test_risk_gates.py",
+    "tests/property/test_capacity_overlay.py",
+    "tests/unit/research/test_capacity_overlay.py",
+    "tests/unit/test_risk_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 21.61,
+   "killed": 372,
+   "survived": 27,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 399,
+   "score_percent": 93.23308270676692,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "observe() only accepts finite positive navs, so `peak <= 0 or last <= 0` is dead code \u2014 all its guard/return mutants are unreachable (mut24,25,27,29).",
+    "np.asarray(navs, dtype=None/dropped) still infers float64; np.zeros dtype=None for the CRC baseline likewise (mut14,16,190,192).",
+    "remaining == 0.005 exactly is unattainable in float dd arithmetic \u2014 1.2M (limit,last) candidates produced no witness (mut41).",
+    "vol/es `> 1e-8` -> `>=` coincide at the boundary: vol == 1e-8 gives vol_target/vol >> 1 which min() clamps identically to the stay-1.0 skip; es == 1e-8 likewise (mut77,119).",
+    "scale init 1.0 -> 2.0 and inner min(\u2026, 2.0) clips are erased by the final `min(scale, 1.0)` (mut74,172,226).",
+    "isfinite(es_hist/es_ewma) else-branches and the non-finite-vol elif are dead \u2014 finite positive navs produce finite windows (mut87-91,111,113,115,118).",
+    "Kelly guard `or`->`and`: a non-finite mu implies a non-finite var on the same window (mut153); var == _EPS exactly is unattainable (mut158); mu == 0 yields f* == 0 -> scale 0 either way (mut159).",
+    "crc_es == _EPS exactly is unattainable from CRC-calibrated quantiles (mut209)."
+   ]
+  },
+  {
+   "path": "src/quant_fund/risk/gates.py",
+   "tests": [
+    "tests/unit/risk/test_risk_gates.py",
+    "tests/property/test_capacity_overlay.py",
+    "tests/unit/research/test_capacity_overlay.py",
+    "tests/unit/test_risk_branch_killers.py"
+   ],
+   "mutmut_version": "mutmut, version 3.8.0",
+   "elapsed_sec": 56.723,
+   "killed": 826,
+   "survived": 89,
+   "timeout": 0,
+   "suspicious": 0,
+   "skipped": 0,
+   "no_tests": 0,
+   "total": 915,
+   "score_percent": 90.27322404371584,
+   "score_formula": "(killed + timeout) / (total - skipped)",
+   "equivalent_survivors": [
+    "reshape(None)/reshape(-2)/dtype=None/dropped-dtype are no-ops on 1-D float64 input (vol_target 6,8,10,12; vol_target_leverage 6,8,10,12; dd_halt 3,5,7,9; dd_remaining 4,6,8,10; es 5,7,9,11; kelly 13,15,17,19; crc 5,7,9,11; crash 3,5,7,9; stepm 8,10; _delay1 2,4,6,8; _min_lev 3,5,7,9; apply 4,6,8,10; stepm 19 reshape(-2,1) identical to (-1,1)).",
+    "np.ones/np.zeros dtype=None or dropped still infers float64 (apply 28,30; stepm 24,26,85,87; crc 58,60).",
+    "halted=None is falsy like False, and post-halt bars write zeros either way so continue->break is unobservable (dd_halt 14,19).",
+    "dd_remaining peak starts at 1.0 and only grows, so `peak <= 0`/`peak >= 0`/`else 2.0`/`min(2.0,\u00b7)` variants coincide (34,43,45,59).",
+    "Early-window writes under range(len)/lb-2 evaluate empty slices and reproduce init values (vol_target_leverage 37, es 30, crc 35); crc 32's clamped windows yield lambda_hat >= ES -> last = 1.0, identical to init (verified over 2000 seeded fixtures).",
+    "Exact-equality boundaries are unattainable in float arithmetic \u2014 exhaustive searches found no witness for sig/es/var/base/crc_es == _EPS (es 47; kelly 57; crc 78; crash 38; apply 209-equivalent crc_es bound).",
+    "kelly 52 `or`->`and`: a non-finite mu implies a non-finite var on the same window; kelly 63 `f_star <= 0` -> `<` coincides since f* == 0 maps to 0 either way.",
+    "crc 28/29 and stepm 41/42 initial `last` is never read \u2014 the first recomputed index always satisfies `(i-(lb-1)) % step == 0` before any read; _delay1 mut11 `size > 1` -> `>= 1` writes an empty slice.",
+    "apply 35 drops the `lev` arg on the first _min_lev call \u2014 min(ones, x) == x; apply 178-181 errstate kwarg drops emit warnings that tests do not elevate to errors; apply 187 `where(None,...)` picks the same fallback since scaled/r == scale wherever the guard held; apply 194 `>`->`>=` at |r| == _EPS yields scaled/r == 0 = the fallback value.",
+    "vol_target_leverage 63 / vol_target 65 clip(\u2026, None, cap): the lower bound never binds since target/sig >= 0.",
+    "stepm 74 `end = None` tail fill is overwritten identically by later iterations; stepm 81/82 `t > 0`/`t > 1` boundaries both produce the same zeros tail."
+   ]
+  }
+ ]
 }
