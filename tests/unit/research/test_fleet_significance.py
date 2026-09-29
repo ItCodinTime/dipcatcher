@@ -237,3 +237,43 @@ def test_registry_heads_run() -> None:
     )
     assert frame.height == 4
     assert receipt["payload"]["shard_results"][0]["mcs"]["n_obs"] == N_EVAL
+
+
+def test_pairwise_block_emitted() -> None:
+    _, receipt = _run()
+    for sr in receipt["payload"]["shard_results"]:
+        pairs = sr["pairwise"]
+        assert isinstance(pairs, list)
+        models = sr["models"]
+        assert len(pairs) == len(models) * (len(models) - 1) // 2
+        for pair in pairs:
+            a, b = pair["a"], pair["b"]
+            assert a < b and a in models and b in models
+            # Each stat is either a finite number or a recorded error.
+            for key in ("gw", "hln", "gr", "enc"):
+                stats = [k for k in pair if k.startswith(f"{key}_") and k != f"{key}_error"]
+                assert stats or f"{key}_error" in pair
+            assert 0.0 <= pair.get("gw_p", 0.5) <= 1.0
+            assert 0.0 <= pair.get("hln_p", 0.5) <= 1.0
+            assert pair.get("gr_sup", 0.0) >= 0.0
+
+
+def test_pairwise_orientation_sign() -> None:
+    _, receipt = _run(biased=True)
+    for sr in receipt["payload"]["shard_results"]:
+        pair = next(
+            p for p in sr["pairwise"] if p["a"] == "dominated" and p["b"].startswith("good")
+        )
+        # dominated loses more on every row -> loss diff is strictly positive.
+        assert pair["gw_stat"] > 0.0
+
+
+def test_pairwise_contract_flags_forged() -> None:
+    _, receipt = _run()
+    assert fleet_significance_contract_errors(receipt) == []
+    forged = json.loads(json.dumps(receipt))
+    forged["payload"]["shard_results"][0]["pairwise"][0]["gw_p"] = 1.7
+    assert "pairwise_gw_p_out_of_range" in ",".join(fleet_significance_contract_errors(forged))
+    forged2 = json.loads(json.dumps(receipt))
+    forged2["payload"]["shard_results"][0]["pairwise"][0]["a"] = "ghost_head"
+    assert "pairwise_unknown_model" in ",".join(fleet_significance_contract_errors(forged2))

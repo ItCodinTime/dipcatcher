@@ -33,6 +33,12 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from quant_fund.metrics.forecast_eval import (
+    encompassing_test,
+    fluctuation_test,
+    giacomini_white_test,
+    hln_test,
+)
 from quant_fund.metrics.hac import dm_hac_tstat
 from quant_fund.metrics.scoring import pinball_loss
 from quant_fund.metrics.snooping import model_confidence_set
@@ -155,6 +161,54 @@ def _mcs(
     }
 
 
+def _pairwise_block(
+    losses: Mapping[str, np.ndarray],
+    med_errors: Mapping[str, np.ndarray],
+    *,
+    gr_window: int,
+) -> list[dict[str, Any]]:
+    """Ordered-pair predictive-ability stats beyond the DM/MCS surface.
+
+    Emits per unordered pair ``(a, b)`` with ``d = a - b`` orientation:
+    Giacomini-White on the proper-score loss diff, and HLN / GR fluctuation /
+    ENC-T on the tau=0.5 forecast errors. Clark-West is intentionally absent:
+    it assumes nested models, which the fleet heads are not. A test that
+    cannot run is recorded under ``<test>_error`` — never silently dropped.
+    """
+    names = sorted(losses)
+    pairs: list[dict[str, Any]] = []
+    for i, a in enumerate(names):
+        for b in names[i + 1 :]:
+            row: dict[str, Any] = {"a": a, "b": b}
+            try:
+                gw = giacomini_white_test(losses[a], losses[b])
+                row["gw_stat"] = gw["statistic"]
+                row["gw_p"] = gw["pvalue"]
+            except (ValueError, FloatingPointError) as exc:
+                row["gw_error"] = str(exc)
+            try:
+                hln = hln_test(med_errors[a], med_errors[b])
+                row["hln_stat"] = hln["statistic"]
+                row["hln_p"] = hln["pvalue"]
+            except (ValueError, FloatingPointError) as exc:
+                row["hln_error"] = str(exc)
+            try:
+                gr = fluctuation_test(med_errors[a], med_errors[b], window=gr_window)
+                row["gr_sup"] = gr["sup"]
+                row["gr_critical"] = gr["critical"]
+                row["gr_reject"] = gr["reject"]
+            except (ValueError, FloatingPointError) as exc:
+                row["gr_error"] = str(exc)
+            try:
+                enc = encompassing_test(med_errors[a], med_errors[b])
+                row["enc_stat"] = enc["statistic"]
+                row["enc_p"] = enc["pvalue"]
+            except (ValueError, FloatingPointError) as exc:
+                row["enc_error"] = str(exc)
+            pairs.append(row)
+    return pairs
+
+
 def _wins(
     dm: Mapping[str, Mapping[str, Mapping[str, float | None]]], alpha: float
 ) -> dict[str, int]:
@@ -266,12 +320,15 @@ def run_fleet_significance(
         }
 
         y_eval = y[n_train : n_train + n_eval]
+        med_idx = int(np.argmin(np.abs(tau_arr - 0.5)))
         losses: dict[str, np.ndarray] = {}
+        med_errors: dict[str, np.ndarray] = {}
         errors: dict[str, str] = {}
         for model_name in sorted(factories):
             try:
                 q = _predict_grid(shard, factories[model_name], n_train, n_eval, tau_arr)
                 losses[model_name] = _loss_series(q, y_eval, tau_arr, loss)
+                med_errors[model_name] = y_eval - q[:, med_idx]
             except Exception as exc:  # recorded, never silent
                 errors[model_name] = str(exc)
                 n_error_rows += 1
@@ -286,6 +343,7 @@ def run_fleet_significance(
             seed=int(seed) + 10_000 + shard_index,
         )
         wins = _wins(dm, float(alpha))
+        pairwise = _pairwise_block(losses, med_errors, gr_window=max(5, n_eval // 4))
         shard_results.append(
             {
                 "shard": shard_name,
@@ -296,6 +354,7 @@ def run_fleet_significance(
                 "mean_loss": {n: float(np.mean(v)) for n, v in sorted(losses.items())},
                 "dm": dm,
                 "mcs": mcs,
+                "pairwise": pairwise,
             }
         )
         mean_losses = {n: float(np.mean(v)) for n, v in losses.items()}
@@ -379,8 +438,10 @@ def run_fleet_significance(
         "n_error_rows": n_error_rows,
         "scope_note": (
             "Significance over SYNTHETIC per-row proper-score losses "
-            "(DM/Andrews–Monahan pairwise matrix + Hansen–Lunde–Nason MCS). "
-            "Correctness/calibration evidence only."
+            "(DM/Andrews–Monahan pairwise matrix + Hansen–Lunde–Nason MCS; "
+            "pairwise block adds GW on loss diffs and HLN/GR/ENC-T on "
+            "tau=0.5 errors — Clark–West omitted: fleet heads are not "
+            "nested models). Correctness/calibration evidence only."
         ),
     }
     envelope = build_receipt_v2(
@@ -517,6 +578,35 @@ def fleet_significance_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
         errors.append("live_pnl_claim")
     if not isinstance(payload.get("shard_results"), list):
         errors.append("shard_results_missing")
+    else:
+        models = set(payload.get("models") or [])
+        for shard in payload["shard_results"]:
+            if not isinstance(shard, Mapping):
+                continue
+            pairs = shard.get("pairwise")
+            if pairs is None:
+                continue
+            if not isinstance(pairs, list):
+                errors.append(f"pairwise_not_list:{shard.get('shard')}")
+                continue
+            for pair in pairs:
+                if not isinstance(pair, Mapping):
+                    errors.append("pairwise_row_not_object")
+                    continue
+                a, b = pair.get("a"), pair.get("b")
+                if a not in models or b not in models:
+                    errors.append(f"pairwise_unknown_model:{a}:{b}")
+                for key in ("gw_p", "hln_p", "enc_p"):
+                    v = pair.get(key)
+                    if v is not None and not (isinstance(v, (int, float)) and 0.0 <= v <= 1.0):
+                        errors.append(f"pairwise_{key}_out_of_range:{a}:{b}")
+                for key in ("gw_stat", "hln_stat", "enc_stat", "gr_sup", "gr_critical"):
+                    v = pair.get(key)
+                    if v is not None and not (isinstance(v, (int, float)) and np.isfinite(v)):
+                        errors.append(f"pairwise_{key}_nonfinite:{a}:{b}")
+                gr = pair.get("gr_reject")
+                if gr is not None and gr not in (0, 1, 0.0, 1.0, False, True):
+                    errors.append(f"pairwise_gr_reject_not_binary:{a}:{b}")
     return errors
 
 
