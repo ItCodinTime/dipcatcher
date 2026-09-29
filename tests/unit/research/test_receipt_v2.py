@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 from quant_fund.cli.main import app
 from quant_fund.research.fleet_eval import (
     fleet_head_factories,
+    fleet_receipt_v2,
     run_distribution_fleet,
     write_fleet_receipt,
 )
@@ -389,3 +390,26 @@ def test_cli_verify_receipt_fails_closed(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["verify-receipt", str(bad)])
     assert result.exit_code == 1
     assert '"valid": false' in result.output
+
+
+def test_renamed_v2_kind_still_dispatches_on_inner_claims() -> None:
+    """A v2 envelope with a renamed ``kind`` must not strip the lane's deep
+    check: the sealed inner payload's own claims re-enter dispatch, and the
+    rename is flagged ``kind_fingerprint_mismatch``."""
+    receipt = fleet_receipt_v2(_small_fleet_receipt())
+    assert receipt["kind"] == "distribution_fleet_eval"
+    renamed = dict(receipt)
+    renamed["kind"] = "innocuous_lane"
+    renamed = seal_receipt(renamed)
+    errors = verify_receipt_payload(renamed)["errors"]
+    assert "kind_fingerprint_mismatch" in errors, errors
+    # The lane's deep check still ran (dataset_hash re-derivation).
+    assert any("hash" in e or "mismatch" in e for e in errors)
+
+
+def test_matching_v2_kind_gets_no_rename_flag() -> None:
+    """A correctly-claimed kind dispatches without the mismatch flag."""
+    errors = verify_receipt_payload(seal_receipt(fleet_receipt_v2(_small_fleet_receipt())))[
+        "errors"
+    ]
+    assert "kind_fingerprint_mismatch" not in errors, errors

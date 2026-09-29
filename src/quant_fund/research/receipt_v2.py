@@ -380,12 +380,45 @@ def _code_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
     return []
 
 
-def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
-    """Lane-specific re-derivation of the bound digests, where defined."""
-    if payload.get("kind") == "distribution_fleet_eval":
-        from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
+def _inner_claimed_kinds(payload: Mapping[str, Any]) -> set[str]:
+    """Kind strings the sealed *inner* payload claims about itself.
 
-        return fleet_v2_consistency_errors(payload)
+    The envelope ``kind`` is attacker-renameable at zero cost; the inner
+    body's own ``kind``/``schema`` are inside the seal, so a renamed outer
+    kind must not strip the deep checks. ``<base>.vN`` schemas map to both
+    ``<base>`` and ``<base>_eval`` (the lane naming convention).
+    """
+    inner = payload.get("payload")
+    claims: set[str] = set()
+    if not isinstance(inner, Mapping):
+        return claims
+    for key in ("kind", "schema"):
+        value = inner.get(key)
+        if isinstance(value, str) and value:
+            claims.add(value)
+            base, sep, suffix = value.rpartition(".v")
+            if sep and suffix.isdigit() and base:
+                claims.add(base)
+                claims.add(f"{base}_eval")
+    return claims
+
+
+def _kind_consistency_errors(payload: Mapping[str, Any]) -> list[str]:
+    """Lane-specific re-derivation of the bound digests, where defined.
+
+    Dispatches on the envelope ``kind`` *and* on the sealed inner payload's
+    claimed ``kind``/``schema``: renaming the outer kind no longer strips a
+    lane's deep checks, and the mismatch is flagged.
+    """
+    kind = payload.get("kind")
+    for claimed in {kind, *_inner_claimed_kinds(payload)}:
+        if claimed == "distribution_fleet_eval":
+            from quant_fund.research.fleet_eval import fleet_v2_consistency_errors
+
+            errors = fleet_v2_consistency_errors(payload)
+            if claimed != kind:
+                errors = [*errors, "kind_fingerprint_mismatch"]
+            return errors
     return []
 
 
