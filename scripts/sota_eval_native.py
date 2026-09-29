@@ -89,39 +89,7 @@ from sota_eval_kronos import (  # noqa: E402
     parse_specs,
 )
 
-try:
-    from quant_fund.research.sota_evidence import validate_bars  # noqa: E402
-except ImportError:  # divergent checkouts: inline the same contract
-
-    def validate_bars(frame: pl.DataFrame) -> tuple[np.ndarray, int]:
-        required = {
-            "security_id",
-            "event_time",
-            "available_time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-        }
-        if missing := required.difference(frame.columns):
-            raise ValueError(f"missing columns {sorted(missing)}")
-        if frame.height < 2 or frame["security_id"].n_unique() != 1:
-            raise ValueError("each bar file must contain one security and at least two bars")
-        if frame.select(pl.any_horizontal(pl.all().is_null()).any()).item():
-            raise ValueError("bar data contains null values")
-        times = frame["event_time"].dt.timestamp("ns").to_numpy()
-        available = frame["available_time"].dt.timestamp("ns").to_numpy()
-        steps = np.diff(times)
-        if np.any(steps <= 0) or not np.all(steps == steps[0]):
-            raise ValueError("bar event times must be strictly increasing with no gaps")
-        if np.any(available < times) or np.any(available > times + steps[0]):
-            raise ValueError("point-in-time violation: bar unavailable by next bar open")
-        values = frame.select("open", "high", "low", "close", "volume").to_numpy()
-        if not np.isfinite(values).all() or np.any(values[:, :4] <= 0):
-            raise ValueError("prices must be positive and volume nonnegative, all finite")
-        return times, int(steps[0])
-
+from quant_fund.research.sota_evidence import validate_bars  # noqa: E402
 
 TEST_START = pd.Timestamp("2024-07-01", tz="UTC")
 # Paper Table 8: (lookback, horizon) by frequency.
