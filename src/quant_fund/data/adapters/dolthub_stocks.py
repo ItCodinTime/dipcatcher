@@ -33,7 +33,6 @@ from quant_fund.data.sources.base import (
     utc_now,
 )
 from quant_fund.data.sources.normalize import normalize_ohlcv
-from quant_fund.proofcore.contracts import sha256_hex_bytes
 
 OWNER = "post-no-preference"
 REPO = "stocks"
@@ -341,6 +340,10 @@ def write_cached_symbol(
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise
+    # Layering: data/ reaches proofcore lazily (§1.3 — only cli/ may
+    # top-level-import the proofcore packages).
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+
     digest = sha256_hex_bytes(paths.bars.read_bytes())
     receipt = {
         "schema_version": 1,
@@ -373,6 +376,9 @@ def read_cached_symbol(cache_root: Path, commit: str, symbol: str) -> pl.DataFra
     if not paths.bars.is_file() or not paths.receipt.is_file():
         return None
     receipt = json.loads(paths.receipt.read_text(encoding="utf-8"))
+    # Layering: data/ reaches proofcore lazily (see write_cached_symbol).
+    from quant_fund.proofcore.contracts import sha256_hex_bytes
+
     digest = sha256_hex_bytes(paths.bars.read_bytes())
     if digest != str(receipt.get("sha256") or ""):
         raise SourceError(
