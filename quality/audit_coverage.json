@@ -100,8 +100,9 @@
       "status": "audited"
     },
     "models": {
-      "doc": "docs/AUDIT_P64_DIST.md",
-      "status": "partial"
+      "doc": "docs/AUDIT_MODELS.md",
+      "n_modules": 152,
+      "status": "audited"
     },
     "monitoring": {
       "doc": "docs/AUDIT_FRONTIER.md",

@@ -32,6 +32,7 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `mc_engine/` | Philox counter streams, chunk-pure engine, checkpoint fingerprinting, TDigest/Welford/P² merges, POT/GPD | #268 KATs, #295/#319 coverage |
 | `metrics/` | Proper-score suite, VaR backtests, inference (HAC/DM/MCS) | #206 clustered-variance, #304 propriety, #312 DQ, #315 KLM |
 | `microstructure/` | Quote/impact estimators | #175 P6.5 |
+| `models/` | All 152 modules estimator-by-estimator (child lane, `AUDIT_MODELS.md` on #345): estimator contracts, NaN/fail-closed edges, spec drift | #345 — 25 contract fixes |
 | `monitoring/` | PSI drift emits `insufficient_data` not false all-clear; kill_switch: unknown state blocks, invalid transitions raise, auto-flatten never on exception | — |
 | `native/` | env-gated dispatch; docs honestly separate bit-exact kernels (cumsum, wealth, SHA-256) from tolerance kernels (EMA/RSI/book-OLS) | — |
 | `northset/` | All 9 modules: estimators (Kyle/Roll/Parkinson/GK/RS/YZ/CS/AR/CKS/BNS formula-verified), CKS OFI, sweep battery (executable next-open timing, cross-sectional demeaning, PIT vol regimes, matched eligible controls, predeclared primary test) | #317 flat-bar junk + VPIN remainder |
@@ -56,12 +57,6 @@ honest labeling (SYNTHETIC forced, forbidden metrics gated), and durable writes
 | `stress/` | replay/reverse/bootstrap/garch_copula/jumps | — |
 | `utils/` | Hashing, atomic io | #161 selector injection, #332 fingerprint framing |
 | `validation/` | Purging/embargo/CPCV/walk-forward/FDR line-by-line vs papers | #211 (P6.2 audit + 22 KATs) |
-
-## In progress (child lanes)
-
-| Directory | Status |
-|---|---|
-| `models/` (142 modules) | Child session `b95e8bcbd3a0426285a47725ec48086c` — estimator-by-estimator verification |
 
 ## Deferred findings (audited, fix pending)
 
