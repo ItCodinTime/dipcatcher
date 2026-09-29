@@ -10,7 +10,7 @@ Append-only index of acceptance-criteria versions. Each version lives in
 | v2 | 2026-09-25 | v1 + full 23-command harness registry, multi-source corpus (notebooks/ledgers), eval task bank, model cards + ship gate, inference backends, expanded CLI, Makefile targets | deeper coverage of turnover; 45 tests |
 | v3 | 2026-09-25 | v2 + data quality gates, traces, DPO pairs, training receipts, statistical ship gate, cluster specs, staged pipeline, CI, tracking | industry-grade machinery; 56 tests |
 | v4 | 2026-09-25 | v3 + hypothesis traces, reward model, curriculum, red-team suite, Dip Quality Score bench, cited serving, CLI additions | research-loop + flagship bench; 68 tests |
-| v5 | 2026-09-25 | uniqueness deep research: audit + 6-domain landscape + 4 sequenced moves + boundaries; standalone report deliverable | research deliverable, not code |
+| — | 2026-09-25 | uniqueness deep research: audit + 6-domain landscape + 4 sequenced moves + boundaries; standalone report deliverable | research milestone — not an acceptance version |
 | v5 | 2026-09-25 | four uniqueness moves: leakage-proof eval (masking/memory-gap/time-partition/contamination audit), attested inference (signing/TEE/zkML), hash-chained corpus ledger, MRM dossier | 84 tests |
 | v6 | 2026-09-25 | auditor-grade: mypy gate, e2e lifecycle test, hypothesis property tests, SECURITY.md, architecture doc, API stability policy, SBOM generation | 91 tests, triple gate |
 | v7 | 2026-09-25 | professional datasource layer: 18-source registry, adapters (agent-gw/xhcj/finance-fetch/MCP), routing, PIT/leakage ingest gate, hash-chained provenance, live verification | 137 tests |
