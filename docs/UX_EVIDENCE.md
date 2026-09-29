@@ -83,3 +83,31 @@ Named enum violations always list the valid values. Structural verifier
 errors come back as machine-readable error lists rather than prose. No bare
 `except:` → silent-failure paths were found on the CLI surface; the audit lane
 (`reality`, `proof`, `proofcore`, `leakage`) all exit non-zero on violation.
+
+## Real-data spine (Yahoo EOD, 13 names incl. SPY benchmark)
+
+Every read-side command exercised end-to-end on a real collected tape
+(2026-09-28, `collect --source yahoo`, 5,148 bars, `source: parquet`):
+
+| Command | Result |
+|---|---|
+| `collect` | `raw/sources/yahoo.parquet` + sidecar receipt (5,148 rows) |
+| `promote-bars` | sealed `bar_promotion.v1` receipt; `verify-receipt` → `valid: true` |
+| `ingest` | silver bars + universe + `data_manifest.json` |
+| `build-features` / `build-labels` | 5,096 × 199 gold features, labels with `label_end_time_*` |
+| `train ranking --model ridge` | sealed `model_artifact.v1`; 4,823 rows × 42 features, 120 IC dates, evidence report |
+| `forecast` | per-name alpha + Mondrian-CQR intervals |
+| `optimize` | ledoit_wolf_2004_linear weights, causal as-of |
+| `backtest` | 390 gold-panel decision dates, 4,861 fills, Kupiec/Christoffersen/Acerbi–Szekely, `research_only`/`live_pnl_claim=false` stamps |
+| `execution-sensitivity` | latency×impact grid over the same causal dates |
+| `paper --max-steps 5` | full run dir: orders/equity/positions/cash_ledger/broker_state/promotion_dry_run, `PAPER_SIMULATED` labels |
+| `validate ridge` | correctly fails closed — `evidence_complete: false`, `research_receipt_valid: false` |
+| `research` | full proprietary bench suite: split BH-FDR families, 549 discovery DM tests, conformal coverage (~0.90 on 0.95 target), e-process, jackknife+, northset microstructure |
+| `audit-record` + `verify-ledger` | 327-entry hash-chained ledger, signed Merkle root, `unsigned_suffix: 0` |
+| `audit-trace` | receipt metric → ledger entry 0 with valid inclusion proof |
+| `doctor` | all checks `ok`; `research_receipt: missing` reported, not raised |
+
+Two real defects this run caught and fixed: the `backtest`/`paper`/`POST /backtest`
+decision grid was never intersected with the gold panel (#363 — the command
+raised on warmup dates), and `build_labels` silently emitted all-null
+`future_excess_return_*` when the configured benchmark had no tape rows (#364).
