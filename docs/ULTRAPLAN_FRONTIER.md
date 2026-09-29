@@ -217,8 +217,22 @@ Each: pinned artifact + sha256, zero-shot, native output honored
 
 - [ ] P2.1 `moirai2` — Salesforce/moirai-2.0-R-small via uni2ts; quantile
       head maps directly onto our CRPS/pinball path.
-- [ ] P2.2 `tirex2` — NX-AI TiRex-2; prefer a decontaminated checkpoint for
+- [~] P2.2 `tirex2` — NX-AI TiRex-2; prefer a decontaminated checkpoint for
       the fev-bench/GIFT overlap question; sample-path → distribution.
+      Adapter landed: `Tirex2Distribution` (`models/tirex2.py`) — lazy
+      fail-closed import, causal-window `predict_from_history`, registered
+      in `FLEET_HEAD_REGISTRY`. Dep evidence: `tirex-2>=0.3.0` (Apache-2.0)
+      resolved into uv.lock on 2026-09-29 (+einops, flashrnn,
+      mlstm-kernels, ninja, safetensors, triton-windows marker, xlstm —
+      universal/multiplatform wheels; `tirex` on PyPI is an unrelated DR
+      package and `tirex-ts` is the TiRex-1 lineage that cannot load
+      TiRex-2 checkpoints). Weights (~380M) download from HF on first
+      `fit`; `model_id` accepts the decontaminated
+      `NX-AI/TiRex-2-gifteval-zs` / `NX-AI/TiRex-2-fevbench` checkpoints
+      for benchmark-overlap cells. Quantile grid is the checkpoint's
+      native `{0.1,…,0.9}` — off-grid taus fail closed (no interpolation),
+      so the default 7-point fleet grid is not honored; score with
+      `--taus` on native levels. Fleet cell open pending a scored run.
 - [ ] P2.3 `sundial` — THU-MT flow-matching; sample paths → empirical dist.
 - [ ] P2.4 `toto` — Datadog Toto if public weights resolve; else document
       unavailable.

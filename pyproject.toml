@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-nn = ["torch>=2.4"]
+nn = ["torch>=2.4", "tirex-2>=0.3.0"]
 # shap 0.52 pins numba<0.63 on darwin x86_64, and that numba pins numpy<2.4.
 # Keeping shap there forks uv.lock into numpy 2.3.5 and 2.5.3. Phase-1
 # rejects a duplicated locked runtime package, so the extra is omitted on

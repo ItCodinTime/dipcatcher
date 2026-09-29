@@ -1,6 +1,6 @@
 {
   "generator": "scripts/gen_arch_diagrams.py",
-  "module_count": 735,
+  "module_count": 736,
   "module_edges": [
     {
       "dst": "fx1.bench.dip",
@@ -3583,6 +3583,10 @@
       "src": "quant_fund.models.tail"
     },
     {
+      "dst": "quant_fund.models.base",
+      "src": "quant_fund.models.tirex2"
+    },
+    {
       "dst": "quant_fund.compute.cache",
       "src": "quant_fund.models.volatility"
     },
@@ -6263,6 +6267,10 @@
       "src": "quant_fund.research.fleet_eval"
     },
     {
+      "dst": "quant_fund.models.tirex2",
+      "src": "quant_fund.research.fleet_eval"
+    },
+    {
       "dst": "quant_fund.research.catalog",
       "src": "quant_fund.research.fleet_eval"
     },
@@ -7599,6 +7607,7 @@
     "quant_fund.models.term_structure",
     "quant_fund.models.theta",
     "quant_fund.models.threshold",
+    "quant_fund.models.tirex2",
     "quant_fund.models.trade_sign",
     "quant_fund.models.tukey_gh",
     "quant_fund.models.var_coint",
@@ -8713,7 +8722,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 65,
+      "imports": 66,
       "src": "quant_fund.models"
     },
     {
@@ -9188,7 +9197,7 @@
     },
     {
       "dst": "quant_fund.models",
-      "imports": 57,
+      "imports": 58,
       "src": "quant_fund.research"
     },
     {
