@@ -31,6 +31,18 @@ def _rankic_body() -> dict[str, Any]:
         "live_pnl_claim": False,
         "n_rows": 1,
         "n_error_rows": 0,
+        "n_assets": 8,
+        "n_dates": 40,
+        "challengers": ["momentum"],
+        "horizons": [5],
+        "panels": {
+            "panel_a": {
+                "signal_sha256": "a" * 64,
+                "forward_sha256": {"5": "b" * 64},
+                "n_assets": 8,
+                "n_dates": 40,
+            }
+        },
         "results": [
             {
                 "shard": "panel_a",
@@ -38,6 +50,15 @@ def _rankic_body() -> dict[str, Any]:
                 "horizon": 5,
                 "n_dates": 40,
                 "status": "ok",
+                "error": "",
+                "mean_spearman": 0.1,
+                "mean_pearson": 0.1,
+                # 2 * t.sf(1.0, df=39) — the lane contract re-derives it.
+                "p_spearman": 0.3234749451713832,
+                "t_spearman": 1.0,
+                "t_pearson": 1.0,
+                "icir_pearson": 0.2,
+                "icir_ann_pearson": 3.2,
             }
         ],
     }
@@ -51,12 +72,27 @@ def _capacity_body() -> dict[str, Any]:
         "live_pnl_claim": False,
         "dev_only": True,
         "n_rows": 1,
+        "n_error_rows": 0,
+        "books": [
+            {
+                "name": "sleeve_a",
+                "adv_sha256": "a" * 64,
+                "weights_sha256": "b" * 64,
+                "n_dates": 30,
+                "n_names": 10,
+            }
+        ],
         "results": [
             {
                 "book": "sleeve_a",
                 "aum": 1e9,
                 "participation_cap": 0.1,
                 "status": "ok",
+                "feasible": 1,
+                "max_participation": 0.05,
+                "mean_participation": 0.02,
+                "days_to_trade": 0.5,
+                "impact_bps": 3.0,
             }
         ],
     }
