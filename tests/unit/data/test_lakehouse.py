@@ -84,6 +84,16 @@ def test_content_address_hashes_bytes_and_lfs_oid(tmp_path: Path) -> None:
     assert lfs.stored_sha256 == hash_bytes(pointer.read_bytes())
     assert lfs.stored_sha256 != oid
 
+    crlf = tmp_path / "crlf.parquet"
+    crlf.write_bytes(
+        b"version https://git-lfs.github.com/spec/v1\r\n"
+        + f"oid sha256:{oid}\r\nsize 42\r\n".encode("ascii")
+    )
+    crlf_address = content_address(crlf)
+    assert crlf_address.kind == "lfs_pointer"
+    assert crlf_address.content_sha256 == oid
+    assert crlf_address.declared_size == 42
+
 
 def test_concurrent_lake_publish_is_idempotent_and_leaves_no_temp_files(tmp_path: Path) -> None:
     source = tmp_path / "source.parquet"

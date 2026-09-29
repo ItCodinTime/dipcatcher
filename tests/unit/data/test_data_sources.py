@@ -217,8 +217,15 @@ def test_write_source_frame_path_guards(tmp_path) -> None:
     for bad_source in ("", ".", "..", "a/b", "a\\b"):
         with pytest.raises(SourceError):
             write_source_frame(frame, tmp_path, bad_source)
-    with pytest.raises(SourceError, match="relative"):
-        write_source_frame(frame, tmp_path, "fred", filename="/etc/x.parquet")
+    for absolute_name in (
+        "/etc/x.parquet",
+        "C:\\etc\\x.parquet",
+        "C:x.parquet",
+        "\\etc\\x.parquet",
+        "\\\\host\\share\\x.parquet",
+    ):
+        with pytest.raises(SourceError, match="relative"):
+            write_source_frame(frame, tmp_path, "fred", filename=absolute_name)
     with pytest.raises(SourceError, match="escapes"):
         write_source_frame(frame, tmp_path, "fred", filename="../x.parquet")
     with pytest.raises(SourceError, match=".parquet"):
