@@ -185,6 +185,7 @@ nav:
       - Explainability: EXPLAINABILITY.md
       - Reality pre-registration: REALITY_PREREGISTRATION.md
       - Reality trial 2026: REALITY_TRIAL_2026.md
+      - Recorded trial batches: research/findings.md
   - Operations:
       - Platform matrix: PLATFORM_MATRIX.md
       - Runbook: OPERATIONS_RUNBOOK.md
