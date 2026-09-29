@@ -522,11 +522,11 @@ def test_volume_over_range_rejects_missing_columns() -> None:
         volume_over_range(bars)
 
 
-def test_volume_over_range_floor_keeps_zero_range_finite() -> None:
-    """high == low divides by the 1e-12 floor → huge but finite."""
+def test_volume_over_range_flat_bar_is_undefined() -> None:
+    """high == low is an undefined liquidity proxy — null, not volume / 1e-12 junk."""
     bars = _bars({"S0": [(10.0, 10.0, 10.0, 10.0), (10.0, 12.0, 10.0, 11.0)]}, volume=1e6)
     out = volume_over_range(bars.sort("event_time"))
-    assert out["volume_over_range"][0] == pytest.approx(1e6 / 1e-12)
+    assert out["volume_over_range"][0] is None
     assert out["volume_over_range"][1] == pytest.approx(1e6 / 2.0)
 
 
@@ -722,17 +722,20 @@ def test_vpin_proxy_count_window_matches_rolling_toxicity() -> None:
 
 
 def test_vpin_proxy_bucket_volume_clock_carries_last_value() -> None:
-    """500-vol buckets on CKS buy/sell legs. t1 stays short of a bucket."""
+    """500-vol buckets on CKS buy/sell legs; crossing rows split by mix."""
     out = vpin_proxy(_vpin_test_book().sort("event_time"), bucket_volume=500.0, window=3)
     vpin = out["vpin"].to_list()
     assert vpin[0] != vpin[0] or vpin[0] is None  # no signed flow yet
     assert vpin[1] != vpin[1] or vpin[1] is None  # buy 300 + sell 100 = 400 < 500
-    # t2 completes: acc buy 300, sell 600 → |300−600|/900
-    assert vpin[2] == pytest.approx(1.0 / 3.0)
-    # t3 completes a new bucket: buy 700, sell 0
-    assert vpin[3] == pytest.approx((1.0 / 3.0 + 1.0) / 2.0)
-    # t4 completes: buy 150, sell 400 → |150−400|/550; window keeps 3 buckets
-    assert vpin[4] == pytest.approx((1.0 / 3.0 + 1.0 + 5.0 / 11.0) / 3.0)
+    # t2 (buy 0 / sell 500): bucket is acc(300/600) minus the carried 400-sell
+    # remainder → |(300)−(200)| / 500 = 0.2
+    assert vpin[2] == pytest.approx(0.2)
+    # t3 (buy 700 / sell 0) fills two buckets: |(700−600)−(400−0)|/500 = 0.6,
+    # then |(600−100)−0|/500 = 1.0 → running mean (0.2 + 0.6 + 1.0)/3 = 0.6
+    assert vpin[3] == pytest.approx(0.6)
+    # t4 (buy 150 / sell 400): in-bucket buy = 250 − 450/11, sell = 400 − 1200/11
+    # → tox 9/55 ≈ 0.1636; window-3 mean = (0.6 + 1.0 + 9/55)/3
+    assert vpin[4] == pytest.approx((0.6 + 1.0 + 9.0 / 55.0) / 3.0)
 
 
 def test_vpin_proxy_bucket_clock_is_per_security() -> None:
@@ -752,4 +755,11 @@ def test_vpin_proxy_bucket_clock_is_per_security() -> None:
     assert s0[0] != s0[0] or s0[0] is None
     assert all(v == pytest.approx(0.0) for v in s0[1:])
     assert s1[0] != s1[0] or s1[0] is None
-    assert all(v == pytest.approx(15.0 / 16.0) for v in s1[1:])
+    # 320-vol rows on a 100 bucket fill 3 buckets each; the crossing
+    # remainder carries into the next bucket split by the row's own mix.
+    # t1: three pure buckets tox 15/16. t2's first bucket blends t1's
+    # buy-heavy remainder → 0.5625 before two 15/16 buckets; t3's first
+    # blends t2's sell-heavy remainder → 0.1875 then two 15/16 buckets.
+    assert s1[1] == pytest.approx(15.0 / 16.0)
+    assert s1[2] == pytest.approx((5 * (15.0 / 16.0) + 0.5625) / 6.0)
+    assert s1[3] == pytest.approx((7 * (15.0 / 16.0) + 0.5625 + 0.1875) / 9.0)
