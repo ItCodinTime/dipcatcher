@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -433,3 +434,52 @@ def run_sota_protocol(
     _atomic_write_text(dest, json.dumps(payload, indent=2, sort_keys=True) + "\n")
     payload["receipt_path"] = str(dest)
     return payload
+
+
+SOTA_RECEIPT_REQUIRED_KEYS = (
+    "protocol_id",
+    "protocol_sha256",
+    "frozen",
+    "data_source",
+    "g1",
+    "promotion",
+    "receipt_sha256",
+)
+
+
+def sota_receipt_contract_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Contract errors for a written ``sota_receipt.json`` payload."""
+    errors = [key for key in SOTA_RECEIPT_REQUIRED_KEYS if key not in receipt]
+    if receipt.get("research_only") is not True:
+        errors.append("research_only")
+    if receipt.get("execution_claim") != "research_only":
+        errors.append("execution_claim")
+    if receipt.get("claim") != "research_metric_only":
+        errors.append("claim")
+    if receipt.get("live_pnl_claim") is True:
+        errors.append("live_pnl_claim")
+    if not family_blob_forbidden_metrics_absent(dict(receipt)):
+        errors.append("forbidden_metrics")
+    return errors
+
+
+def sota_receipt_seal_errors(receipt: Mapping[str, Any]) -> list[str]:
+    """Digest errors for a written receipt (``receipt_path`` is post-seal)."""
+    unsigned = {
+        key: value
+        for key, value in receipt.items()
+        if key not in ("receipt_sha256", "receipt_path")
+    }
+    expected = hash_bytes(canonical_json_bytes(unsigned))
+    return [] if receipt.get("receipt_sha256") == expected else ["receipt_sha256"]
+
+
+def verify_sota_receipt(path: str | Path) -> list[str]:
+    """Fail-closed verification of a written ``sota_receipt.json`` file."""
+    try:
+        loaded = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"unreadable:{exc}"]
+    if not isinstance(loaded, dict):
+        return ["not_an_object"]
+    return sota_receipt_contract_errors(loaded) + sota_receipt_seal_errors(loaded)
