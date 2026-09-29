@@ -199,3 +199,51 @@ def test_non_finite_float_payload_fails_closed(value: float) -> None:
     result = verify_receipt_payload(sealed)
     assert not result["valid"]
     assert result["errors"]
+
+
+def test_envelope_shaped_non_fleet_payload_skips_fleet_contract() -> None:
+    """Adjacent lanes share the results/models/shards/n_eval envelope; the
+    fleet fingerprint must key on the scored grid, or calibration_eval.v1
+    (and any future eval lane) gets fleet contract errors it cannot satisfy."""
+    payload = {
+        "schema": "calibration_eval.v1",
+        "kind": "calibration_eval",
+        "data_label": "SYNTHETIC",
+        "live_pnl_claim": False,
+        "n_eval": 64,
+        "models": ["a", "b"],
+        "shards": {"iid": {"x_sha256": "0" * 64}},
+        "results": [{"shard": "iid", "model": "a", "status": "ok", "pit_bins": 10}],
+    }
+    errors = verify_receipt_payload(seal_receipt(payload))["errors"]
+    assert "schema_not_fleet_eval_v1" not in errors
+    assert not any(error.startswith("row_missing_pinball") for error in errors)
+
+
+def test_scored_grid_payload_under_renamed_schema_is_fleet_checked() -> None:
+    """The fingerprint side of the same rule: a payload whose results carry
+    the fleet scored grid gets the fleet contract no matter what schema it
+    claims — renaming must not evade the deep checks."""
+    forged = seal_receipt(
+        {
+            "schema": "renamed.v1",
+            "kind": "other",
+            "data_label": "SYNTHETIC",
+            "live_pnl_claim": False,
+            "n_eval": 4,
+            "models": ["m"],
+            "shards": {"s": {}},
+            "results": [
+                {
+                    "shard": "s",
+                    "model": "m",
+                    "family": "distribution",
+                    "status": "ok",
+                    "pinball_0.5": 0.1,
+                    "crps": 0.2,
+                }
+            ],
+        }
+    )
+    errors = verify_receipt_payload(forged)["errors"]
+    assert "schema_not_fleet_eval_v1" in errors

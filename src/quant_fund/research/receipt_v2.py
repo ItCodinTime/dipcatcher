@@ -387,12 +387,22 @@ def _looks_like_fleet_eval(body: object) -> bool:
     attacker-controlled, and a reseal costs nothing (the digest is a public
     sha256), so renaming them must not evade the deep contract checks.
     """
-    return (
+    if not (
         isinstance(body, Mapping)
         and isinstance(body.get("results"), list)
         and isinstance(body.get("models"), list)
         and isinstance(body.get("shards"), dict)
         and "n_eval" in body
+    ):
+        return False
+    # Adjacent eval lanes (calibration_eval.v1, coherence_eval.v1) share the
+    # results/models/shards envelope — the discriminating signature is the
+    # scored grid itself: fleet rows carry per-tau pinball cells and crps.
+    return any(
+        isinstance(row, Mapping)
+        and row.get("status") is not None
+        and ("crps" in row or any(key.startswith("pinball_") for key in row))
+        for row in body["results"]
     )
 
 
