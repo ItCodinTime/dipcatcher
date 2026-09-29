@@ -395,15 +395,22 @@ def _looks_like_fleet_eval(body: object) -> bool:
         and "n_eval" in body
     ):
         return False
-    # Adjacent eval lanes (calibration_eval.v1, coherence_eval.v1) share the
-    # results/models/shards envelope — the discriminating signature is the
-    # scored grid itself: fleet rows carry per-tau pinball cells and crps.
-    return any(
-        isinstance(row, Mapping)
+    # Adjacent eval lanes (calibration_eval.v1, coherence_eval.v1,
+    # hstep_bench.v1) share the results/models/shards envelope — the
+    # discriminating signature is the scored grid itself: fleet rows carry
+    # per-tau pinball cells and crps. Multi-horizon lanes carry a per-row
+    # ``horizon`` / top-level ``horizons`` — fleet_eval is single-horizon by
+    # construction, so those are not fleet receipts.
+    if "horizons" in body:
+        return False
+    scored = [
+        row
+        for row in body["results"]
+        if isinstance(row, Mapping)
         and row.get("status") is not None
         and ("crps" in row or any(key.startswith("pinball_") for key in row))
-        for row in body["results"]
-    )
+    ]
+    return bool(scored) and all("horizon" not in row for row in scored)
 
 
 def _looks_like_v2_envelope(payload: Mapping[str, Any]) -> bool:

@@ -47,7 +47,11 @@ def _walk_mutations(node: Any, path: tuple[Any, ...] = ()) -> list[tuple[tuple[A
     elif isinstance(node, bool):
         out.append((path, not node))
     elif isinstance(node, (int, float)):
-        out.append((path, node + 1 if isinstance(node, int) else node * 1.001))
+        if isinstance(node, int):
+            out.append((path, node + 1))
+        else:
+            # 0.0 * 1.001 == 0.0 — zero floats need an additive mutation.
+            out.append((path, node * 1.001 if node != 0 else 1.0))
         out.append((path, -node if node != 0 else 1))
     elif isinstance(node, str):
         out.append((path, node + "x"))
