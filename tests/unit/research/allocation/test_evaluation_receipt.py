@@ -91,7 +91,10 @@ def test_realized_vol_known_answer_constant_forward_block() -> None:
 
 def test_vol_target_ex_ante_hits_target() -> None:
     returns = _returns(t=140, n=4)
-    cons = AllocationConstraints(leverage_cap=10.0)
+    # Non-binding constraints: the ex-ante target check requires the scale
+    # factor to be unconstrained — window 3 needs leverage ~10x, which
+    # per-asset max_weight=1.0 would clip on this fixture.
+    cons = AllocationConstraints(leverage_cap=1e6, max_weight=1e6)
     ev = run_walk_forward(
         returns, "vol_target", window=40, step=20, target_vol=0.02, constraints=cons
     )
