@@ -215,8 +215,17 @@ fleet contract.
 Each: pinned artifact + sha256, zero-shot, native output honored
 (quantile/sample/path), per-model coverage disclosed.
 
-- [ ] P2.1 `moirai2` — Salesforce/moirai-2.0-R-small via uni2ts; quantile
-      head maps directly onto our CRPS/pinball path.
+- [~] P2.1 `moirai2` — Salesforce/moirai-2.0-R-small via uni2ts; quantile
+      head maps directly onto our CRPS/pinball path. Adapter landed:
+      `Moirai2Distribution` (`models/moirai2.py`) — lazy fail-closed
+      import, `availability()` gate, causal-window `predict_from_history`,
+      registered in `FLEET_HEAD_REGISTRY`. Dep evidence: `uv add uni2ts`
+      fails resolution — every published uni2ts (1.1.0–2.0.0) pins
+      `scipy>=1.11.3,<1.12.dev0` and `numpy~=1.26.0` against pinned
+      `scipy>=1.14` / `numpy>=2.0` (upstream main pins the same ranges, so
+      git install does not help either), plus `gluonts~=0.14.3` → `toolz<1`
+      vs `exchange-calendars==4.13.2` → `toolz>=1`. Lane stays fail-closed
+      until upstream loosens. Fleet cell open pending a resolvable dep.
 - [ ] P2.2 `tirex2` — NX-AI TiRex-2; prefer a decontaminated checkpoint for
       the fev-bench/GIFT overlap question; sample-path → distribution.
 - [ ] P2.3 `sundial` — THU-MT flow-matching; sample paths → empirical dist.
