@@ -151,6 +151,22 @@ def load(path):
     return pl.read_parquet(path)
 """
 
+LH009_ALIASED_POSITIVE = """
+from polars import read_parquet as load_frame
+
+
+def load(path):
+    return load_frame(path)
+"""
+
+LH009_DATA_LAYER_NEGATIVE = """
+from quant_fund.data.lake import Lake
+
+
+def load(lake: Lake):
+    return lake.read_parquet("gold/features.parquet")
+"""
+
 LH010_POSITIVE = """
 def clean(frame):
     frame = frame.sort("event_time")
@@ -179,6 +195,7 @@ LH012_POSITIVE = "def broken(:\n"
         (LH007_POSITIVE_DIRECT, "LH007"),
         (LH008_POSITIVE, "LH008"),
         (LH009_POSITIVE, "LH009"),
+        (LH009_ALIASED_POSITIVE, "LH009"),
         (LH010_POSITIVE, "LH010"),
     ],
 )
@@ -199,6 +216,7 @@ def test_rule_positive_catch(tmp_path: Path, source: str, rule_id: str) -> None:
         (LH006_NEGATIVE, "LH006"),
         (LH007_NEGATIVE, "LH007"),
         (LH008_NEGATIVE_DOCSTRING, "LH008"),
+        (LH009_DATA_LAYER_NEGATIVE, "LH009"),
         (LH010_NEGATIVE, "LH010"),
     ],
 )
@@ -207,12 +225,12 @@ def test_rule_clean_negative(tmp_path: Path, source: str, rule_id: str) -> None:
     assert rule_id not in _rule_ids(report), f"{rule_id} false positive: {report.findings}"
 
 
-def test_lh009_is_warning_only_this_wave(tmp_path: Path) -> None:
-    """Adjudicated: LH009 ships as WARNING until the call-site migration."""
+def test_lh009_is_blocking_after_callsite_migration(tmp_path: Path) -> None:
+    """Direct Polars reads outside the data boundary fail the gate."""
     report = _scan(tmp_path, LH009_POSITIVE)
     findings = [f for f in report.findings if f.rule_id == "LH009"]
-    assert findings and all(f.severity == "warning" for f in findings)
-    assert report.errors == 0 and report.warnings == 1
+    assert findings and all(f.severity == "error" for f in findings)
+    assert report.errors == 1 and report.warnings == 0
 
 
 def test_lh009_exempt_inside_data_layer(tmp_path: Path) -> None:

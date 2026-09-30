@@ -180,9 +180,11 @@ _NONNUMERIC_TEXT = st.text(min_size=1).filter(lambda s: not _is_finite_float_tex
 def test_non_numeric_fields_fail_closed(
     batch: list[dict[str, object]], field: str, bad: object
 ) -> None:
-    """Non-numeric vendor values (garbage strings, None, bytes) raise SourceError."""
+    """Non-numeric or text-encoded non-finite vendor values fail closed."""
     batch[0][field] = bad
-    with pytest.raises(SourceError, match="not numeric"):
+    # Strings such as ``"INF"`` are accepted by ``float`` but must still be
+    # rejected by the subsequent finite-value guard.
+    with pytest.raises(SourceError, match="not numeric|not finite"):
         normalize_ohlcv(batch, source="fault")
 
 

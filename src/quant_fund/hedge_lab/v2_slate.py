@@ -35,6 +35,7 @@ import yaml
 from numpy.typing import NDArray
 
 from quant_fund.config import load_config
+from quant_fund.data.parquet import read_derived_parquet
 from quant_fund.hedge_lab.directional import close_matrix, simple_returns, topk_long_returns
 from quant_fund.hedge_lab.gated_race import slice_ic_window
 from quant_fund.hedge_lab.lightspeed_book import _align_ic, _date_key, _ic_card
@@ -459,7 +460,11 @@ def run_lane2(
 
 def _book_inputs(cfg: Any) -> tuple[list[Any], dict[str, Array]]:
     """Frozen top-5 12-1 inputs: pivot total-return closes from gold labels."""
-    labels = pl.read_parquet(Path(cfg.data.root) / "gold" / "labels.parquet")
+    labels = read_derived_parquet(
+        Path(cfg.data.root) / "gold" / "labels.parquet",
+        dataset="v2 slate gold labels",
+        required_columns=("event_time", "security_id"),
+    )
     price = "close_total_return" if "close_total_return" in labels.columns else "close"
     sub = labels.select(["event_time", "security_id", price]).drop_nulls()
     piv = sub.pivot(index="event_time", on="security_id", values=price).sort("event_time")

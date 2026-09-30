@@ -31,6 +31,7 @@ import numpy as np
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.parquet import read_market_parquet
 from quant_fund.metrics.returns import annualized_vol, sharpe_ratio
 from quant_fund.paper.loop import PaperLoopResult, run_paper_loop
 from quant_fund.paper.quantile_signals import (
@@ -232,7 +233,12 @@ def run_sim_live(
     if any(s.policy.fund_cut is not None for s in slots):
         fund_path = bars_root / "btcusdt.funding.parquet"
         if fund_path.is_file():
-            fund = pl.read_parquet(fund_path).sort("event_time")
+            fund = read_market_parquet(
+                fund_path,
+                dataset="BTC funding history",
+                required_columns=("event_time", "value"),
+                allow_empty=True,
+            ).sort("event_time")
             f_times = fund["event_time"].to_list()
             f_vals = fund["value"].to_numpy().astype(float)
             ref_times = per_sid.get(

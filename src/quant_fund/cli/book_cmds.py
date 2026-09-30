@@ -152,9 +152,9 @@ def vendor_book_map_cmd(
     if columns.strip():
         cols = [c.strip() for c in columns.split(",") if c.strip()]
     elif parquet is not None:
-        import polars as pl
+        from quant_fund.data.parquet import read_vendor_parquet
 
-        cols = list(pl.read_parquet(parquet).columns)
+        cols = list(read_vendor_parquet(parquet, dataset=f"{key} vendor quote columns").columns)
     else:
         # Show alias table only
         typer.echo(f"vendor={key}")
@@ -165,11 +165,10 @@ def vendor_book_map_cmd(
     typer.echo(format_data_label(synthetic=True, data_source="SYNTHETIC"))
     typer.echo(json.dumps(report.as_dict(), indent=2, default=str))
     if parquet is not None:
-        import polars as pl
-
+        from quant_fund.data.parquet import read_vendor_parquet
         from quant_fund.microstructure.book_panel import write_book_panel
 
-        raw = pl.read_parquet(parquet)
+        raw = read_vendor_parquet(parquet, dataset=f"{key} vendor quotes")
         panel = remap_vendor_quotes_to_panel(raw, vendor=key)
         dest = out or Path("data/book_panel/vendor_remapped.parquet")
         path = write_book_panel(panel, dest)
@@ -251,10 +250,11 @@ def northset(
     if book is not None:
         panel_path = book
         if vendor is not None:
+            from quant_fund.data.parquet import read_vendor_parquet
             from quant_fund.microstructure.book_panel import write_book_panel
             from quant_fund.microstructure.vendor_book_map import remap_vendor_quotes_to_panel
 
-            raw = pl.read_parquet(book)
+            raw = read_vendor_parquet(book, dataset=f"{vendor} vendor order book")
             panel = remap_vendor_quotes_to_panel(raw, vendor=vendor.strip().lower())
             panel_path = book.with_name(book.stem + f"_remapped_{vendor.strip().lower()}.parquet")
             write_book_panel(panel, panel_path)

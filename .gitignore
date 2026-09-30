@@ -75,8 +75,13 @@ rust/quant_core/target/
 # Derived wide-panel data — regenerate via data engine, never commit (AGENTS.md).
 data/file_us_wide/**
 # 24x7 derived eval dumps + simulated paper ledgers — evidence text stays tracked.
-.dsh-24x7/eval-full/**
-.dsh-24x7/paper_data/**
+# Day-grind outputs are generated research artifacts, not source. Historical
+# tracked files remain readable until the coordinated archive/history rewrite,
+# but new runs must not grow the repository further.
+.dsh-24x7/**
+!.dsh-24x7/HANDOFF.md
+!.dsh-24x7/PROGRESS.md
+!.dsh-24x7/PROOF.md
 # mutmut work tree (scores are written by scripts/mutation_score.py)
 mutants/
 # PROOFCORE artifacts (DESIGN.md §13): proof bundles + provenance duckdb are

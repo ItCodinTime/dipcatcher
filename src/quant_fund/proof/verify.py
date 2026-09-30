@@ -9,13 +9,11 @@ trade-log bytes via ``metrics/returns.py`` and compared against
 
 from __future__ import annotations
 
-import io
 import json
 import math
 from pathlib import Path
 from typing import Any
 
-import polars as pl
 from pydantic import BaseModel, ValidationError
 
 from quant_fund.proof.bundle import (
@@ -178,6 +176,10 @@ def _check_metrics_recompute(
     reasons: list[str],
 ) -> dict[str, bool]:
     """Check 7 (A1 F2): RECOMPUTE metrics from trade log bytes and compare."""
+    # Lazy to preserve the PROOFCORE package layering contract. The data
+    # boundary does not import proof, so this edge cannot close a cycle.
+    from quant_fund.data.parquet import read_evidence_parquet
+
     metrics_match: dict[str, bool] = {}
     recorded = bundle.metrics_recompute
     if trade_log_bytes is None:
@@ -186,7 +188,13 @@ def _check_metrics_recompute(
         reasons.append("metrics_recompute:no_trade_log")
         return metrics_match
     try:
-        trade_log = pl.read_parquet(io.BytesIO(trade_log_bytes))
+        trade_log = read_evidence_parquet(
+            trade_log_bytes,
+            dataset="proof trade log",
+            expected_sha256=bundle.trade_log_sha256,
+            required_columns=(),
+            allow_empty=True,
+        )
         recomputed = recompute_headline_metrics(trade_log)
     except Exception as exc:
         for key in METRIC_KEYS:

@@ -14,6 +14,7 @@ import numpy as np
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.parquet import read_derived_parquet
 from quant_fund.data.universe import require_valid_membership_panel, restrict_to_membership
 from quant_fund.models.covariance import repair_psd
 from quant_fund.models.volatility import (
@@ -81,7 +82,12 @@ def _garch_overlay_return_frame(config: AppConfig, frame: pl.DataFrame) -> pl.Da
     path = _universe_artifact_path(config)
     if not path.is_file():
         return frame
-    membership = pl.read_parquet(path)
+    membership = read_derived_parquet(
+        path,
+        dataset="PIT universe membership",
+        required_columns=(),
+        allow_empty=True,
+    )
     require_valid_membership_panel(membership)
     if membership.is_empty():
         raise PointInTimeError(

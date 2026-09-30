@@ -1,9 +1,8 @@
 """Clean-src gate (DESIGN.md §6.4): zero error findings at HEAD.
 
-The per-rule allowlists in leakage/rules.py codify the existing legitimate
-sites; this test is what forces the allowlist to stay explicit. Warning
-findings (LH009 inventory, LH010) are reported but do not fail the gate this
-wave (adjudicated: LH009 flips to error only after the call-site migration).
+The per-rule allowlists in leakage/rules.py codify legitimate sites. LH009 is
+blocking after the role-aware Parquet migration; only human-review rules may
+remain warning severity.
 """
 
 from __future__ import annotations
@@ -28,3 +27,8 @@ def test_new_packages_pass_layering_rule() -> None:
     """pit/proof/leakage/reality/proofcore must obey LH011 at HEAD."""
     report = scan_paths([SRC], rules={"LH011"})
     assert [f for f in report.findings if f.severity == "error"] == []
+
+
+def test_no_direct_parquet_reads_outside_data_boundary() -> None:
+    report = scan_paths([SRC], rules={"LH009"})
+    assert report.findings == []

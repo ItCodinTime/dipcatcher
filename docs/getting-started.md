@@ -19,6 +19,11 @@ make sync
 
 That runs `uv sync --frozen --all-groups --all-extras`. `uv.lock` is authoritative. The `docs` dependency group (MkDocs) is included in `--all-groups` and is omitted from the runtime image, which syncs with `--no-dev`.
 
+Before opening a pull request, run `make pr-gate`. Use `make ci` for the
+complete local CI-parity gate (including coverage, fx-1, documentation,
+architecture, receipts, leakage, and PROOFCORE integrity). `make release-gate`
+adds slow offline tests and reality-filter adjudication.
+
 ## Check the lab
 
 ```bash

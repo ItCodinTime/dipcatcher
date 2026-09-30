@@ -119,20 +119,51 @@ def tearsheet_cmd(
     """
     import json
 
-    import polars as pl
-
+    from quant_fund.data.parquet import read_derived_parquet
     from quant_fund.reporting.tearsheet import (
         build_tearsheet,
         tearsheet_markdown,
         write_tearsheet_md,
     )
 
-    eq = pl.read_parquet(equity)
+    eq = read_derived_parquet(
+        equity,
+        dataset="tearsheet equity",
+        required_columns=(),
+        allow_empty=True,
+    )
     sheet = build_tearsheet(
         eq,
-        fills=pl.read_parquet(fills) if fills is not None else None,
-        weights=pl.read_parquet(weights) if weights is not None else None,
-        bars=pl.read_parquet(bars) if bars is not None else None,
+        fills=(
+            read_derived_parquet(
+                fills,
+                dataset="tearsheet fills",
+                required_columns=(),
+                allow_empty=True,
+            )
+            if fills is not None
+            else None
+        ),
+        weights=(
+            read_derived_parquet(
+                weights,
+                dataset="tearsheet weights",
+                required_columns=(),
+                allow_empty=True,
+            )
+            if weights is not None
+            else None
+        ),
+        bars=(
+            read_derived_parquet(
+                bars,
+                dataset="tearsheet bars",
+                required_columns=(),
+                allow_empty=True,
+            )
+            if bars is not None
+            else None
+        ),
         periods_per_year=periods_per_year,
         label=label,
         synthetic=synthetic,
@@ -173,16 +204,29 @@ def regime_performance_cmd(
     """
     import json
 
-    import polars as pl
-
+    from quant_fund.data.parquet import read_derived_parquet
     from quant_fund.reporting.regime_performance import (
         build_regime_performance_from_equity,
         regime_performance_markdown,
         write_regime_performance_md,
     )
 
-    eq = pl.read_parquet(equity)
-    bench = pl.read_parquet(benchmark) if benchmark is not None else None
+    eq = read_derived_parquet(
+        equity,
+        dataset="regime report equity",
+        required_columns=(),
+        allow_empty=True,
+    )
+    bench = (
+        read_derived_parquet(
+            benchmark,
+            dataset="regime report benchmark",
+            required_columns=(),
+            allow_empty=True,
+        )
+        if benchmark is not None
+        else None
+    )
     report = build_regime_performance_from_equity(
         eq,
         benchmark=bench,

@@ -48,6 +48,8 @@ import numpy as np
 import polars as pl
 from scipy import stats as st
 
+from quant_fund.data.parquet import read_market_parquet
+
 # ---------------------------------------------------------------------------
 # Forecasters: (rets_window, taus) -> quantile vector | raise -> honest skip
 # ---------------------------------------------------------------------------
@@ -765,7 +767,11 @@ def load_deep_bars(
         for suffix in (f"{sym_l}_{interval}_deep.parquet", f"{sym_l}_{interval}.parquet"):
             path = bars_root / suffix
             if path.is_file():
-                return pl.read_parquet(path).with_columns(pl.lit(sym.upper()).alias("security_id"))
+                return read_market_parquet(
+                    path,
+                    dataset=f"deep bars:{sym.upper()}:{interval}",
+                    required_columns=("event_time", "close", "volume"),
+                ).with_columns(pl.lit(sym.upper()).alias("security_id"))
         raise FileNotFoundError(f"{sym}: no {interval} bars under {bars_root}")
 
     frames = map_ordered(

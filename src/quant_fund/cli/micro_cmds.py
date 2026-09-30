@@ -33,9 +33,9 @@ def candle_book(
     Default: SYNTHETIC bars + SYNTHETIC L2. With ``--book``, fuses external/
     vendor-mapped panels (research-only). Not in REQUIRED_BENCHMARK_FAMILIES.
     """
-    import polars as pl
 
     from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
+    from quant_fund.data.parquet import read_market_parquet, read_vendor_parquet
     from quant_fund.microstructure import bench_candle_order_book
     from quant_fund.microstructure.book_panel import load_book_panel, validate_book_panel
     from quant_fund.microstructure.vendor_book_map import remap_vendor_quotes_to_panel
@@ -43,7 +43,7 @@ def candle_book(
     cfg = _cfg(config)
     book_df = None
     if book is not None:
-        raw = pl.read_parquet(book)
+        raw = read_vendor_parquet(book, dataset="candle-book input")
         if vendor:
             book_df = remap_vendor_quotes_to_panel(raw, vendor=str(vendor))
         elif {"best_bid", "best_ask", "security_id", "event_time"} <= set(raw.columns):
@@ -53,7 +53,11 @@ def candle_book(
         else:
             raise typer.BadParameter("pass --vendor for raw quote schemas, or a Northset panel")
     if bars_path is not None:
-        bars = pl.read_parquet(bars_path)
+        bars = read_market_parquet(
+            bars_path,
+            dataset="candle-book bars",
+            required_columns=("event_time", "security_id"),
+        )
     else:
         n_assets = int(getattr(getattr(cfg, "data", None), "n_assets", 8) or 8)
         n_days = int(getattr(getattr(cfg, "data", None), "n_days", 120) or 120)
@@ -237,6 +241,7 @@ def kyle_ofi(
     import polars as pl
 
     from quant_fund.data.adapters.synthetic import SyntheticMarketProvider
+    from quant_fund.data.parquet import read_market_parquet, read_vendor_parquet
     from quant_fund.microstructure.book_panel import load_book_panel, validate_book_panel
     from quant_fund.microstructure.vendor_book_map import remap_vendor_quotes_to_panel
     from quant_fund.northset.kyle_ofi import (
@@ -250,7 +255,7 @@ def kyle_ofi(
     book_panel_path = None
     if book is not None:
         book_panel_path = str(book)
-        raw = pl.read_parquet(book)
+        raw = read_vendor_parquet(book, dataset="Kyle/OFI book input")
         if vendor:
             book_df = remap_vendor_quotes_to_panel(raw, vendor=str(vendor))
         elif {"best_bid", "best_ask", "security_id", "event_time"} <= set(raw.columns):
@@ -260,7 +265,11 @@ def kyle_ofi(
         else:
             raise typer.BadParameter("pass --vendor for raw quote schemas, or a Northset panel")
     if bars_path is not None:
-        bars = pl.read_parquet(bars_path)
+        bars = read_market_parquet(
+            bars_path,
+            dataset="Kyle/OFI bars",
+            required_columns=("event_time", "security_id"),
+        )
     else:
         n_assets = int(getattr(getattr(cfg, "data", None), "n_assets", 8) or 8)
         n_days = int(getattr(getattr(cfg, "data", None), "n_days", 120) or 120)

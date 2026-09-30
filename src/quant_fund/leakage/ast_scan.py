@@ -211,6 +211,27 @@ def _call_name(node: ast.Call) -> str:
     return ""
 
 
+def _polars_import_names(tree: ast.AST) -> tuple[frozenset[str], frozenset[str]]:
+    """Return local names for Polars modules and parquet reader functions.
+
+    LH009 guards direct Polars IO.  Matching every attribute merely named
+    ``read_parquet`` also flags ``Lake.read_parquet``, which is the existing
+    data-layer choke point and therefore the opposite of a bypass.
+    """
+    modules: set[str] = set()
+    readers: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "polars":
+                    modules.add(alias.asname or "polars")
+        elif isinstance(node, ast.ImportFrom) and node.module == "polars":
+            for alias in node.names:
+                if alias.name in _BLOCKED_IO_NAMES:
+                    readers.add(alias.asname or alias.name)
+    return frozenset(modules), frozenset(readers)
+
+
 def _build_parent_map(tree: ast.AST) -> dict[int, ast.AST]:
     parents: dict[int, ast.AST] = {}
     for node in ast.walk(tree):
@@ -661,11 +682,18 @@ def _check_lh009(tree: ast.AST, path_str: str) -> list[_Finding]:
     if "leakage_fixtures" not in path_str and _exempt_by_globs(path_str, LH009_EXEMPT_GLOBS):
         return []
     out: list[_Finding] = []
+    polars_modules, polars_readers = _polars_import_names(tree)
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
         name = _call_name(node)
-        if name in ("read_parquet", "scan_parquet"):
+        direct_polars_reader = (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id in polars_modules
+            and node.func.attr in _BLOCKED_IO_NAMES
+        ) or (isinstance(node.func, ast.Name) and node.func.id in polars_readers)
+        if direct_polars_reader:
             out.append(
                 _Finding(
                     "LH009",
@@ -677,7 +705,13 @@ def _check_lh009(tree: ast.AST, path_str: str) -> list[_Finding]:
         # ADVERSARIAL §1a-E12: getattr(pl, "read_" + "parquet")(path).
         elif name == "getattr" and len(node.args) >= 2:
             attr = _fold_str(node.args[1])
-            if attr is not None and attr in _BLOCKED_IO_NAMES:
+            receiver = node.args[0]
+            if (
+                attr is not None
+                and attr in _BLOCKED_IO_NAMES
+                and isinstance(receiver, ast.Name)
+                and receiver.id in polars_modules
+            ):
                 out.append(
                     _Finding(
                         "LH009",

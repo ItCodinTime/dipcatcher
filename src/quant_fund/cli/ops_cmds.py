@@ -268,8 +268,7 @@ def monitor(
     """Ops snapshot over the latest paper run: limits, staleness, kill state."""
     import json
 
-    import polars as pl
-
+    from quant_fund.data.parquet import read_state_parquet
     from quant_fund.monitoring.dashboard import ops_snapshot, render_markdown
     from quant_fund.paper.ledger import latest_run_id, load_broker_state, paper_root
 
@@ -286,7 +285,12 @@ def monitor(
     nav = peak = None
     asof = None
     if equity_path.is_file():
-        eq = pl.read_parquet(equity_path).sort("asof")
+        eq = read_state_parquet(
+            equity_path,
+            dataset="paper status equity",
+            required_columns=("asof", "nav"),
+            allow_empty=True,
+        ).sort("asof")
         if eq.height:
             nav = float(eq["nav"][-1])
             peak = float(eq["nav"].to_numpy().max())

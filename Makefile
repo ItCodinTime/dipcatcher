@@ -1,4 +1,4 @@
-.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit ci examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke perf-record perf-check
+.PHONY: help test test-full coverage lint typecheck doctor sync fmt security audit pr-gate ci release-gate architecture-check examples evidence native audit-obs docs docs-serve formal simtest simtest-large fx1-test fx1-lint fx1-corpus fx1-corpus-full fx1-eval fx1-gate mc-engine-smoke diffbacktest proofcore-test proofcore-coverage proof-integrity proof-verify leakage-scan reality-gate receipts-reverify pretrade-bench stress-smoke market-sim-test parity-smoke perf-record perf-check
 
 .DEFAULT_GOAL := help
 
@@ -10,10 +10,10 @@ sync: ## Install the locked environment (all groups and extras)
 	uv sync --frozen --all-groups --all-extras
 
 test: ## PR-gate lab tests (not network, not slow; xdist)
-	uv run pytest -n auto --dist loadfile -m "not network and not slow"
+	uv run python scripts/run_pytest.py -n auto --dist loadfile -m "not network and not slow"
 
 test-full: ## Full offline lab suite, including slow tests
-	uv run pytest -n auto --dist loadfile -m "not network"
+	uv run python scripts/run_pytest.py -n auto --dist loadfile -m "not network"
 
 parity-smoke: ## SYNTHETIC backtest/shadow parity smoke (simulated broker only)
 	uv run pytest -q tests/unit/parity
@@ -23,7 +23,7 @@ coverage: ## PR-gate tests + coverage (threshold in pyproject)
 	# Threshold lives in [tool.coverage.report] (pyproject.toml) — no inline
 	# --cov-fail-under so CI and local cannot drift. Sharded CI combines
 	# partial data files and applies the same threshold once.
-	uv run pytest -n auto --dist loadfile -m "not network and not slow" --cov --cov-report=term-missing --cov-report=xml
+	uv run python scripts/run_pytest.py -n auto --dist loadfile -m "not network and not slow" --cov --cov-report=term-missing --cov-report=xml
 
 lint: ## Ruff check + format check on src/ and tests/
 	uv run ruff check src tests
@@ -62,7 +62,14 @@ native: ## Build optional quant_core (Rust + maturin). NumPy stays the fallback.
 evidence: ## Regenerate docs/evidence/index.md from sealed receipts
 	uv run python scripts/build_evidence_report.py
 
-ci: lint typecheck coverage ## Local mirror of the CI gate
+architecture-check: ## Verify generated architecture artifacts and dependency pins
+	uv run python scripts/gen_arch_diagrams.py --check
+
+pr-gate: lint typecheck test fx1-gate docs architecture-check receipts-reverify leakage-scan ## Fast merge gate
+
+ci: lint typecheck coverage fx1-gate docs architecture-check receipts-reverify leakage-scan proofcore-test proof-integrity proof-verify ## Complete local CI parity gate
+
+release-gate: ci test-full reality-gate ## CI plus slow offline tests and evidence adjudication
 
 formal: ## TLC order-lifecycle check + Z3/conformance/stateful tests
 	bash scripts/run_tlc.sh

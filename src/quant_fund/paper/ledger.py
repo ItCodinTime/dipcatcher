@@ -12,6 +12,7 @@ from typing import Any
 
 import polars as pl
 
+from quant_fund.data.parquet import read_state_parquet
 from quant_fund.execution.simulated_broker import BrokerSnapshot, OrderRecord, SimulatedBroker
 from quant_fund.metrics.analytics import analytics_export_digest, validate_analytics_export
 from quant_fund.utils.hashing import hash_bytes, receipt_tree
@@ -200,7 +201,14 @@ class PaperLedger:
         ):
             path = self.root / f"{name}.parquet"
             if path.is_file():
-                target.extend(pl.read_parquet(path).to_dicts())
+                target.extend(
+                    read_state_parquet(
+                        path,
+                        dataset=f"paper ledger {name}",
+                        required_columns=(),
+                        allow_empty=True,
+                    ).to_dicts()
+                )
 
     def set_meta(self, **kwargs: Any) -> None:
         self._meta.update(kwargs)
@@ -313,13 +321,23 @@ class PaperLedger:
         path = self.root / "equity.parquet"
         if not path.is_file():
             return pl.DataFrame()
-        return pl.read_parquet(path)
+        return read_state_parquet(
+            path,
+            dataset="paper equity",
+            required_columns=(),
+            allow_empty=True,
+        )
 
     def load_shadow_equity(self) -> pl.DataFrame:
         path = self.root / "shadow_equity.parquet"
         if not path.is_file():
             return pl.DataFrame()
-        return pl.read_parquet(path)
+        return read_state_parquet(
+            path,
+            dataset="paper shadow equity",
+            required_columns=(),
+            allow_empty=True,
+        )
 
     def write_promotion_dry_run(self, receipt: dict[str, Any]) -> Path:
         """Publish the promotion receipt without exposing a partial JSON file."""
@@ -757,7 +775,12 @@ def validate_ledger_schema(
     equity_rows = None
     if equity_path.is_file():
         try:
-            eq = pl.read_parquet(equity_path)
+            eq = read_state_parquet(
+                equity_path,
+                dataset="paper equity validation",
+                required_columns=(),
+                allow_empty=True,
+            )
             equity_rows = eq.height
             cols = set(eq.columns)
             # Accept either ledger snapshot schema (asof/nav/cash) or loop equity
@@ -777,7 +800,12 @@ def validate_ledger_schema(
     present["shadow_equity.parquet"] = shadow_path.is_file()
     if shadow_path.is_file():
         try:
-            shadow = pl.read_parquet(shadow_path)
+            shadow = read_state_parquet(
+                shadow_path,
+                dataset="paper shadow equity validation",
+                required_columns=(),
+                allow_empty=True,
+            )
             row_counts["shadow_equity"] = shadow.height
             for key in ("event_time", "nav", "gross", "net", "cash", "slot"):
                 if key not in shadow.columns:
@@ -789,7 +817,12 @@ def validate_ledger_schema(
     present["positions.parquet"] = positions_path.is_file()
     if positions_path.is_file():
         try:
-            positions = pl.read_parquet(positions_path)
+            positions = read_state_parquet(
+                positions_path,
+                dataset="paper positions validation",
+                required_columns=(),
+                allow_empty=True,
+            )
             row_counts["positions"] = positions.height
         except Exception as exc:  # noqa: BLE001
             errors.append(f"positions_unreadable:{type(exc).__name__}:{exc}")
@@ -813,7 +846,12 @@ def validate_ledger_schema(
     present["orders.parquet"] = orders_path.is_file()
     if orders_path.is_file():
         try:
-            od = pl.read_parquet(orders_path)
+            od = read_state_parquet(
+                orders_path,
+                dataset="paper orders validation",
+                required_columns=(),
+                allow_empty=True,
+            )
             cols = set(od.columns)
             for key in ("order_id", "security_id", "side", "status"):
                 if key not in cols:
@@ -828,7 +866,12 @@ def validate_ledger_schema(
     present["cash_ledger.parquet"] = cash_path.is_file()
     if cash_path.is_file():
         try:
-            cash = pl.read_parquet(cash_path)
+            cash = read_state_parquet(
+                cash_path,
+                dataset="paper cash ledger validation",
+                required_columns=(),
+                allow_empty=True,
+            )
             cols = set(cash.columns)
             for key in LEDGER_CASH_REQUIRED:
                 if key not in cols:

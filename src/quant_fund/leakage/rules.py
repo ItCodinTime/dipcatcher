@@ -94,12 +94,11 @@ RULE_REGISTRY: dict[str, RuleSpec] = {
     ),
     "LH009": RuleSpec(
         "LH009",
-        "warning",
+        "error",
         "Direct parquet read outside data layer",
         "`pl.read_parquet`/`pl.scan_parquet` outside `data/`/`pit/` bypasses "
         "the PIT choke point (audit A2 F8). Route reads through "
-        "`pit.guarded_read_parquet`. WARNING-only until the call-site "
-        "migration wave lands (adjudicated; flips to error afterwards).",
+        "a role-aware `data.parquet` reader or `pit.guarded_read_parquet`.",
     ),
     "LH010": RuleSpec(
         "LH010",
@@ -305,8 +304,7 @@ FUNCTION_ALLOWLISTS: dict[str, dict[str, frozenset[str]]] = {
     "LH001": LH001_FUNCTION_ALLOWLIST,
 }
 
-# LH009 / LH010 scope exemptions (these rules are warning-severity at HEAD but
-# the exemptions are structural, not per-site).
+# LH009 / LH010 scope exemptions. These are structural, not per-site.
 LH009_EXEMPT_GLOBS: frozenset[str] = frozenset(
     {
         "src/quant_fund/data/**",  # data layer IS the legacy choke point
@@ -335,7 +333,7 @@ LH011_LAZY_WHITELIST: dict[str, frozenset[str]] = {
     # proof lazily reaches pit (W1 vault seam, §5.2), leakage (W3 watchdog,
     # §5.2 step 2), and metrics (A1 F2 headline recompute). None of pit /
     # leakage import proof back, so the lazy edges cannot create a cycle.
-    "proof": _LH011_LAYER0_LAZY | {"backtest", "pit", "metrics", "leakage"},
+    "proof": _LH011_LAYER0_LAZY | {"backtest", "data", "pit", "metrics", "leakage"},
     # §6.2: patterns.py lazily sources FORBIDDEN_HEADLINE_TOKENS from
     # research.catalog.FORBIDDEN_RESEARCH_METRIC_KEYS (no copy); lazy-only so
     # no import-time edge into the SCC.

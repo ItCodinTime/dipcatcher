@@ -14,9 +14,9 @@ wave: the vacuous `test_live_requires_flag` (A3 #1) is replaced with a real
 ## Phase 1 — PIT vault alongside Lake (W1)
 
 `PitVault` + the migration shim land next to `quant_fund.data.lake.Lake`,
-which stays untouched. Existing direct `pl.read_parquet` sites keep working;
-LH009 reports them as warnings until their call-site migration. The vault
-reuses `require_pit_columns`-style checks on append.
+which stays untouched. The vault reuses `require_pit_columns`-style checks on
+append. Direct `pl.read_parquet` sites were subsequently migrated to
+role-aware data readers; LH009 now blocks them outside the data/PIT boundary.
 
 ## Phase 2 — proof bundle primitives (W2)
 
@@ -37,9 +37,7 @@ bundles live in `proofs/`
 
 `quant leakage scan` runs in CI with `--fail-on error`; its report is archived
 as the `leakage-report` artifact even on failure. The seeded-leak fixture suite
-is also blocking. LH009 (direct parquet reads) remains warning-severity until
-the follow-up call-site migration is complete, so those findings stay visible
-without misrepresenting the migration as finished.
+and LH009 direct-Parquet rule are blocking.
 
 ## Phase 4 — reality filter (W4)
 
@@ -79,7 +77,7 @@ returning the gate to skip for the next study.
 
 ## What is deliberately NOT in this wave
 
-SCC decomposition of the 21 legacy packages, migration of the 32 rogue
-parquet reads, ed25519 signing, changes to `research/verify.py` semantics,
+SCC decomposition of the 21 legacy packages, ed25519 signing, changes to
+`research/verify.py` semantics,
 fx1 code changes, and engine-semantics fixes (DESIGN.md §11). Each is gated
 or flagged so the follow-up wave cannot ship silently.

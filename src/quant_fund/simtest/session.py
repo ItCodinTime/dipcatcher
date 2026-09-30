@@ -26,6 +26,7 @@ import polars as pl
 from quant_fund.backtest.engine import run_backtest
 from quant_fund.config.loader import load_config
 from quant_fund.config.models import RuntimeMode
+from quant_fund.data.parquet import read_state_parquet
 from quant_fund.execution.simulated_broker import OrderRecord, SimulatedBroker
 from quant_fund.paper.ledger import (
     paper_root,
@@ -579,7 +580,12 @@ def _conservation_errors(state_path: Path, ledger_dir: Path) -> list[str]:
     borrow = 0.0
     cash_path = ledger_dir / "cash_ledger.parquet"
     if cash_path.is_file():
-        for row in pl.read_parquet(cash_path).to_dicts():
+        cash_frame = read_state_parquet(
+            cash_path,
+            dataset="simtest cash ledger",
+            required_columns=("slot", "side", "cash_delta"),
+        )
+        for row in cash_frame.to_dicts():
             if str(row.get("slot")) == "champion" and str(row.get("side")) == "borrow":
                 borrow += float(row["cash_delta"])
     cash += borrow

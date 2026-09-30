@@ -12,6 +12,7 @@ from pathlib import Path
 
 import polars as pl
 
+from quant_fund.data.parquet import read_market_parquet
 from quant_fund.microstructure.book_metrics import (
     DEPTH_SHAPE_FIELDS,
     QUEUE_STRUCTURE_FIELDS,
@@ -160,7 +161,13 @@ def load_book_panel(path: Path | str) -> pl.DataFrame:
     target = Path(path)
     if not target.is_file():
         raise FileNotFoundError(f"order-book panel parquet not found: {target}")
-    return validate_book_panel(pl.read_parquet(target))
+    return validate_book_panel(
+        read_market_parquet(
+            target,
+            dataset="order-book panel",
+            required_columns=("event_time", "security_id", "best_bid", "best_ask"),
+        )
+    )
 
 
 def validate_book_panel_depth_honesty(frame: pl.DataFrame) -> pl.DataFrame:

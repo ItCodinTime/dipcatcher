@@ -16,6 +16,7 @@ import numpy as np
 import polars as pl
 from numpy.typing import NDArray
 
+from quant_fund.data.parquet import read_derived_parquet
 from quant_fund.hedge_lab.directional import (
     ETF_BASKET,
     antonacci_returns,
@@ -177,7 +178,11 @@ def run_target_hunt(
     artifact_name: str = "target_hunt.json",
 ) -> dict[str, Any]:
     cap_blas_threads(0.6)
-    gold = pl.read_parquet(labels_path)
+    gold = read_derived_parquet(
+        labels_path,
+        dataset="target-hunt gold labels",
+        required_columns=("event_time", "security_id"),
+    )
     price = "close_total_return" if "close_total_return" in gold.columns else "close"
     dates, closes = _pivot(gold, price)
     names = sorted(closes)

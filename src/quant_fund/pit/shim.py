@@ -1,8 +1,8 @@
-"""Migration shim wrapping Lake + the 32 rogue parquet reads (§4.4, A2 F8).
+"""Decision-time Parquet shim wrapping Lake reads (§4.4, A2 F8).
 
-Staged migration: the shim exists day 1; LH009 reports the rogue sites as
-warnings; the CI gate flips LH009 to error only after the call-site migration
-PR lands. The shim NEVER rewrites the underlying parquet.
+LH009 blocks direct Polars reads outside the data/PIT boundary. This shim is
+the strict choice for market snapshots; role-aware non-market artifact reads
+live in :mod:`quant_fund.data.parquet`. The shim never rewrites its input.
 """
 
 from __future__ import annotations
@@ -78,5 +78,5 @@ def lake_asof(lake: Lake, rel: str, t: datetime) -> PitFrame:
 
 
 def guarded_read_parquet(path: Path, t: datetime, *, dataset: str) -> PitFrame:
-    """Replacement for the 32 rogue pl.read_parquet sites (A2 F8)."""
+    """Read and filter a market snapshot at one explicit decision time."""
     return _to_pit_frame(pl.read_parquet(Path(path)), dataset=dataset, t=t)

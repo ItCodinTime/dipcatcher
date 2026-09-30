@@ -14,6 +14,7 @@ import polars as pl
 from quant_fund import __firm__, __version__
 from quant_fund.config import load_config
 from quant_fund.config.models import AppConfig, RuntimeMode
+from quant_fund.data.parquet import parquet_row_count, parquet_schema
 from quant_fund.research.catalog import BENCHMARK_CATALOG_VERSION, BENCHMARK_FAMILY_ORDER
 from quant_fund.research.verify import verify_research_artifact
 
@@ -98,9 +99,9 @@ def doctor(config_path: str | None = None) -> dict[str, object]:
                     if path.is_file():
                         valid = valid and hashlib.sha256(path.read_bytes()).hexdigest() == digest
                         try:
-                            schema = pl.scan_parquet(path).collect_schema()
+                            schema = parquet_schema(path, dataset=f"manifest:{name}")
                             valid = valid and sorted(schema.names()) == columns
-                            actual_rows = pl.scan_parquet(path).select(pl.len()).collect().item()
+                            actual_rows = parquet_row_count(path, dataset=f"manifest:{name}")
                             valid = valid and actual_rows == rows
                         except (OSError, pl.exceptions.PolarsError):
                             valid = False

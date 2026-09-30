@@ -19,6 +19,7 @@ import polars as pl
 from numpy.typing import NDArray
 
 from quant_fund.config.loader import load_config
+from quant_fund.data.parquet import read_derived_parquet
 from quant_fund.metrics import inference
 from quant_fund.metrics.inference import stationary_bootstrap_indices
 from quant_fund.models import calibration, ranking
@@ -344,8 +345,16 @@ def evaluate(frame: pl.DataFrame, spec: ExperimentSpec = ExperimentSpec()) -> di
 
 
 def _load_gold(features: Path, labels: Path, spec: ExperimentSpec) -> pl.DataFrame:
-    feat = pl.read_parquet(features)
-    lab = pl.read_parquet(labels)
+    feat = read_derived_parquet(
+        features,
+        dataset="ranker gold features",
+        required_columns=("event_time", "security_id"),
+    )
+    lab = read_derived_parquet(
+        labels,
+        dataset="ranker gold labels",
+        required_columns=("event_time", "security_id", spec.label, spec.label_end),
+    )
     keys = ["event_time", "security_id"]
     if not set([*keys, spec.label, spec.label_end]) <= set(lab.columns):
         raise ValueError("label artifact lacks the specified return or observed endpoint")

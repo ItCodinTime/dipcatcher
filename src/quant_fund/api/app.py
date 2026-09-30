@@ -488,6 +488,7 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
     import numpy as np
     import polars as pl
 
+    from quant_fund.data.parquet import ParquetContractError, read_derived_parquet
     from quant_fund.data.point_in_time import filter_trailing_returns_asof
     from quant_fund.models.covariance import (
         IMPLEMENTED_OPTIMIZER_NAMED_SPECS,
@@ -513,8 +514,14 @@ def risk_portfolio(config_path: str = "configs/research.yaml") -> dict[str, Any]
             }
         )
     try:
-        weights = pl.read_parquet(weights_path)
-    except (OSError, pl.exceptions.PolarsError) as exc:
+        weights = read_derived_parquet(
+            weights_path,
+            dataset="API target-weight panel",
+            # Route-level validation below preserves its detailed 422 errors.
+            required_columns=(),
+            allow_empty=True,
+        )
+    except (OSError, pl.exceptions.PolarsError, ParquetContractError) as exc:
         raise HTTPException(422, "target-weight artifact could not be read") from exc
     required_columns = {"event_time", "security_id", "target_weight"}
     missing_columns = sorted(required_columns.difference(weights.columns))

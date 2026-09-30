@@ -12,12 +12,11 @@ import math
 from pathlib import Path
 from typing import Any
 
-import polars as pl
-
 from quant_fund.audit.canonical import canonical_json_bytes, json_safe
 from quant_fund.audit.errors import AuditError
 from quant_fund.audit.ledger import KINDS, AuditLedger, LedgerEntry
 from quant_fund.audit.trace import receipt_digest
+from quant_fund.data.parquet import read_state_parquet
 
 _REJECTED = frozenset({"rejected", "cancelled", "canceled"})
 
@@ -75,7 +74,12 @@ def record_paper_directory(ledger: AuditLedger, paper_dir: Path | str) -> list[L
     if not orders_path.is_file():
         raise AuditError(f"simulated orders not found: {orders_path}")
     before = orders_path.read_bytes()
-    frame = pl.read_parquet(io.BytesIO(before))
+    frame = read_state_parquet(
+        io.BytesIO(before),
+        dataset="paper orders audit source",
+        required_columns=(),
+        allow_empty=True,
+    )
     rows = frame.to_dicts()
     safe_rows = [json_safe(row) for row in rows]
     if not isinstance(safe_rows, list):

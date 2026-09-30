@@ -15,6 +15,7 @@ from typing import Any
 import polars as pl
 
 from quant_fund.config.models import AppConfig
+from quant_fund.data.parquet import ParquetContractError, read_derived_parquet
 from quant_fund.registry.mlflow_store import promotion_decision
 from quant_fund.research.verify import verify_research_artifact
 from quant_fund.utils.numeric import positive_integral_count as _positive_integral_count
@@ -78,8 +79,13 @@ def _causal_panel_present(config: AppConfig) -> bool:
     if not path.is_file():
         return False
     try:
-        frame = pl.read_parquet(path)
-    except (OSError, pl.exceptions.PolarsError):
+        frame = read_derived_parquet(
+            path,
+            dataset="causal target-weight panel",
+            required_columns=("event_time", "security_id", "target_weight"),
+            allow_empty=True,
+        )
+    except (OSError, pl.exceptions.PolarsError, ParquetContractError):
         return False
     required = {"event_time", "security_id", "target_weight"}
     if not required.issubset(frame.columns) or frame.height == 0:

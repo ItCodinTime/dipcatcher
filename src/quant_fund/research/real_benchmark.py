@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
 import os
 import platform
@@ -19,6 +18,8 @@ from typing import Any
 
 import numpy as np
 import polars as pl
+
+from quant_fund.data.parquet import read_evidence_parquet
 
 FEATURES = ("return_1", "return_5", "return_20", "volatility_20")
 MODELS = ("zero", "historical_mean", "rolling_mean_20", "ridge")
@@ -129,7 +130,19 @@ def _load_bars(protocol: BenchmarkProtocol) -> pl.DataFrame:
     raw = Path(protocol.dataset_path).read_bytes()
     if hashlib.sha256(raw).hexdigest() != protocol.dataset_sha256:
         raise ValueError("dataset hash mismatch")
-    frame = pl.read_parquet(io.BytesIO(raw))
+    frame = read_evidence_parquet(
+        raw,
+        dataset="frozen real benchmark",
+        expected_sha256=protocol.dataset_sha256,
+        required_columns=(
+            "security_id",
+            "event_time",
+            "available_time",
+            "ingested_time",
+            "source",
+            protocol.price_column,
+        ),
+    )
     required = {
         "security_id",
         "event_time",

@@ -24,6 +24,7 @@ import numpy as np
 import polars as pl
 
 from quant_fund.config.models import AppConfig, FillConvention
+from quant_fund.data.parquet import read_state_parquet
 from quant_fund.execution.simulated_broker import OrderRecord, SimulatedBroker
 from quant_fund.metrics.analytics import (
     analytics_export_digest,
@@ -415,7 +416,12 @@ def run_paper_loop(  # noqa: C901 — main is 75; the repo ceiling stays 74
                 )
         else:
             try:
-                durable_equity_rows = pl.read_parquet(equity_path).height
+                durable_equity_rows = read_state_parquet(
+                    equity_path,
+                    dataset="paper durable equity",
+                    required_columns=(),
+                    allow_empty=True,
+                ).height
             except Exception as exc:
                 raise ValueError("cannot resume: durable equity.parquet is unreadable") from exc
             if durable_equity_rows != resume_step:

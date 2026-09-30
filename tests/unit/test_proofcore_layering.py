@@ -40,10 +40,10 @@ LAZY_WHITELIST: dict[str, frozenset[str]] = {
     "proofcore": frozenset(),
     "pit": frozenset(),
     # Adjudicated lazy edges (LH011_LAZY_WHITELIST in leakage/rules.py):
-    # proof lazily reaches pit (W1 vault seam), leakage (W3 watchdog), and
-    # metrics (A1 F2 headline recompute); none import proof back, so the lazy
-    # edges cannot create a cycle.
-    "proof": frozenset({"backtest", "cli", "leakage", "metrics", "pit"}),
+    # proof lazily reaches pit (W1 vault seam), leakage (W3 watchdog), metrics
+    # (A1 F2 headline recompute), and the role-aware data reader; none import
+    # proof back, so the lazy edges cannot create a cycle.
+    "proof": frozenset({"backtest", "cli", "data", "leakage", "metrics", "pit"}),
     "leakage": frozenset({"pit", "cli", "config", "utils", "research"}),
     "reality": frozenset({"cli"}),
 }
